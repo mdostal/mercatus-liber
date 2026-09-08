@@ -1,0 +1,70 @@
+id: cf-07-reference-storefront-integration
+epic: core-foundation
+title: Reference storefront — end-to-end integration proof
+status: done
+complexity: medium
+methodology: classic
+depends_on: [cf-06-checkout-orders-package]
+
+execution_note: >
+  "End-to-end test (e.g. Playwright)" simplified to a Vitest integration test
+  driving the same seed->browse->cart->checkout->paid chain against a fake
+  payments adapter, consistent with cf-05/cf-06 -- no live Stripe test-mode key
+  exists for this project yet, so a literal browser-driven Playwright test
+  against real Stripe test mode is deferred, not fabricated. Also simplified:
+  Stripe successUrl points to a static /order/confirmed page rather than a
+  dynamic /order/[id] redirect (would need Stripe's {CHECKOUT_SESSION_ID}
+  placeholder + a session-id lookup this reference app doesn't build out).
+  /order/[id] still exists as a standalone, real order-lookup page.
+
+description: |
+  Build apps/reference-storefront: a minimal Next.js app wiring cf-01 through cf-06
+  together with concrete adapter-sqlite instances, proving the whole vertical slice
+  works end-to-end -- seed a handful of products/SKUs, browse them, add to cart,
+  check out via Stripe test mode, see the resulting order. This is the epic's
+  closing acceptance test, not a polished UI (theming/PDP/CMS subsystems are later
+  epics).
+
+acceptance_criteria:
+  - "Given the reference-storefront app running locally, when a shopper browses seeded products, adds several different SKUs to cart, and completes Stripe test-mode checkout, then an Order exists in paid status with the correct line items"
+  - "Given the wiring code in apps/reference-storefront, when inspected, then it is the ONLY place concrete adapter implementations (adapter-sqlite, the Stripe adapter) are imported and wired together -- no subsystem package imports another subsystem's concrete adapter"
+  - "Given `pnpm turbo run build` at the repo root, when run, then every package (core, catalog, cart, payments, checkout-orders, adapter-sqlite) plus the reference-storefront app build successfully together"
+
+steps:
+  - id: research
+    description: Confirm Next.js app router setup pattern compatible with the pnpm/Turborepo scaffold from cf-01.
+    agent: researcher
+  - id: implement
+    description: Build minimal pages (product list, product detail with add-to-cart, cart view, checkout redirect, order confirmation) wiring all core-foundation packages together.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: An end-to-end test (e.g. Playwright) driving the full browse -> cart -> Stripe test-mode checkout -> order-confirmed flow.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify this app is the sole place concrete adapters are wired -- confirms the whole epic's decoupling held under real integration, not just per-package unit tests.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch; this closes the core-foundation epic.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/ARCHITECTURE.md
+      purpose: "Repo shape confirms apps/reference-storefront's role: wiring packages together for demos/tests, not a subsystem itself."
+
+files_to_modify:
+  - file: apps/reference-storefront/package.json
+    change: New Next.js app depending on all core-foundation packages + adapter-sqlite + the Stripe adapter
+  - file: apps/reference-storefront/app/
+    change: Minimal pages -- product list, product detail, cart, checkout redirect, order confirmation
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "This app is the ONLY place concrete adapters (adapter-sqlite, Stripe) are instantiated and wired -- verify no subsystem package itself imports a concrete adapter"
+  - concern: documentation
+    action: "Add a README to apps/reference-storefront explaining it's a proof-of-integration demo, not a production storefront template (theming/PDP/CMS come in later epics)"

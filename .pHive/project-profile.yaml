@@ -56,9 +56,14 @@ north_star:
     need them) for a small catalog. None separate marketing catalog from sales
     catalog. Full CBA: shop/.pHive/epics/v1-launch/docs/oss-cart-cba.md (sibling repo).
   success: >
-    shop.mdostal.com runs successfully on this framework's packages as a real,
-    functioning shop — proof by use, not just documentation. Beyond that, adoption by
-    others is a bonus, not a requirement for v1 to be "done."
+    Two bars, not one: (1) shop.mdostal.com runs successfully on this framework's
+    packages as a real, functioning shop — proof by use, not just documentation; (2)
+    the framework can fully recreate a real client's site (All That Technology —
+    home-automation installs, multi-location service-area business) via plugins/
+    features, with a Shopify-backend adapter as an option so a client already on
+    Shopify isn't forced to migrate off it. Bar (2) is the actual "legit alternative
+    to Shopify" proof, not bar (1) alone. See epics 14-15 in
+    .pHive/planning/epic-backlog.md. Beyond both, adoption by others is a bonus.
   avoid: >
     Tight coupling between subsystems (the explicit prime directive in
     docs/ARCHITECTURE.md — no subsystem may import another's internals). Forcing a

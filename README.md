@@ -1,4 +1,7 @@
-# open-source-commerce _(working name — see `docs/NAMING-CANDIDATES.md`)_
+# Mercatus Liber
+
+_"Free market" (Latin). A legitimate, 100% free/open-source alternative to Shopify/Medusa/
+Saleor/etc. -- headless, AI-agent-accessible, and built to be stood up with a single tool._
 
 A free, MIT-licensed, headless commerce framework: schema-first product/SKU catalog with
 pluggable database adapters, a **marketing catalog genuinely separate from the sales
@@ -12,7 +15,9 @@ human storefront/admin UI is equally exposed to AI agents via a documented skill
 and an MCP server, calling the exact same subsystem interfaces. No shadow API, no reduced
 agent-only surface.
 
-**Status:** pre-alpha — architecture and subsystem planning phase, no code yet.
+**Status:** pre-alpha — core-foundation epic underway (`@mercatus-liber/core` schema +
+`@mercatus-liber/adapter-sqlite` done; catalog/cart/payments/checkout-orders/reference-storefront
+in progress). See `.pHive/planning/epic-backlog.md` for the full build-out backlog.
 
 ## Why
 Evaluated against every serious free/OSS option (Medusa, Saleor, Vendure, Spree/Solidus,
@@ -27,9 +32,9 @@ here to consume.
 
 ## Read next
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — design principles, subsystem map, repo shape.
-- [`docs/subsystems/`](docs/subsystems/) — one doc per subsystem (13 total), each covering
+- [`docs/subsystems/`](docs/subsystems/) — one doc per subsystem (15 total), each covering
   purpose, dependencies, responsibilities, explicit non-responsibilities, and open questions.
-- [`docs/NAMING-CANDIDATES.md`](docs/NAMING-CANDIDATES.md) — 50 candidate project names.
+- [`docs/NAMING-CANDIDATES.md`](docs/NAMING-CANDIDATES.md) — naming history (decided: Mercatus Liber).
 
 ## Prime directive
 No subsystem imports another subsystem's internals. Everything talks through shared core

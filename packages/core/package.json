@@ -1,0 +1,25 @@
+{
+  "name": "@mercatus-liber/core",
+  "version": "0.1.0",
+  "description": "Shared core schema types and adapter/event-bus interfaces. Types and interfaces only -- no storage, no business logic, no framework code. @osc is a placeholder scope for the project's working name (see docs/NAMING-CANDIDATES.md); rename when the real name is picked.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

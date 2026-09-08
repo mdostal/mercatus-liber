@@ -1,0 +1,46 @@
+name: core-foundation
+title: Core Foundation — schema, SQLite adapter, catalog, cart, payments, checkout
+description: >
+  The smallest real vertical slice of the framework: a shopper can browse a seeded
+  catalog, add items to a long-lived cart, and check out via Stripe, with the order
+  recorded — all against a reference SQLite persistence adapter, with every
+  subsystem boundary (catalog/cart/payments/checkout) already respecting the
+  no-tight-coupling prime directive from docs/ARCHITECTURE.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: cf-01-monorepo-scaffold-core-schema
+    title: Monorepo scaffold + @core/schema package
+    complexity: medium
+    depends_on: []
+  - id: cf-02-adapter-sqlite
+    title: SQLite reference persistence adapter
+    complexity: medium
+    depends_on: [cf-01-monorepo-scaffold-core-schema]
+  - id: cf-03-catalog-package
+    title: Catalog package (products, SKUs, attribute map)
+    complexity: high
+    depends_on: [cf-01-monorepo-scaffold-core-schema, cf-02-adapter-sqlite]
+  - id: cf-04-cart-package
+    title: Cart package (long-lived, SKU line items)
+    complexity: medium
+    depends_on: [cf-03-catalog-package]
+  - id: cf-05-payments-stripe-package
+    title: Payments package + Stripe Checkout Sessions adapter
+    complexity: medium
+    depends_on: [cf-01-monorepo-scaffold-core-schema]
+  - id: cf-06-checkout-orders-package
+    title: Checkout & Orders package
+    complexity: high
+    depends_on: [cf-04-cart-package, cf-05-payments-stripe-package]
+  - id: cf-07-reference-storefront-integration
+    title: Reference storefront — end-to-end integration proof
+    complexity: medium
+    depends_on: [cf-06-checkout-orders-package]

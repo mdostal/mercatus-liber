@@ -1,0 +1,64 @@
+id: cf-03-catalog-package
+epic: core-foundation
+title: Catalog package (products, SKUs, attribute map)
+status: done
+complexity: high
+methodology: classic
+depends_on: [cf-01-monorepo-scaffold-core-schema, cf-02-adapter-sqlite]
+
+description: |
+  Implement packages/catalog per docs/subsystems/01-catalog.md: CRUD for
+  Product/Sku/ProductAttribute against the repository interfaces (adapter injected,
+  not imported concretely -- catalog depends on @core/schema's interfaces, the
+  adapter-sqlite package is only wired in by the consuming app/tests), the SKU
+  cartesian-product generation helper, the options-on-a-page variant-resolver query,
+  and catalog.* event publishing.
+
+acceptance_criteria:
+  - "Given a product with identifyingAttributeKeys [\"color\",\"size\"] and value sets, when the SKU generator runs, then it produces the cartesian product of SKUs, excluding any combination explicitly marked invalid"
+  - "Given a product and a chosen combination of identifying attribute values, when the variant-resolver query runs, then it returns the matching SKU or a clear not-found result"
+  - "Given a product is created/updated/archived, when the operation completes, then a catalog.product.<verb> event is published on the event bus with the product id"
+  - "Given the catalog package's public exports, when inspected, then it imports @core/schema only -- no import of adapter-sqlite or any other subsystem package"
+
+steps:
+  - id: research
+    description: Confirm the event bus default in-process implementation exists/is stubbed from cf-01, or scope a minimal one here if not yet built.
+    agent: researcher
+  - id: implement
+    description: Implement catalog CRUD, SKU generation, variant resolver, and event publishing against injected repository interfaces.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Unit tests using adapter-sqlite as the concrete test-time implementation (dependency-injected, not imported by catalog's own source).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify catalog's source imports only @core/schema -- adapter-sqlite appears only in test files, never in packages/catalog/src.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/01-catalog.md
+      purpose: Full responsibility list, explicit non-responsibilities, and the decoupling notes this story must satisfy.
+    - path: docs/subsystems/00-core-schema.md
+      purpose: Event bus naming convention ("<subsystem>.<thing>.<pastTenseVerb>") and repository interfaces.
+
+files_to_modify:
+  - file: packages/catalog/package.json
+    change: New package depending on @core/schema only (adapter-sqlite is a devDependency for tests)
+  - file: packages/catalog/src/index.ts
+    change: Catalog service -- CRUD, SKU generation, variant resolver, event publishing
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/catalog/src must never import adapter-sqlite, cart, or any other subsystem package directly -- injected repository interfaces only"
+
+design_decisions:
+  - decision: SKU cartesian-product generation has no hard combinatorial cap in v1
+    rationale: "Low-SKU shop use case (per north_star) makes explosion unlikely; documented as an open question in subsystem doc 01 rather than pre-solved."

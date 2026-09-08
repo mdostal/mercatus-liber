@@ -69,6 +69,20 @@ real prior-art name), **Commerce Layer** (an existing commerce API company), **S
 49. **Commercify**
 50. **Baseshop**
 
+## Latin-derived (market + free/open/transparent)
+Roman market-words: **forum** (the open public marketplace itself, not a private stall) and
+**mercatus** (market/trade). For "free, open, no fees, nothing hidden": **apertus** (open —
+does double duty as "transparent/candid" too, so it doesn't need a second word) and **liber**
+(free as in liberty, not "free of charge").
+
+51. **Apertum** — "the open one." Single word, covers both physically-open and transparent.
+52. **Forum Apertum** — "open market."
+53. **Mercatus Liber** — "free market" (heads-up: carries the economic-ideology connotation).
+54. **Nundinae** — the actual Roman word for market day/marketplace. Distinctive, no baggage.
+55. **Taberna Aperta** — "the open stall" — a direct answer to "taberna, but free/open."
+56. **Candorum** / **Candidus** — root of English "candid": honest/transparent, a different
+    shade of the same idea rather than "open" per se.
+
 ## How to actually narrow this
 1. Gut-check: read the list out loud, cross off anything that doesn't sound sayable/typeable.
 2. Check npm (`npm view <name>`) and the domain (`.dev`/`.io`/`.org`) for the survivors.

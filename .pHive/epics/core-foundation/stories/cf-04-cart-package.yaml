@@ -1,0 +1,57 @@
+id: cf-04-cart-package
+epic: core-foundation
+title: Cart package (long-lived, SKU line items)
+status: done
+complexity: medium
+methodology: classic
+depends_on: [cf-03-catalog-package]
+
+description: |
+  Implement packages/cart per docs/subsystems/07-cart.md: line-item add/remove/
+  update/clear, price snapshotting at add-time, a CartRepository interface (adapter
+  pattern, same as catalog), and cart.item.* event publishing. Reads catalog only
+  via its public interface (to validate SKU existence/active status), never imports
+  catalog internals.
+
+acceptance_criteria:
+  - "Given a valid, active SKU id and quantity, when addItem runs, then the cart gains a line item with a price snapshot equal to the SKU's current price at add-time"
+  - "Given an inactive or nonexistent SKU id, when addItem runs, then it returns a clear error and the cart is unchanged"
+  - "Given a cart mutation (add/remove/update/clear), when it completes, then the corresponding cart.item.* event is published"
+  - "Given the cart package's public exports, when inspected, then it imports @core/schema and catalog's public interface only -- no import of checkout-orders or payments"
+
+steps:
+  - id: research
+    description: Confirm catalog's public interface shape from cf-03 for SKU validation calls.
+    agent: researcher
+  - id: implement
+    description: Implement CartRepository interface + cart service (add/remove/update/clear, price snapshot, events).
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Unit tests covering valid add, invalid-SKU rejection, quantity update, clear, and price-snapshot behavior.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify cart never imports checkout-orders or payments -- those subsystems depend on cart, not the reverse.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/07-cart.md
+      purpose: Responsibilities, price-snapshot behavior, and the explicit non-responsibilities (checkout/payments) this story must respect.
+
+files_to_modify:
+  - file: packages/cart/package.json
+    change: New package depending on @core/schema + catalog's public interface
+  - file: packages/cart/src/index.ts
+    change: Cart service -- line items, mutations, price snapshot, event publishing
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/cart/src must depend on catalog's public interface only (SKU lookup/validation), never checkout-orders or payments"
