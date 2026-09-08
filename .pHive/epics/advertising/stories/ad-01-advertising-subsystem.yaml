@@ -1,0 +1,138 @@
+id: ad-01-advertising-subsystem
+epic: advertising
+title: "@mercatus-liber/advertising: Campaign/Creative domain model, in-memory adapter, weighted rotation"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  New package packages/advertising (subsystem 19, see docs/subsystems/19-advertising.md,
+  already written during planning). Depends on @mercatus-liber/core only -- never imports cms,
+  service-areas, catalog, marketing-catalog, or analytics. Deliberately thin like
+  recommendations: no validation of serviceAreaId/pageSlug against any other subsystem, just
+  bare string storage/matching.
+
+  Deliverables:
+  - `Campaign` type: { id, name, status: "active"|"inactive", startsAt: string|null (ISO
+    8601), endsAt: string|null, targeting: { serviceAreaId: string|null, pageSlug: string|null
+    }, creatives: Creative[] }.
+  - `Creative` type: { id, headline: string, body: string, imageUrl: string|null, linkHref:
+    string, weight: number (default 1 when not specified) }.
+  - `CampaignRepository` interface (get/list/save, adapter pattern) +
+    `createInMemoryCampaignRepository()`, mirroring the Map+structuredClone pattern already
+    used in packages/recommendations/src/in-memory-repository.ts.
+  - `AdvertisingService` with:
+    - `createCampaign(input): Promise<Campaign>`
+    - `getCampaign(id): Promise<Campaign | null>`
+    - `listCampaigns(): Promise<Campaign[]>`
+    - `updateCampaign(id, input): Promise<Campaign | null>` (mirror updateRule/updateBundle's
+      get-merge-save shape)
+    - `deactivateCampaign(id): Promise<Campaign | null>`
+    - `getActiveCreativeForSlot(input: { pageSlug?: string; serviceAreaId?: string; now?: Date;
+      random?: () => number }): Promise<{ campaign: Campaign; creative: Creative } | null>`
+  - Eligibility logic for getActiveCreativeForSlot: a campaign is eligible when
+    `status === "active"`, `(startsAt === null || startsAt <= now)`,
+    `(endsAt === null || endsAt >= now)`, `(targeting.serviceAreaId === null ||
+    targeting.serviceAreaId === input.serviceAreaId)`, and `(targeting.pageSlug === null ||
+    targeting.pageSlug === input.pageSlug)`. Flatten all eligible campaigns' creatives into one
+    list (each entry carrying a reference back to its parent campaign). If the list is empty,
+    return null. Otherwise do a weighted-random pick: sum all weights (treat weight <= 0 or
+    missing as 1), pick a random point in [0, totalWeight) via `input.random?.() ??
+    Math.random()`, walk the cumulative weights to find the selected creative, return
+    `{campaign, creative}`.
+  - Validation on createCampaign/updateCampaign: a campaign must have at least one creative;
+    reject a creative with an empty linkHref.
+
+acceptance_criteria:
+  - "Given an untargeted, active, no-date-range campaign with one creative, when getActiveCreativeForSlot({pageSlug:'anything'}) is called, then it returns that creative"
+  - "Given a campaign targeted to serviceAreaId 'sa-1' only, when getActiveCreativeForSlot({serviceAreaId:'sa-2'}) is called, then it returns null (or falls through to any other eligible campaign, but never this one)"
+  - "Given a campaign with startsAt in the future, when getActiveCreativeForSlot is called with the default now, then that campaign is excluded"
+  - "Given a campaign with endsAt in the past, when getActiveCreativeForSlot is called with the default now, then that campaign is excluded"
+  - "Given two eligible creatives with weights 1 and 99, when getActiveCreativeForSlot is called with an injected `random` returning a value that should land in the heavy creative's range (e.g. 0.5, which is well within a 99/100 share), then the heavy-weighted creative is returned -- and with `random` returning a value in the light creative's tiny range (e.g. 0.005), the light creative is returned -- proving the weighting actually affects selection, not just a uniform pick"
+  - "Given no campaign is eligible for a given slot, when getActiveCreativeForSlot is called, then it returns null (not an error)"
+  - "Given a createCampaign call with zero creatives, when createCampaign is called, then it rejects clearly and no campaign is persisted"
+  - "Given an existing campaign, when updateCampaign changes its name, then getCampaign reflects the new name while preserving its id and creatives"
+  - "Given a deactivated campaign, when getActiveCreativeForSlot is called for a slot it would otherwise match, then it is excluded, while it remains visible via listCampaigns/getCampaign for admin purposes"
+
+steps:
+  - id: research
+    description: Read packages/recommendations/src/in-memory-repository.ts, types.ts, and service.ts (all committed on master) for the exact structural patterns to mirror.
+    agent: researcher
+  - id: implement
+    description: Build the advertising package per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write vitest tests in packages/advertising/test/advertising.test.ts covering every acceptance criterion above, especially the weighted-rotation proof (inject a deterministic random function).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check correctness, convention compliance, and that the weighted-selection math is actually proportional (not accidentally uniform).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/advertising.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/recommendations/src/in-memory-repository.ts
+      purpose: Exact Map+structuredClone pattern to follow for the in-memory CampaignRepository.
+    - path: packages/bundles/src/service.ts
+      purpose: updateBundle's get-merge-save shape to mirror for updateCampaign.
+    - path: packages/bundles/package.json
+      purpose: Exact package.json shape/scoping convention (dependencies -> core only).
+
+files_to_modify:
+  - file: packages/advertising/package.json
+    change: New package, dependencies -> @mercatus-liber/core only, devDependencies -> @types/node, typescript, vitest.
+  - file: packages/advertising/tsconfig.json
+    change: Extend ../../tsconfig.base.json, reference ../core.
+  - file: packages/advertising/src/types.ts
+    change: Campaign, Creative, CampaignRepository, CreateCampaignInput types.
+  - file: packages/advertising/src/in-memory-repository.ts
+    change: createInMemoryCampaignRepository().
+  - file: packages/advertising/src/service.ts
+    change: createAdvertisingService(deps) -> AdvertisingService, including the weighted-random selection logic.
+  - file: packages/advertising/src/index.ts
+    change: Re-export public surface.
+  - file: packages/advertising/test/advertising.test.ts
+    change: Tests for every acceptance criterion.
+
+design_decisions:
+  - decision: "random is an injectable dependency on getActiveCreativeForSlot, defaulting to Math.random."
+    rationale: "Makes the weighted-selection logic deterministically testable without needing statistical/distribution-based test assertions."
+  - decision: "No catalog/service-areas/cms validation of targeting ids at write time."
+    rationale: "Matches recommendations' deliberately thin posture -- see design-discussion.md §3 and the subsystem doc's open question 1."
+
+risks: []
+
+references:
+  - path: .pHive/epics/advertising/docs/design-discussion.md
+    relevant_excerpt: |
+      §3 has the full Campaign/Creative shape, the eligibility rules, and the weighted-random
+      rotation approach this story implements verbatim.
+  - path: docs/subsystems/19-advertising.md
+    relevant_excerpt: |
+      Full subsystem doc (purpose, depends-on, responsibilities, explicit non-goals,
+      decoupling notes with the exact grep command to run before merge).
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: advertising.rotation_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite in packages/advertising/test/advertising.test.ts
+  verify_at: integrate
+  owner: tester

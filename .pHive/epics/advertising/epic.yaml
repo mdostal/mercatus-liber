@@ -1,0 +1,49 @@
+name: advertising
+title: Advertising
+description: >
+  Campaign/creative/targeting/rotation management filling CMS's existing, previously
+  unimplemented ad-slot component (backlog epic 23). New subsystem 19
+  (@mercatus-liber/advertising, core-only dependency) resolved as admin-curated campaigns with
+  optional service-area/CMS-page-slug targeting and stateless weighted-random rotation --
+  analytics has no queryable read side today, so performance-based optimization is explicitly
+  out of scope (deferred, documented). Zero changes to packages/cms's public contract; the
+  existing "ad-slot" render case in cms-sections.tsx becomes a real component composing this
+  subsystem. See docs/subsystems/19-advertising.md and docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [backend, new-subsystem, admin-ui, cms-integration]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    backend: "New package (advertising) with domain model + service + in-memory adapter + stateless weighted rotation"
+    new-subsystem: "Design question (campaign/creative/targeting/rotation shape, and what's explicitly out of scope) required resolving before decomposition, per epic-backlog.md epic 23 description"
+    admin-ui: "Admin CRUD for campaigns/creatives, mirroring epics 20-22's established admin-mutation pattern"
+    cms-integration: "Fills CMS's existing unimplemented ad-slot render case at the app-composition layer, zero changes to packages/cms"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session (no live multi-agent planning team spawned this run); design discussion grounded in a dedicated codebase-research pass instead, matching the rigor of epics 20-22's own research-grounded planning.
+
+stories:
+  - id: ad-01-advertising-subsystem
+    title: "@mercatus-liber/advertising: Campaign/Creative domain model, in-memory adapter, weighted rotation"
+    complexity: medium
+    depends_on: []
+  - id: ad-02-cms-ad-slot-integration
+    title: "reference-storefront: real ad-slot rendering via getActiveCreativeForSlot, service-area + page-slug targeting"
+    complexity: medium
+    depends_on: [ad-01-advertising-subsystem]
+  - id: ad-03-admin-advertising-crud
+    title: "/admin/advertising: list + create/edit/deactivate campaigns with nested creatives"
+    complexity: medium
+    depends_on: [ad-01-advertising-subsystem]
+  - id: ad-04-acceptance-seed-and-closeout
+    title: "Seed a demo campaign (home + a service-area page), decoupling verification, epic-backlog closeout"
+    complexity: low
+    depends_on: [ad-02-cms-ad-slot-integration, ad-03-admin-advertising-crud]
