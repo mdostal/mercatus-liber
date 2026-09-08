@@ -19,7 +19,8 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@mercatus-liber/core": "workspace:*"
+    "@mercatus-liber/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",

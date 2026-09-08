@@ -1,7 +1,7 @@
 id: mcp-02-mcp-server-and-reference-wiring
 epic: ai-mcp-interface
 title: MCP server wrapper (@modelcontextprotocol/sdk) + reference storefront entry point
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [mcp-01-tool-definitions-and-handlers]
