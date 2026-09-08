@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import type { BundlesService } from "@mercatus-liber/bundles";
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
 import type { InventoryAdapter } from "@mercatus-liber/inventory";
@@ -38,6 +40,96 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     stockUnits: 5,
   },
 ];
+
+interface ServiceDemoSku {
+  slug: string;
+  title: string;
+  description: string;
+  priceCents: number;
+  stockUnits: number;
+}
+
+/**
+ * Three single-variant, service-style demo products backing the 3-tier
+ * bundle acceptance demo (bundle-04). Shape inspiration: the ATT recreation's
+ * confirmed PDP direction, a 3-tier package selector ("Product Only" / "+ Pro
+ * Setup" / "Complete Overhaul") -- see design-discussion.md §0. That repo is
+ * referenced only as shape inspiration; none of its content is read or
+ * copied here. `install` is the bundle's base product; `proSetup` and
+ * `overhaul` are add-on SKUs only ever sold as part of a tier, never listed
+ * standalone in DEMO_PRODUCTS.
+ */
+const SERVICE_DEMO_SKUS: { install: ServiceDemoSku; proSetup: ServiceDemoSku; overhaul: ServiceDemoSku } = {
+  install: {
+    slug: "dragon-install-service",
+    title: "Dragon Install Service",
+    description: "Professional installation of your dragon-branded desk setup, done right the first time.",
+    priceCents: 4900,
+    stockUnits: 999,
+  },
+  proSetup: {
+    slug: "dragon-pro-setup-addon",
+    title: "Dragon Pro Setup Add-On",
+    description: "Adds cable routing, mount calibration, and a full pro configuration pass.",
+    priceCents: 2900,
+    stockUnits: 999,
+  },
+  overhaul: {
+    slug: "dragon-complete-overhaul-addon",
+    title: "Dragon Complete Overhaul Add-On",
+    description: "Adds a full desk teardown, deep clean, and rebuild to factory-fresh spec.",
+    priceCents: 5900,
+    stockUnits: 999,
+  },
+};
+
+/** Creates one active product + one active SKU for a single-variant service demo SKU (identifyingAttributeKeys is a single "package" key with one "standard" value -- these aren't multi-variant products, just a minimal non-empty key set so generateSkus produces exactly one SKU). */
+async function createServiceDemoSku(
+  catalog: CatalogService,
+  inventory: InventoryAdapter,
+  demo: ServiceDemoSku,
+): Promise<{ productId: string; skuId: string }> {
+  const product = await catalog.createProduct({
+    slug: demo.slug,
+    title: demo.title,
+    description: demo.description,
+    identifyingAttributeKeys: ["package"],
+  });
+  await catalog.publishProduct(product.id);
+  const skus = await catalog.generateSkus(
+    product.id,
+    { package: ["standard"] },
+    { amount: demo.priceCents, currency: "USD" },
+  );
+  const sku = skus[0]!;
+  await inventory.setStock(sku.id, demo.stockUnits);
+  return { productId: product.id, skuId: sku.id };
+}
+
+/**
+ * Seeds the bundle-04 acceptance demo: the 3 service-style SKUs above, plus
+ * one Bundle attached to the base "install" product with exactly 3 tiers,
+ * each tier's skuIds the correct CUMULATIVE set -- tier 1 is [install], tier
+ * 2 is [install, proSetup], tier 3 is [install, proSetup, overhaul]. Mirrors
+ * the ATT recreation's confirmed 3-tier package-selector shape (see
+ * design-discussion.md §0) using this repo's own dragon-branded demo data --
+ * the ATT recreation repo itself is never read or touched.
+ */
+async function seedServiceBundle(catalog: CatalogService, inventory: InventoryAdapter, bundles: BundlesService): Promise<void> {
+  const install = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.install);
+  const proSetup = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.proSetup);
+  const overhaul = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.overhaul);
+
+  await bundles.createBundle({
+    productId: install.productId,
+    title: "Dragon Install Service Packages",
+    tiers: [
+      { id: randomUUID(), label: "Product Only", skuIds: [install.skuId] },
+      { id: randomUUID(), label: "+ Pro Setup", skuIds: [install.skuId, proSetup.skuId] },
+      { id: randomUUID(), label: "Complete Overhaul", skuIds: [install.skuId, proSetup.skuId, overhaul.skuId] },
+    ],
+  });
+}
 
 /** Seeds demo categories (top-level "Merch" with one child "Desk Accessories", plus a standalone "3D Printed"). */
 async function seedCategories(marketingCatalog: MarketingCatalogService): Promise<Map<string, string>> {
@@ -158,13 +250,14 @@ async function seedServiceAreas(
   await cms.publishPage(locationPage.id);
 }
 
-/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. */
+/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. */
 export async function seedCatalog(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
   cms: CmsService,
   inventory: InventoryAdapter,
   serviceAreas?: ServiceAreaService,
+  bundles?: BundlesService,
 ): Promise<void> {
   const categoryIdBySlug = await seedCategories(marketingCatalog);
   const productIdBySlug = new Map<string, string>();
@@ -197,4 +290,5 @@ export async function seedCatalog(
 
   await seedCmsPages(cms, productIdBySlug);
   if (serviceAreas) await seedServiceAreas(serviceAreas, cms, productIdBySlug);
+  if (bundles) await seedServiceBundle(catalog, inventory, bundles);
 }
