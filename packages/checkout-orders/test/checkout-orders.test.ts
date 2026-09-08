@@ -88,6 +88,10 @@ describe("checkout-orders service", () => {
     // matches priceSnapshot exactly (asserted above), discountTotal is zero, no applied code.
     expect(result.order.discountTotal).toEqual({ amount: 0, currency: "USD" });
     expect(result.order.appliedPromotionCode).toBeNull();
+    // createdAt: a valid ISO 8601 timestamp, stamped close to "now" (bi-01).
+    expect(result.order.createdAt).toEqual(expect.any(String));
+    expect(new Date(result.order.createdAt).toISOString()).toBe(result.order.createdAt);
+    expect(Date.now() - new Date(result.order.createdAt).getTime()).toBeLessThan(5000);
     expect(result.redirectUrl).toBe("https://checkout.example/1");
     expect(createPaymentSession).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -137,6 +141,8 @@ describe("checkout-orders service", () => {
     expect(second.order.id).toBe(first.order.id);
     expect(second.redirectUrl).toBe(first.redirectUrl);
     expect(createPaymentSession).toHaveBeenCalledTimes(1);
+    // createdAt must never be re-stamped on an idempotent retry (bi-01).
+    expect(second.order.createdAt).toBe(first.order.createdAt);
   });
 
   it("transitions an order to paid when payments.payment.succeeded fires for its orderRef, and publishes checkout.order.paid", async () => {

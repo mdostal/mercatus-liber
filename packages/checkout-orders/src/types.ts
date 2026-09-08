@@ -29,6 +29,19 @@ export interface Order {
   discountTotal: Money;
   /** The coupon code applied to this order, if any. Added for the promotions subsystem (16) -- see promo-02. Backward compatible: null for every order created before a PricingAdjuster was wired, or when no code was applied. */
   appliedPromotionCode: string | null;
+  /**
+   * ISO 8601 timestamp of when this order was created. Added for the internal-bi
+   * subsystem (20) -- see bi-01. Unlike discountTotal/appliedPromotionCode above,
+   * this is a REQUIRED field, not nullable/optional with a default: a timestamp has
+   * no sensible "unknown" default the way a zero discount or null promotion code
+   * does. This is a deliberate departure from the nullable-default pattern used for
+   * those two prior additions. Safe because Order is constructed fresh in exactly
+   * one place (startCheckout) and this reference implementation has no
+   * persisted-across-versions data to migrate. Set once at construction and never
+   * re-stamped on subsequent updates (e.g. the idempotent-retry path, or the
+   * payment-session/status updates below).
+   */
+  createdAt: string;
 }
 
 export interface OrderRepository {
