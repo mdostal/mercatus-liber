@@ -15,6 +15,8 @@ export interface StartCheckoutInput {
   shippingInfo: ShippingInfo;
   successUrl: string;
   cancelUrl: string;
+  /** Omit or pass null/undefined for guest checkout. */
+  customerId?: string | null;
 }
 
 export interface CheckoutResult {
@@ -78,6 +80,7 @@ export function createCheckoutOrdersService(deps: {
         shippingInfo: input.shippingInfo,
         paymentSessionId: null,
         paymentRedirectUrl: null,
+        customerId: input.customerId ?? null,
       };
       await repository.save(order);
       await events.publish("checkout.order.placed", { orderId });

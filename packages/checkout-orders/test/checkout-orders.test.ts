@@ -6,13 +6,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createInMemoryOrderRepository } from "../src/in-memory-repository.js";
 import { createCheckoutOrdersService, type CheckoutOrdersService } from "../src/service.js";
 import { CartNotFoundForCheckoutError, EmptyCartError } from "../src/types.js";
-import type { PaymentSessionCreator } from "../src/types.js";
+import type { OrderRepository, PaymentSessionCreator } from "../src/types.js";
 
 describe("checkout-orders service", () => {
   let events: EventBus;
   let catalog: CatalogService;
   let cartService: CartService;
   let checkout: CheckoutOrdersService;
+  let orderRepository: OrderRepository;
   let createPaymentSession: ReturnType<typeof vi.fn>;
   const orderPlacedEvents: unknown[] = [];
   const orderPaidEvents: unknown[] = [];
@@ -60,8 +61,9 @@ describe("checkout-orders service", () => {
     });
     const payments: PaymentSessionCreator = { createPaymentSession };
 
+    orderRepository = createInMemoryOrderRepository();
     checkout = createCheckoutOrdersService({
-      repository: createInMemoryOrderRepository(),
+      repository: orderRepository,
       cart: cartService,
       payments,
       events,
@@ -81,6 +83,7 @@ describe("checkout-orders service", () => {
 
     expect(result.order.status).toBe("pending_payment");
     expect(result.order.items).toEqual([{ skuId: activeSkuId, quantity: 2, priceAtPurchase: { amount: 1500, currency: "USD" } }]);
+    expect(result.order.customerId).toBeNull(); // guest checkout -- customerId omitted
     expect(result.redirectUrl).toBe("https://checkout.example/1");
     expect(createPaymentSession).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -167,5 +170,43 @@ describe("checkout-orders service", () => {
 
   it("getOrder returns null for an unknown order id", async () => {
     expect(await checkout.getOrder("missing")).toBeNull();
+  });
+
+  it("stamps customerId on the order when provided, for account-subsystem lookups", async () => {
+    await cartService.addItem(cartId, activeSkuId, 1);
+    const { order } = await checkout.startCheckout({
+      cartId,
+      idempotencyKey: "idem-7",
+      shippingInfo: { name: "A", email: "a@example.com", address: "1 Main St" },
+      successUrl: "https://shop.example/success",
+      cancelUrl: "https://shop.example/cancel",
+      customerId: "cust-1",
+    });
+    expect(order.customerId).toBe("cust-1");
+  });
+
+  it("repository.listByCustomerId returns only that customer's orders", async () => {
+    await cartService.addItem(cartId, activeSkuId, 1);
+    const { order: custOrder } = await checkout.startCheckout({
+      cartId,
+      idempotencyKey: "idem-8",
+      shippingInfo: { name: "A", email: "a@example.com", address: "1 Main St" },
+      successUrl: "https://shop.example/success",
+      cancelUrl: "https://shop.example/cancel",
+      customerId: "cust-2",
+    });
+    // A second, guest checkout must not appear in cust-2's results.
+    const secondCart = await cartService.createCart();
+    await cartService.addItem(secondCart.id, activeSkuId, 1);
+    await checkout.startCheckout({
+      cartId: secondCart.id,
+      idempotencyKey: "idem-9",
+      shippingInfo: { name: "B", email: "b@example.com", address: "2 Main St" },
+      successUrl: "https://shop.example/success",
+      cancelUrl: "https://shop.example/cancel",
+    });
+
+    const custOrders = await orderRepository.listByCustomerId("cust-2");
+    expect(custOrders.map((o) => o.id)).toEqual([custOrder.id]);
   });
 });

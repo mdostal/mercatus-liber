@@ -1,7 +1,7 @@
 id: acct-01-account-package
 epic: customer-account
 title: Account package (profile, order dashboard, event-driven activity log)
-status: pending
+status: done
 complexity: high
 methodology: classic
 depends_on: []
