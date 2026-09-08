@@ -1,7 +1,7 @@
 id: pt-02-pdp-package
 epic: pdp-theming
 title: PDP package (variant resolution data contract, layout selection)
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [pt-01-theming-package]
