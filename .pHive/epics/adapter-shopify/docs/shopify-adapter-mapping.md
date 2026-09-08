@@ -4,6 +4,25 @@ Epic 14 proves `CatalogPersistenceAdapter` can wrap an entire third-party platfo
 raw DB (adapter-sqlite, adapter-postgres). This is the mapping this adapter implements against
 Shopify's Admin GraphQL API, and what it deliberately does not cover.
 
+## The core architectural finding: caller-assigned ids vs. Shopify-assigned GIDs
+
+`CatalogPersistenceAdapter` implicitly assumes the *caller* assigns entity ids
+(`@mercatus-liber/catalog`'s service calls `randomUUID()` before ever calling
+`persistence.products.save(product)`) -- true for adapter-sqlite/adapter-postgres, where any
+string is a valid primary key. Shopify assigns its own GIDs server-side; a caller cannot dictate
+a product's id at creation time. This is the real, interesting seam a "wrap a third-party
+platform" adapter exposes that a raw-DB adapter never has to.
+
+**Resolution:** this adapter stores the caller's id as a reserved metafield
+(`mercatus_liber.external_id`) on every Shopify product/variant it creates, and always resolves
+`.id` on read paths (`get`, `getBySlug`, `list`) back to that metafield's value -- never the raw
+Shopify GID. `save()` first searches for an existing product/variant by that metafield (Shopify's
+`metafields.<namespace>.<key>:'<value>'` search-query syntax); if found, updates it by its real
+Shopify GID; if not, creates a new one and stamps the metafield. The result: from the outside,
+this adapter behaves exactly like adapter-sqlite/adapter-postgres -- the id you save with is the
+id you get back -- even though internally two different id systems are being reconciled. Every
+canonical scenario this epic's test suite runs proves that round-trip holds.
+
 ## Product ↔ Shopify Product
 
 | Core `Product` field       | Shopify field                          | Notes |
@@ -22,7 +41,7 @@ Shopify's Admin GraphQL API, and what it deliberately does not cover.
 | `id`                        | variant `id` (GID)                                | |
 | `productId`                 | parent product `id` (GID)                         | |
 | `identifyingAttributes`     | `selectedOptions[]` (`{name, value}` → `{key: name.toLowerCase(), value}`) | |
-| `price`                     | `price` (decimal string) → minor units (`Math.round(price * 100)`), currency from the shop's `currencyCode` | Shopify variant prices are decimal major-unit strings; core `Money` is minor-unit integers, per docs/subsystems/00-core-schema.md. |
+| `price`                     | `price` (decimal string) → minor units (`Math.round(price * 100)`), currency from `config.currency` | Shopify variant prices are decimal major-unit strings; core `Money` is minor-unit integers, per docs/subsystems/00-core-schema.md. Currency is a config field (default `"USD"`), not queried from the shop's own currency setting each call -- a deliberate scope simplification, not a hidden gap. |
 | `status`                    | inherited from the parent product's status        | **Disclosed gap:** Shopify variants have no independent status of their own -- there is nothing to map. A variant of an archived product is treated as archived. |
 
 ## ProductAttribute ↔ Shopify Metafields

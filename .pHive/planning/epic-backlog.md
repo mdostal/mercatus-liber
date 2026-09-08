@@ -19,7 +19,7 @@ vertical-slice invariant), not just "some files exist."_
 | 11 | `shop-migration` | Migrate `shop.mdostal.com` off its own custom cart onto these packages — the "proof by use" success criterion from north_star | not started | 1 (minimum), ideally 2-4 |
 | 12 | `analytics-tracking` | 13 analytics — event-bus subscriber, PostHog adapter enabled by default, client-side `trackEvent()` helper | **done** (2/2 stories complete) | 1 |
 | 13 | `ai-mcp-interface` | 14 AI/MCP interface — MCP server + skills/tool catalog wrapping catalog/cart/checkout (shopper side) and catalog/CMS/inventory (admin side) | **done** (2/2 stories complete) | 1 (shopper side), 4 + 6 (admin side) |
-| 14 | `adapter-shopify` | A **Shopify commerce-backend adapter** — proves the persistence/commerce-backend interface can wrap an entire third-party platform, not just a raw DB. Lets a client already on Shopify adopt Mercatus Liber's admin/AI-agent/plugin layer *without* migrating off Shopify. | not started | 1, 8 (pattern proven by adapter-postgres first) |
+| 14 | `adapter-shopify` | A **Shopify commerce-backend adapter** — proves the persistence/commerce-backend interface can wrap an entire third-party platform, not just a raw DB. Lets a client already on Shopify adopt Mercatus Liber's admin/AI-agent/plugin layer *without* migrating off Shopify. | **done** (1/1 story complete) | 1, 8 (pattern proven by adapter-postgres first) |
 | 15 | `att-recreation-acceptance-test` | **The real acceptance test.** Fully recreate client **All That Technology**'s site/functionality (home-automation installs — TV mounting, cameras, doorbells, fiber; Royse City TX service-area business, 8 core cities, multi-location marketing pattern) using Mercatus Liber's plugins/features, runnable on either the native stack or the Shopify adapter (14) — client's choice. See memory `mercatus-liber-destination-and-acceptance-test` for full context. | not started | 2, 4, 6, 14 |
 | 16 | `deploy-tool-and-auto-update` | The **commercial thesis**: a one-command installer to stand up a store on a client's own infrastructure (not just Mathew-hosted), plus an auto-update mechanism for security/maintenance patches — what makes "$1,000 one-time setup, remove folks from Shopify" (e.g. client Cadex) actually operable at more than one client without ongoing hand-holding. | not started | 1, 9 |
 
@@ -44,8 +44,13 @@ vertical-slice invariant), not just "some files exist."_
   writes require explicit confirm:true, previewing otherwise. See
   `.pHive/epics/ai-mcp-interface/docs/ai-mcp-interface-decisions.md` for the 4 open-question
   resolutions.
-- Epic 14: a real Shopify adapter exists — a client can run Mercatus Liber's plugin/admin/AI
-  layer on top of Shopify itself, not just this project's own native adapters.
+- Epic 14: **done.** A real Shopify adapter exists — `@mercatus-liber/adapter-shopify` implements
+  `CatalogPersistenceAdapter` against Shopify's Admin GraphQL API (core-only dependency), so a
+  client can run Mercatus Liber's plugin/admin/AI layer on top of Shopify itself, not just this
+  project's own native adapters. Resolved the real architectural seam a third-party-platform
+  adapter exposes (Shopify assigns its own product/variant ids; the adapter bridges that via a
+  reserved metafield so the interface's caller-assigned-id contract still holds) -- see
+  `.pHive/epics/adapter-shopify/docs/shopify-adapter-mapping.md`.
 - **Epic 15 is the actual finish line, not epic 13.** Per Mathew's own framing (2026-09-07):
   "the true test is if we can replicate everything we want for dostal tech to sell there AND do
   the All That Technology fully re-created with plugins and features so they could choose to
