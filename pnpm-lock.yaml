@@ -38,9 +38,15 @@ importers:
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@mercatus-liber/marketing-catalog':
+        specifier: workspace:*
+        version: link:../../packages/marketing-catalog
       '@mercatus-liber/payments':
         specifier: workspace:*
         version: link:../../packages/payments
+      '@mercatus-liber/search':
+        specifier: workspace:*
+        version: link:../../packages/search
       next:
         specifier: ^16.3.4
         version: 16.3.4(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

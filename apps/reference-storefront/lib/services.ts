@@ -7,7 +7,14 @@ import {
   type CheckoutOrdersService,
 } from "@mercatus-liber/checkout-orders";
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
+import {
+  createInMemoryCategoryRepository,
+  createInMemoryProductCategoryRepository,
+  createMarketingCatalogService,
+  type MarketingCatalogService,
+} from "@mercatus-liber/marketing-catalog";
 import { createStripeAdapter } from "@mercatus-liber/payments";
+import { createInMemoryIndex, registerCatalogSearchSync, type SearchIndexAdapter } from "@mercatus-liber/search";
 import { seedCatalog } from "./seed";
 
 /**
@@ -28,6 +35,8 @@ export interface Services {
   catalog: CatalogService;
   cart: CartService;
   checkout: CheckoutOrdersService;
+  marketingCatalog: MarketingCatalogService;
+  search: SearchIndexAdapter;
 }
 
 let servicesPromise: Promise<Services> | null = null;
@@ -57,9 +66,22 @@ async function buildServices(): Promise<Services> {
     events,
   });
 
-  await seedCatalog(catalog);
+  const marketingCatalog = createMarketingCatalogService({
+    categories: createInMemoryCategoryRepository(),
+    assignments: createInMemoryProductCategoryRepository(),
+    attributes: catalog,
+  });
 
-  return { events, catalog, cart, checkout };
+  // Search index -- default in-memory adapter, kept in sync by reacting to
+  // catalog events only (see @mercatus-liber/search's own decoupling test).
+  // Registered before seeding so the seeded products get indexed as their
+  // creation/publish events fire.
+  const search = createInMemoryIndex();
+  registerCatalogSearchSync({ events, index: search, products: catalog });
+
+  await seedCatalog(catalog, marketingCatalog);
+
+  return { events, catalog, cart, checkout, marketingCatalog, search };
 }
 
 /** Lazily builds the service graph once per server process and reuses it across requests. */

@@ -1,4 +1,5 @@
 import type { CatalogService } from "@mercatus-liber/catalog";
+import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 
 interface DemoProduct {
   slug: string;
@@ -7,6 +8,7 @@ interface DemoProduct {
   color: string;
   size: string;
   priceCents: number;
+  categorySlugs: string[];
 }
 
 const DEMO_PRODUCTS: DemoProduct[] = [
@@ -17,6 +19,8 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     color: "red",
     size: "large",
     priceCents: 1999,
+    // Shared category ("desk-accessories") proves many-to-many assignment.
+    categorySlugs: ["desk-accessories", "3d-printed"],
   },
   {
     slug: "dragon-desk-mat",
@@ -25,11 +29,42 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     color: "black",
     size: "medium",
     priceCents: 2999,
+    categorySlugs: ["desk-accessories"],
   },
 ];
 
-/** Seeds a handful of demo products/SKUs, published (active) so they're immediately purchasable. */
-export async function seedCatalog(catalog: CatalogService): Promise<void> {
+/** Seeds demo categories (top-level "Merch" with one child "Desk Accessories", plus a standalone "3D Printed"). */
+async function seedCategories(marketingCatalog: MarketingCatalogService): Promise<Map<string, string>> {
+  const merch = await marketingCatalog.createCategory({
+    slug: "merch",
+    title: "Merch",
+    description: "Dragon-branded merch.",
+    parentId: null,
+  });
+  const deskAccessories = await marketingCatalog.createCategory({
+    slug: "desk-accessories",
+    title: "Desk Accessories",
+    description: "Things for your desk.",
+    parentId: merch.id,
+  });
+  const printed3d = await marketingCatalog.createCategory({
+    slug: "3d-printed",
+    title: "3D Printed",
+    description: "Anything that came off a printer.",
+    parentId: null,
+  });
+
+  return new Map([
+    [merch.slug, merch.id],
+    [deskAccessories.slug, deskAccessories.id],
+    [printed3d.slug, printed3d.id],
+  ]);
+}
+
+/** Seeds a handful of demo products/SKUs (published/active) plus category assignments and marketing-catalog data. */
+export async function seedCatalog(catalog: CatalogService, marketingCatalog: MarketingCatalogService): Promise<void> {
+  const categoryIdBySlug = await seedCategories(marketingCatalog);
+
   for (const demo of DEMO_PRODUCTS) {
     const product = await catalog.createProduct({
       slug: demo.slug,
@@ -43,5 +78,10 @@ export async function seedCatalog(catalog: CatalogService): Promise<void> {
       { color: [demo.color], size: [demo.size] },
       { amount: demo.priceCents, currency: "USD" },
     );
+
+    for (const categorySlug of demo.categorySlugs) {
+      const categoryId = categoryIdBySlug.get(categorySlug);
+      if (categoryId) await marketingCatalog.assignProductToCategory(product.id, categoryId);
+    }
   }
 }

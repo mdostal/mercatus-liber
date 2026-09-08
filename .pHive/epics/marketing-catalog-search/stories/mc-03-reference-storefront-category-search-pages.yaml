@@ -1,7 +1,7 @@
 id: mc-03-reference-storefront-category-search-pages
 epic: marketing-catalog-search
 title: Reference storefront -- category browse + search pages
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [mc-01-marketing-catalog-package, mc-02-search-package]

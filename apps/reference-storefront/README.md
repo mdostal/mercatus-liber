@@ -24,8 +24,14 @@ Without a real Stripe test-mode key, browsing/cart works fully; the "Check out w
 step will fail at the live Stripe API call (expected -- no key exists in this project's vault
 yet, see cf-05/cf-07 execution notes in `.pHive/epics/core-foundation/`).
 
+## Routes
+`/` (catalog + top-level categories), `/products/[slug]`, `/cart`, `/category/[slug]`,
+`/search`, `/order/[id]`, `/order/confirmed`.
+
 ## Testing
 `test/integration.test.ts` drives the full seed -> browse -> cart -> checkout -> paid flow
 against a **fake** payments adapter (no live Stripe key available yet) -- see the test file's
 own header comment for why, and what the natural follow-up (a live Playwright E2E test) looks
-like once a key exists.
+like once a key exists. `test/marketing-catalog-search.test.ts` proves the seeded demo data
+exercises many-to-many category assignment and that search stays in sync via events, with no
+manual reindex call.
