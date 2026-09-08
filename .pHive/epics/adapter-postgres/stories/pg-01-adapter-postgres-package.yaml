@@ -1,7 +1,7 @@
 id: pg-01-adapter-postgres-package
 epic: adapter-postgres
 title: Postgres reference adapter, tested for behavioral parity with adapter-sqlite
-status: pending
+status: done
 complexity: high
 methodology: classic
 depends_on: []
