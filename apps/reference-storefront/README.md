@@ -27,7 +27,16 @@ yet, see cf-05/cf-07 execution notes in `.pHive/epics/core-foundation/`).
 ## Routes
 `/` (CMS-authored home page -- see below), `/products/[slug]` (themed PDP -- see below), `/cart`,
 `/category/[slug]`, `/search`, `/campaign/[slug]` (CMS marketing/campaign page), `/order/[id]`,
-`/order/confirmed`.
+`/order/confirmed`, `/account` (order history + recent activity -- see below).
+
+## Account (demo only -- no real auth)
+`/account` is keyed by a `ml_customer_id` cookie (mirrors `cart-cookie.ts`'s pattern), created
+automatically on first checkout via `lib/customer-cookie.ts`. This is **not** an auth system --
+auth (login/session/password) is explicitly out of scope for `@mercatus-liber/account`'s
+reference implementation (see `docs/subsystems/10-customer-account.md` open question 1). Order
+history and recent activity are real, though: `checkout` structurally satisfies account's
+`OrderLookup` interface already (no adapter object needed), and activity entries are logged
+purely by account reacting to `checkout.order.paid` events.
 
 ## CMS
 `/` and `/campaign/[slug]` render from `@mercatus-liber/cms` page content -- not hardcoded JSX

@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@mercatus-liber/account": "workspace:*",
     "@mercatus-liber/adapter-sqlite": "workspace:*",
     "@mercatus-liber/cart": "workspace:*",
     "@mercatus-liber/catalog": "workspace:*",

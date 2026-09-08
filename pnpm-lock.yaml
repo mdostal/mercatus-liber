@@ -23,6 +23,9 @@ importers:
 
   apps/reference-storefront:
     dependencies:
+      '@mercatus-liber/account':
+        specifier: workspace:*
+        version: link:../../packages/account
       '@mercatus-liber/adapter-sqlite':
         specifier: workspace:*
         version: link:../../packages/adapter-sqlite

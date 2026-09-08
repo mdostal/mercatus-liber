@@ -209,4 +209,17 @@ describe("checkout-orders service", () => {
     const custOrders = await orderRepository.listByCustomerId("cust-2");
     expect(custOrders.map((o) => o.id)).toEqual([custOrder.id]);
   });
+
+  it("service.listOrdersByCustomer delegates to the repository, so consumers can depend on the service alone", async () => {
+    await cartService.addItem(cartId, activeSkuId, 1);
+    const { order } = await checkout.startCheckout({
+      cartId,
+      idempotencyKey: "idem-10",
+      shippingInfo: { name: "A", email: "a@example.com", address: "1 Main St" },
+      successUrl: "https://shop.example/success",
+      cancelUrl: "https://shop.example/cancel",
+      customerId: "cust-3",
+    });
+    expect((await checkout.listOrdersByCustomer("cust-3")).map((o) => o.id)).toEqual([order.id]);
+  });
 });

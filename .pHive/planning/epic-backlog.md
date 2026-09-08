@@ -10,7 +10,7 @@ vertical-slice invariant), not just "some files exist."_
 | 2 | `marketing-catalog-search` | 02 marketing catalog, 03 search (default in-repo index adapter) | **done** (all 3 stories complete) | 1 |
 | 3 | `pdp-theming` | 04 PDP (2+ layout configs), 06 theming/layout system | **done** (all 3 stories complete) | 1, 2 |
 | 4 | `cms-pages` | 05 CMS — all 5 page types (home, category, marketing/campaign, search, PDP wiring), component registry | **done** (2/2 stories complete) | 2, 3 |
-| 5 | `customer-account` | 10 account — profile, dashboard, order tracking | not started | 1 |
+| 5 | `customer-account` | 10 account — profile, dashboard, order tracking | **done** (2/2 stories complete) | 1 |
 | 6 | `inventory` | 11 inventory — in-house adapter + external-IMS adapter contract | not started | 1 |
 | 7 | `plugins-extensibility` | 12 plugins — plugin lifecycle, event-bus extension points, one reference plugin | not started | 1 |
 | 8 | `adapter-postgres` | Second reference DB adapter (Postgres) — proves the persistence interface is truly adapter-agnostic | not started | 1 |
