@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { BundleTier, CreateBundleInput } from "@mercatus-liber/bundles";
+import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
 import type { CreateRuleInput } from "@mercatus-liber/recommendations";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
@@ -244,4 +245,83 @@ export async function deactivateRecommendationRuleAction(formData: FormData): Pr
   const { recommendations } = await getServices();
   await recommendations.deactivateRule(id);
   revalidatePath("/admin/recommendations");
+}
+
+/** Matches CampaignFormFields' fixed number of creative slots. */
+const CAMPAIGN_CREATIVE_SLOTS = 5;
+
+/**
+ * Parses the advertising admin form's fixed, indexed creative slots
+ * (creative_0_headline/creative_0_body/creative_0_imageUrl/
+ * creative_0_linkHref/creative_0_weight/creative_0_id, creative_1_..., ...)
+ * shared by create and update -- mirrors parseBundleFormData's tier-slot
+ * convention. A slot with a blank headline, body, AND linkHref is treated as
+ * unused and omitted from the result. Each included creative keeps its
+ * existing id (from the hidden creative_N_id field, edit forms only) or gets
+ * a freshly generated one (create forms, or a genuinely new slot on an
+ * edit) -- creative ids are caller-supplied per the advertising package's
+ * CreateCampaignInput.
+ */
+function parseCampaignFormData(formData: FormData): CreateCampaignInput {
+  const creatives: Array<Omit<Creative, "weight"> & { weight?: number }> = [];
+  for (let i = 0; i < CAMPAIGN_CREATIVE_SLOTS; i++) {
+    const headline = String(formData.get(`creative_${i}_headline`) ?? "").trim();
+    const body = String(formData.get(`creative_${i}_body`) ?? "").trim();
+    const linkHref = String(formData.get(`creative_${i}_linkHref`) ?? "").trim();
+    if (headline.length === 0 && body.length === 0 && linkHref.length === 0) continue;
+
+    const imageUrl = String(formData.get(`creative_${i}_imageUrl`) ?? "").trim();
+    const weight = String(formData.get(`creative_${i}_weight`) ?? "").trim();
+    const existingId = String(formData.get(`creative_${i}_id`) ?? "").trim();
+
+    creatives.push({
+      id: existingId.length > 0 ? existingId : randomUUID(),
+      headline,
+      body,
+      imageUrl: imageUrl.length > 0 ? imageUrl : null,
+      linkHref,
+      weight: weight.length > 0 ? Number(weight) : undefined,
+    });
+  }
+
+  const serviceAreaId = String(formData.get("serviceAreaId") ?? "").trim();
+  const pageSlug = String(formData.get("pageSlug") ?? "").trim();
+  const startsAt = String(formData.get("startsAt") ?? "").trim();
+  const endsAt = String(formData.get("endsAt") ?? "").trim();
+  const status = String(formData.get("status") ?? "active");
+
+  return {
+    name: String(formData.get("name") ?? "").trim(),
+    startsAt: startsAt.length > 0 ? new Date(startsAt).toISOString() : null,
+    endsAt: endsAt.length > 0 ? new Date(endsAt).toISOString() : null,
+    targeting: {
+      serviceAreaId: serviceAreaId.length > 0 ? serviceAreaId : null,
+      pageSlug: pageSlug.length > 0 ? pageSlug : null,
+    },
+    creatives,
+    status: status === "inactive" ? "inactive" : "active",
+  };
+}
+
+export async function createCampaignAction(formData: FormData): Promise<void> {
+  const { advertising } = await getServices();
+  await advertising.createCampaign(parseCampaignFormData(formData));
+  revalidatePath("/admin/advertising");
+  redirect("/admin/advertising");
+}
+
+export async function updateCampaignAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("id"));
+  const { advertising } = await getServices();
+  const updated = await advertising.updateCampaign(id, parseCampaignFormData(formData));
+  if (!updated) throw new Error(`No such campaign: ${id}`);
+  revalidatePath("/admin/advertising");
+  redirect("/admin/advertising");
+}
+
+export async function deactivateCampaignAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("id"));
+  const { advertising } = await getServices();
+  await advertising.deactivateCampaign(id);
+  revalidatePath("/admin/advertising");
 }
