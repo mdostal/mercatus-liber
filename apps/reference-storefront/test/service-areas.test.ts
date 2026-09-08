@@ -31,7 +31,11 @@ describe("service areas (reference storefront)", () => {
     const page = await cms.getPageBySlug("portland-or");
     expect(page?.pageType).toBe("location");
     expect(page?.status).toBe("published");
-    expect(page?.sections).toEqual([{ componentType: "service-area-info", config: { hours: "Mon-Fri 9am-5pm" } }]);
+    // ad-slot added by epic 23 (advertising) -- see lib/seed.ts's seedServiceAreas.
+    expect(page?.sections).toEqual([
+      { componentType: "service-area-info", config: { hours: "Mon-Fri 9am-5pm" } },
+      { componentType: "ad-slot", config: {} },
+    ]);
   });
 
   it("without a serviceAreas argument, seedCatalog does not seed any service areas -- optional, no regression for other test files", async () => {
