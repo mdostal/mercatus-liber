@@ -1,0 +1,114 @@
+id: bi-03-admin-metrics-dashboard
+epic: internal-bi-metrics
+title: "/admin/metrics: revenue/order-volume/top-products/funnel/redemption-rate dashboard"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [bi-02-internal-bi-subsystem]
+
+description: |
+  First admin surface in this repo to show computed/aggregate numbers rather than a plain list
+  table -- still plain server-rendered HTML per this app's existing convention (no charting
+  library, confirmed absent from package.json during planning research).
+
+  Read the actual committed internal-bi package before writing any code:
+  packages/internal-bi/src/types.ts
+  packages/internal-bi/src/service.ts
+  packages/internal-bi/src/subscriber.ts
+
+  Read apps/reference-storefront/app/admin/orders/page.tsx and app/admin/page.tsx for the
+  existing admin page structure/nav conventions. Read apps/reference-storefront/lib/services.ts
+  in full (fresh) -- needs `internalBi` (or similar name -- pick one consistent with the
+  package, e.g. `bi`) wired in: createDefaultBiAdapter with structural adapters over the
+  existing `checkout`/`catalog`/`promotions` services (which already structurally satisfy
+  OrderMetricsSource/SkuMetricsSource/PromotionMetricsSource -- read their actual method
+  signatures to build the right small adapter shims if the shapes don't match exactly 1:1),
+  PLUS registerBiEventLogSync(deps) called once at service-graph build time (alongside the
+  other registerXSync calls already present, e.g. registerInventorySync -- find that call site
+  and add this one the same way).
+
+  Deliverables:
+  - apps/reference-storefront/lib/services.ts: wire the internal-bi adapter + event-log
+    subscriber into buildServices(), expose it on the returned services object + its type
+    (e.g. `bi: BiMetricsAdapter`).
+  - apps/reference-storefront/app/admin/metrics/page.tsx: Server Component, `export const
+    dynamic = "force-dynamic"`, calls `bi.getRevenueOverTime`, `getOrderVolume`,
+    `getTopProducts`, `getConversionFunnel`, `getPromotionRedemptionRates`,
+    `getInventoryTurns` (a sensible default range, e.g. last 30 days, or all-time if that's
+    simpler for a low-volume demo -- your call, document the choice), and renders:
+    - A revenue-over-time table (bucket, revenue).
+    - Order volume stat row (total + a small by-status table).
+    - Top products table (title, units sold, revenue).
+    - Conversion funnel as an ordered stat row or small table (stage, count).
+    - Promotion redemption rates table (code or "(auto)", redemptionCount, usageLimit or
+      "unlimited").
+    - An "Inventory turns: not available in this reference implementation -- no inventory
+      movement history is tracked" note where getInventoryTurns returns null (never hide this
+      section or silently omit it -- render the honest message).
+  - Add a `<Link href="/admin/metrics">Metrics</Link>` entry to
+    apps/reference-storefront/app/admin/page.tsx's existing nav list.
+
+acceptance_criteria:
+  - "Given the internal-bi service is wired with real checkout/catalog/promotions adapters, when /admin/metrics is visited, then it renders without error, showing all six sections (revenue, order volume, top products, funnel, redemption rates, inventory-turns-unavailable note)"
+  - "Given zero orders/promotions/events exist yet (a fresh seed), when /admin/metrics is visited, then every section renders a sensible empty state (zero counts, empty tables) rather than erroring"
+  - "Given the inventory-turns section, when it renders, then it always shows the 'not available in this reference implementation' message, never a fabricated number"
+  - "Given the existing /admin nav, when it's visited after this story, then a working 'Metrics' link is present"
+
+steps:
+  - id: research
+    description: Re-read the committed internal-bi public surface and the current exact state of lib/services.ts and app/admin/page.tsx.
+    agent: researcher
+  - id: implement
+    description: Wire the service and build the dashboard page per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the dashboard renders correctly both with and without seeded activity, via a dev server.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the inventory-turns honesty requirement and that the empty-state rendering doesn't error.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/internal-bi-metrics.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/admin/orders/page.tsx
+      purpose: Closest existing admin page structure to mirror (plain table over a service call).
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: "Where registerInventorySync is already called -- registerBiEventLogSync gets added alongside it, same pattern."
+
+files_to_modify:
+  - file: apps/reference-storefront/app/admin/metrics/page.tsx
+    change: New file, the metrics dashboard.
+  - file: apps/reference-storefront/app/admin/page.tsx
+    change: Add Metrics nav link.
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire internal-bi adapter + event-log subscriber.
+
+design_decisions:
+  - decision: "Plain HTML tables/stat rows, no charting library added."
+    rationale: "Matches every other admin page's convention in this app; confirmed no charting dependency exists during planning research, and adding one for a single dashboard page is out of proportion for a reference implementation."
+
+risks:
+  - severity: low
+    description: "The structural adapters bridging checkout/catalog/promotions' real service method signatures onto OrderMetricsSource/SkuMetricsSource/PromotionMetricsSource might not be a perfect 1:1 shape match."
+    mitigation: "Small inline shim objects at the services.ts wiring site are fine and expected -- this is exactly what 'structural interface satisfied by an existing service' looks like when the shapes need light adaptation, same as every other epic's wiring in this wave."
+
+references:
+  - path: .pHive/epics/internal-bi-metrics/docs/design-discussion.md
+    relevant_excerpt: |
+      §5: "New /admin/metrics page, plain server-rendered HTML (stat rows + tables, no
+      charting dependency, matching every other admin page's convention)."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "UI/orchestration story wiring an already-tested backend computation (bi-02) into a page; the acceptance criteria above are the observable surface, verified via the golden-path check in the test step since this app has no existing UI test harness to extend."

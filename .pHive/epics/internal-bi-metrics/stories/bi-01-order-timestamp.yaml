@@ -1,0 +1,119 @@
+id: bi-01-order-timestamp
+epic: internal-bi-metrics
+title: "checkout-orders: additive Order.createdAt timestamp field"
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+
+description: |
+  The ONLY story in this whole wave (epics 20-24) that modifies an existing subsystem's
+  package (checkout-orders, subsystem 09) rather than adding a new peer package. This is
+  precedented -- discountTotal/appliedPromotionCode were added the same way in epic 20's
+  promo-02 story -- but flagged explicitly since it's a real, if low-risk, contract change to
+  an existing subsystem other subsystems structurally depend on.
+
+  Read packages/checkout-orders/src/types.ts in full (the current Order interface already has
+  doc-comments on discountTotal/appliedPromotionCode explaining their backward-compatibility
+  posture -- follow that exact comment style/convention for the new field) and
+  packages/checkout-orders/src/service.ts's startCheckout implementation (where Order objects
+  are constructed).
+
+  Deliverables:
+  - Add `createdAt: string` (ISO 8601, e.g. `new Date().toISOString()`) to the `Order`
+    interface in packages/checkout-orders/src/types.ts, with a doc comment matching the style
+    of the existing discountTotal/appliedPromotionCode comments -- explain this is for the
+    internal-bi subsystem (20), added in epic bi-01, and its backward-compatibility posture
+    (see design decision below).
+  - In packages/checkout-orders/src/service.ts's startCheckout, set `createdAt:
+    new Date().toISOString()` when constructing the new Order (both at initial construction
+    and preserved unchanged on the later `withSession` update -- createdAt must never change
+    once set).
+  - Check whether any OTHER OrderRepository implementation exists besides
+    packages/checkout-orders/src/in-memory-repository.ts (grep the whole repo for
+    "OrderRepository" implementations) -- if only the in-memory one exists (expected, per
+    planning research), no repository-layer change is needed since `save`/`get` are already
+    generic over the full Order shape. If a second implementation is found, update it too.
+  - Backward compatibility: this is a NEW required field on Order, unlike the prior optional/
+    nullable additions (discountTotal defaults to zero Money, appliedPromotionCode defaults to
+    null). Since Order is constructed fresh in exactly one place (startCheckout) and this
+    reference implementation has no persisted-across-versions data to migrate, requiring the
+    field (not making it nullable) is the correct choice for a timestamp -- document this
+    explicitly in the doc comment as a deliberate departure from the nullable-default pattern
+    used for the two prior additions, with the reasoning (a timestamp has no sensible "unknown"
+    default the way a discount total does).
+
+acceptance_criteria:
+  - "Given a call to startCheckout, when the resulting Order is inspected, then it has a createdAt field that is a valid ISO 8601 string close to the current time"
+  - "Given an existing test in packages/checkout-orders/test/checkout-orders.test.ts that asserts on the full Order shape, when this story lands, then that test still passes (extended to check createdAt is present and well-formed, not removed or weakened)"
+  - "Given the idempotent-retry path in startCheckout (an existing order with the same idempotencyKey), when startCheckout is called again, then the returned order's createdAt is unchanged from the original creation (never re-stamped on retry)"
+  - "Given a full typecheck of the monorepo, when this story lands, then packages/checkout-orders and every package/app that constructs or reads an Order still typecheck cleanly (grep for object literals matching the Order shape outside test files, to catch any other Order-constructing call site)"
+
+steps:
+  - id: research
+    description: Read the current Order interface, startCheckout implementation, and check for any other OrderRepository implementation or Order-constructing call site in the repo.
+    agent: researcher
+  - id: implement
+    description: Add the createdAt field per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend packages/checkout-orders/test/checkout-orders.test.ts to assert createdAt is present, well-formed, and stable across idempotent retries.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the backward-compatibility reasoning is sound and documented, and that no other Order-constructing call site was missed.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/internal-bi-metrics.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/checkout-orders/src/types.ts
+      purpose: "Order interface -- lines ~17-30 -- exact doc-comment style to match for the new field."
+    - path: packages/checkout-orders/src/service.ts
+      purpose: "startCheckout -- both the initial `order` construction and the later `withSession` update need createdAt set once and never re-set."
+
+files_to_modify:
+  - file: packages/checkout-orders/src/types.ts
+    change: Add createdAt: string to Order, with doc comment.
+  - file: packages/checkout-orders/src/service.ts
+    change: Set createdAt at Order construction in startCheckout.
+  - file: packages/checkout-orders/test/checkout-orders.test.ts
+    change: Extend assertions per the acceptance criteria.
+
+design_decisions:
+  - decision: "createdAt is a required string field, not nullable/optional like the two prior additive fields."
+    rationale: "A timestamp has no sensible default the way a zero discount or null promotion code does; since Order is only ever constructed in one place in this reference implementation, requiring it is safe and correct -- explicitly departs from the nullable-default pattern, with reasoning documented in the field's own doc comment."
+
+risks:
+  - severity: low
+    description: "A future second OrderRepository implementation (if one is ever added) will need to be checked for this field too."
+    mitigation: "This story's research step explicitly checks for any existing second implementation now; the doc comment on the field flags the requirement for future adapter authors."
+
+references:
+  - path: .pHive/epics/internal-bi-metrics/docs/design-discussion.md
+    relevant_excerpt: |
+      §2-3: full reasoning for why this field is necessary and how it's the sole precedented
+      exception to this wave's "zero changes to existing subsystems" posture.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: checkout_orders.order_timestamp_present_rate
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite in packages/checkout-orders/test/checkout-orders.test.ts
+  verify_at: integrate
+  owner: tester
