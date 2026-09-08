@@ -1,7 +1,7 @@
 id: pt-01-theming-package
 epic: pdp-theming
 title: Theming package (layout template registry, style tokens)
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: []
