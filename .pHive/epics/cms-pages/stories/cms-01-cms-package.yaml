@@ -1,7 +1,7 @@
 id: cms-01-cms-package
 epic: cms-pages
 title: CMS package (page content models, component registry, draft/published)
-status: pending
+status: done
 complexity: high
 methodology: classic
 depends_on: []
