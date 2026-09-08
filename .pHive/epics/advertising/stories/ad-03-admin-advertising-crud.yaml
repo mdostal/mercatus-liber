@@ -1,0 +1,122 @@
+id: ad-03-admin-advertising-crud
+epic: advertising
+title: "/admin/advertising: list + create/edit/deactivate campaigns with nested creatives"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [ad-01-advertising-subsystem]
+
+description: |
+  Mirror the /admin/bundles CRUD area (epic 21, already committed on master) for campaigns --
+  bundles' nested-tiers form is the closest existing precedent for advertising's nested
+  creatives (a campaign has 1+ creatives, each with several fields, same "fixed slot count,
+  plain HTML, no client JS" shape as bundles' tiers).
+
+  Read these committed files as your exact templates:
+  apps/reference-storefront/app/admin/bundles/page.tsx
+  apps/reference-storefront/app/admin/bundles/new/page.tsx
+  apps/reference-storefront/app/admin/bundles/[id]/page.tsx
+  apps/reference-storefront/app/admin/bundles/BundleFormFields.tsx
+  apps/reference-storefront/lib/actions.ts (read the WHOLE current file -- createBundleAction/
+  updateBundleAction/deactivateBundleAction + parseBundleFormData is the closest-shaped
+  pattern for nested-list parsing; other stories may have added more actions since)
+
+  Read the committed advertising package's public surface before writing any admin code:
+  packages/advertising/src/types.ts
+  packages/advertising/src/service.ts
+  `Campaign = { id, name, status, startsAt: string|null, endsAt: string|null, targeting: {
+  serviceAreaId: string|null, pageSlug: string|null }, creatives: Creative[] }`, `Creative = {
+  id, headline, body, imageUrl: string|null, linkHref, weight: number }`. Read types.ts for
+  exact field names -- this is a paraphrase.
+
+  Deliverables:
+  - apps/reference-storefront/app/admin/advertising/page.tsx -- read-only list (columns: name,
+    status, date range summary, targeting summary (serviceAreaId/pageSlug or "untargeted"),
+    creative count), edit link + deactivate form per row.
+  - apps/reference-storefront/app/admin/advertising/new/page.tsx -- create form: text inputs
+    for name/startsAt/endsAt (date strings)/targeting.serviceAreaId/targeting.pageSlug, plus a
+    fixed number of creative slots (e.g. 5), each with headline/body/imageUrl/linkHref/weight
+    inputs, following bundles' exact indexed-field-slot convention (e.g. `creative_0_headline`,
+    `creative_0_body`, ..., empty slots omitted from the parsed result).
+  - apps/reference-storefront/app/admin/advertising/[id]/page.tsx -- edit form pre-filled,
+    posting to updateCampaignAction; deactivate action too.
+  - apps/reference-storefront/app/admin/advertising/CampaignFormFields.tsx -- shared
+    form-fields component (mirrors BundleFormFields.tsx's role).
+  - New server actions in lib/actions.ts: createCampaignAction, updateCampaignAction,
+    deactivateCampaignAction, each parsing the indexed creative fields (mirror
+    parseBundleFormData's approach), calling the advertising service, and
+    revalidatePath("/admin/advertising").
+  - Add a `<Link href="/admin/advertising">Advertising</Link>` entry to
+    apps/reference-storefront/app/admin/page.tsx's existing nav list (re-read this file fresh
+    right before your final commit in case a concurrent piece of work already touched it).
+
+acceptance_criteria:
+  - "Given at least one campaign exists, when /admin/advertising is visited, then it renders a table listing all campaigns with their status, date range, targeting, and creative count"
+  - "Given the new-campaign form is submitted with a name and 2+ creative slots filled in, when createCampaignAction runs, then a new Campaign exists (visible on GET /admin/advertising) with the submitted creatives parsed correctly"
+  - "Given an existing campaign, when its edit form is submitted with a changed name or an added creative, then updateCampaignAction persists the change and the list/detail pages reflect it"
+  - "Given an active campaign, when its deactivate action is submitted, then its status becomes 'inactive' and getActiveCreativeForSlot excludes it (per ad-01's own acceptance criteria), while it remains visible/editable in the admin list"
+  - "Given all advertising-epic stories are merged, when grep -rn '@mercatus-liber/advertising' packages/cms packages/cart packages/checkout-orders/src packages/promotions/src packages/bundles/src packages/recommendations/src packages/inventory/src packages/pdp/src packages/service-areas/src packages/analytics/src is run, then every one of those returns zero hits"
+
+steps:
+  - id: research
+    description: Re-read the committed bundles admin CRUD files (nested-list form pattern) and the committed advertising package's public surface before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the /admin/advertising CRUD UI per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the golden path (create with multiple creatives, list, edit, deactivate) via a dev server; run the decoupling grep from the last acceptance criterion and record clean output.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check convention compliance with the bundles admin pages' nested-form structure and that the creative-parsing logic handles empty/partial slots cleanly.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/advertising.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/admin/bundles/BundleFormFields.tsx
+      purpose: Exact nested-indexed-slot form pattern to mirror for CampaignFormFields.tsx's creatives.
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: parseBundleFormData is the exact FormData-parsing convention to mirror for the indexed creative fields.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/admin/advertising/page.tsx
+    change: New file, read-only list.
+  - file: apps/reference-storefront/app/admin/advertising/new/page.tsx
+    change: New file, create form.
+  - file: apps/reference-storefront/app/admin/advertising/[id]/page.tsx
+    change: New file, edit form + deactivate action.
+  - file: apps/reference-storefront/app/admin/advertising/CampaignFormFields.tsx
+    change: New file, shared nested-creative form fields.
+  - file: apps/reference-storefront/app/admin/page.tsx
+    change: Add Advertising nav link.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: Add createCampaignAction, updateCampaignAction, deactivateCampaignAction.
+
+design_decisions:
+  - decision: "Fixed-slot plain-HTML creative form (no client-side dynamic add-row), mirroring bundles' tiers exactly."
+    rationale: "Same zero-client-JS-framework posture documented in every prior epic's admin story this wave."
+
+risks:
+  - severity: low
+    description: "A fixed slot count (e.g. 5 creatives) is an arbitrary ceiling."
+    mitigation: "Generous enough for a demo/reference campaign; documented as a known reference-implementation limitation, matching bundles' identical tradeoff."
+
+references:
+  - path: .pHive/epics/advertising/docs/design-discussion.md
+    relevant_excerpt: |
+      Confirms the admin CRUD convention from epics 20-22 mirrors directly onto this domain.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Admin CRUD UI story verified via the acceptance criteria's manual golden-path check and the decoupling grep; no numeric trend to track."

@@ -1,0 +1,117 @@
+id: ad-04-acceptance-seed-and-closeout
+epic: advertising
+title: "Seed a demo campaign (home + a service-area page), decoupling verification, epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [ad-02-cms-ad-slot-integration, ad-03-admin-advertising-crud]
+
+description: |
+  Read apps/reference-storefront/lib/seed.ts in full first (it now includes epic 21's bundle
+  demo and epic 22's recommendation demo -- read the whole file).
+
+  Read the committed advertising package's public surface:
+  packages/advertising/src/types.ts
+  packages/advertising/src/service.ts
+
+  Read apps/reference-storefront/lib/services.ts to confirm how `advertising` is exposed.
+
+  Check whether the reference-storefront's seed data creates any CMS pages with an "ad-slot"
+  section already (grep seed.ts and lib/services.ts for "ad-slot" and for CMS page seeding) --
+  if a home-page CMS page with sections doesn't already include an ad-slot section, this story
+  needs to add one (or add a new CMS page that does) so the seeded campaign has somewhere to
+  actually render. Also check if any service-area/location demo data exists (subsystem 15) to
+  target a second, service-area-scoped campaign against.
+
+  Deliverables:
+  - Extend lib/seed.ts to seed one untargeted, active demo Campaign with 2 creatives (to prove
+    weighted rotation is at least wired, even though a single render only shows one) -- e.g. a
+    "Dragon Merch Sale" campaign with plausible headline/body/linkHref content matching this
+    app's existing dragon-branded tone.
+  - If service-area demo data exists, also seed a SECOND campaign explicitly targeted to one
+    specific service area's id, with distinct creative content, to prove targeting actually
+    discriminates (not just "any campaign renders everywhere").
+  - Ensure at least one CMS page (home, or a new/existing marketing/location page) actually has
+    an "ad-slot" section in its sections array so the seeded campaign(s) have a place to render
+    -- add one if none currently exists.
+  - Verify end-to-end against a real dev server (curl-based, no throwaway API routes or
+    env-gated test-only seed blocks; confirm via `git status`/`git diff` that nothing
+    extraneous remains before your final commit):
+    - The page with the ad-slot section renders the untargeted campaign's creative content
+      (headline/body/link).
+    - If a service-area-targeted campaign was seeded: visiting that specific service area's
+      location page shows a DIFFERENT creative (the targeted one, or the targeted one takes
+      precedence/is distinctly selectable) than a different, non-matching service area's page
+      -- or if only one location exists in seed data, at minimum confirm the untargeted
+      campaign still renders there and document that true multi-location targeting
+      discrimination wasn't independently provable with current seed data (be honest about
+      this rather than overclaiming).
+  - Run this exact decoupling grep and record clean output:
+    grep -rn "@mercatus-liber/advertising" packages/cms packages/cart
+    packages/checkout-orders/src packages/promotions/src packages/bundles/src
+    packages/recommendations/src packages/inventory/src packages/pdp/src
+    packages/service-areas/src packages/analytics/src
+    Every one of those must return zero hits.
+  - Update .pHive/planning/epic-backlog.md: find epic 23's row (grep "^| 23 |") and change its
+    status column to "done (4/4 stories complete)", matching epic 20-22's row phrasing
+    convention (grep "^| 22 |" for the exact style). Also find the "vision fully done"
+    section's sentence about epics 20-22 being done / 23 backlogged (grep "Epics 20-22" to
+    find it) and update it to reflect epic 23 also done -- since this closes out ALL FOUR
+    originally-backlogged epics (20-23), also update the section's overall framing if it still
+    says anything like "epics 20-23 remain to drain" (grep "20-23" broadly across the file to
+    find every place that needs updating, not just the one sentence already touched by epics
+    20-22's own closeout stories).
+
+acceptance_criteria:
+  - "Given the seeded untargeted campaign and a CMS page with an ad-slot section, when that page is visited on a live dev server, then the ad-slot renders that campaign's creative content"
+  - "Given the decoupling grep across all 10 packages listed above, then every one returns zero hits"
+  - ".pHive/planning/epic-backlog.md epic 23's row reads 'done (4/4 stories complete)' matching sibling completed-epic rows, and every place in the file referencing 'epics 20-23' or similar as still-backlogged is updated to reflect all four as done"
+
+steps:
+  - id: implement
+    description: Extend seed.ts (and CMS page seeding if needed) and verify the golden path per the description above.
+    agent: developer
+  - id: test
+    description: Run the decoupling grep and record output; verify the ad-slot rendering golden path on a live dev server.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edits are accurate, complete (every "20-23"-style reference updated), and match sibling completed-epic phrasing.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/advertising; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: Existing demo-data seeding script (now includes epics 21/22's demos) to extend with an advertising demo.
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Epic 23's row and every 'epics 20-23'-style summary sentence -- all need updating as this story's last step, since this closes out the full four-epic wave."
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/seed.ts
+    change: Add 1-2 demo Campaigns; add an ad-slot section to a CMS page if none exists.
+  - file: .pHive/planning/epic-backlog.md
+    change: Epic 23 row -> done; every remaining "20-23"-style backlogged reference updated.
+
+design_decisions: []
+risks:
+  - severity: low
+    description: "Seed data may not have enough service-area variety to prove targeting discrimination independently."
+    mitigation: "Story explicitly instructs honest reporting if this can't be fully proven with current seed data, rather than overclaiming -- the untargeted-campaign golden path is the hard acceptance requirement; the targeted case is best-effort given available seed data."
+
+references:
+  - path: .pHive/epics/advertising/docs/design-discussion.md
+    relevant_excerpt: |
+      Full design rationale this epic's seed data demonstrates end-to-end.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout/acceptance-demo story verified via the acceptance criteria's manual golden-path check and the decoupling grep; epic-backlog.md's done/not-started status is qualitative, not a numeric trend."

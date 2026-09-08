@@ -16,6 +16,7 @@
   "dependencies": {
     "@mercatus-liber/account": "workspace:*",
     "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@mercatus-liber/advertising": "workspace:*",
     "@mercatus-liber/ai-interface": "workspace:*",
     "@mercatus-liber/analytics": "workspace:*",
     "@mercatus-liber/bundles": "workspace:*",

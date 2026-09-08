@@ -29,6 +29,9 @@ importers:
       '@mercatus-liber/adapter-sqlite':
         specifier: workspace:*
         version: link:../../packages/adapter-sqlite
+      '@mercatus-liber/advertising':
+        specifier: workspace:*
+        version: link:../../packages/advertising
       '@mercatus-liber/ai-interface':
         specifier: workspace:*
         version: link:../../packages/ai-interface
@@ -212,6 +215,22 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.11
         version: 7.6.13
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.13))
+
+  packages/advertising:
+    dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

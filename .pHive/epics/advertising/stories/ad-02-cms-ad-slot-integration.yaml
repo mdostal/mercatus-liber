@@ -1,0 +1,123 @@
+id: ad-02-cms-ad-slot-integration
+epic: advertising
+title: "reference-storefront: real ad-slot rendering via getActiveCreativeForSlot, service-area + page-slug targeting"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [ad-01-advertising-subsystem]
+
+description: |
+  App-layer composition only -- packages/cms is NOT touched by this story (see
+  design-discussion.md §3: zero changes to ComponentInstance/PageRepository/CmsService/the
+  component registry).
+
+  Read the actual committed advertising package before writing any code (its exact method
+  names are now fixed):
+  packages/advertising/src/types.ts
+  packages/advertising/src/service.ts
+
+  Read the CURRENT exact state of these files in full (all confirmed during planning research,
+  but re-verify since they may have shifted):
+  apps/reference-storefront/components/cms-sections.tsx -- the `"ad-slot"` case is currently
+  `return null;`. `CmsSection` currently has signature `{ section }: { section:
+  ComponentInstance }` with no page-context props.
+  apps/reference-storefront/app/page.tsx (home page -- renders CmsSection per section)
+  apps/reference-storefront/app/campaign/[slug]/page.tsx (renders CmsSection per section)
+  apps/reference-storefront/app/locations/[slug]/page.tsx (renders CmsSection per section --
+  this page has a resolved ServiceArea in scope already, since it's a location detail page;
+  read it to find the exact variable holding the service area's id)
+  apps/reference-storefront/lib/services.ts (read the WHOLE current file fresh -- likely needs
+  wiring `advertising` in, the same way recommendations/bundles/promotions already are, unless
+  a concurrent piece of work has already done it)
+
+  Goal:
+  1. In lib/services.ts: if `advertising` is not already exposed on the services object, wire
+     createAdvertisingService in (in-memory repository) and add it to the returned object + its
+     type.
+  2. Extend `CmsSection`'s props to accept optional `pageSlug?: string` and `serviceAreaId?:
+     string`, threaded through from each of the three call sites listed above (home page can
+     pass a fixed slug like "home" or its own route path; the campaign page passes its own
+     slug param; the locations page passes both its own slug AND the resolved service area's
+     id). This is an additive change to CmsSection's own prop signature (an app-layer
+     component, not part of packages/cms) -- every existing call site must still compile after
+     adding the new optional props (they can simply be omitted where irrelevant, defaulting to
+     undefined).
+  3. Replace the `case "ad-slot": return null;` line with a real `<AdSlot pageSlug={pageSlug}
+     serviceAreaId={serviceAreaId} />` component (new function in cms-sections.tsx or a new
+     file apps/reference-storefront/components/ad-slot.tsx -- your call, follow whichever this
+     file's existing component-per-type convention suggests). `AdSlot` calls
+     `advertising.getActiveCreativeForSlot({ pageSlug, serviceAreaId })`. When it returns null,
+     render nothing (no empty section, no error). When it returns a creative, render a simple
+     promotional block (headline, body, optional image, a link wrapping the whole block or a
+     clear CTA) using this app's existing plain-HTML styling conventions (see HeroBanner in the
+     same file for the visual convention to loosely match).
+
+acceptance_criteria:
+  - "Given a CMS page with an ad-slot section and a matching eligible campaign (untargeted, or targeted to that exact pageSlug/serviceAreaId), when the page renders, then the ad-slot shows that campaign's (weighted-randomly-selected) creative content"
+  - "Given a CMS page with an ad-slot section and NO eligible campaign, when the page renders, then the ad-slot section renders nothing (no empty box, no error) -- and the rest of the page is unaffected"
+  - "Given the locations/[slug] page, when it renders an ad-slot section, then the serviceAreaId passed to getActiveCreativeForSlot matches that page's actual resolved ServiceArea id (verify by seeding a campaign targeted to that exact id and confirming it's the one selected, distinct from an untargeted campaign that would otherwise also be eligible)"
+  - "Given the home page and campaign page (which have no natural service-area context), when they render an ad-slot section, then serviceAreaId is simply omitted/undefined and pageSlug-only or untargeted campaigns still resolve correctly"
+
+steps:
+  - id: research
+    description: Re-read the committed advertising public surface and the current exact state of cms-sections.tsx and all three CmsSection call sites.
+    agent: researcher
+  - id: implement
+    description: Build the ad-slot rendering + page-context threading per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the golden path (eligible campaign shows on the right page/service-area, ineligible/absent campaign shows nothing, existing non-ad-slot sections unaffected) via a dev server.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check that packages/cms itself was not modified and that all three existing CmsSection call sites still compile with the new optional props.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/advertising.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/components/cms-sections.tsx
+      purpose: The exact file to extend -- CmsSection's switch statement and the ad-slot case.
+    - path: apps/reference-storefront/app/locations/[slug]/page.tsx
+      purpose: Where the resolved ServiceArea id needs to be threaded into CmsSection's new serviceAreaId prop.
+
+files_to_modify:
+  - file: apps/reference-storefront/components/cms-sections.tsx
+    change: Add pageSlug/serviceAreaId props to CmsSection; add a real AdSlot component replacing the ad-slot case.
+  - file: apps/reference-storefront/app/page.tsx
+    change: Pass pageSlug (and no serviceAreaId) to CmsSection.
+  - file: apps/reference-storefront/app/campaign/[slug]/page.tsx
+    change: Pass pageSlug to CmsSection.
+  - file: apps/reference-storefront/app/locations/[slug]/page.tsx
+    change: Pass pageSlug and serviceAreaId to CmsSection.
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire advertising service if not already present (check for concurrent changes first).
+
+design_decisions:
+  - decision: "CmsSection's new props are optional and additive, never required."
+    rationale: "Every existing call site (and any future one) must keep compiling without modification if it doesn't care about ad targeting -- matches the additive-only posture every prior epic in this wave has used for changing an existing file's contract."
+
+risks:
+  - severity: low
+    description: "Threading pageSlug/serviceAreaId through three call sites by hand is a bit repetitive."
+    mitigation: "Acceptable for a reference app of this size; not worth a bigger context-provider abstraction for three call sites."
+
+references:
+  - path: .pHive/epics/advertising/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: "the existing 'ad-slot' case in cms-sections.tsx becomes a real component that
+      composes this subsystem, the same app-layer pattern bundles/recommendations already
+      established."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "UI/orchestration story wiring an already-tested backend computation (ad-01) into three pages; the acceptance criteria above are the observable surface, verified via the golden-path check in the test step since this app has no existing UI test harness to extend."
