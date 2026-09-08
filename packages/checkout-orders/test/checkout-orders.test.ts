@@ -222,4 +222,37 @@ describe("checkout-orders service", () => {
     });
     expect((await checkout.listOrdersByCustomer("cust-3")).map((o) => o.id)).toEqual([order.id]);
   });
+
+  it("service.listOrders returns every order across guests and customers, and can filter by status", async () => {
+    await cartService.addItem(cartId, activeSkuId, 1);
+    const { order: guestOrder } = await checkout.startCheckout({
+      cartId,
+      idempotencyKey: "idem-11",
+      shippingInfo: { name: "Guest", email: "g@example.com", address: "1 Main St" },
+      successUrl: "https://shop.example/success",
+      cancelUrl: "https://shop.example/cancel",
+    });
+
+    const custCart = await cartService.createCart();
+    await cartService.addItem(custCart.id, activeSkuId, 1);
+    const { order: custOrder } = await checkout.startCheckout({
+      cartId: custCart.id,
+      idempotencyKey: "idem-12",
+      shippingInfo: { name: "Cust", email: "c@example.com", address: "2 Main St" },
+      successUrl: "https://shop.example/success",
+      cancelUrl: "https://shop.example/cancel",
+      customerId: "cust-4",
+    });
+
+    const all = await checkout.listOrders();
+    expect(all.map((o) => o.id)).toEqual(expect.arrayContaining([guestOrder.id, custOrder.id]));
+
+    await events.publish("payments.payment.succeeded", { sessionId: "sess-x", orderRef: custOrder.id });
+    const paidOnly = await checkout.listOrders({ status: "paid" });
+    expect(paidOnly.map((o) => o.id)).toEqual([custOrder.id]);
+
+    const pendingOnly = await checkout.listOrders({ status: "pending_payment" });
+    expect(pendingOnly.map((o) => o.id)).toContain(guestOrder.id);
+    expect(pendingOnly.map((o) => o.id)).not.toContain(custOrder.id);
+  });
 });

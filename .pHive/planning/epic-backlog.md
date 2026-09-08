@@ -15,7 +15,7 @@ vertical-slice invariant), not just "some files exist."_
 | 7 | `plugins-extensibility` | 12 plugins — plugin lifecycle, event-bus extension points, one reference plugin | **done** (2/2 stories complete) | 1 |
 | 8 | `adapter-postgres` | Second reference DB adapter (Postgres) — proves the persistence interface is truly adapter-agnostic | **done** (1/1 story complete) | 1 |
 | 9 | `six-themes` | 6 optional drop-in themes built on the theming system (06) — the "roll it with 6 optional themes" deliverable | **done** (2/2 stories complete) | 3, 4 |
-| 10 | `admin-janus-dogfood` | Admin view for catalog/CMS/orders management — attempt to build it via Janus's composer (dogfood), fall back to hand-built admin UI documented as a subsystem-12-style plugin if Janus integration isn't viable | not started | 1, 4, 6 |
+| 10 | `admin-janus-dogfood` | Admin view for catalog/CMS/orders management — attempt to build it via Janus's composer (dogfood), fall back to hand-built admin UI documented as a subsystem-12-style plugin if Janus integration isn't viable | **done** (2/2 stories complete — Janus dogfood documented non-viable, hand-built /admin shipped) | 1, 4, 6 |
 | 11 | `shop-migration` | Migrate `shop.mdostal.com` off its own custom cart onto these packages — the "proof by use" success criterion from north_star | not started | 1 (minimum), ideally 2-4 |
 | 12 | `analytics-tracking` | 13 analytics — event-bus subscriber, PostHog adapter enabled by default, client-side `trackEvent()` helper | not started | 1 |
 | 13 | `ai-mcp-interface` | 14 AI/MCP interface — MCP server + skills/tool catalog wrapping catalog/cart/checkout (shopper side) and catalog/CMS/inventory (admin side) | not started | 1 (shopper side), 4 + 6 (admin side) |
@@ -28,9 +28,11 @@ vertical-slice invariant), not just "some files exist."_
   search → PDP → CMS → cart → checkout → account → inventory → plugins), on 2 proven DB
   adapters.
 - Epic 9: 6 optional themes shipped.
-- Epic 10: admin view exists, Janus dogfood attempted and documented (success or honest
-  documented failure — "we tried, here's what happened" counts as done, it doesn't have to
-  succeed to close this epic).
+- Epic 10: **done.** Admin view exists (`/admin`, `/admin/catalog`, `/admin/cms`,
+  `/admin/orders`, `/admin/plugins`), Janus dogfood attempted and documented — concluded not
+  viable now (Janus is a private, unpublished Pantheon-only UI slot; taking a hard dependency
+  on it would break Mercatus Liber's own standalone/giftable positioning), fallback hand-built
+  admin UI shipped instead. See `.pHive/epics/admin-janus-dogfood/docs/janus-dogfood-attempt.md`.
 - Epic 11: `shop.mdostal.com` actually running on these packages.
 - Epic 12: analytics on by default (PostHog), config-swappable, zero per-subsystem
   instrumentation debt.

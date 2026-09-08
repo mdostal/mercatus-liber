@@ -1,0 +1,26 @@
+name: admin-janus-dogfood
+title: Admin View + Janus Dogfood Attempt
+description: >
+  Admin view for catalog/CMS/orders management (docs/subsystems/12-plugins-extensibility.md's
+  admin-surface intent). Attempts to build it via Janus's composer (dogfood) first, per the
+  backlog's own instruction; documents the honest outcome either way (success or documented
+  non-viability both count as done). Closes with a real hand-built admin UI in the reference
+  storefront covering catalog, CMS pages, and orders.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: janus-01-dogfood-attempt
+    title: Janus dogfood attempt -- documented outcome
+    complexity: small
+    depends_on: []
+  - id: janus-02-admin-catalog-cms-orders-ui
+    title: Hand-built admin UI -- catalog, CMS pages, and orders (fallback per janus-01's outcome)
+    complexity: medium
+    depends_on: [janus-01-dogfood-attempt]

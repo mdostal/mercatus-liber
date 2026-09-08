@@ -5,6 +5,7 @@ import type {
   CartLookup,
   Order,
   OrderRepository,
+  OrderStatus,
   PaymentSessionCreator,
   ShippingInfo,
 } from "./types.js";
@@ -29,6 +30,8 @@ export interface CheckoutOrdersService {
   getOrder(id: string): Promise<Order | null>;
   /** Delegates directly to the repository -- exposed here so consumers (e.g. the account subsystem's OrderLookup) can depend on this service alone instead of reaching into the repository. */
   listOrdersByCustomer(customerId: string): Promise<Order[]>;
+  /** All orders, guest or not -- the admin-view read path (see admin-janus-dogfood epic). */
+  listOrders(filter?: { status?: OrderStatus }): Promise<Order[]>;
 }
 
 export function createCheckoutOrdersService(deps: {
@@ -114,6 +117,10 @@ export function createCheckoutOrdersService(deps: {
 
     async listOrdersByCustomer(customerId: string): Promise<Order[]> {
       return repository.listByCustomerId(customerId);
+    },
+
+    async listOrders(filter?: { status?: OrderStatus }): Promise<Order[]> {
+      return repository.listAll(filter);
     },
   };
 }

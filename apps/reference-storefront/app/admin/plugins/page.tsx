@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getServices } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
@@ -9,12 +10,10 @@ export default async function AdminPluginsPage() {
 
   return (
     <main>
-      <h1>Admin: Plugins</h1>
-      <p style={{ color: "#666" }}>
-        First page under /admin -- the natural landing spot for later admin-view work (see
-        docs/subsystems/12-plugins-extensibility.md and the project epic backlog's
-        admin-janus-dogfood epic).
+      <p>
+        <Link href="/admin">← Admin</Link>
       </p>
+      <h1>Admin: Plugins</h1>
 
       <h2>Registered plugins</h2>
       <ul>
