@@ -1,0 +1,63 @@
+id: cf-06-checkout-orders-package
+epic: core-foundation
+title: Checkout & Orders package
+status: pending
+complexity: high
+methodology: classic
+depends_on: [cf-04-cart-package, cf-05-payments-stripe-package]
+
+description: |
+  Implement packages/checkout-orders per docs/subsystems/09-checkout-orders.md:
+  the checkout flow state machine (cart snapshot -> shipping/contact info -> Stripe
+  payment session -> order confirmation), the Order entity + OrderRepository
+  interface, and checkout.order.* event publishing. Subscribes to
+  payments.payment.succeeded to transition orders to paid -- never imports
+  inventory or account, only reacts to/publishes events for them.
+
+acceptance_criteria:
+  - "Given a cart with items and shipping/contact info, when checkout starts, then an Order is created in pending-payment status and a Stripe payment session is created via the payments interface"
+  - "Given a payments.payment.succeeded event for an order's payment reference, when received, then the order transitions to paid and checkout.order.paid is published"
+  - "Given a checkout retried after a network hiccup (same idempotency key), when it runs again, then it does not create a duplicate order or double-charge"
+  - "Given the package's public exports, when inspected, then it imports @core/schema, cart's public interface, and payments' public interface only -- no import of inventory or account"
+
+steps:
+  - id: research
+    description: Confirm the event bus's default in-process adapter delivery semantics (from cf-01/cf-03) to design idempotent event handling correctly.
+    agent: researcher
+  - id: implement
+    description: Implement the checkout state machine, Order entity/repository, and payment-event subscription.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests covering happy-path checkout, payment-success transition, and idempotent retry behavior.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no direct import of inventory or account -- all cross-subsystem reactions happen via published events only.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  key_files:
+    - path: docs/subsystems/09-checkout-orders.md
+      purpose: The checkout flow, Order entity shape, and the decoupling notes -- inventory/account react to this subsystem's events, never the reverse.
+
+files_to_modify:
+  - file: packages/checkout-orders/package.json
+    change: New package depending on @core/schema, cart's public interface, payments' public interface
+  - file: packages/checkout-orders/src/index.ts
+    change: Checkout state machine, Order entity/repository, event subscription/publishing
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/checkout-orders/src must never import inventory or account directly -- only publish checkout.order.* events for them to subscribe to"
+
+risks:
+  - severity: medium
+    description: Idempotent checkout retry (no double-charge/double-order) is the trickiest correctness requirement in this epic
+    mitigation: Use the Stripe Checkout Session id itself as the idempotency key for order creation, per Stripe's own idempotency guidance

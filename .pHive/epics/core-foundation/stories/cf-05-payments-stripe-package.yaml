@@ -1,0 +1,67 @@
+id: cf-05-payments-stripe-package
+epic: core-foundation
+title: Payments package + Stripe Checkout Sessions adapter
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [cf-01-monorepo-scaffold-core-schema]
+
+description: |
+  Implement packages/payments per docs/subsystems/08-payments.md: the
+  PaymentAdapter interface, and a Stripe reference adapter wrapping Stripe Checkout
+  Sessions (server-side session creation with dynamic line items, hosted checkout
+  UI, Stripe Tax) -- the exact mechanism validated in shop/.pHive/epics/v1-launch's
+  own CBA. Never touches card data directly; delegates PCI/tax to Stripe entirely.
+
+acceptance_criteria:
+  - "Given an order reference, line items, and amount, when createPaymentSession runs against the Stripe adapter, then it returns a redirect URL to a real Stripe-hosted Checkout Session (test mode)"
+  - "Given a Stripe webhook payload for a completed session, when the adapter processes it, then it publishes payments.payment.succeeded with the order reference"
+  - "Given the payments package's public exports, when inspected, then it imports @core/schema only -- no import of cart, catalog, or checkout-orders"
+  - "Given no card data ever passes through this package's code, when reviewed, then confirmed -- all sensitive data handling is delegated to Stripe's hosted Checkout"
+
+steps:
+  - id: research
+    description: Confirm current Stripe Node SDK version and Checkout Sessions API shape for dynamic line items + Stripe Tax.
+    agent: researcher
+  - id: implement
+    description: Implement PaymentAdapter interface + Stripe adapter (createPaymentSession, confirmPayment, webhook handler).
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests against Stripe's test-mode API (or a recorded-fixture mock) for session creation and webhook event handling.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify zero card-data handling in this package's code -- everything delegates to Stripe's hosted surfaces.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  key_files:
+    - path: docs/subsystems/08-payments.md
+      purpose: PaymentAdapter interface contract and the hard rule -- never hand-build payments/tax/PCI, always delegate to Stripe's hosted surfaces.
+    - path: /Users/mdostal/Documents/work/personal/shop/.pHive/epics/v1-launch/docs/oss-cart-cba.md
+      purpose: The CBA that validated Stripe Checkout Sessions + dynamic line items as the correct mechanism (sibling repo, read-only reference).
+
+files_to_modify:
+  - file: packages/payments/package.json
+    change: New package depending on @core/schema + the Stripe Node SDK
+  - file: packages/payments/src/index.ts
+    change: PaymentAdapter interface + createStripeAdapter() factory
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/payments/src must import @core/schema only -- no dependency on cart, catalog, or checkout-orders"
+
+references:
+  - path: /Users/mdostal/Documents/work/personal/shop/.pHive/epics/v1-launch/docs/oss-cart-cba.md
+    relevant_excerpt: |
+      A hand-rolled cart + one serverless function that builds a Stripe Checkout
+      Session from the cart's line items, redirecting to Stripe's own hosted
+      checkout page, satisfies every hard requirement: real multi-item cart,
+      Stripe-hosted payment/tax/PCI (never hand-built), near-zero infra.

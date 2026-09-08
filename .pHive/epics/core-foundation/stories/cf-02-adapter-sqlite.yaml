@@ -1,0 +1,60 @@
+id: cf-02-adapter-sqlite
+epic: core-foundation
+title: SQLite reference persistence adapter
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [cf-01-monorepo-scaffold-core-schema]
+
+description: |
+  Implement packages/adapter-sqlite: a concrete implementation of the persistence
+  repository interfaces from @core/schema, backed by SQLite (better-sqlite3 or
+  similar), chosen as the first reference adapter for lowest local-dev friction (no
+  external DB service required). Proves the adapter contract by being genuinely
+  swappable later for adapter-postgres without any subsystem code changing.
+
+acceptance_criteria:
+  - "Given @core/schema's ProductRepository/SkuRepository interfaces, when adapter-sqlite implements them, then every method is covered by a passing test against an in-memory SQLite instance"
+  - "Given a schema migration file, when the adapter initializes against a fresh SQLite file, then all tables needed by catalog (products, skus, product_attributes) exist"
+  - "Given the adapter package, when a consumer imports it, then it exposes a single factory function (e.g. createSqliteAdapter(path)) returning objects satisfying the core repository interfaces -- no SQLite-specific types leak into the returned interface"
+
+steps:
+  - id: research
+    description: Confirm better-sqlite3 (or an equally low-friction alternative) works cleanly in the pnpm/Turborepo/TS setup from cf-01.
+    agent: researcher
+  - id: implement
+    description: Implement ProductRepository/SkuRepository/ProductAttributeRepository against SQLite, plus a migration/schema-init step.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Unit tests for every repository method against an in-memory SQLite DB.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no SQLite-specific types are exposed publicly (the adapter's public shape must be pure @core/schema interfaces).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  key_files:
+    - path: docs/subsystems/00-core-schema.md
+      purpose: The repository interface contracts this adapter must satisfy exactly.
+    - path: packages/core/src/index.ts
+      purpose: The actual TypeScript types/interfaces from cf-01 to implement against.
+
+files_to_modify:
+  - file: packages/adapter-sqlite/package.json
+    change: New package depending on @core/schema + a sqlite driver
+  - file: packages/adapter-sqlite/src/index.ts
+    change: createSqliteAdapter() factory + repository implementations
+  - file: packages/adapter-sqlite/src/schema.sql
+    change: Table definitions for products, skus, product_attributes
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Adapter's public API surface must be exactly the core repository interfaces -- no SQLite-specific leakage that would make a future swap to adapter-postgres require caller changes"

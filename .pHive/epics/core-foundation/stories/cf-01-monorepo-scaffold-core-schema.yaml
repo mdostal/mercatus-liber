@@ -1,0 +1,76 @@
+id: cf-01-monorepo-scaffold-core-schema
+epic: core-foundation
+title: Monorepo scaffold + @core/schema package
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Stand up the pnpm/Turborepo monorepo skeleton (packages/, apps/) and implement
+  @core/schema: the shared TypeScript types and adapter interfaces every other
+  subsystem package depends on. Zero storage code, zero framework code -- types and
+  interfaces only, per docs/subsystems/00-core-schema.md.
+
+acceptance_criteria:
+  - "Given a fresh clone, when `pnpm install && pnpm build` runs at the repo root, then it succeeds with zero packages implemented yet beyond @core/schema"
+  - "Given @core/schema, when another package imports it, then Product, Sku, IdentifyingAttribute, ProductAttribute, Money, CategoryRef, EventBus types/interfaces are all available"
+  - "Given the repo root, when `pnpm turbo run lint` runs, then TypeScript strict mode is enforced across every workspace package (tsconfig base + per-package extends)"
+
+steps:
+  - id: research
+    description: Confirm current pnpm/Turborepo/TypeScript stable versions and the recommended workspace tsconfig pattern.
+    agent: researcher
+  - id: implement
+    description: Scaffold pnpm-workspace.yaml, turbo.json, root tsconfig/package.json, packages/core with the schema from docs/subsystems/00-core-schema.md.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Add a minimal type-level test (tsd or a compile-only test file) proving the exported types match the doc's shapes.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review for strict-mode compliance and that no business logic leaked into core (types/interfaces only).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  tech_stack:
+    languages: [typescript]
+    build_tools: [pnpm, turborepo]
+  key_files:
+    - path: docs/ARCHITECTURE.md
+      purpose: Repo shape (packages/apps layout) and the prime directive this scaffold must respect from the first commit.
+    - path: docs/subsystems/00-core-schema.md
+      purpose: The exact types/interfaces to implement in @core/schema -- Product, Sku, IdentifyingAttribute, ProductAttribute, Money, CategoryRef, adapter/EventBus contracts.
+
+files_to_modify:
+  - file: pnpm-workspace.yaml
+    change: Define packages/* and apps/* as workspace roots
+  - file: turbo.json
+    change: Define build/lint/test pipeline tasks
+  - file: package.json
+    change: Root workspace package.json with shared devDependencies (typescript, vitest or similar)
+  - file: packages/core/package.json
+    change: New package, name "@core/schema" (or the eventual project scope once named)
+  - file: packages/core/src/index.ts
+    change: Export all types/interfaces from docs/subsystems/00-core-schema.md
+  - file: packages/core/tsconfig.json
+    change: Extend a root strict tsconfig
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "@core/schema must contain zero storage/business logic -- verify at review that it's types/interfaces only, matching subsystem doc 00's 'What does NOT belong here' section"
+
+references:
+  - path: docs/subsystems/00-core-schema.md
+    relevant_excerpt: |
+      interface Product { id, slug, title, description, identifyingAttributeKeys, status }
+      interface Sku { id, productId, identifyingAttributes, price, status }
+      interface ProductAttribute { productId, key, value, facetable }
+      interface EventBus { publish, subscribe }
