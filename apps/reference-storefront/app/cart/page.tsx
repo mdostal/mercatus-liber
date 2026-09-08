@@ -1,4 +1,5 @@
 import { applyCouponAction, startCheckoutAction } from "../../lib/actions";
+import { RecommendationShelf, resolveCartRecommendations } from "../../components/recommendation-shelf";
 import { readCartId } from "../../lib/cart-cookie";
 import { readCouponCode } from "../../lib/coupon-cookie";
 import { getServices } from "../../lib/services";
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CartPage() {
   const cartId = await readCartId();
-  const { cart, catalog, checkout } = await getServices();
+  const { cart, catalog, checkout, recommendations, marketingCatalog } = await getServices();
   const currentCart = cartId ? await cart.getCart(cartId) : null;
 
   if (!cartId || !currentCart || currentCart.items.length === 0) {
@@ -25,12 +26,22 @@ export default async function CartPage() {
       const product = sku ? await catalog.getProduct(sku.productId) : null;
       return {
         skuId: item.skuId,
+        productId: product?.id ?? null,
         title: product?.title ?? `SKU ${item.skuId}`,
         quantity: item.quantity,
         priceSnapshot: item.priceSnapshot,
       };
     }),
   );
+
+  // Recommendations composed at the app layer, same "no-op-when-absent"
+  // pattern as the PDP page (see design-discussion.md §3): curated `cart`/
+  // `both` rules unioned across every cart line's product, falling back to
+  // the same-category heuristic per line with zero curated rules, deduped
+  // and excluding anything already in the cart. packages/cart itself stays
+  // untouched -- recommendations never becomes a cart-owned concept.
+  const cartProductIds = Array.from(new Set(lines.map((line) => line.productId).filter((id): id is string => id !== null)));
+  const recommendationShelf = await resolveCartRecommendations({ recommendations, catalog, marketingCatalog }, cartProductIds);
 
   const couponCode = await readCouponCode();
   const adjustment = await checkout.previewCheckout({ cartId, couponCode });
@@ -76,6 +87,8 @@ export default async function CartPage() {
       <form action={startCheckoutAction}>
         <button type="submit">Check out with Stripe</button>
       </form>
+
+      {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </main>
   );
 }

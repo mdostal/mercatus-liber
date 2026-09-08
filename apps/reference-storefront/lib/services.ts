@@ -25,6 +25,11 @@ import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAd
 import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
 import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
 import {
+  createInMemoryRecommendationRepository,
+  createRecommendationsService,
+  type RecommendationsService,
+} from "@mercatus-liber/recommendations";
+import {
   createInMemoryCategoryRepository,
   createInMemoryProductCategoryRepository,
   createMarketingCatalogService,
@@ -74,6 +79,7 @@ export interface Services {
   orderNotificationPlugin: OrderNotificationPlugin;
   promotions: PromotionsService;
   bundles: BundlesService;
+  recommendations: RecommendationsService;
 }
 
 /**
@@ -186,6 +192,15 @@ async function buildServices(): Promise<Services> {
     skuLookup: catalog,
   });
 
+  // Core-only dependency, mirroring promotions/bundles exactly (see
+  // design-discussion.md §3 for upsell-cross-sell) -- never imports catalog,
+  // cart, or analytics. The same-category fallback used when a product has
+  // no curated rule is app-composed orchestration in the PDP/cart pages
+  // themselves, not a dependency this service needs.
+  const recommendations = createRecommendationsService({
+    repository: createInMemoryRecommendationRepository(),
+  });
+
   const marketingCatalog = createMarketingCatalogService({
     categories: createInMemoryCategoryRepository(),
     assignments: createInMemoryProductCategoryRepository(),
@@ -259,6 +274,7 @@ async function buildServices(): Promise<Services> {
     orderNotificationPlugin,
     promotions,
     bundles,
+    recommendations,
   };
 }
 
