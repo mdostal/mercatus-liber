@@ -1,0 +1,80 @@
+id: shopify-01-adapter
+epic: adapter-shopify
+title: "@mercatus-liber/adapter-shopify: CatalogPersistenceAdapter backed by Shopify's Admin GraphQL API"
+status: done
+complexity: large
+methodology: classic
+depends_on: []
+
+description: |
+  New package @mercatus-liber/adapter-shopify, depending on @mercatus-liber/core
+  only for the shared types/interfaces it implements. Public surface is exactly
+  CatalogPersistenceAdapter (products/skus/attributes) -- no Shopify-specific
+  type is exported, same "public surface is exactly the contract" rule
+  adapter-postgres proved. createShopifyAdapter({ shop, accessToken,
+  apiVersion?, fetchImpl? }) issues Admin GraphQL requests via an injectable
+  fetch implementation (defaults to global fetch; tests inject a recording
+  fake, same disclosed-double pattern as adapter-postgres's fake-pool.ts --
+  no live Shopify store exists in this environment).
+
+  Mapping per .pHive/epics/adapter-shopify/docs/shopify-adapter-mapping.md:
+  Product <-> Shopify Product (id/handle/title/descriptionHtml/options/status),
+  Sku <-> Shopify ProductVariant (id/selectedOptions/price/inherited status),
+  ProductAttribute <-> product metafields under a reserved namespace.
+
+acceptance_criteria:
+  - "Given the adapter's public surface, when inspected, then it exposes exactly { products, skus, attributes } -- identical shape to adapter-sqlite/adapter-postgres, no Shopify-specific member leaks through"
+  - "Given products.save/get/getBySlug/list, when run against a recording fake fetch returning canned Shopify GraphQL responses, then Product fields map per the documented table (slug<->handle, status lowercased, identifyingAttributeKeys from options[].name)"
+  - "Given skus.save/get/listByProduct, when run against the fake, then Sku fields map per the documented table, including price converted from Shopify's decimal string to minor-unit integer"
+  - "Given attributes.save/listByProduct/remove, when run against the fake, then they issue metafieldsSet/metafieldsDelete mutations under the reserved namespace and round-trip AttributeValue (string/number/boolean) correctly"
+  - "Given the same canonical scenarios adapter-sqlite/adapter-postgres's test suites cover (save+get by id, get by slug, list with status filter, missing-record returns null, SKU list by product, attribute save/list/remove including array-valued and facetable), when run against this adapter, then they pass identically -- proving behavioral parity across a third fundamentally different backend"
+  - "Given the package's dependencies, when inspected, then it depends on @mercatus-liber/core only -- no Shopify SDK dependency, just the injectable fetch pattern"
+
+steps:
+  - id: research
+    description: Confirm CatalogPersistenceAdapter's exact interface and re-read adapter-postgres's test suite as the canonical scenario set this story's tests mirror.
+    agent: researcher
+  - id: implement
+    description: Implement the GraphQL query/mutation builders, row<->domain mapping functions, and createShopifyAdapter.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Port every adapter-postgres/adapter-sqlite scenario against a recording fake fetch returning canned Shopify GraphQL response shapes.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify the public surface is exactly CatalogPersistenceAdapter; verify the mapping doc's disclosed gaps are still accurate to what was actually built.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch, merge epic to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/adapter-postgres/src/index.ts
+      purpose: The canonical second-adapter pattern (public surface exactly CatalogPersistenceAdapter, injected client) this story mirrors against a fundamentally different backend shape
+    - path: packages/adapter-postgres/test/adapter.test.ts
+      purpose: The canonical scenario set (mirrors adapter-sqlite's) this story's tests must also pass, proving parity
+    - path: .pHive/epics/adapter-shopify/docs/shopify-adapter-mapping.md
+      purpose: The field mapping and disclosed gaps this implementation follows exactly
+
+files_to_modify:
+  - file: packages/adapter-shopify/package.json
+    change: New package, depends on @mercatus-liber/core only
+  - file: packages/adapter-shopify/src/graphql-client.ts
+    change: Injectable GraphQL request helper against Shopify's Admin API
+  - file: packages/adapter-shopify/src/mapping.ts
+    change: Product/Sku/ProductAttribute <-> Shopify shape mapping functions
+  - file: packages/adapter-shopify/src/index.ts
+    change: createShopifyAdapter -- the CatalogPersistenceAdapter implementation
+  - file: packages/adapter-shopify/test/adapter.test.ts
+    change: Canonical scenario set ported against a recording fake fetch
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Public surface is exactly CatalogPersistenceAdapter -- same rule adapter-postgres proved, now proven a third time against a non-DB backend"
+  - concern: adapter-parity
+    action: "Every scenario adapter-sqlite/adapter-postgres's test suites cover must pass identically here"
