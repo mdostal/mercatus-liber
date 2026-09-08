@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { AdvertisingService } from "@mercatus-liber/advertising";
 import type { BundlesService } from "@mercatus-liber/bundles";
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
@@ -178,6 +179,13 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
         componentType: "category-spot",
         config: { categorySlugs: ["merch", "3d-printed"] },
       },
+      {
+        // Renders via components/cms-sections.tsx's AdSlot, resolved against
+        // pageSlug="home" (see app/page.tsx) -- see seedAdvertising below
+        // for the untargeted campaign this slot picks up.
+        componentType: "ad-slot",
+        config: {},
+      },
     ],
   });
   await cms.publishPage(home.id);
@@ -203,13 +211,16 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
  * ATT-style business seed data). The desk mat is deliberately assigned to
  * only 2 of the 3 areas, proving a product can be available in a subset of
  * areas, not all-or-nothing. Also publishes one CMS "location" page,
- * proving the ServiceArea-data / CMS-page-layout split end to end.
+ * proving the ServiceArea-data / CMS-page-layout split end to end. Returns
+ * Portland's real ServiceArea id so callers (see seedAdvertising) can seed
+ * a campaign explicitly targeted at it, proving targeting discrimination
+ * against real seed data rather than a synthetic id.
  */
 async function seedServiceAreas(
   serviceAreas: ServiceAreaService,
   cms: CmsService,
   productIdBySlug: Map<string, string>,
-): Promise<void> {
+): Promise<string> {
   const portland = await serviceAreas.createServiceArea({
     slug: "portland-or",
     name: "Portland, OR",
@@ -246,9 +257,21 @@ async function seedServiceAreas(
     pageType: "location",
     slug: portland.slug,
     title: portland.name,
-    sections: [{ componentType: "service-area-info", config: { hours: "Mon-Fri 9am-5pm" } }],
+    sections: [
+      { componentType: "service-area-info", config: { hours: "Mon-Fri 9am-5pm" } },
+      {
+        // Renders via components/cms-sections.tsx's AdSlot, resolved against
+        // pageSlug="portland-or" AND serviceAreaId=portland.id (see
+        // app/locations/[slug]/page.tsx) -- see seedAdvertising below for
+        // the service-area-targeted campaign this slot picks up.
+        componentType: "ad-slot",
+        config: {},
+      },
+    ],
   });
   await cms.publishPage(locationPage.id);
+
+  return portland.id;
 }
 
 /**
@@ -279,7 +302,63 @@ async function seedRecommendations(
   });
 }
 
-/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. `recommendations` is optional too -- most test files don't need the rec-04 acceptance demo (one curated RecommendationRule); see seedRecommendations. */
+/**
+ * Seeds the ad-04 acceptance demo: one untargeted, active Campaign with 2
+ * creatives (proving weighted-random rotation is at least wired, even
+ * though any single render only shows one -- see
+ * AdvertisingService.getActiveCreativeForSlot), plus, when a service area
+ * is available to target, a SECOND campaign explicitly targeted to that
+ * area's real id with distinct creative content -- proving targeting
+ * actually discriminates rather than "any campaign renders everywhere".
+ * See design-discussion.md §3 and components/cms-sections.tsx's AdSlot.
+ */
+async function seedAdvertising(advertising: AdvertisingService, targetedServiceAreaId?: string): Promise<void> {
+  await advertising.createCampaign({
+    name: "Dragon Merch Sale",
+    startsAt: null,
+    endsAt: null,
+    targeting: { serviceAreaId: null, pageSlug: null },
+    creatives: [
+      {
+        id: randomUUID(),
+        headline: "Dragon Merch Sale -- 20% Off Everything",
+        body: "Cable organizers, desk mats, and more -- all dragon-branded, all on sale this week only.",
+        imageUrl: null,
+        linkHref: "/category/merch",
+        weight: 1,
+      },
+      {
+        id: randomUUID(),
+        headline: "New: Dragon Desk Mat Restock",
+        body: "Our best-selling dragon desk mat is back in stock. Grab yours before it's gone again.",
+        imageUrl: null,
+        linkHref: "/products/dragon-desk-mat",
+        weight: 1,
+      },
+    ],
+  });
+
+  if (!targetedServiceAreaId) return;
+
+  await advertising.createCampaign({
+    name: "Portland Dragon Pop-Up",
+    startsAt: null,
+    endsAt: null,
+    targeting: { serviceAreaId: targetedServiceAreaId, pageSlug: null },
+    creatives: [
+      {
+        id: randomUUID(),
+        headline: "Portland Dragon Pop-Up This Saturday",
+        body: "Meet the dragon merch team in person at our Portland pop-up -- local pickup discounts all day.",
+        imageUrl: null,
+        linkHref: "/locations/portland-or",
+        weight: 1,
+      },
+    ],
+  });
+}
+
+/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. `recommendations` is optional too -- most test files don't need the rec-04 acceptance demo (one curated RecommendationRule); see seedRecommendations. `advertising` is optional too -- most test files don't need the ad-04 acceptance demo (1-2 Campaigns); see seedAdvertising. */
 export async function seedCatalog(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -288,6 +367,7 @@ export async function seedCatalog(
   serviceAreas?: ServiceAreaService,
   bundles?: BundlesService,
   recommendations?: RecommendationsService,
+  advertising?: AdvertisingService,
 ): Promise<void> {
   const categoryIdBySlug = await seedCategories(marketingCatalog);
   const productIdBySlug = new Map<string, string>();
@@ -319,7 +399,9 @@ export async function seedCatalog(
   }
 
   await seedCmsPages(cms, productIdBySlug);
-  if (serviceAreas) await seedServiceAreas(serviceAreas, cms, productIdBySlug);
+  let portlandServiceAreaId: string | undefined;
+  if (serviceAreas) portlandServiceAreaId = await seedServiceAreas(serviceAreas, cms, productIdBySlug);
   if (bundles) await seedServiceBundle(catalog, inventory, bundles);
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
+  if (advertising) await seedAdvertising(advertising, portlandServiceAreaId);
 }

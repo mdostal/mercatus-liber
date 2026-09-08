@@ -267,7 +267,7 @@ async function buildServices(): Promise<Services> {
   if (process.env.DEMO_BRAND === "northline") {
     await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
   } else {
-    await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas, bundles, recommendations);
+    await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas, bundles, recommendations, advertising);
   }
 
   return {

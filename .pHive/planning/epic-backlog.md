@@ -30,7 +30,7 @@ vertical-slice invariant), not just "some files exist."_
 | 20 | `promotions-discounts` | Coupon codes, percentage/fixed cart- and product-level discounts. New subsystem 16 (`@mercatus-liber/promotions`, core-only dependency) resolved design question: own subsystem, not a checkout-orders extension or a cart addition -- satisfies an optional `PricingAdjuster` structural interface checkout-orders declares in its own `types.ts`. Admin CRUD at `/admin/promotions` (first admin-side mutation UI). See `docs/subsystems/16-promotions.md` and `.pHive/epics/promotions-discounts/docs/design-discussion.md`. | **done** (4/4 stories complete) | 7, 9 |
 | 21 | `bundles` | Multi-SKU tiered package selector (e.g. "Product Only" / "+ Pro Setup" / "Complete Overhaul") sold from a single PDP. New subsystem 17 (`@mercatus-liber/bundles`, references SKUs by id only, never forks/extends `Product`/`Sku`) resolved design question: a tier selection becomes N ordinary per-SKU cart lines orchestrated at the app layer, not a new line-item shape cart/checkout-orders/promotions/inventory have to learn. Admin CRUD at `/admin/bundles`. See `docs/subsystems/17-bundles.md` and `.pHive/epics/bundles/docs/design-discussion.md`. | **done** (4/4 stories complete) | 1 |
 | 22 | `upsell-cross-sell` | "Customers also bought" / PDP and cart recommendations. New subsystem 18 (`@mercatus-liber/recommendations`, core-only dependency) resolved design question: an explicit, admin-authored source-product -> target-products mapping, never inferred/computed, distinct from marketing-catalog's `SuggestionRule` (which suggests *categories* for a product, not products for a shopper) -- a genuinely new recommendation surface. PDP/cart resolution and the same-category fallback are app-composed orchestration, not part of the package itself. Admin CRUD at `/admin/recommendations`. See `docs/subsystems/18-recommendations.md` and `.pHive/epics/upsell-cross-sell/docs/design-discussion.md`. | **done** (4/4 stories complete) | 1, 4, 9 |
-| 23 | `advertising` | **Backlogged 2026-09-08.** CMS already ships a static `ad-slot` component (subsystem 05) but nothing manages ad campaigns/creative/targeting/rotation to actually fill it -- currently just a hand-authored config block. This epic would add that management layer. | not started | 4 |
+| 23 | `advertising` | CMS already ships a static `ad-slot` component (subsystem 05); this epic added the management layer that fills it -- new subsystem 19 (`@mercatus-liber/advertising`, core-only dependency) resolved design question: an admin-curated Campaign/Creative model with optional service-area/page-slug targeting and stateless weighted-random rotation, resolved at the app-composition layer (`cms-sections.tsx`'s AdSlot), never inside `packages/cms` itself. Admin CRUD at `/admin/advertising`. See `docs/subsystems/19-advertising.md` and `.pHive/epics/advertising/docs/design-discussion.md`. | **done** (4/4 stories complete) | 4 |
 
 ## Definition of "vision fully done"
 - Epics 1-8 complete: full framework functional end-to-end (catalog → marketing catalog →
@@ -73,16 +73,17 @@ vertical-slice invariant), not just "some files exist."_
   Codebase and seed content only: no DNS/hosting cutover, no live Stripe key, no final
   pricing/SKU/logo decisions -- those remain Mathew's to take when ready, per that epic's own
   documented scope boundary.
-- **THE BACKLOG IS FULLY DRAINED.** Epics 1-19 are all done. Epic 15 — the actual finish line,
+- **THE BACKLOG IS FULLY DRAINED.** Epics 1-23 are all done (epics 20-23 were added later by
+  epic 17's audit and are now closed out too -- see below). Epic 15 — the actual finish line,
   not epic 13, per Mathew's own 2026-09-07 framing ("the true test is if we can replicate
   everything we want for dostal tech to sell there AND do the All That Technology fully
   re-created with plugins and features") — is done in both its 2026-09-08-redefined variants:
   15a (private, real ATT identity, in a brand-new non-public sibling repo, never touching ATT's
   actual live site or mercatus-liber's own git history) and 15b (public, obfuscated demo,
-  "Northline Home Tech," the framework's give-away example). Epics 20-22 (`promotions-discounts`,
-  `bundles`, `upsell-cross-sell`) are **done** as of 2026-09-08 (4/4 stories each). Epic 23
-  (advertising) remains backlogged — a real, identified gap, not yet built, no approval gate,
-  available to pick up any time.
+  "Northline Home Tech," the framework's give-away example). Epics 20-23 (`promotions-discounts`,
+  `bundles`, `upsell-cross-sell`, `advertising`) are **done** as of 2026-09-08 (4/4 stories each)
+  -- all four epics identified by epic 17's audit as genuinely missing are now built, closing out
+  this backlog wave entirely.
 - Real questions/approval gates still standing for any future work: anything that changes the
   architecture's prime directive, anything requiring a new external credential/service, and
   15a's content must never be wired to a public route/deploy target (it already isn't — no
