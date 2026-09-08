@@ -1,0 +1,33 @@
+{
+  "name": "@mercatus-liber/inventory",
+  "version": "0.1.0",
+  "description": "Stock levels per SKU via reserve/commit/release (subsystem 11). Depends on @mercatus-liber/core only; reads order line items via a narrow structural OrderLookup interface, never importing @mercatus-liber/checkout-orders directly. Default in-house adapter allows oversell/backorder (never throws) -- see this package's design decisions.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@mercatus-liber/cart": "workspace:*",
+    "@mercatus-liber/catalog": "workspace:*",
+    "@mercatus-liber/checkout-orders": "workspace:*",
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

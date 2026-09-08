@@ -1,7 +1,7 @@
 id: inv-01-inventory-package
 epic: inventory
 title: Inventory package (reserve/commit/release, event-driven sync)
-status: pending
+status: done
 complexity: high
 methodology: classic
 depends_on: []
