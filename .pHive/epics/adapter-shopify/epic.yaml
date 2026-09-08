@@ -1,0 +1,25 @@
+name: adapter-shopify
+title: Shopify Commerce-Backend Adapter
+description: >
+  A Shopify commerce-backend adapter (docs/subsystems/00-core-schema.md) proving the
+  persistence/commerce-backend interface can wrap an entire third-party platform, not just a
+  raw DB -- lets a client already on Shopify adopt Mercatus Liber's admin/AI-agent/plugin
+  layer without migrating off Shopify. Implements CatalogPersistenceAdapter against Shopify's
+  Admin GraphQL API: Product/ProductVariant map to core Product/Sku, product metafields map
+  to ProductAttribute. Same interface, tested with the same category of scenarios as
+  adapter-sqlite/adapter-postgres to prove behavioral parity -- swapping this in requires zero
+  change to catalog or any subsystem depending on it.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: shopify-01-adapter
+    title: "@mercatus-liber/adapter-shopify: CatalogPersistenceAdapter backed by Shopify's Admin GraphQL API"
+    complexity: large
+    depends_on: []

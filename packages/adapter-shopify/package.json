@@ -1,0 +1,29 @@
+{
+  "name": "@mercatus-liber/adapter-shopify",
+  "version": "0.1.0",
+  "description": "CatalogPersistenceAdapter backed by Shopify's Admin GraphQL API (subsystem 00's third reference implementation). Proves the persistence/commerce-backend interface can wrap an entire third-party platform, not just a raw DB -- lets a client already on Shopify adopt Mercatus Liber's admin/AI-agent/plugin layer without migrating off Shopify. Public surface is exactly CatalogPersistenceAdapter; depends on @mercatus-liber/core only.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
