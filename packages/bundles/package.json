@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/bundles",
+  "version": "0.1.0",
+  "description": "Multi-product bundles sold as a single purchasable tier selection on a PDP (subsystem 17). Depends on @mercatus-liber/core only -- never imports @mercatus-liber/cart, @mercatus-liber/checkout-orders, @mercatus-liber/promotions, @mercatus-liber/inventory, or @mercatus-liber/catalog. Declares its own narrow SkuPriceLookup structural interface (satisfied by catalog's CatalogService at the app-composition layer) to validate skuIds and compute a tier's live sum-of-parts price, recomputed on every read and never cached into the Bundle record.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
