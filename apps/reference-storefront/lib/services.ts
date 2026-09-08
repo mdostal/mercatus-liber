@@ -26,6 +26,12 @@ import {
   type CheckoutOrdersService,
 } from "@mercatus-liber/checkout-orders";
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
+import {
+  createDefaultBiAdapter,
+  createInMemoryBiEventLogRepository,
+  registerBiEventLogSync,
+  type BiMetricsAdapter,
+} from "@mercatus-liber/internal-bi";
 import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter } from "@mercatus-liber/inventory";
 import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
 import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
@@ -86,6 +92,7 @@ export interface Services {
   bundles: BundlesService;
   recommendations: RecommendationsService;
   advertising: AdvertisingService;
+  bi: BiMetricsAdapter;
 }
 
 /**
@@ -250,6 +257,29 @@ async function buildServices(): Promise<Services> {
   const inventory = createInMemoryInventoryAdapter();
   registerInventorySync({ events, inventory, orders: checkout });
 
+  // internal-bi (subsystem 20) -- structural shims bridge checkout/catalog/
+  // promotions' real service shapes onto internal-bi's own narrow
+  // OrderMetricsSource/SkuMetricsSource/PromotionMetricsSource interfaces (see
+  // packages/internal-bi/src/types.ts). registerBiEventLogSync is wired here,
+  // same pattern as registerInventorySync above -- it only sees events fired
+  // from this point forward, no backfill of pre-existing history (see
+  // .pHive/epics/internal-bi-metrics/docs/design-discussion.md §3).
+  const biEventLog = createInMemoryBiEventLogRepository();
+  const bi = createDefaultBiAdapter({
+    orders: {
+      listOrders: () => checkout.listOrders(),
+    },
+    skus: {
+      getSku: (id) => catalog.getSku(id),
+      getProduct: (id) => catalog.getProduct(id),
+    },
+    promotions: {
+      listPromotions: () => promotions.listPromotions(),
+    },
+    eventLog: biEventLog,
+  });
+  registerBiEventLogSync({ events, eventLog: biEventLog });
+
   const plugins = createPluginRegistry();
   const orderNotificationPlugin = createOrderNotificationPlugin();
   plugins.register(orderNotificationPlugin);
@@ -290,6 +320,7 @@ async function buildServices(): Promise<Services> {
     bundles,
     recommendations,
     advertising,
+    bi,
   };
 }
 
