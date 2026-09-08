@@ -25,8 +25,17 @@ step will fail at the live Stripe API call (expected -- no key exists in this pr
 yet, see cf-05/cf-07 execution notes in `.pHive/epics/core-foundation/`).
 
 ## Routes
-`/` (catalog + top-level categories), `/products/[slug]` (themed PDP -- see below), `/cart`,
-`/category/[slug]`, `/search`, `/order/[id]`, `/order/confirmed`.
+`/` (CMS-authored home page -- see below), `/products/[slug]` (themed PDP -- see below), `/cart`,
+`/category/[slug]`, `/search`, `/campaign/[slug]` (CMS marketing/campaign page), `/order/[id]`,
+`/order/confirmed`.
+
+## CMS
+`/` and `/campaign/[slug]` render from `@mercatus-liber/cms` page content -- not hardcoded JSX
+data. `components/cms-sections.tsx` maps a section's `componentType` (hero-banner, category-spot,
+product-grid, ad-slot) to real markup, same "concrete choices live in the app" pattern as
+theming's template map. The seeded marketing page (`fall-sale`) has its own curated,
+ordered mini-catalog (`MarketingPageMeta`), distinct from `marketing-catalog`'s category-based
+curation.
 
 ## Theming / PDP
 `/products/[slug]` is driven by `@mercatus-liber/pdp`'s view model and `@mercatus-liber/theming`'s

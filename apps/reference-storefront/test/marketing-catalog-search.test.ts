@@ -6,29 +6,15 @@
  * exercises the core-foundation slice -- rebuilding the same wiring shape
  * directly rather than importing lib/services.ts's process-singleton).
  */
-import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
-import { createCatalogService } from "@mercatus-liber/catalog";
-import { createInMemoryEventBus } from "@mercatus-liber/core";
-import {
-  createInMemoryCategoryRepository,
-  createInMemoryProductCategoryRepository,
-  createMarketingCatalogService,
-} from "@mercatus-liber/marketing-catalog";
 import { createInMemoryIndex, registerCatalogSearchSync } from "@mercatus-liber/search";
 import { describe, expect, it } from "vitest";
 import { seedCatalog } from "../lib/seed.js";
+import { buildTestCatalogServices } from "./helpers.js";
 
 describe("seeded marketing catalog + search", () => {
   it("assigns the seeded products to categories, including a shared category (many-to-many)", async () => {
-    const events = createInMemoryEventBus();
-    const persistence = createSqliteAdapter(":memory:");
-    const catalog = createCatalogService({ persistence, events });
-    const marketingCatalog = createMarketingCatalogService({
-      categories: createInMemoryCategoryRepository(),
-      assignments: createInMemoryProductCategoryRepository(),
-      attributes: catalog,
-    });
-    await seedCatalog(catalog, marketingCatalog);
+    const { catalog, marketingCatalog, cms } = buildTestCatalogServices();
+    await seedCatalog(catalog, marketingCatalog, cms);
 
     const deskAccessories = await marketingCatalog.getCategoryBySlug("desk-accessories");
     expect(deskAccessories).not.toBeNull();
@@ -42,19 +28,12 @@ describe("seeded marketing catalog + search", () => {
   });
 
   it("indexes every seeded product for search without a manual reindex call", async () => {
-    const events = createInMemoryEventBus();
-    const persistence = createSqliteAdapter(":memory:");
-    const catalog = createCatalogService({ persistence, events });
-    const marketingCatalog = createMarketingCatalogService({
-      categories: createInMemoryCategoryRepository(),
-      assignments: createInMemoryProductCategoryRepository(),
-      attributes: catalog,
-    });
+    const { events, catalog, marketingCatalog, cms } = buildTestCatalogServices();
 
     const search = createInMemoryIndex();
     registerCatalogSearchSync({ events, index: search, products: catalog });
 
-    await seedCatalog(catalog, marketingCatalog);
+    await seedCatalog(catalog, marketingCatalog, cms);
 
     const results = await search.query({ text: "dragon" });
     expect(results.length).toBeGreaterThanOrEqual(2);

@@ -1,31 +1,27 @@
+import { CmsSection } from "../components/cms-sections";
 import { getServices } from "../lib/services";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const { catalog, marketingCatalog } = await getServices();
-  const products = await catalog.listProducts({ status: "active" });
-  const topLevelCategories = await marketingCatalog.listChildCategories(null);
+  const { cms } = await getServices();
+  const home = await cms.getPageBySlug("home");
+
+  if (!home) {
+    return (
+      <main>
+        <h1>Home</h1>
+        <p>No home page configured yet.</p>
+      </main>
+    );
+  }
 
   return (
     <main>
-      <h1>Categories</h1>
-      <ul>
-        {topLevelCategories.map((category) => (
-          <li key={category.id}>
-            <a href={`/category/${category.slug}`}>{category.title}</a>
-          </li>
-        ))}
-      </ul>
-
-      <h1>Catalog</h1>
-      <ul>
-        {products.map((product) => (
-          <li key={product.id}>
-            <a href={`/products/${product.slug}`}>{product.title}</a> -- {product.description}
-          </li>
-        ))}
-      </ul>
+      {home.sections.map((section, i) => (
+        // Sections are an ordered list, not individually id-addressable in this minimal demo -- index is a stable enough key here.
+        <CmsSection key={i} section={section} />
+      ))}
     </main>
   );
 }

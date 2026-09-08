@@ -2,6 +2,13 @@ import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { createCartService, createInMemoryCartRepository, type CartService } from "@mercatus-liber/cart";
 import { createCatalogService, type CatalogService } from "@mercatus-liber/catalog";
 import {
+  createCmsService,
+  createComponentRegistry,
+  createInMemoryMarketingPageMetaRepository,
+  createInMemoryPageRepository,
+  type CmsService,
+} from "@mercatus-liber/cms";
+import {
   createCheckoutOrdersService,
   createInMemoryOrderRepository,
   type CheckoutOrdersService,
@@ -41,6 +48,7 @@ export interface Services {
   search: SearchIndexAdapter;
   theming: ThemingService;
   pdp: PdpService;
+  cms: CmsService;
 }
 
 let servicesPromise: Promise<Services> | null = null;
@@ -86,9 +94,15 @@ async function buildServices(): Promise<Services> {
   const theming = createThemingService();
   const pdp = createPdpService({ catalog, theming });
 
-  await seedCatalog(catalog, marketingCatalog);
+  const cms = createCmsService({
+    pages: createInMemoryPageRepository(),
+    marketingMeta: createInMemoryMarketingPageMetaRepository(),
+    components: createComponentRegistry(),
+  });
 
-  return { events, catalog, cart, checkout, marketingCatalog, search, theming, pdp };
+  await seedCatalog(catalog, marketingCatalog, cms);
+
+  return { events, catalog, cart, checkout, marketingCatalog, search, theming, pdp, cms };
 }
 
 /** Lazily builds the service graph once per server process and reuses it across requests. */

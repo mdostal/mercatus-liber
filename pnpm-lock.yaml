@@ -35,6 +35,9 @@ importers:
       '@mercatus-liber/checkout-orders':
         specifier: workspace:*
         version: link:../../packages/checkout-orders
+      '@mercatus-liber/cms':
+        specifier: workspace:*
+        version: link:../../packages/cms
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -154,6 +157,22 @@ importers:
       '@mercatus-liber/catalog':
         specifier: workspace:*
         version: link:../catalog
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1))
+
+  packages/cms:
+    dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
       '@types/node':
         specifier: ^22.7.5
         version: 22.20.1

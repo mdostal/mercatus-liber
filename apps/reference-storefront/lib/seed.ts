@@ -1,4 +1,5 @@
 import type { CatalogService } from "@mercatus-liber/catalog";
+import type { CmsService } from "@mercatus-liber/cms";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 
 interface DemoProduct {
@@ -61,9 +62,51 @@ async function seedCategories(marketingCatalog: MarketingCatalogService): Promis
   ]);
 }
 
-/** Seeds a handful of demo products/SKUs (published/active) plus category assignments and marketing-catalog data. */
-export async function seedCatalog(catalog: CatalogService, marketingCatalog: MarketingCatalogService): Promise<void> {
+/** Seeds a CMS-authored home page (hero banner + category spot) and one live marketing/campaign page with a curated mini-catalog. */
+async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string>): Promise<void> {
+  const home = await cms.createPage({
+    pageType: "home",
+    slug: "home",
+    title: "Home",
+    sections: [
+      {
+        componentType: "hero-banner",
+        config: {
+          headline: "Mercatus Liber",
+          subheadline: "The 100% free, open-source, headless, AI-agent-accessible e-commerce kit.",
+        },
+      },
+      {
+        componentType: "category-spot",
+        config: { categorySlugs: ["merch", "3d-printed"] },
+      },
+    ],
+  });
+  await cms.publishPage(home.id);
+
+  const organizerId = productIdBySlug.get("dragon-cable-organizer");
+  const { page: campaign } = await cms.createMarketingPage({
+    slug: "fall-sale",
+    title: "Fall Sale",
+    sections: organizerId
+      ? [{ componentType: "product-grid", config: { productIds: [organizerId] } }]
+      : [],
+    campaignName: "Fall Sale 2026",
+    startDate: "2026-10-01",
+    endDate: "2026-10-31",
+    productIds: organizerId ? [organizerId] : [],
+  });
+  await cms.publishPage(campaign.id);
+}
+
+/** Seeds a handful of demo products/SKUs (published/active), category assignments, and CMS pages. */
+export async function seedCatalog(
+  catalog: CatalogService,
+  marketingCatalog: MarketingCatalogService,
+  cms: CmsService,
+): Promise<void> {
   const categoryIdBySlug = await seedCategories(marketingCatalog);
+  const productIdBySlug = new Map<string, string>();
 
   for (const demo of DEMO_PRODUCTS) {
     const product = await catalog.createProduct({
@@ -72,6 +115,7 @@ export async function seedCatalog(catalog: CatalogService, marketingCatalog: Mar
       description: demo.description,
       identifyingAttributeKeys: ["color", "size"],
     });
+    productIdBySlug.set(demo.slug, product.id);
     await catalog.publishProduct(product.id);
     await catalog.generateSkus(
       product.id,
@@ -84,4 +128,6 @@ export async function seedCatalog(catalog: CatalogService, marketingCatalog: Mar
       if (categoryId) await marketingCatalog.assignProductToCategory(product.id, categoryId);
     }
   }
+
+  await seedCmsPages(cms, productIdBySlug);
 }
