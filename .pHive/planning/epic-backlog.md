@@ -20,8 +20,17 @@ vertical-slice invariant), not just "some files exist."_
 | 12 | `analytics-tracking` | 13 analytics — event-bus subscriber, PostHog adapter enabled by default, client-side `trackEvent()` helper | **done** (2/2 stories complete) | 1 |
 | 13 | `ai-mcp-interface` | 14 AI/MCP interface — MCP server + skills/tool catalog wrapping catalog/cart/checkout (shopper side) and catalog/CMS/inventory (admin side) | **done** (2/2 stories complete) | 1 (shopper side), 4 + 6 (admin side) |
 | 14 | `adapter-shopify` | A **Shopify commerce-backend adapter** — proves the persistence/commerce-backend interface can wrap an entire third-party platform, not just a raw DB. Lets a client already on Shopify adopt Mercatus Liber's admin/AI-agent/plugin layer *without* migrating off Shopify. | **done** (1/1 story complete) | 1, 8 (pattern proven by adapter-postgres first) |
-| 15 | `att-recreation-acceptance-test` | **The real acceptance test.** Fully recreate client **All That Technology**'s site/functionality (home-automation installs — TV mounting, cameras, doorbells, fiber; Royse City TX service-area business, 8 core cities, multi-location marketing pattern) using Mercatus Liber's plugins/features, runnable on either the native stack or the Shopify adapter (14) — client's choice. See memory `mercatus-liber-destination-and-acceptance-test` for full context. | not started | 2, 4, 6, 14 |
+| 15 | `att-recreation-acceptance-test` | **Redefined 2026-09-08 (Mathew's explicit correction: "we are NOT updating their site, we are making a clone of it as an EXAMPLE/DEMO").** Two variants, both built on epics 17-19 below: **(a)** an internal-only, non-public exact clone using All That Technology's real identity/content — for presenting directly to that client, never deployed to a public URL; **(b)** a public, obfuscated demo theme (fictional business name/logo, a similar-but-not-identical look) proving the same service-area/home-automation feature set as a giveaway example. See sub-epics 15a/15b below and memory `mercatus-liber-destination-and-acceptance-test`. | not started (blocked on 17-19) | 2, 4, 6, 14, 17, 18, 19 |
+| 15a | `att-private-clone-internal` | The internal-only exact clone (variant a of epic 15). Real ATT branding/content, seeded from what's already known (Royse City TX, 8 core cities, TV mounting/cameras/doorbells/fiber). Lives in a clearly-labeled internal/private area of the repo or a separate non-public app; never wired to a public route or deploy target. | not started | 15, 17, 18, 19 |
+| 15b | `service-demo-theme-public` | The public demo (variant b of epic 15). Fictional business identity (name + logo + a theme visually similar to, but distinct from, ATT's real look), same home-automation/service-area feature set, plugins/analytics fully wired, deployable as the framework's flagship give-away example. | not started | 15, 17, 18, 19 |
 | 16 | `deploy-tool-and-auto-update` | The **commercial thesis**: a one-command installer to stand up a store on a client's own infrastructure (not just Mathew-hosted), plus an auto-update mechanism for security/maintenance patches — what makes "$1,000 one-time setup, remove folks from Shopify" (e.g. client Cadex) actually operable at more than one client without ongoing hand-holding. | **done** (2/2 stories complete) | 1, 9 |
+| 17 | `commerce-gap-audit` | **Added 2026-09-08.** Audit every plugin/analytics/CMS touchpoint across the repo, close small real gaps found (e.g. missing client-side analytics events), and write up what's genuinely missing as new backlog epics (20-23 below) rather than bolting them on ad hoc. Prerequisite for 15a/15b so the demo actually proves real coverage, not just what happened to get built first. | not started | 12 |
+| 18 | `cms-content-adapters` | **Added 2026-09-08 (Mathew's explicit ask: "sanity CMS and other parts need to be adapters as well and wrapped").** Formalize CMS's `PageRepository`/`MarketingPageMetaRepository` as an explicit adapter contract (same shape as `CatalogPersistenceAdapter`), and build a reference third-party CMS adapter (`adapter-sanity`, wrapping Sanity's Content API) proving a client's existing CMS/design-system tooling (including Next.js's own Vercel-toolbar-integrated visual-editing tools) can sit alongside or replace the built-in CMS without touching any subsystem that depends on it. | not started | 4 |
+| 19 | `service-areas-location-pages` | **Added 2026-09-08 (Mathew's explicit ask: "ensure we can make the location based pages for service area").** New subsystem (service-areas: city/region entities distinct from marketing-catalog's product categories, same "data vs. page layout" split as 02/05) + a new CMS `location` page type + reference-storefront `/locations/[slug]` route -- the multi-location marketing pattern ATT's real business needs (8 core cities). | not started | 2, 4 |
+| 20 | `promotions-discounts` | **Backlogged 2026-09-08 (identified via epic 17's audit, not yet built).** Coupon codes, percentage/fixed cart- and product-level discounts. Needs a pluggable pricing-adjustment interface checkout-orders/cart can consult -- design question (own subsystem vs. plugin extension point) deferred to this epic's own planning. | not started | 7, 9 |
+| 21 | `bundles` | **Backlogged 2026-09-08.** Multi-product bundles sold as a single purchasable unit (e.g. camera + install kit). Likely extends catalog's Product/Sku model rather than a wholly separate subsystem -- design question deferred to this epic's own planning. | not started | 1 |
+| 22 | `upsell-cross-sell` | **Backlogged 2026-09-08.** "Customers also bought" / PDP and cart recommendations. Distinct from marketing-catalog's `SuggestionRule` (which suggests *categories* for a product, not products for a shopper) -- a genuinely new recommendation surface. | not started | 1, 4, 9 |
+| 23 | `advertising` | **Backlogged 2026-09-08.** CMS already ships a static `ad-slot` component (subsystem 05) but nothing manages ad campaigns/creative/targeting/rotation to actually fill it -- currently just a hand-authored config block. This epic would add that management layer. | not started | 4 |
 
 ## Definition of "vision fully done"
 - Epics 1-8 complete: full framework functional end-to-end (catalog → marketing catalog →
@@ -59,21 +68,21 @@ vertical-slice invariant), not just "some files exist."_
   otherwise. See `.pHive/epics/deploy-tool-and-auto-update/docs/deploy-tool-scope.md` for
   disclosed gaps (no full Next.js app template yet, no live npm registry integration test since
   these packages aren't published yet).
-- **Every ungated epic is now done (1-10, 12-14, 16).** Only epic 11 (`shop-migration`) and
-  epic 15 (`att-recreation-acceptance-test`) remain — both explicitly require Mathew's
-  sign-off before any work starts, per the approval gates below. The backlog does not drain
-  further without that.
-- **Epic 15 is the actual finish line, not epic 13.** Per Mathew's own framing (2026-09-07):
-  "the true test is if we can replicate everything we want for dostal tech to sell there AND do
-  the All That Technology fully re-created with plugins and features so they could choose to
-  run off of shopify if they wanted." shop.mdostal.com (epic 11) alone is not sufficient proof
-  — a real client's real multi-location service-area business, recreated end-to-end, optionally
-  on Shopify, is the bar.
-- Only then does this backlog "drain." Real questions/approval gates along the way: anything
-  that changes the architecture's prime directive, anything requiring a new external
-  credential/service, epic 11's cutover itself (touches a live-ish shop, not a green field), and
-  epic 15's use of a real client's identity/business (needs Mathew's explicit sign-off before
-  anything client-facing is touched, even as a recreation exercise).
+- **Every ungated epic through 16 is done (1-10, 12-14, 16).** Epics 11 and 15 are both now
+  **approved to proceed** (Mathew, 2026-09-08): epic 11 (`shop-migration`) unconditionally;
+  epic 15 in its redefined shape (15a private clone / 15b public demo, per above) after epics
+  17-19 land. New epics 17-23 (added 2026-09-08 from Mathew's audit/gap-analysis instructions)
+  have no approval gate and proceed autonomously like every other epic.
+- **Epic 15 is still the actual finish line, not epic 13** — the same framing as 2026-09-07
+  ("the true test is if we can replicate everything we want for dostal tech to sell there AND
+  do the All That Technology fully re-created with plugins and features") still holds, now
+  split into 15a (private, real ATT identity, presented directly to that client) and 15b
+  (public, obfuscated demo, the framework's give-away example) per Mathew's 2026-09-08
+  correction that neither variant touches ATT's actual live site.
+- Real questions/approval gates still standing: anything that changes the architecture's prime
+  directive, anything requiring a new external credential/service, and — even though 15a is
+  approved to build — 15a's content must never be wired to a public route/deploy target; that
+  would cross back into needing explicit fresh sign-off.
 - **Longer-term destination:** most of this work is intended to eventually move under Pantheon
   (not scheduled yet) — see memory `mercatus-liber-destination-and-acceptance-test`. Keep docs
   and history clean with that eventual migration in mind.
