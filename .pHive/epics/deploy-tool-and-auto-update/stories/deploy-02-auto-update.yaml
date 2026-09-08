@@ -1,7 +1,7 @@
 id: deploy-02-auto-update
 epic: deploy-tool-and-auto-update
 title: "@mercatus-liber/auto-update: version checking + test-gated apply-or-rollback"
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [deploy-01-create-store-scaffolder]
