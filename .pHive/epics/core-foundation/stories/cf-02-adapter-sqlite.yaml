@@ -1,7 +1,7 @@
 id: cf-02-adapter-sqlite
 epic: core-foundation
 title: SQLite reference persistence adapter
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [cf-01-monorepo-scaffold-core-schema]

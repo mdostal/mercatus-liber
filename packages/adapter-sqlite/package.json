@@ -1,0 +1,30 @@
+{
+  "name": "@osc/adapter-sqlite",
+  "version": "0.1.0",
+  "description": "Reference persistence adapter backed by SQLite. Implements @osc/core's repository interfaces -- its public surface is exactly those interfaces, no SQLite-specific types leak out. Chosen as the first reference adapter for lowest local-dev friction (no external DB service required); @osc/adapter-postgres proves the same contract with a second backend.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@osc/core": "workspace:*",
+    "better-sqlite3": "^13.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
