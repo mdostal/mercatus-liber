@@ -1,7 +1,7 @@
 id: pt-03-reference-storefront-themed-pdp
 epic: pdp-theming
 title: Reference storefront -- themed PDP with 2 layout configs
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [pt-02-pdp-package]

@@ -14,7 +14,9 @@ import {
   type MarketingCatalogService,
 } from "@mercatus-liber/marketing-catalog";
 import { createStripeAdapter } from "@mercatus-liber/payments";
+import { createPdpService, type PdpService } from "@mercatus-liber/pdp";
 import { createInMemoryIndex, registerCatalogSearchSync, type SearchIndexAdapter } from "@mercatus-liber/search";
+import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
 import { seedCatalog } from "./seed";
 
 /**
@@ -37,6 +39,8 @@ export interface Services {
   checkout: CheckoutOrdersService;
   marketingCatalog: MarketingCatalogService;
   search: SearchIndexAdapter;
+  theming: ThemingService;
+  pdp: PdpService;
 }
 
 let servicesPromise: Promise<Services> | null = null;
@@ -79,9 +83,12 @@ async function buildServices(): Promise<Services> {
   const search = createInMemoryIndex();
   registerCatalogSearchSync({ events, index: search, products: catalog });
 
+  const theming = createThemingService();
+  const pdp = createPdpService({ catalog, theming });
+
   await seedCatalog(catalog, marketingCatalog);
 
-  return { events, catalog, cart, checkout, marketingCatalog, search };
+  return { events, catalog, cart, checkout, marketingCatalog, search, theming, pdp };
 }
 
 /** Lazily builds the service graph once per server process and reuses it across requests. */
