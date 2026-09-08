@@ -3,3 +3,10 @@ packages:
   - "apps/*"
 allowBuilds:
   better-sqlite3: true
+  core-js: false
+minimumReleaseAgeExclude:
+  - '@posthog/core@1.50.6 || 1.51.0'
+  - '@posthog/types@1.409.1'
+  - posthog-node@5.51.7
+  - '@posthog/browser-common@0.8.2'
+  - posthog-js@1.428.3

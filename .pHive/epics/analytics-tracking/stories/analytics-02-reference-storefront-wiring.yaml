@@ -1,0 +1,69 @@
+id: analytics-02-reference-storefront-wiring
+epic: analytics-tracking
+title: Reference storefront wiring -- server-side subscriber wired by default, client-side trackEvent() helper
+status: done
+complexity: medium
+methodology: classic
+depends_on: [analytics-01-adapter-and-subscriber]
+
+description: |
+  Wire @mercatus-liber/analytics into the reference storefront the same way
+  every other subsystem is wired: lib/services.ts constructs the adapter
+  (PostHog if POSTHOG_API_KEY is set, no-op otherwise -- documented gap, same
+  pattern as the Stripe adapter's empty-secretKey fallback) and calls
+  registerAnalyticsSync at boot, before seeding, so seeded/demo activity
+  doesn't silently rely on ordering. Adds a client-side trackEvent() browser
+  helper (posthog-js, also key-gated) called from the PDP page for a
+  product-viewed interaction event that never touches the backend -- the
+  concrete proof of the doc's "client and server paths both terminate at the
+  same AnalyticsAdapter interface" design, and the doc's dedup answer
+  (distinct event names, not a shared dedup mechanism).
+
+acceptance_criteria:
+  - "Given lib/services.ts, when POSTHOG_API_KEY is unset (as in tests/dev), then the wired adapter is the no-op adapter -- no real network call is attempted"
+  - "Given a real checkout run through the wired services (seeded catalog, cart, checkout), when checkout.order.placed and checkout.order.paid fire, then a recording test double substituted for the adapter observes both track() calls with the correct mapped event names"
+  - "Given the PDP page, when visited, then it calls the client-side trackEvent() helper for a product-viewed event -- verified by the helper's own no-op-when-no-key behavior (no real browser/network dependency in tests)"
+  - "Given the new analytics wiring, when grepped, then lib/services.ts remains the only module constructing the concrete PostHog adapter -- no other app file imports @mercatus-liber/analytics's posthog-adapter directly"
+
+steps:
+  - id: research
+    description: Confirm lib/services.ts's existing wiring order (search/inventory sync registration timing relative to seeding) to place registerAnalyticsSync consistently.
+    agent: researcher
+  - id: implement
+    description: Wire the adapter + registerAnalyticsSync into lib/services.ts; add lib/analytics-client.ts browser helper; call it from the PDP page.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Test that a real checkout flow through the wired services produces the expected track() calls on a recording fake substituted for the real adapter.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Grep-verify lib/services.ts is the only concrete-adapter-constructing module for analytics too.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch, merge epic to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: The only module that may construct concrete adapters; where the PostHog/no-op choice is made
+    - path: apps/reference-storefront/app/products/[slug]/page.tsx
+      purpose: PDP page -- where the client-side product-viewed trackEvent() call is added
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire analytics adapter (PostHog or no-op by env) + registerAnalyticsSync
+  - file: apps/reference-storefront/lib/analytics-client.ts
+    change: New -- browser trackEvent() helper, key-gated no-op fallback
+  - file: apps/reference-storefront/app/products/[slug]/page.tsx
+    change: Call trackEvent for a product-viewed interaction event
+  - file: apps/reference-storefront/test/analytics-wiring.test.ts
+    change: New -- recording-fake-adapter test proving real checkout events map correctly
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "lib/services.ts remains the only concrete-adapter-importing module; analytics wiring adds no new cross-subsystem coupling"

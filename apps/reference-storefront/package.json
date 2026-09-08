@@ -15,6 +15,7 @@
   "dependencies": {
     "@mercatus-liber/account": "workspace:*",
     "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@mercatus-liber/analytics": "workspace:*",
     "@mercatus-liber/cart": "workspace:*",
     "@mercatus-liber/catalog": "workspace:*",
     "@mercatus-liber/checkout-orders": "workspace:*",
@@ -28,6 +29,7 @@
     "@mercatus-liber/search": "workspace:*",
     "@mercatus-liber/theming": "workspace:*",
     "next": "^16.3.4",
+    "posthog-js": "^1.428.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

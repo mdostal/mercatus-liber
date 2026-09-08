@@ -1,0 +1,83 @@
+id: analytics-01-adapter-and-subscriber
+epic: analytics-tracking
+title: "@mercatus-liber/analytics: AnalyticsAdapter interface, allow-list event mapping, PostHog + no-op adapters, event-bus subscriber"
+status: done
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  New package @mercatus-liber/analytics, depending on @mercatus-liber/core only
+  (event bus), per docs/subsystems/13-analytics-tracking.md. Ships: an
+  AnalyticsAdapter interface (track/identify/page -- the shape PostHog/
+  Segment/Mixpanel/GA4 already converge on), a resolved allow-list mapping
+  the actual bus events this repo publishes today (cart.item.added/removed/
+  updated, cart.cleared, checkout.order.placed/paid, payments.payment.
+  succeeded/failed) to analytics event names -- deliberately excluding
+  internal catalog CRUD/sku-creation events per the doc's own "lean allow-list"
+  resolution of open question 1. A PostHog reference adapter (posthog-node),
+  a no-op adapter for disabled/privacy-conscious deployments, and
+  registerAnalyticsSync(events, analytics) -- the subscriber wiring every
+  other subsystem's existing events into the adapter with zero changes to
+  those subsystems.
+
+acceptance_criteria:
+  - "Given the allow-list, when inspected, then it covers exactly the commerce events this repo actually publishes today (grep-verified against packages/*/src for events.publish calls) -- no invented events, no catalog/sku admin events included"
+  - "Given createPostHogAdapter({apiKey, host}), when track/identify/page are called, then they call the underlying PostHog client's capture/identify methods with the expected shape (posthog-node mocked in tests, no real network calls)"
+  - "Given createNoopAdapter(), when track/identify/page are called, then they resolve without error and without any external call -- swapping PostHog for this is a config change only"
+  - "Given registerAnalyticsSync({events, analytics}) is wired to a real event bus, when an allow-listed event (e.g. checkout.order.placed) is published, then the adapter's track() is called with the mapped event name and the event's own payload as properties"
+  - "Given a non-allow-listed event (e.g. catalog.product.created) is published, when registerAnalyticsSync is wired, then the adapter's track() is NOT called for it"
+  - "Given the package's dependencies, when inspected, then it depends on @mercatus-liber/core plus posthog-node only -- no dependency on cart/catalog/checkout-orders/payments packages (structural/event-only decoupling, same pattern as inventory/search)"
+
+steps:
+  - id: research
+    description: Grep every packages/*/src for events.publish(...) calls to ground the allow-list in what's actually published today, not assumption.
+    agent: researcher
+  - id: implement
+    description: Implement AnalyticsAdapter, event-map allow-list, PostHog adapter, no-op adapter, registerAnalyticsSync.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for allow-list correctness, PostHog adapter (mocked SDK), no-op adapter, subscriber forwarding + exclusion behavior.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify zero dependency on any subsystem package other than core; verify allow-list matches the actual grep.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/13-analytics-tracking.md
+      purpose: Full spec, including the three open questions this story resolves (allow-list, PII-is-adapter's-job, dedup-by-distinct-naming)
+    - path: packages/search/src/subscriber.ts
+      purpose: The existing event-bus-subscriber pattern (registerCatalogSearchSync) this story's registerAnalyticsSync mirrors
+    - path: packages/payments/src/stripe-adapter.ts
+      purpose: The existing pattern for wrapping a third-party SDK client constructed inside the adapter factory (mirrored for PostHog)
+
+files_to_modify:
+  - file: packages/analytics/package.json
+    change: New package, depends on @mercatus-liber/core + posthog-node
+  - file: packages/analytics/src/types.ts
+    change: AnalyticsAdapter interface
+  - file: packages/analytics/src/event-map.ts
+    change: Allow-list mapping bus topic -> analytics event name
+  - file: packages/analytics/src/posthog-adapter.ts
+    change: PostHog reference adapter
+  - file: packages/analytics/src/noop-adapter.ts
+    change: No-op adapter
+  - file: packages/analytics/src/subscriber.ts
+    change: registerAnalyticsSync
+  - file: packages/analytics/src/index.ts
+    change: Public exports
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "analytics depends on @mercatus-liber/core only -- one-directional subscriber, never a dependency of any other subsystem, per the doc's own decoupling notes"
+  - concern: analytics-on-by-default
+    action: "PostHog adapter is the shipped default; swapping to no-op or another provider must be a config change in the consuming app, never a code change in this package"

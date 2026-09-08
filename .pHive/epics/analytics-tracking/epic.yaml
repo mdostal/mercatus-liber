@@ -1,0 +1,26 @@
+name: analytics-tracking
+title: Analytics & Tracking (subsystem 13)
+description: >
+  Analytics as a pure event-bus subscriber (docs/subsystems/13-analytics-tracking.md) --
+  server-side collection maps existing bus events to an AnalyticsAdapter via a lean allow-list
+  (per the doc's own resolved open question), ships enabled by default with a PostHog adapter,
+  swappable to a no-op adapter with zero code changes. Client-side trackEvent() helper covers
+  interaction events the backend never sees (product viewed, search performed).
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: analytics-01-adapter-and-subscriber
+    title: "@mercatus-liber/analytics: AnalyticsAdapter interface, allow-list event mapping, PostHog + no-op adapters, event-bus subscriber"
+    complexity: medium
+    depends_on: []
+  - id: analytics-02-reference-storefront-wiring
+    title: Reference storefront wiring -- server-side subscriber wired by default, client-side trackEvent() helper
+    complexity: medium
+    depends_on: [analytics-01-adapter-and-subscriber]

@@ -1,5 +1,11 @@
 import { createAccountService, createInMemoryCustomerProfileRepository, type AccountService } from "@mercatus-liber/account";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
+import {
+  createNoopAdapter,
+  createPostHogAdapter,
+  registerAnalyticsSync,
+  type AnalyticsAdapter,
+} from "@mercatus-liber/analytics";
 import { createCartService, createInMemoryCartRepository, type CartService } from "@mercatus-liber/cart";
 import { createCatalogService, type CatalogService } from "@mercatus-liber/catalog";
 import {
@@ -44,6 +50,7 @@ import { seedCatalog } from "./seed";
  */
 export interface Services {
   events: EventBus;
+  analytics: AnalyticsAdapter;
   catalog: CatalogService;
   cart: CartService;
   checkout: CheckoutOrdersService;
@@ -62,6 +69,15 @@ let servicesPromise: Promise<Services> | null = null;
 
 async function buildServices(): Promise<Services> {
   const events = createInMemoryEventBus();
+
+  // PostHog by default when a key is configured; no-op otherwise -- same
+  // documented "empty config -> harmless fallback" pattern as the Stripe
+  // adapter's empty secretKey. Wired before seeding so demo/seed activity
+  // is covered by the same event-bus subscription real requests get.
+  const analytics: AnalyticsAdapter = process.env.POSTHOG_API_KEY
+    ? createPostHogAdapter({ apiKey: process.env.POSTHOG_API_KEY, host: process.env.POSTHOG_HOST })
+    : createNoopAdapter();
+  registerAnalyticsSync({ events, analytics });
 
   const persistence = createSqliteAdapter(":memory:");
   const catalog = createCatalogService({ persistence, events });
@@ -130,6 +146,7 @@ async function buildServices(): Promise<Services> {
 
   return {
     events,
+    analytics,
     catalog,
     cart,
     checkout,
