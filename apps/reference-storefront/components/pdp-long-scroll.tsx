@@ -14,7 +14,7 @@ export function PdpLongScroll({
   return (
     <main>
       <h1>{product.title}</h1>
-      <p style={{ fontSize: 12, color: "#666" }}>Layout: long-scroll</p>
+      <p style={{ fontSize: 12, color: "var(--color-accent)" }}>Layout: long-scroll</p>
 
       <p>{product.description}</p>
 
@@ -29,7 +29,7 @@ export function PdpLongScroll({
 
       <h2>Buy</h2>
       {skus.map((sku) => (
-        <form action={addToCartAction} key={sku.id} style={{ marginBottom: 16, borderTop: "1px solid #eee", paddingTop: 8 }}>
+        <form action={addToCartAction} key={sku.id} style={{ marginBottom: 16, borderTop: "1px solid var(--color-accent)", paddingTop: 8 }}>
           <input type="hidden" name="skuId" value={sku.id} />
           <div>{sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}</div>
           <div>
@@ -37,7 +37,12 @@ export function PdpLongScroll({
           </div>
           <div>In stock: {stockBySkuId[sku.id] ?? 0}</div>
           <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
-          <button type="submit">Add to cart</button>
+          <button
+            type="submit"
+            style={{ background: "var(--color-primary)", color: "var(--color-background)", borderRadius: "var(--radius)", border: "none", padding: "4px 12px" }}
+          >
+            Add to cart
+          </button>
         </form>
       ))}
     </main>

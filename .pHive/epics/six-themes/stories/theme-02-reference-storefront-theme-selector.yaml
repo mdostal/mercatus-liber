@@ -1,7 +1,21 @@
 id: theme-02-reference-storefront-theme-selector
 epic: six-themes
 title: Reference storefront -- selectable theme applying real CSS custom properties
-status: pending
+status: done
+
+execution_note: >
+  Design correction from the original story sketch: Next.js App Router
+  layouts do NOT receive searchParams (only pages do -- this is an
+  intentional framework constraint so a layout isn't forced to re-render per
+  query param). Switched the mechanism to a cookie (ml_theme, mirrors the
+  existing cart-cookie/customer-cookie pattern) set via a form + server
+  action, which layouts CAN read. Also: theme selection is deliberately NOT
+  applied by mutating the shared/global ThemingService singleton per request
+  -- that would race across concurrent requests with different selected
+  themes. Instead each request resolves its own bundle from THEME_BUNDLES
+  (a pure lookup, no shared mutable state) and passes the bundle's PDP
+  template choice as an explicit per-call override to pdp.getViewModel,
+  exactly like the existing ?template= override already does.
 complexity: medium
 methodology: classic
 depends_on: [theme-01-six-theme-bundles]

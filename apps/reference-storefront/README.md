@@ -29,6 +29,17 @@ yet, see cf-05/cf-07 execution notes in `.pHive/epics/core-foundation/`).
 `/category/[slug]`, `/search`, `/campaign/[slug]` (CMS marketing/campaign page), `/order/[id]`,
 `/order/confirmed`, `/account` (order history + recent activity -- see below).
 
+## Themes
+6 selectable themes (classic, dark, minimal, vibrant, retro, high-contrast) via the "Theme"
+dropdown in the header. Selection is stored in an `ml_theme` cookie (mirrors the cart/customer
+cookie pattern -- Next.js layouts can't read `searchParams`, only cookies). The root layout
+renders the active bundle's tokens as real `:root` CSS custom properties, and PDP components use
+`var(--token-name)` for key styling. Each theme also picks a default PDP layout
+(`pdp.tabbed-detail` or `pdp.long-scroll`) via a per-request override -- **never** by mutating
+the shared `ThemingService` singleton, which would race across concurrent requests selecting
+different themes. See `@mercatus-liber/theming`'s `applyTheme`/`THEME_BUNDLES` -- a theme is
+pure composition of existing primitives, not a separate mechanism.
+
 ## Plugins
 `/admin/plugins` is the first page under an `/admin` route (setting up the landing spot for
 later admin-view work) and lists registered plugins plus recent notifications from the
