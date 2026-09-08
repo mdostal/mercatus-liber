@@ -20,8 +20,8 @@ vertical-slice invariant), not just "some files exist."_
 | 12 | `analytics-tracking` | 13 analytics — event-bus subscriber, PostHog adapter enabled by default, client-side `trackEvent()` helper | **done** (2/2 stories complete) | 1 |
 | 13 | `ai-mcp-interface` | 14 AI/MCP interface — MCP server + skills/tool catalog wrapping catalog/cart/checkout (shopper side) and catalog/CMS/inventory (admin side) | **done** (2/2 stories complete) | 1 (shopper side), 4 + 6 (admin side) |
 | 14 | `adapter-shopify` | A **Shopify commerce-backend adapter** — proves the persistence/commerce-backend interface can wrap an entire third-party platform, not just a raw DB. Lets a client already on Shopify adopt Mercatus Liber's admin/AI-agent/plugin layer *without* migrating off Shopify. | **done** (1/1 story complete) | 1, 8 (pattern proven by adapter-postgres first) |
-| 15 | `att-recreation-acceptance-test` | **Redefined 2026-09-08 (Mathew's explicit correction: "we are NOT updating their site, we are making a clone of it as an EXAMPLE/DEMO").** Two variants, both built on epics 17-19 below: **(a)** an internal-only, non-public exact clone using All That Technology's real identity/content — for presenting directly to that client, never deployed to a public URL; **(b)** a public, obfuscated demo theme (fictional business name/logo, a similar-but-not-identical look) proving the same service-area/home-automation feature set as a giveaway example. See sub-epics 15a/15b below and memory `mercatus-liber-destination-and-acceptance-test`. | not started (blocked on 17-19) | 2, 4, 6, 14, 17, 18, 19 |
-| 15a | `att-private-clone-internal` | The internal-only exact clone (variant a of epic 15). Real ATT branding/content, seeded from what's already known (Royse City TX, 8 core cities, TV mounting/cameras/doorbells/fiber). Lives in a clearly-labeled internal/private area of the repo or a separate non-public app; never wired to a public route or deploy target. | not started | 15, 17, 18, 19 |
+| 15 | `att-recreation-acceptance-test` | **Redefined 2026-09-08 (Mathew's explicit correction: "we are NOT updating their site, we are making a clone of it as an EXAMPLE/DEMO").** Two variants, both built on epics 17-19: **(a)** an internal-only, non-public exact clone using All That Technology's real identity/content — for presenting directly to that client, never deployed to a public URL; **(b)** a public, obfuscated demo theme (fictional business name/logo, a similar-but-not-identical look) proving the same service-area/home-automation feature set as a giveaway example. **Both variants done** — see 15a/15b below. This is the actual finish line for the vision (see "Definition of vision fully done" below). | **done** (both variants complete) | 2, 4, 6, 14, 17, 18, 19 |
+| 15a | `att-private-clone-internal` | The internal-only exact clone (variant a of epic 15). Real ATT branding/content sourced from their own real site-planning doc (`att-site/docs/internal/site-context.md`) — business name, real confirmed service list, real confirmed 8 service-area cities, real confirmed "Trust-First" homepage direction and "Clean Slate" color scheme — deliberately excluding all revenue/financial data, ad account IDs, analytics IDs, and credentials (out of scope for a site recreation). | **done** — built in a brand-new, separate, non-public repo (`~/Documents/work/clients/att-recreation-internal`, own local git history, **no remote configured**), never mercatus-liber's own history (which is destined for eventual OSS/public release — keeping real client content out of it entirely is a stronger safety boundary than an in-repo "internal" folder). See that repo's own README.md (loud do-not-deploy banner) and `docs/what-this-uses-and-doesnt.md` (exact content boundary). Verified live end-to-end (browsing/cart/PDP/locations render real data; checkout fails loudly without a Stripe key), same rigor as epic 11. | 15, 17, 18, 19 |
 | 15b | `service-demo-theme-public` | The public demo (variant b of epic 15). Fictional business identity (name + logo + a theme visually similar to, but distinct from, ATT's real look), same home-automation/service-area feature set, plugins/analytics fully wired, deployable as the framework's flagship give-away example. | **done** (2/2 stories complete — "Northline Home Tech", see `.pHive/epics/service-demo-theme-public/`) | 15, 17, 18, 19 |
 | 16 | `deploy-tool-and-auto-update` | The **commercial thesis**: a one-command installer to stand up a store on a client's own infrastructure (not just Mathew-hosted), plus an auto-update mechanism for security/maintenance patches — what makes "$1,000 one-time setup, remove folks from Shopify" (e.g. client Cadex) actually operable at more than one client without ongoing hand-holding. | **done** (2/2 stories complete) | 1, 9 |
 | 17 | `commerce-gap-audit` | **Added 2026-09-08.** Audit every plugin/analytics/CMS touchpoint across the repo, close small real gaps found (e.g. missing client-side analytics events), and write up what's genuinely missing as new backlog epics (20-23 below) rather than bolting them on ad hoc. Prerequisite for 15a/15b so the demo actually proves real coverage, not just what happened to get built first. | **done** (1/1 story complete) | 12 |
@@ -73,21 +73,19 @@ vertical-slice invariant), not just "some files exist."_
   Codebase and seed content only: no DNS/hosting cutover, no live Stripe key, no final
   pricing/SKU/logo decisions -- those remain Mathew's to take when ready, per that epic's own
   documented scope boundary.
-- **Every ungated epic through 16, plus 11, is done (1-14, 16).** Epic 15 remains
-  **approved to proceed** (Mathew, 2026-09-08) in its redefined shape (15a private clone / 15b
-  public demo, per above) once epics 17-19 land. New epics 17-23 (added 2026-09-08 from
-  Mathew's audit/gap-analysis instructions) have no approval gate and proceed autonomously like
-  every other epic.
-- **Epic 15 is still the actual finish line, not epic 13** — the same framing as 2026-09-07
-  ("the true test is if we can replicate everything we want for dostal tech to sell there AND
-  do the All That Technology fully re-created with plugins and features") still holds, now
-  split into 15a (private, real ATT identity, presented directly to that client) and 15b
-  (public, obfuscated demo, the framework's give-away example) per Mathew's 2026-09-08
-  correction that neither variant touches ATT's actual live site.
-- Real questions/approval gates still standing: anything that changes the architecture's prime
-  directive, anything requiring a new external credential/service, and — even though 15a is
-  approved to build — 15a's content must never be wired to a public route/deploy target; that
-  would cross back into needing explicit fresh sign-off.
+- **THE BACKLOG IS FULLY DRAINED.** Epics 1-19 are all done. Epic 15 — the actual finish line,
+  not epic 13, per Mathew's own 2026-09-07 framing ("the true test is if we can replicate
+  everything we want for dostal tech to sell there AND do the All That Technology fully
+  re-created with plugins and features") — is done in both its 2026-09-08-redefined variants:
+  15a (private, real ATT identity, in a brand-new non-public sibling repo, never touching ATT's
+  actual live site or mercatus-liber's own git history) and 15b (public, obfuscated demo,
+  "Northline Home Tech," the framework's give-away example). Epics 20-23
+  (promotions-discounts, bundles, upsell-cross-sell, advertising) remain backlogged — real,
+  identified gaps, not yet built, no approval gate, available to pick up any time.
+- Real questions/approval gates still standing for any future work: anything that changes the
+  architecture's prime directive, anything requiring a new external credential/service, and
+  15a's content must never be wired to a public route/deploy target (it already isn't — no
+  remote is configured on that repo at all) — doing so would need fresh, explicit sign-off.
 - **Longer-term destination:** most of this work is intended to eventually move under Pantheon
   (not scheduled yet) — see memory `mercatus-liber-destination-and-acceptance-test`. Keep docs
   and history clean with that eventual migration in mind.
