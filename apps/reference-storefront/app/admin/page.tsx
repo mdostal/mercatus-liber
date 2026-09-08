@@ -36,6 +36,9 @@ export default function AdminHomePage() {
         <li>
           <Link href="/admin/advertising">Advertising</Link>
         </li>
+        <li>
+          <Link href="/admin/settings">Settings</Link>
+        </li>
       </ul>
     </main>
   );
