@@ -55,6 +55,7 @@ export interface CatalogService {
   listProducts(filter?: ProductFilter): Promise<Product[]>;
 
   createSku(input: NewSkuInput): Promise<Sku>;
+  getSku(id: string): Promise<Sku | null>;
   listSkusByProduct(productId: string): Promise<Sku[]>;
   generateSkus(
     productId: string,
@@ -149,6 +150,10 @@ export function createCatalogService(deps: {
       await persistence.skus.save(sku);
       await events.publish("catalog.sku.created", { id: sku.id, productId: sku.productId });
       return sku;
+    },
+
+    async getSku(id) {
+      return persistence.skus.get(id);
     },
 
     async listSkusByProduct(productId) {

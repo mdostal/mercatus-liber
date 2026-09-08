@@ -1,7 +1,7 @@
 id: cf-04-cart-package
 epic: core-foundation
 title: Cart package (long-lived, SKU line items)
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [cf-03-catalog-package]

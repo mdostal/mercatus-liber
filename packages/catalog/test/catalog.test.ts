@@ -151,6 +151,24 @@ describe("catalog service", () => {
     });
   });
 
+  describe("getSku", () => {
+    it("returns a SKU by id, or null when not found", async () => {
+      const product = await catalog.createProduct({
+        slug: "organizer5",
+        title: "Organizer 5",
+        description: "d",
+        identifyingAttributeKeys: ["color"],
+      });
+      const created = await catalog.createSku({
+        productId: product.id,
+        identifyingAttributes: [{ key: "color", value: "red" }],
+        price: { amount: 500, currency: "USD" },
+      });
+      expect(await catalog.getSku(created.id)).toEqual(created);
+      expect(await catalog.getSku("missing")).toBeNull();
+    });
+  });
+
   describe("full attribute map", () => {
     it("sets, lists, and removes product attributes independently of identifying attributes", async () => {
       const product = await catalog.createProduct({
