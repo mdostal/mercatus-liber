@@ -16,7 +16,7 @@ vertical-slice invariant), not just "some files exist."_
 | 8 | `adapter-postgres` | Second reference DB adapter (Postgres) — proves the persistence interface is truly adapter-agnostic | **done** (1/1 story complete) | 1 |
 | 9 | `six-themes` | 6 optional drop-in themes built on the theming system (06) — the "roll it with 6 optional themes" deliverable | **done** (2/2 stories complete) | 3, 4 |
 | 10 | `admin-janus-dogfood` | Admin view for catalog/CMS/orders management — attempt to build it via Janus's composer (dogfood), fall back to hand-built admin UI documented as a subsystem-12-style plugin if Janus integration isn't viable | **done** (2/2 stories complete — Janus dogfood documented non-viable, hand-built /admin shipped) | 1, 4, 6 |
-| 11 | `shop-migration` | Migrate `shop.mdostal.com` off its own custom cart onto these packages — the "proof by use" success criterion from north_star | not started | 1 (minimum), ideally 2-4 |
+| 11 | `shop-migration` | Migrate `shop.mdostal.com` off its own custom cart onto these packages — the "proof by use" success criterion from north_star | **done** (2/2 stories complete, in the `shop` repo -- see `shop/.pHive/epics/mercatus-liber-storefront/`) | 1 (minimum), ideally 2-4 |
 | 12 | `analytics-tracking` | 13 analytics — event-bus subscriber, PostHog adapter enabled by default, client-side `trackEvent()` helper | **done** (2/2 stories complete) | 1 |
 | 13 | `ai-mcp-interface` | 14 AI/MCP interface — MCP server + skills/tool catalog wrapping catalog/cart/checkout (shopper side) and catalog/CMS/inventory (admin side) | **done** (2/2 stories complete) | 1 (shopper side), 4 + 6 (admin side) |
 | 14 | `adapter-shopify` | A **Shopify commerce-backend adapter** — proves the persistence/commerce-backend interface can wrap an entire third-party platform, not just a raw DB. Lets a client already on Shopify adopt Mercatus Liber's admin/AI-agent/plugin layer *without* migrating off Shopify. | **done** (1/1 story complete) | 1, 8 (pattern proven by adapter-postgres first) |
@@ -68,11 +68,16 @@ vertical-slice invariant), not just "some files exist."_
   otherwise. See `.pHive/epics/deploy-tool-and-auto-update/docs/deploy-tool-scope.md` for
   disclosed gaps (no full Next.js app template yet, no live npm registry integration test since
   these packages aren't published yet).
-- **Every ungated epic through 16 is done (1-10, 12-14, 16).** Epics 11 and 15 are both now
-  **approved to proceed** (Mathew, 2026-09-08): epic 11 (`shop-migration`) unconditionally;
-  epic 15 in its redefined shape (15a private clone / 15b public demo, per above) after epics
-  17-19 land. New epics 17-23 (added 2026-09-08 from Mathew's audit/gap-analysis instructions)
-  have no approval gate and proceed autonomously like every other epic.
+- **Epic 11 is done.** `shop.mdostal.com` runs on Mercatus Liber's packages (catalog/cart/
+  checkout/theming) in the `shop` repo -- see `shop/.pHive/epics/mercatus-liber-storefront/`.
+  Codebase and seed content only: no DNS/hosting cutover, no live Stripe key, no final
+  pricing/SKU/logo decisions -- those remain Mathew's to take when ready, per that epic's own
+  documented scope boundary.
+- **Every ungated epic through 16, plus 11, is done (1-14, 16).** Epic 15 remains
+  **approved to proceed** (Mathew, 2026-09-08) in its redefined shape (15a private clone / 15b
+  public demo, per above) once epics 17-19 land. New epics 17-23 (added 2026-09-08 from
+  Mathew's audit/gap-analysis instructions) have no approval gate and proceed autonomously like
+  every other epic.
 - **Epic 15 is still the actual finish line, not epic 13** — the same framing as 2026-09-07
   ("the true test is if we can replicate everything we want for dostal tech to sell there AND
   do the All That Technology fully re-created with plugins and features") still holds, now
