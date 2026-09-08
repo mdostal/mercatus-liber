@@ -1,0 +1,128 @@
+id: rec-02-pdp-cart-recommendations
+epic: upsell-cross-sell
+title: "reference-storefront: PDP + cart recommendation shelves, same-category fallback"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [rec-01-recommendations-subsystem]
+
+description: |
+  App-layer composition only -- packages/pdp and packages/cart are NOT touched by this story
+  (see design-discussion.md §3: recommendations is composed at the app layer, the same
+  established pattern epic 21's bundles integration used).
+
+  Read the actual committed recommendations package before writing any code (its exact method
+  names are now fixed):
+  packages/recommendations/src/types.ts
+  packages/recommendations/src/service.ts
+
+  Read these existing files as your integration points and conventions to mirror exactly (this
+  app is Server Components + <form action={...}> only, no client components, no new UI
+  library):
+  apps/reference-storefront/app/products/[slug]/page.tsx (the bundles-composition pattern
+  added in epic 21 -- lines composing `bundles` alongside `pdp`/`inventory` -- is the EXACT
+  precedent to mirror for composing `recommendations`)
+  apps/reference-storefront/app/cart/page.tsx (read the WHOLE current file -- this page
+  currently composes cart/catalog/checkout only; you're adding the first recommendation
+  composition here)
+  apps/reference-storefront/app/category/[slug]/page.tsx (the exact
+  marketingCatalog.listProductIdsInCategory call chain to reuse for the same-category
+  fallback)
+  apps/reference-storefront/lib/services.ts (read the WHOLE current file fresh -- likely needs
+  wiring `recommendations` in, the same way bundles/promotions/pdp/cart already are, unless a
+  concurrent piece of work has already done it)
+
+  Goal:
+  1. In lib/services.ts: if `recommendations` is not already exposed on the services object,
+     wire createRecommendationsService in (in-memory repository) and add it to the returned
+     object + its type.
+  2. In app/products/[slug]/page.tsx: after the existing composition, call
+     `recommendations.getRecommendationsForProduct(viewModel.product.id, "pdp")`. If it
+     returns rules, resolve each targetProductId to a real Product via catalog.getProduct,
+     silently dropping any id that no longer resolves (per the deliberately-thin package
+     design -- no error, just omit). If it returns NO rules, fall back to the same-category
+     heuristic: `marketingCatalog.listCategoriesForProduct(product.id)` ->
+     `listProductIdsInCategory` per category -> dedupe -> exclude the current product -> resolve
+     via catalog.getProduct -> take the first N (cap at a reasonable number, e.g. 4). Render a
+     new "Customers also bought" (or the rule's own label, when a curated rule matched) shelf
+     component with these products, each linking to its own PDP.
+  3. In app/cart/page.tsx: for each cart line's resolved productId, call
+     `recommendations.getRecommendationsForProduct(productId, "cart")`; union target products
+     across all lines, dedupe, exclude any product already in the cart. For any cart-line
+     product with zero curated rules, apply the same same-category fallback as the PDP page.
+     Render the same shelf component below the cart's line items / total.
+  4. New shared component apps/reference-storefront/components/recommendation-shelf.tsx: takes
+     a label + a list of {slug, title, price-ish display data} and renders a simple list/grid
+     of links to each product's PDP, matching this app's existing plain-HTML styling
+     conventions (see pdp-tabbed-detail.tsx or the bundle-tier-selector.tsx from epic 21 for
+     the visual/structural convention to match).
+  5. When a product/cart has genuinely nothing to recommend (no curated rule AND no other
+     products in any shared category), render nothing -- no empty shelf, no error.
+
+acceptance_criteria:
+  - "Given a product with a curated 'pdp' or 'both' placement rule, when its PDP renders, then the recommendation shelf shows exactly the rule's targetProductIds (resolved to real products), using the rule's own label"
+  - "Given a product with NO curated rule but at least one other active product sharing a category, when its PDP renders, then the recommendation shelf shows same-category products (excluding itself) under a generic fallback label"
+  - "Given a product with neither a curated rule nor any category-mates, when its PDP renders, then no recommendation shelf renders at all (no empty section)"
+  - "Given a cart containing items whose products have curated 'cart' or 'both' rules, when the cart page renders, then the recommendation shelf shows the union of those rules' targets, deduped, excluding anything already in the cart"
+  - "Given a product with no attached recommendation data at all, when its PDP/cart renders, then the rest of the page is unchanged from before this story (zero regression for the no-recommendation case, verified explicitly)"
+
+steps:
+  - id: research
+    description: Re-read the committed recommendations public surface, the epic-21 bundles-composition precedent on the PDP page, and the category page's fallback query chain.
+    agent: researcher
+  - id: implement
+    description: Build the PDP + cart recommendation composition per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the golden path (curated rule shows correctly, fallback shows correctly, no-data case renders nothing, cart aggregates across lines) via a dev server.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the zero-regression claim for the no-data case and that packages/pdp/packages/cart were not modified.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/upsell-cross-sell.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/products/[slug]/page.tsx
+      purpose: "The bundles-composition lines added in epic 21 are the exact precedent for composing recommendations onto this page the same way."
+    - path: apps/reference-storefront/app/category/[slug]/page.tsx
+      purpose: The exact listProductIdsInCategory call chain to reuse for the same-category fallback.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/products/[slug]/page.tsx
+    change: Compose recommendations.getRecommendationsForProduct + same-category fallback; render RecommendationShelf.
+  - file: apps/reference-storefront/app/cart/page.tsx
+    change: Compose recommendations per cart line + fallback + dedup/exclude; render RecommendationShelf.
+  - file: apps/reference-storefront/components/recommendation-shelf.tsx
+    change: New component.
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire recommendations service if not already present (check for concurrent changes first).
+
+design_decisions:
+  - decision: "Fallback heuristic runs entirely at the app layer, never inside packages/recommendations."
+    rationale: "Keeps the package's own dependency surface at core-only, per design-discussion.md §3 -- the fallback is orchestration, not a package-level capability."
+
+risks:
+  - severity: low
+    description: "The same-category fallback could return zero results for a product in a category with no siblings, or for a product in no category at all."
+    mitigation: "Explicitly covered by the third acceptance criterion -- render nothing, not an empty/awkward section."
+
+references:
+  - path: .pHive/epics/upsell-cross-sell/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: full description of the PDP and cart integration shape, including the exact
+      fallback-heuristic call chain to reuse from the category page.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "UI/orchestration story wiring an already-tested backend computation (rec-01) into two pages; the acceptance criteria above are the observable surface, verified via the golden-path check in the test step since this app has no existing UI test harness to extend."

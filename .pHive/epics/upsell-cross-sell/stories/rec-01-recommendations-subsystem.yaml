@@ -1,0 +1,129 @@
+id: rec-01-recommendations-subsystem
+epic: upsell-cross-sell
+title: "@mercatus-liber/recommendations: RecommendationRule domain model, in-memory adapter"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  New package packages/recommendations (subsystem 18, see docs/subsystems/18-recommendations.md,
+  already written during planning). Depends on @mercatus-liber/core only -- never imports
+  catalog, cart, checkout-orders, promotions, bundles, or analytics. This package is
+  deliberately thinner than promotions/bundles: it does NOT validate product ids against
+  catalog at write time (see design-discussion.md §3 and the subsystem doc's open question 1
+  for why) -- it just stores/returns bare productId strings.
+
+  Deliverables:
+  - `RecommendationRule` type: { id, sourceProductId: string, label: string, placement:
+    "pdp"|"cart"|"both", targetProductIds: string[] (ordered), status: "active"|"inactive" }.
+  - `RecommendationRepository` interface (get/list/save, adapter pattern) +
+    `createInMemoryRecommendationRepository()` reference implementation, mirroring the
+    Map+structuredClone pattern already used in packages/promotions/src/in-memory-repository.ts
+    and packages/bundles/src/in-memory-repository.ts.
+  - `RecommendationsService` with:
+    - `createRule(input: CreateRuleInput): Promise<RecommendationRule>`
+    - `getRule(id): Promise<RecommendationRule | null>`
+    - `listRules(): Promise<RecommendationRule[]>`
+    - `updateRule(id, input: Partial<CreateRuleInput>): Promise<RecommendationRule | null>`
+      (mirror bundles' updateBundle get-merge-save shape)
+    - `deactivateRule(id): Promise<RecommendationRule | null>`
+    - `getRecommendationsForProduct(productId: string, placement?: "pdp"|"cart"|"both"):
+      Promise<RecommendationRule[]>` -- returns active rules whose sourceProductId matches,
+      optionally filtered further by placement ("both" rules always match regardless of the
+      requested placement filter; if no placement filter is given, return all active matching
+      rules).
+  - Validation on createRule/updateRule: a rule must have at least one targetProductId; reject
+    a rule whose sourceProductId appears in its own targetProductIds (a product can't
+    recommend itself). No catalog validation (deliberately, per the design decision above).
+
+acceptance_criteria:
+  - "Given a rule {sourceProductId:'p1', targetProductIds:['p2','p3'], placement:'pdp', status:'active'}, when getRecommendationsForProduct('p1','pdp') is called, then it returns that rule"
+  - "Given the same rule, when getRecommendationsForProduct('p1','cart') is called, then it returns an empty list (placement mismatch)"
+  - "Given a rule with placement:'both', when getRecommendationsForProduct(sourceProductId, 'pdp') and getRecommendationsForProduct(sourceProductId, 'cart') are both called, then both return that rule"
+  - "Given a createRule call with an empty targetProductIds array, when createRule is called, then it rejects clearly and no rule is persisted"
+  - "Given a createRule call where sourceProductId is also present in targetProductIds, when createRule is called, then it rejects clearly and no rule is persisted"
+  - "Given an existing rule, when updateRule changes its label, then getRule reflects the new label while preserving its id and targetProductIds"
+  - "Given a deactivated rule, when getRecommendationsForProduct is called for its sourceProductId, then it returns an empty list (deactivated rules excluded), while it remains visible via listRules/getRule for admin purposes"
+
+steps:
+  - id: research
+    description: Read packages/bundles/src/in-memory-repository.ts, types.ts, and service.ts (all committed on master) for the exact structural patterns to mirror in this new, thinner package.
+    agent: researcher
+  - id: implement
+    description: Build the recommendations package per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write vitest tests in packages/recommendations/test/recommendations.test.ts covering every acceptance criterion above.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check correctness, convention compliance (package.json scoping to core-only, no catalog validation as deliberately scoped), and the self-recommendation rejection.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/upsell-cross-sell.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/bundles/src/in-memory-repository.ts
+      purpose: Exact Map+structuredClone pattern to follow for the in-memory RecommendationRepository.
+    - path: packages/bundles/src/service.ts
+      purpose: updateBundle's get-merge-save shape to mirror for updateRule.
+    - path: packages/bundles/package.json
+      purpose: Exact package.json shape/scoping convention (dependencies -> core only).
+
+files_to_modify:
+  - file: packages/recommendations/package.json
+    change: New package, dependencies -> @mercatus-liber/core only, devDependencies -> @types/node, typescript, vitest.
+  - file: packages/recommendations/tsconfig.json
+    change: Extend ../../tsconfig.base.json, reference ../core.
+  - file: packages/recommendations/src/types.ts
+    change: RecommendationRule, RecommendationRepository, CreateRuleInput types.
+  - file: packages/recommendations/src/in-memory-repository.ts
+    change: createInMemoryRecommendationRepository().
+  - file: packages/recommendations/src/service.ts
+    change: createRecommendationsService(deps) -> RecommendationsService.
+  - file: packages/recommendations/src/index.ts
+    change: Re-export public surface.
+  - file: packages/recommendations/test/recommendations.test.ts
+    change: Tests for every acceptance criterion.
+
+design_decisions:
+  - decision: "No catalog validation on product ids at write time (unlike promotions/bundles' SKU validation)."
+    rationale: "Deliberately thinner package -- see design-discussion.md §3 and subsystem doc's open question 1. A stale product id just silently drops at render time (app-layer resolution), never blocks rule authoring."
+  - decision: "'both' placement rules match every placement filter; a rule scoped to exactly one placement only matches that filter."
+    rationale: "Simplest possible semantics for a flat placement enum, matching bundles' 'free text, no hardcoded vocabulary beyond the mechanism' posture."
+
+risks: []
+
+references:
+  - path: .pHive/epics/upsell-cross-sell/docs/design-discussion.md
+    relevant_excerpt: |
+      §3 has the full RecommendationRule shape and the admin-curated-not-inferred design
+      decision this story implements verbatim.
+  - path: docs/subsystems/18-recommendations.md
+    relevant_excerpt: |
+      Full subsystem doc (purpose, depends-on, responsibilities, explicit non-goals,
+      decoupling notes with the exact grep command to run before merge).
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: recommendations.rule_matching_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite in packages/recommendations/test/recommendations.test.ts
+  verify_at: integrate
+  owner: tester

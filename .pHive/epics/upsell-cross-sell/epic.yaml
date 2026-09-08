@@ -1,0 +1,51 @@
+name: upsell-cross-sell
+title: Upsell / Cross-sell Recommendations
+description: >
+  "Customers also bought" / PDP and cart product recommendations (backlog epic 22),
+  explicitly distinct from marketing-catalog's SuggestionRule (category-suggestion, an
+  admin-curation aid, never a shopper-facing product recommendation). New subsystem 18
+  (@mercatus-liber/recommendations, core-only dependency) resolved as admin-curated explicit
+  product-to-product links -- analytics has no queryable read side today, so a genuinely
+  inferred/data-driven recommender isn't buildable from existing infrastructure without a
+  separate, much larger event-sourced aggregation subsystem (documented, deferred). A
+  same-category fallback heuristic is composed at the app layer, reusing marketing-catalog's
+  existing read path, so every product gets a reasonable shelf even before an admin curates
+  anything. See docs/subsystems/18-recommendations.md and docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [backend, new-subsystem, admin-ui, pdp-cart-integration]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    backend: "New package (recommendations) with domain model + service + in-memory adapter"
+    new-subsystem: "Design question (inferred/analytics-driven vs. admin-curated) required resolving before decomposition, per epic-backlog.md epic 22 description"
+    admin-ui: "Admin CRUD for recommendation rules, mirroring epics 20/21's established admin-mutation pattern"
+    pdp-cart-integration: "App-layer composition onto both the product page and the cart page, plus a same-category fallback heuristic"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session (no live multi-agent planning team spawned this run); design discussion grounded in a dedicated codebase-research pass instead, matching the rigor of epics 20/21's own research-grounded planning.
+
+stories:
+  - id: rec-01-recommendations-subsystem
+    title: "@mercatus-liber/recommendations: RecommendationRule domain model, in-memory adapter"
+    complexity: medium
+    depends_on: []
+  - id: rec-02-pdp-cart-recommendations
+    title: "reference-storefront: PDP + cart recommendation shelves, same-category fallback"
+    complexity: medium
+    depends_on: [rec-01-recommendations-subsystem]
+  - id: rec-03-admin-recommendations-crud
+    title: "/admin/recommendations: list + create/edit/deactivate recommendation rules"
+    complexity: medium
+    depends_on: [rec-01-recommendations-subsystem]
+  - id: rec-04-acceptance-seed-and-closeout
+    title: "Seed a demo recommendation rule, decoupling verification, epic-backlog closeout"
+    complexity: low
+    depends_on: [rec-02-pdp-cart-recommendations, rec-03-admin-recommendations-crud]

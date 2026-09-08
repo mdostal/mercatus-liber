@@ -1,0 +1,99 @@
+id: rec-04-acceptance-seed-and-closeout
+epic: upsell-cross-sell
+title: "Seed a demo recommendation rule, decoupling verification, epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [rec-02-pdp-cart-recommendations, rec-03-admin-recommendations-crud]
+
+description: |
+  Read apps/reference-storefront/lib/seed.ts in full first (it now includes the epic-21
+  bundle-demo seeding -- read the whole file, not just the original DEMO_PRODUCTS block).
+
+  Read the committed recommendations package's public surface:
+  packages/recommendations/src/types.ts
+  packages/recommendations/src/service.ts
+
+  Read apps/reference-storefront/lib/services.ts to confirm how `recommendations` is exposed
+  (wired by rec-02).
+
+  Deliverables:
+  - Extend lib/seed.ts to seed one curated RecommendationRule between two of the existing demo
+    products (e.g. the Dragon Cable Organizer recommending the Dragon Desk Mat, or similar --
+    pick two existing seeded products with a "customers also bought" story that reads
+    naturally), placement "both", label "Customers also bought".
+  - Verify end-to-end against a real dev server (start one, use curl -- do NOT add throwaway
+    API routes or env-gated test-only seed blocks that could leak into the shared build; if you
+    need a temporary verification aid, remove it completely and confirm via `git status`/`git
+    diff` that nothing extraneous remains before your final commit):
+    - The seeded rule's source product's PDP shows the recommendation shelf with the correct
+      target product and the "Customers also bought" label.
+    - A product with NO curated rule (any other existing demo product) still shows a
+      same-category fallback shelf if it has category-mates, or no shelf at all if it doesn't
+      -- confirm whichever is actually true for the seed data and record it.
+    - Adding the recommended-FROM product to the cart, then visiting /cart, shows a
+      recommendation shelf including the recommended-target product (cart placement).
+  - Run this exact decoupling grep across the whole epic and record clean output:
+    grep -rn "@mercatus-liber/recommendations" packages/cart packages/checkout-orders/src
+    packages/promotions/src packages/bundles/src packages/inventory/src packages/pdp/src
+    packages/marketing-catalog/src packages/analytics/src
+    Every one of those must return zero hits.
+  - Update .pHive/planning/epic-backlog.md: find epic 22's row (grep "^| 22 |") and change its
+    status column to "done (4/4 stories complete)", matching epic 20/21's row phrasing
+    convention (grep "^| 21 |" for the exact style to match -- mention the new subsystem, the
+    resolved design question, and the admin UI concisely in the description column). Also find
+    the "vision fully done" section's sentence about epics 20-21 being done / 22-23 backlogged
+    (grep "Epics 20-21" to find it) and update it to reflect epic 22 also done now (e.g.
+    "Epics 20-22 ... are done ... Epic 23 (advertising) remains backlogged").
+
+acceptance_criteria:
+  - "Given the seeded recommendation rule, when its source product's PDP is visited on a live dev server, then the recommendation shelf renders the correct target product under the 'Customers also bought' label"
+  - "Given the recommended-FROM product is added to the cart, when /cart is visited, then the recommendation shelf includes the recommended-target product"
+  - "Given the full decoupling grep across all 8 packages listed above, then every one returns zero hits"
+  - ".pHive/planning/epic-backlog.md epic 22's row reads 'done (4/4 stories complete)' matching sibling completed-epic rows, and the vision-summary section's epics-20-23 line is updated to reflect epic 22 done"
+
+steps:
+  - id: implement
+    description: Extend seed.ts and verify the golden path per the description above.
+    agent: developer
+  - id: test
+    description: Run the decoupling grep and record output; verify the PDP/cart golden path on a live dev server.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edits are accurate and match sibling completed-epic phrasing.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/upsell-cross-sell; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: Existing demo-data seeding script (now includes epic 21's bundle demo) to extend with a recommendation-rule demo.
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Epic 22's row and the vision-summary section's epics-20-23 sentence -- both need updating as this story's last step."
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/seed.ts
+    change: Add one demo RecommendationRule.
+  - file: .pHive/planning/epic-backlog.md
+    change: Epic 22 row -> done; vision-summary sentence updated.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/upsell-cross-sell/docs/design-discussion.md
+    relevant_excerpt: |
+      Full design rationale this epic's seed data demonstrates end-to-end.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout/acceptance-demo story verified via the acceptance criteria's manual golden-path check and the decoupling grep; epic-backlog.md's done/not-started status is qualitative, not a numeric trend."
