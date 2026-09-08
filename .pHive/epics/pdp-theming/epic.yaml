@@ -1,0 +1,31 @@
+name: pdp-theming
+title: PDP + Theming
+description: >
+  Theming/layout (subsystem 06, a leaf -- depends on core only) and the
+  Product Display Page (subsystem 04, depends on catalog + theming). Proves
+  the "CMS over theming" principle: at least two swappable PDP layout
+  templates (tabbed-detail, long-scroll) driven by the same data contract, no
+  forced whole-site theme. Closes with the reference storefront's product page
+  actually using the theming system instead of hardcoded markup.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: pt-01-theming-package
+    title: Theming package (layout template registry, style tokens)
+    complexity: medium
+    depends_on: []
+  - id: pt-02-pdp-package
+    title: PDP package (variant resolution data contract, layout selection)
+    complexity: medium
+    depends_on: [pt-01-theming-package]
+  - id: pt-03-reference-storefront-themed-pdp
+    title: Reference storefront -- themed PDP with 2 layout configs
+    complexity: medium
+    depends_on: [pt-02-pdp-package]

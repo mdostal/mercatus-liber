@@ -1,0 +1,63 @@
+id: pt-01-theming-package
+epic: pdp-theming
+title: Theming package (layout template registry, style tokens)
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Implement packages/theming per docs/subsystems/06-theming-layout.md: a
+  layout-template registry keyed by page type (pdp, home, category, search,
+  marketing), ships with 2 default PDP templates (tabbed-detail, long-scroll)
+  matching the founder's spec, template resolution (explicit override wins,
+  else a configured deployment default, else the first registered template for
+  that page type), and a simple style-token map. This is a leaf package --
+  depends on @core/schema only, framework-agnostic (no React/Next types) so it
+  can be tested with plain data and consumed by any rendering layer.
+
+acceptance_criteria:
+  - "Given the package's default registry, when listTemplates('pdp') is called, then it returns at least 2 templates including 'pdp.tabbed-detail' and 'pdp.long-scroll'"
+  - "Given no override and no configured default, when resolveTemplate('pdp') runs, then it returns the first registered PDP template deterministically (not randomly)"
+  - "Given a deployment calls setDefaultTemplate('pdp', 'pdp.long-scroll'), when resolveTemplate('pdp') runs afterward with no override, then it returns 'pdp.long-scroll'"
+  - "Given an explicit override is passed to resolveTemplate('pdp', 'pdp.tabbed-detail'), when a different default is also configured, then the override wins"
+  - "Given the package's public exports, when inspected, then it imports @core/schema only -- no React/Next.js/framework-specific types"
+
+steps:
+  - id: research
+    description: Re-read docs/subsystems/06-theming-layout.md for the resolution precedence and default-template requirements.
+    agent: researcher
+  - id: implement
+    description: Implement LayoutTemplate registry, resolveTemplate precedence logic, style-token get/set, and the 2 default PDP templates.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Unit tests for registry listing, resolution precedence (override > configured default > first-registered), and token storage.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify zero framework-specific types leaked into this package -- it must stay renderer-agnostic per the subsystem doc.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/06-theming-layout.md
+      purpose: Layout template registry, resolution precedence, and the "CMS over theming" principle this package exists to serve.
+
+files_to_modify:
+  - file: packages/theming/package.json
+    change: New package depending on @mercatus-liber/core only
+  - file: packages/theming/src/types.ts
+    change: LayoutTemplate, StyleTokens, ThemingService interface
+  - file: packages/theming/src/service.ts
+    change: createThemingService() with default PDP templates + resolution logic
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "theming is a leaf: no other subsystem depends on it being backed by any particular data source, and it never imports catalog/cart/etc."

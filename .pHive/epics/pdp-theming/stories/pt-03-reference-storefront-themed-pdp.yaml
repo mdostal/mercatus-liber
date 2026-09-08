@@ -1,0 +1,66 @@
+id: pt-03-reference-storefront-themed-pdp
+epic: pdp-theming
+title: Reference storefront -- themed PDP with 2 layout configs
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [pt-02-pdp-package]
+
+description: |
+  Replace apps/reference-storefront's hardcoded product page with one driven
+  by the pdp package's view model, rendering via theming's resolved template
+  key -- proving "add a third PDP layout is a theming-layer change" by
+  implementing the 2 default templates (tabbed-detail, long-scroll) as actual
+  React components in the app (theming itself stays framework-agnostic per
+  pt-01; the app is where template keys become real markup, same "concrete
+  choices live in the app" pattern as lib/services.ts for adapters).
+
+acceptance_criteria:
+  - "Given the demo products, when a product page renders, then it shows the tabbed-detail layout by default (theming's first-registered-template resolution)"
+  - "Given a query param or config override selecting 'pdp.long-scroll', when the same product page renders, then the long-scroll layout renders instead -- same view-model data, different presentation"
+  - "Given `pnpm turbo run build` at the repo root, when run, then the whole workspace (now 13 packages/apps) still builds together"
+
+steps:
+  - id: research
+    description: Confirm pt-02's PdpViewModel shape and theming's template keys.
+    agent: researcher
+  - id: implement
+    description: Add a template-key-to-React-component map in the app, update the product page to use pdp's view model, implement both layout components.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend the reference-storefront's integration tests to cover both template resolutions rendering the correct data.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm lib/services.ts (or a new lib/pdp.ts following the same pattern) remains the only place concrete theming/pdp service instances are constructed.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch; this closes the pdp-theming epic.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/app/products/[slug]/page.tsx
+      purpose: The existing hardcoded product page this story replaces with a themed, view-model-driven version.
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Existing wiring pattern to extend with pdp + theming services.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire pdp + theming services
+  - file: apps/reference-storefront/app/products/[slug]/page.tsx
+    change: Use pdp's view model + theming's resolved template key
+  - file: apps/reference-storefront/components/pdp-tabbed-detail.tsx
+    change: New -- tabbed-detail layout component
+  - file: apps/reference-storefront/components/pdp-long-scroll.tsx
+    change: New -- long-scroll layout component
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Verify no subsystem package gains a new concrete cross-import as part of this story -- only the app layer chooses which template component to render for a given template key"
+  - concern: documentation
+    action: "Update apps/reference-storefront/README.md's route/architecture notes to mention the theming/PDP wiring"

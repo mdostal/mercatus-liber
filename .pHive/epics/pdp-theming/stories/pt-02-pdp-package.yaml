@@ -1,0 +1,72 @@
+id: pt-02-pdp-package
+epic: pdp-theming
+title: PDP package (variant resolution data contract, layout selection)
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [pt-01-theming-package]
+
+description: |
+  Implement packages/pdp per docs/subsystems/04-pdp.md: given a product slug,
+  build a PDP view model -- the product, the distinct available identifying-
+  attribute values actually present across its real SKUs (not a theoretical
+  cartesian product), and the resolved theming template key. Delegates
+  variant resolution to catalog's own resolveVariant (never reimplements it).
+  Reads catalog via a narrow structural interface (no import of
+  @mercatus-liber/catalog), and theming via its real interface (theming has no
+  business data, so no decoupling concern importing it directly -- same
+  reasoning as checkout-orders depending on payments' PaymentAdapter type,
+  except here it's the concrete package since theming is a leaf with no
+  adapter-swapping story).
+
+acceptance_criteria:
+  - "Given a product slug with SKUs in colors [red, blue] and sizes [large], when getViewModel runs, then optionValues includes {key: 'color', values: ['red','blue']} and {key: 'size', values: ['large']} -- not any values that don't actually exist as SKUs"
+  - "Given a product slug that doesn't exist, when getViewModel runs, then it returns null rather than throwing"
+  - "Given a full identifying-attribute selection, when resolveSelection runs, then it delegates to catalog's resolveVariant and returns the exact same result (no reimplementation of variant matching)"
+  - "Given no template override, when getViewModel runs, then templateKey comes from theming's resolveTemplate('pdp') -- confirms the two packages are actually wired together, not just both existing independently"
+  - "Given the package's public exports, when inspected, then it imports @core/schema and @mercatus-liber/theming, but never @mercatus-liber/catalog (structural ProductLookup interface instead)"
+
+steps:
+  - id: research
+    description: Confirm theming's resolveTemplate signature from pt-01 and catalog's resolveVariant/listSkusByProduct signatures from cf-03.
+    agent: researcher
+  - id: implement
+    description: Implement computeOptionValues (distinct values from real SKUs) and the PDP service wiring catalog (structural) + theming (real import).
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for option-value computation, not-found handling, resolveSelection delegation, and template resolution wiring -- using a real catalog instance in tests only.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no import of @mercatus-liber/catalog in src/, and that resolveSelection doesn't duplicate catalog's matching logic.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/04-pdp.md
+      purpose: "Responsibilities: resolve options-on-a-page via catalog's own resolver, select a layout template via theming, never own product data or cart."
+    - path: packages/catalog/src/service.ts
+      purpose: resolveVariant and listSkusByProduct signatures this package delegates to.
+
+files_to_modify:
+  - file: packages/pdp/package.json
+    change: New package depending on @mercatus-liber/core + @mercatus-liber/theming
+  - file: packages/pdp/src/types.ts
+    change: ProductLookup structural interface, PdpViewModel shape
+  - file: packages/pdp/src/service.ts
+    change: computeOptionValues + createPdpService
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/pdp/src must never import @mercatus-liber/catalog directly -- structural ProductLookup interface only"
+
+design_decisions:
+  - decision: Stock/out-of-stock state deferred (no inventory epic yet)
+    rationale: "docs/subsystems/04-pdp.md notes inventory-sourced stock state as a real requirement, but epic 6 (inventory) hasn't been built yet -- documented as a follow-up, not silently skipped."
