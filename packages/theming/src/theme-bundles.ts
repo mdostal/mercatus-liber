@@ -105,6 +105,24 @@ export const THEME_BUNDLES: ThemeBundle[] = [
     },
     defaultTemplatesByPageType: { pdp: "pdp.long-scroll" },
   },
+  {
+    // Invented for the epic-15b public demo (Northline Home Tech, a
+    // fictional smart-home installer) -- see
+    // .pHive/epics/service-demo-theme-public/docs/brand-and-scope.md.
+    // A professional, trustworthy "on-site technician" feel: indigo-blue
+    // primary, amber accent, light slate background.
+    key: "northline",
+    label: "Northline",
+    tokens: {
+      "--color-background": "#f8fafc",
+      "--color-text": "#0f172a",
+      "--color-primary": "#1e40af",
+      "--color-accent": "#f59e0b",
+      "--font-family": "system-ui, sans-serif",
+      "--radius": "6px",
+    },
+    defaultTemplatesByPageType: { pdp: "pdp.tabbed-detail" },
+  },
 ];
 
 export function getThemeBundle(key: string): ThemeBundle | undefined {

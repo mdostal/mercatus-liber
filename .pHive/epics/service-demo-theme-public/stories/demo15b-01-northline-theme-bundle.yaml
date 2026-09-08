@@ -1,0 +1,60 @@
+id: demo15b-01-northline-theme-bundle
+epic: service-demo-theme-public
+title: Northline theme bundle (7th bundle) in packages/theming
+status: done
+complexity: small
+methodology: classic
+depends_on: []
+
+description: |
+  Adds a 7th ThemeBundle ("northline") to packages/theming/src/theme-bundles.ts
+  -- the same pure-composition shape as the existing 6 (per docs/brand-and-
+  scope.md's invented Northline Home Tech identity: indigo-blue primary,
+  amber accent, light slate background, professional tone). Zero new
+  infrastructure, same as theme-01's original story.
+
+acceptance_criteria:
+  - "Given THEME_BUNDLES, when inspected, then it has exactly 7 bundles including 'northline', with a unique key and a token palette that doesn't collide with any of the other 6"
+  - "Given applyTheme(themingService, getThemeBundle('northline')), when called, then getTokens()/resolveTemplate('pdp') reflect it, same proof pattern as every other bundle"
+  - "Given the package's existing 'ships exactly 6 bundles' test, when updated, then it reflects 7 without weakening any other assertion"
+
+steps:
+  - id: research
+    description: Re-read theme-bundles.ts's existing 6 bundles to pick genuinely distinct token values.
+    agent: researcher
+  - id: implement
+    description: Add the northline bundle.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Update theme-bundles.test.ts's count assertion to 7; add northline-specific assertions mirroring the existing per-bundle checks.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no token value collides with any of the other 6 bundles.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/theming/src/theme-bundles.ts
+      purpose: The 6 existing bundles this story adds a 7th to
+    - path: packages/theming/test/theme-bundles.test.ts
+      purpose: Existing "exactly 6" test to update to 7
+    - path: .pHive/epics/service-demo-theme-public/docs/brand-and-scope.md
+      purpose: The invented Northline identity/palette this bundle implements
+
+files_to_modify:
+  - file: packages/theming/src/theme-bundles.ts
+    change: Add the northline bundle
+  - file: packages/theming/test/theme-bundles.test.ts
+    change: Update count assertion, add northline coverage
+
+cross_cutting:
+  - concern: theme-parity
+    action: "northline is pure composition of existing ThemingService primitives, same as every other bundle -- no special-cased rendering path"

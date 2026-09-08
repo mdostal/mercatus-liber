@@ -1,0 +1,75 @@
+id: demo15b-02-northline-demo-seed
+epic: service-demo-theme-public
+title: Env-selectable Northline demo seed (services, 8 areas, CMS) in reference-storefront
+status: done
+complexity: large
+methodology: classic
+depends_on: [demo15b-01-northline-theme-bundle]
+
+description: |
+  A second, env-var-selectable seed path in apps/reference-storefront --
+  DEMO_BRAND=northline picks lib/seed-northline.ts and the "northline"
+  theme bundle instead of the existing default dragon-merch seed (which
+  stays the default with zero behavior change for existing tests/callers
+  that don't set the env var). Seeds Northline's 5 services as catalog
+  products (TV mounting, security camera install, video doorbell install,
+  fiber internet install, home theater setup), 8 demo service areas via
+  @mercatus-liber/service-areas with per-area product assignment (not
+  every service in every area -- proves the subset pattern at real scale),
+  a CMS home page styled for Northline, and at least one location CMS
+  page. Reuses every already-wired subsystem (admin UI, AI/MCP interface,
+  analytics, plugins, search, inventory) with zero additional code --
+  none of them hardcode anything about the dragon-merch seed.
+
+acceptance_criteria:
+  - "Given DEMO_BRAND=northline, when the service graph builds, then it seeds all 5 Northline services as active products and applies the 'northline' theme bundle"
+  - "Given DEMO_BRAND unset (or any other value), when the service graph builds, then behavior is byte-identical to before this story -- the existing dragon-merch seed and 'vibrant'-or-whatever-default theme, zero regression"
+  - "Given the Northline seed, when service areas are inspected, then there are exactly 8, and at least one service is assigned to a subset (not all 8) of them"
+  - "Given /admin/catalog, /admin/cms, /admin/orders under the Northline seed, when visited, then they show Northline's real seeded data -- proving the admin UI works for this vertical with zero admin-specific code changes"
+  - "Given the AI/MCP interface's search_products/get_product tools, when called against the Northline-seeded service graph, then they return Northline's real services -- proving the MCP layer is genuinely seed-agnostic"
+  - "Given /locations under the Northline seed, when visited, then it lists the 8 demo service areas with links to their detail pages"
+
+steps:
+  - id: research
+    description: Re-read lib/seed.ts's existing structure and lib/services.ts's buildServices() as the pattern to extend with an env-branch, not fork.
+    agent: researcher
+  - id: implement
+    description: Implement lib/seed-northline.ts; branch buildServices() on DEMO_BRAND for seed function + theme bundle choice.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests proving both seed paths (default unchanged, northline via env var) produce the expected data, including admin/MCP-layer read paths against the Northline seed specifically.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify zero behavior change for the default (unset DEMO_BRAND) path; verify admin/MCP/analytics/plugins wiring required no seed-specific code changes.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch, merge epic to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: The existing dragon-merch seed this story's northline seed mirrors in shape
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: buildServices() -- where the DEMO_BRAND env branch is added
+    - path: .pHive/epics/service-demo-theme-public/docs/brand-and-scope.md
+      purpose: The invented Northline identity/services/city-count this story implements
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/seed-northline.ts
+    change: New -- Northline seed data
+  - file: apps/reference-storefront/lib/services.ts
+    change: DEMO_BRAND env branch for seed + theme selection
+  - file: apps/reference-storefront/test/northline-demo.test.ts
+    change: New -- proves the Northline seed path end to end, including admin/MCP-layer reads
+
+cross_cutting:
+  - concern: zero-regression-default-path
+    action: "The existing dragon-merch default (DEMO_BRAND unset) must be byte-identical in behavior to before this story"
+  - concern: seed-agnostic-subsystems
+    action: "Admin UI, AI/MCP interface, analytics, and plugins require ZERO code changes to work with the Northline seed -- if any do, that's a hidden coupling this story should flag, not quietly patch around"

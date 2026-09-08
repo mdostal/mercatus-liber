@@ -3,10 +3,10 @@ import { createThemingService } from "../src/service.js";
 import { applyTheme, getThemeBundle, THEME_BUNDLES } from "../src/theme-bundles.js";
 
 describe("theme bundles", () => {
-  it("ships exactly 6 bundles with unique keys", () => {
-    expect(THEME_BUNDLES).toHaveLength(6);
+  it("ships exactly 7 bundles with unique keys", () => {
+    expect(THEME_BUNDLES).toHaveLength(7);
     const keys = THEME_BUNDLES.map((b) => b.key);
-    expect(new Set(keys).size).toBe(6);
+    expect(new Set(keys).size).toBe(7);
   });
 
   it("every bundle has a distinct token palette -- no two bundles share identical tokens", () => {
@@ -42,5 +42,15 @@ describe("theme bundles", () => {
     expect(theming.getTokens()).toEqual(getThemeBundle("minimal")!.tokens);
     expect(theming.getTokens()).not.toEqual(expect.objectContaining(getThemeBundle("classic")!.tokens));
     expect(theming.resolveTemplate("pdp")).toBe(getThemeBundle("minimal")!.defaultTemplatesByPageType.pdp);
+  });
+
+  it("northline (epic 15b's public demo bundle) applies correctly and is a real 7th bundle, not a variant of an existing one", () => {
+    const theming = createThemingService();
+    const northline = getThemeBundle("northline")!;
+    expect(northline.label).toBe("Northline");
+
+    applyTheme(theming, northline);
+    expect(theming.getTokens()).toEqual(northline.tokens);
+    expect(theming.resolveTemplate("pdp")).toBe(northline.defaultTemplatesByPageType.pdp);
   });
 });

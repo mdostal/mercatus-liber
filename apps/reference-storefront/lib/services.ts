@@ -39,6 +39,7 @@ import {
 } from "@mercatus-liber/service-areas";
 import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
 import { seedCatalog } from "./seed";
+import { seedNorthlineDemo } from "./seed-northline";
 
 /**
  * THE ONLY MODULE IN THIS REPO that imports concrete adapter implementations
@@ -152,7 +153,15 @@ async function buildServices(): Promise<Services> {
     assignments: createInMemoryServiceAreaProductRepository(),
   });
 
-  await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas);
+  // DEMO_BRAND=northline switches the seed to epic 15b's public demo
+  // (Northline Home Tech, a fictional smart-home installer) -- unset (or
+  // any other value) keeps the existing default dragon-merch seed, zero
+  // behavior change. See .pHive/epics/service-demo-theme-public/docs/brand-and-scope.md.
+  if (process.env.DEMO_BRAND === "northline") {
+    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
+  } else {
+    await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas);
+  }
 
   return {
     events,
