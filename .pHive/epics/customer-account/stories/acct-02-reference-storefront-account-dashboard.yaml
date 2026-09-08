@@ -1,0 +1,64 @@
+id: acct-02-reference-storefront-account-dashboard
+epic: customer-account
+title: Reference storefront -- account/dashboard page
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [acct-01-account-package]
+
+description: |
+  Wire the account package into apps/reference-storefront: a cookie-based
+  demo customerId (same pattern as cart-cookie.ts, no real auth per acct-01's
+  scope decision), a checkout flow that now threads customerId through
+  startCheckout, and a minimal /account page showing order history +
+  recent activity for the current demo customer.
+
+acceptance_criteria:
+  - "Given a demo customer completes checkout, when they visit /account, then their order appears in the order history list"
+  - "Given the same order's payment succeeds (simulated, same pattern as the core-foundation integration test), when /account is visited afterward, then recent activity shows the paid notification"
+  - "Given `pnpm turbo run build` at the repo root, when run, then the whole workspace (now 15 packages/apps) still builds together"
+
+steps:
+  - id: research
+    description: Confirm acct-01's AccountService shape and the existing cart-cookie.ts pattern this story mirrors for customerId.
+    agent: researcher
+  - id: implement
+    description: Add customer-cookie.ts (mirrors cart-cookie.ts), thread customerId through the checkout action, wire account service in lib/services.ts, add app/account/page.tsx.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend the reference-storefront's test suite covering order-history and activity-log visibility for a demo customer.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm lib/services.ts remains the sole concrete-service wiring point (grep check, same as every prior epic).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch; this closes the customer-account epic.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/cart-cookie.ts
+      purpose: The existing cookie pattern this story mirrors for a demo customerId.
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: startCheckoutAction, which needs to thread the demo customerId through.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/customer-cookie.ts
+    change: New -- demo customerId cookie, mirrors cart-cookie.ts
+  - file: apps/reference-storefront/lib/actions.ts
+    change: Thread customerId into startCheckout's input
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire account service
+  - file: apps/reference-storefront/app/account/page.tsx
+    change: New -- order history + recent activity for the demo customer
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Verify lib/services.ts remains the only module importing concrete adapters after this story's additions"
+  - concern: documentation
+    action: "Update apps/reference-storefront/README.md's route list and note the demo-customerId-cookie/no-real-auth simplification"

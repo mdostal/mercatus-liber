@@ -1,0 +1,82 @@
+id: acct-01-account-package
+epic: customer-account
+title: Account package (profile, order dashboard, event-driven activity log)
+status: pending
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  First, a small disclosed extension to @mercatus-liber/checkout-orders:
+  add an optional `customerId: string | null` field to Order and
+  StartCheckoutInput (defaults null for guest checkout -- fully backward
+  compatible), plus an OrderRepository.listByCustomerId method. Without
+  this, an order has no way to be associated with a customer at all, and
+  packages/account cannot build a dashboard.
+
+  Then implement packages/account per docs/subsystems/10-customer-account.md:
+  CustomerProfile CRUD, listOrders (a dashboard summary via a narrow
+  structural OrderLookup interface -- never imports
+  @mercatus-liber/checkout-orders directly), and an event-driven activity
+  log that subscribes to checkout.order.paid, looks up the order's
+  customerId via OrderLookup, and appends a per-customer activity entry --
+  checkout-orders has zero knowledge that accounts exist; account reacts to
+  its events, never the reverse.
+
+acceptance_criteria:
+  - "Given checkout-orders' Order type, when extended, then customerId defaults to null and every existing test in packages/checkout-orders still passes unmodified in behavior (guest checkout keeps working exactly as before)"
+  - "Given a customer with two orders, when listOrders(customerId) runs, then it returns summaries (id, status, itemCount) for exactly those two orders, sourced via OrderLookup.listOrdersByCustomer"
+  - "Given a checkout.order.paid event fires for an order with a customerId, when the account package's subscriber processes it, then listRecentActivity(customerId) includes an entry for that order -- with no direct call from checkout-orders into account"
+  - "Given a checkout.order.paid event fires for a guest order (customerId null), when processed, then no activity entry is created for any customer (nothing to attribute it to)"
+  - "Given the account package's public exports, when inspected, then it imports @core/schema only -- no import of @mercatus-liber/checkout-orders"
+
+steps:
+  - id: research
+    description: Re-read docs/subsystems/10-customer-account.md and checkout-orders' current Order/OrderRepository/StartCheckoutInput shapes from cf-06.
+    agent: researcher
+  - id: implement
+    description: Extend checkout-orders (customerId field + listByCustomerId), then implement CustomerProfile CRUD, listOrders, and the event-driven activity log in a new packages/account.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend checkout-orders' test suite for the customerId addition (backward compatibility + listByCustomerId); add account package tests for profile CRUD, dashboard, and activity-log event behavior including the guest-order no-op case.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no import of @mercatus-liber/checkout-orders in packages/account/src, and that checkout-orders' extension is additive/backward-compatible, not a breaking change.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/10-customer-account.md
+      purpose: Responsibilities and the "account depends on checkout-orders, never the reverse" decoupling test.
+    - path: packages/checkout-orders/src/types.ts
+      purpose: The Order/OrderRepository/StartCheckoutInput shapes this story extends additively.
+
+files_to_modify:
+  - file: packages/checkout-orders/src/types.ts
+    change: Add customerId to Order, add listByCustomerId to OrderRepository
+  - file: packages/checkout-orders/src/service.ts
+    change: Thread optional customerId through startCheckout
+  - file: packages/checkout-orders/src/in-memory-repository.ts
+    change: Implement listByCustomerId
+  - file: packages/account/package.json
+    change: New package depending on @mercatus-liber/core only
+  - file: packages/account/src/types.ts
+    change: CustomerProfile, CustomerProfileRepository, OrderLookup structural interface, ActivityEntry
+  - file: packages/account/src/service.ts
+    change: createAccountService -- profile CRUD, listOrders, event-driven activity log
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/account/src must never import @mercatus-liber/checkout-orders -- structural OrderLookup interface only, and the reaction to order events is one-directional (account subscribes, checkout-orders never calls into account)"
+
+design_decisions:
+  - decision: Auth (login/session/password) is explicitly out of scope
+    rationale: "Matches docs/subsystems/10-customer-account.md open question 1 -- profiles are addressed by a bare customerId in this reference implementation. A real auth adapter is a documented future extension, not silently assumed away."

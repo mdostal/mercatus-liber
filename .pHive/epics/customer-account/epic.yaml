@@ -1,0 +1,32 @@
+name: customer-account
+title: Customer Account
+description: >
+  Profile, dashboard, and event-driven order-activity tracking (subsystem
+  10). Reads orders via a narrow structural OrderLookup interface (never
+  imports checkout-orders), and reacts to checkout.order.paid to log
+  per-customer activity -- checkout-orders has zero knowledge that accounts
+  exist. Requires a small, disclosed extension to checkout-orders (a
+  customerId field on Order, threaded optionally through checkout) since an
+  order currently has no way to be associated with a customer at all.
+  Closes with the reference storefront gaining a minimal account/dashboard
+  page. Auth itself stays out of scope (bare customerId, no
+  password/session system) -- an explicitly deferred open item, matching the
+  subsystem doc's own open question 1.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: acct-01-account-package
+    title: Account package (profile, order dashboard, event-driven activity log)
+    complexity: high
+    depends_on: []
+  - id: acct-02-reference-storefront-account-dashboard
+    title: Reference storefront -- account/dashboard page
+    complexity: medium
+    depends_on: [acct-01-account-package]
