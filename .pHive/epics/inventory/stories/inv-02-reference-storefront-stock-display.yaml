@@ -1,0 +1,64 @@
+id: inv-02-reference-storefront-stock-display
+epic: inventory
+title: Reference storefront -- seeded stock + PDP stock display
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [inv-01-inventory-package]
+
+description: |
+  Wire inventory into apps/reference-storefront: seed initial stock for the
+  demo SKUs, and show an "in stock: N" indicator on both PDP layout
+  components (tabbed-detail, long-scroll) sourced from the real inventory
+  package -- not a hardcoded number. Proves the whole reserve/commit chain
+  fires for real during the existing checkout integration test path.
+
+acceptance_criteria:
+  - "Given seeded stock for a demo SKU, when its PDP renders (either layout), then the displayed stock number matches inventory.getStock's available (onHand - reserved) value"
+  - "Given a demo checkout completes for that SKU, when the order is placed, then available stock decreases by the ordered quantity (reserved increments) even before payment confirms"
+  - "Given `pnpm turbo run build` at the repo root, when run, then the whole workspace (now 16 packages/apps) still builds together"
+
+steps:
+  - id: research
+    description: Confirm inv-01's InventoryAdapter shape and where PDP components currently render SKU price/options.
+    agent: researcher
+  - id: implement
+    description: Wire inventory service + subscriber in lib/services.ts, seed initial stock in seed.ts, add stock display to both PDP layout components.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend the reference-storefront's test suite proving available stock decreases after a checkout places an order, before payment confirms.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm lib/services.ts remains the sole concrete-service wiring point (grep check, same as every prior epic).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch; this closes the inventory epic.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/components/pdp-tabbed-detail.tsx
+      purpose: One of the two PDP layout components this story adds a stock indicator to.
+    - path: apps/reference-storefront/components/pdp-long-scroll.tsx
+      purpose: The other PDP layout component this story adds a stock indicator to.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire inventory service + event subscriber
+  - file: apps/reference-storefront/lib/seed.ts
+    change: Set initial stock for demo SKUs
+  - file: apps/reference-storefront/components/pdp-tabbed-detail.tsx
+    change: Add stock display
+  - file: apps/reference-storefront/components/pdp-long-scroll.tsx
+    change: Add stock display
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Verify lib/services.ts remains the only module importing concrete adapters after this story's additions"
+  - concern: documentation
+    action: "Update apps/reference-storefront/README.md noting the inventory wiring and the oversell-allowed default"
