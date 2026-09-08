@@ -1,0 +1,67 @@
+id: cms-01-cms-package
+epic: cms-pages
+title: CMS package (page content models, component registry, draft/published)
+status: pending
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Implement packages/cms per docs/subsystems/05-cms-pages.md: a Page content
+  model (pageType: home|category|marketing|search|pdp, draft/published
+  status, an ordered list of ComponentInstance sections), a default
+  ComponentRegistry seeded with 4 components (hero-banner, ad-slot,
+  category-spot, product-grid), and marketing pages' own mini-catalog
+  (MarketingPageMeta: campaign name/date-range + a curated, ordered
+  productIds list, distinct from marketing-catalog's category-based
+  curation -- a Halloween special isn't a standing category). Depends on
+  @mercatus-liber/core only; references categories/products by id, never
+  imports marketing-catalog or catalog.
+
+acceptance_criteria:
+  - "Given a new page created as draft, when publishPage runs, then its status becomes published and getPage reflects it"
+  - "Given the default ComponentRegistry, when list() is called, then it includes exactly hero-banner, ad-slot, category-spot, and product-grid"
+  - "Given createMarketingPage with a campaign name, date range, and curated product ids, when called, then both a Page (pageType='marketing') and its MarketingPageMeta are created, and the productIds order is preserved exactly (a curated ordered list, not a set)"
+  - "Given getPageBySlug is called for a page regardless of draft/published status, when it runs, then it returns the page -- status filtering is a caller decision (e.g. only render published pages on a live site), not something the repository hides"
+  - "Given the package's public exports, when inspected, then it imports @core/schema only -- no import of @mercatus-liber/catalog or @mercatus-liber/marketing-catalog"
+
+steps:
+  - id: research
+    description: Re-read docs/subsystems/05-cms-pages.md, especially the marketing-page mini-catalog distinction from marketing-catalog's categories.
+    agent: researcher
+  - id: implement
+    description: Implement Page/ComponentInstance/MarketingPageMeta types, default in-memory repositories, ComponentRegistry with 4 defaults, and CmsService.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for draft->publish transition, component registry defaults, marketing-page creation with ordered curated products, and slug lookup regardless of status.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no import of catalog or marketing-catalog in src/ -- this package only references product/category ids, never their data.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/05-cms-pages.md
+      purpose: The 5 page types, component registry concept, and the marketing-page mini-catalog distinction this package must implement faithfully.
+
+files_to_modify:
+  - file: packages/cms/package.json
+    change: New package depending on @mercatus-liber/core only
+  - file: packages/cms/src/types.ts
+    change: Page, ComponentInstance, MarketingPageMeta, ComponentDefinition, repository interfaces
+  - file: packages/cms/src/component-registry.ts
+    change: Default ComponentRegistry with 4 seeded components
+  - file: packages/cms/src/service.ts
+    change: CmsService -- page CRUD, publish, marketing-page creation
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/cms/src must never import @mercatus-liber/catalog or @mercatus-liber/marketing-catalog -- references product/category ids only"

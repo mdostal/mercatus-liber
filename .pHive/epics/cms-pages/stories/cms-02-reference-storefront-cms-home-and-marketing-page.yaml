@@ -1,0 +1,67 @@
+id: cms-02-reference-storefront-cms-home-and-marketing-page
+epic: cms-pages
+title: Reference storefront -- CMS-authored home page + one marketing/campaign page
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [cms-01-cms-package]
+
+description: |
+  Replace the reference storefront's hardcoded home page with one rendered
+  from CMS page content (a hero-banner section + a category-spot section
+  referencing the seeded top-level categories), and add one live marketing
+  page example (e.g. a "Fall Sale" campaign with its own curated 1-2 product
+  mini-catalog) at a dedicated route, proving the CMS/component-registry
+  primitives render real, working pages -- not just data structures.
+
+acceptance_criteria:
+  - "Given the seeded home page, when '/' renders, then it shows the hero-banner content and a category-spot section listing the seeded top-level categories, sourced from CMS page content, not hardcoded JSX data"
+  - "Given the seeded marketing page, when its route renders, then it shows the campaign name/date info and exactly the curated products from its MarketingPageMeta, in the curated order"
+  - "Given `pnpm turbo run build` at the repo root, when run, then the whole workspace (now 14 packages/apps) still builds together"
+
+steps:
+  - id: research
+    description: Confirm cms-01's Page/ComponentInstance/MarketingPageMeta shapes and the existing seed.ts pattern this story extends.
+    agent: researcher
+  - id: implement
+    description: Extend seed.ts with a home page + one marketing page, add component-renderer mapping (componentType -> React component) in the app, update the home route and add a marketing-page route.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend the reference-storefront's test suite covering the seeded home page's sections and the marketing page's curated product order.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm lib/services.ts remains the sole concrete-service wiring point (grep check, same as every prior epic).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch; this closes the cms-pages epic.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Existing wiring pattern to extend with the CMS service.
+    - path: apps/reference-storefront/app/page.tsx
+      purpose: The current hardcoded home page this story replaces with CMS-driven content.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire cms service
+  - file: apps/reference-storefront/lib/seed.ts
+    change: Seed a home page + one marketing page with curated products
+  - file: apps/reference-storefront/app/page.tsx
+    change: Render from CMS page content instead of hardcoded catalog/category listing
+  - file: apps/reference-storefront/app/campaign/[slug]/page.tsx
+    change: New -- marketing/campaign page route
+  - file: apps/reference-storefront/components/cms-sections.tsx
+    change: New -- componentType -> React component renderer map (hero-banner, ad-slot, category-spot, product-grid)
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Verify lib/services.ts remains the only module importing concrete adapters after this story's additions"
+  - concern: documentation
+    action: "Update apps/reference-storefront/README.md's route list and architecture notes for the CMS wiring"
