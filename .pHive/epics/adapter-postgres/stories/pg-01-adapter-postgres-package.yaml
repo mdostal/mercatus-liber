@@ -1,0 +1,81 @@
+id: pg-01-adapter-postgres-package
+epic: adapter-postgres
+title: Postgres reference adapter, tested for behavioral parity with adapter-sqlite
+status: done
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Implement packages/adapter-postgres: a second concrete implementation of
+  @mercatus-liber/core's CatalogPersistenceAdapter (ProductRepository,
+  SkuRepository, ProductAttributeRepository), using the `pg` driver and real
+  parameterized SQL (JSONB columns for identifying_attribute_keys/
+  identifying_attributes/attribute value, matching adapter-sqlite's JSON-as-
+  TEXT approach but idiomatic to Postgres -- a deliberate demonstration that
+  different adapters can use different internal storage strategies as long
+  as they honor the same interface). Public surface is exactly
+  CatalogPersistenceAdapter, same as adapter-sqlite -- no pg-specific types
+  leak out.
+
+  No live Postgres server exists in this environment. Tests run against a
+  small stateful fake Pool double (an in-memory store that pattern-matches
+  this adapter's own SQL statements) mimicking real query/upsert behavior --
+  this proves the adapter's query logic is correct against a controlled
+  double, not that it works against real Postgres wire protocol. That gap is
+  disclosed explicitly, not silently assumed away (same shape as the Stripe
+  live-key gap from cf-05).
+
+acceptance_criteria:
+  - "Given the exact same test scenarios adapter-sqlite's test suite covers (CRUD, upsert-on-save, list filtering, get/getBySlug returning null for missing records), when run against adapter-postgres, then they produce identical results -- proving behavioral parity, not just type-compatibility"
+  - "Given the adapter's public exports, when inspected, then it exposes exactly the CatalogPersistenceAdapter interface -- no pg.Pool, pg.QueryResult, or any other pg-specific type in the public surface"
+  - "Given the fake Pool double used for testing, when inspected in the test file, then its stateful/mocked nature is documented in a header comment, consistent with how cf-05's Stripe mock is documented"
+
+steps:
+  - id: research
+    description: Re-read adapter-sqlite's src/index.ts and test/adapter.test.ts as the exact contract and scenario set to mirror.
+    agent: researcher
+  - id: implement
+    description: Implement the Postgres adapter against the pg driver, using JSONB columns and parameterized queries.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Build the stateful fake Pool double and mirror every adapter-sqlite test scenario against it.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no pg-specific type leaks into the public surface, and that the fake-double nature of the tests is clearly disclosed.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch; this closes the adapter-postgres epic.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/adapter-sqlite/src/index.ts
+      purpose: The exact CatalogPersistenceAdapter contract and method behaviors this adapter must mirror.
+    - path: packages/adapter-sqlite/test/adapter.test.ts
+      purpose: The exact test scenarios to reproduce against the Postgres adapter for behavioral-parity proof.
+
+files_to_modify:
+  - file: packages/adapter-postgres/package.json
+    change: New package depending on @mercatus-liber/core + pg
+  - file: packages/adapter-postgres/src/schema.ts
+    change: Postgres DDL (JSONB columns) for products, skus, product_attributes
+  - file: packages/adapter-postgres/src/index.ts
+    change: createPostgresAdapter(pool) implementing CatalogPersistenceAdapter
+  - file: packages/adapter-postgres/test/fake-pool.ts
+    change: Stateful fake Pool double for testing without a live Postgres server
+  - file: packages/adapter-postgres/test/adapter.test.ts
+    change: Mirrors adapter-sqlite's test scenarios exactly
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/adapter-postgres/src public surface must be exactly CatalogPersistenceAdapter -- verify no pg-specific type is exported"
+
+design_decisions:
+  - decision: JSONB columns instead of TEXT-encoded JSON (adapter-sqlite's approach)
+    rationale: "Deliberately different internal storage strategy between the two reference adapters, to prove the CatalogPersistenceAdapter interface doesn't secretly assume a particular storage encoding -- only the interface's TypeScript shape is the real contract."

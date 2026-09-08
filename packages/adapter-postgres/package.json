@@ -1,0 +1,31 @@
+{
+  "name": "@mercatus-liber/adapter-postgres",
+  "version": "0.1.0",
+  "description": "Second reference persistence adapter, backed by Postgres. Implements @mercatus-liber/core's CatalogPersistenceAdapter interface -- its public surface is exactly those interfaces, no pg-specific type leaks out. Uses JSONB columns (deliberately different internal storage than adapter-sqlite's TEXT-encoded JSON) to prove the interface doesn't secretly assume a particular encoding.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/pg": "^8.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
