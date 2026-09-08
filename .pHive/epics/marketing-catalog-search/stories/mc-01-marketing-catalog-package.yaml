@@ -1,7 +1,7 @@
 id: mc-01-marketing-catalog-package
 epic: marketing-catalog-search
 title: Marketing catalog package (categories, hierarchy, product assignment)
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: []
