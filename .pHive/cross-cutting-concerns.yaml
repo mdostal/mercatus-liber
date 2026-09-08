@@ -1,0 +1,34 @@
+concerns:
+  - id: documentation
+    name: Documentation Updates
+    description: >
+      When a story changes user-facing behavior, workflow steps, or configuration,
+      corresponding documentation must be updated.
+    applies_when: >
+      Story modifies workflows, schemas, directory structure, configuration files,
+      or adds/removes/renames reference documents
+    planning_prompt: >
+      Which documentation files reference the behavior this story changes?
+      List each doc and what section needs updating.
+    implementation_checklist:
+      - "All docs referencing changed behavior identified"
+      - "Affected sections updated to reflect new behavior"
+      - "No stale references to old behavior remain"
+
+  - id: subsystem-decoupling
+    name: Subsystem Decoupling (Prime Directive)
+    description: >
+      Per docs/ARCHITECTURE.md's prime directive, no subsystem package may import
+      another subsystem's internals. Cross-subsystem interaction must go through
+      shared core types (@core/schema), an adapter interface, or the typed event bus.
+    applies_when: >
+      Story adds or modifies a subsystem package, adds a new cross-subsystem
+      interaction, or adds a new dependency between two packages under packages/
+    planning_prompt: >
+      Which subsystem(s) does this story touch, and does any new interaction cross a
+      subsystem boundary? If so, is it via a core type, an adapter interface, or an
+      event — never a direct import of another subsystem's internals?
+    implementation_checklist:
+      - "No new direct import of another subsystem package's internal modules"
+      - "Any new cross-subsystem interaction goes through core types, an adapter interface, or the event bus"
+      - "Deleting/replacing the subsystem this story touches would not require changing code in another subsystem"

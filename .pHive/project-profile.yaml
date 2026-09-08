@@ -1,0 +1,67 @@
+project_name: "open-source-commerce (working name — see docs/NAMING-CANDIDATES.md)"
+type: greenfield
+discovered: "2026-09-07"
+source: "kickoff conversation, following an already-completed architecture pass"
+
+project_type: framework
+has_ui: true
+
+ship_target:
+  kind: npm
+  notes: >
+    Publish scoped packages (@<name>/core, @<name>/catalog, @<name>/marketing-catalog,
+    @<name>/search, @<name>/pdp, @<name>/cms, @<name>/theming, @<name>/cart,
+    @<name>/payments, @<name>/checkout-orders, @<name>/account, @<name>/inventory,
+    @<name>/plugins, @<name>/adapter-postgres, @<name>/adapter-sqlite) so
+    shop.mdostal.com and other consumers can install them. Scope name pending final
+    project name (docs/NAMING-CANDIDATES.md).
+
+tech_stack:
+  languages: [typescript]
+  frameworks: [nextjs]
+  build_tools: [pnpm, turborepo]
+  package_managers: [pnpm]
+  versions: {}
+  notes: >
+    pnpm workspace + Turborepo monorepo per docs/ARCHITECTURE.md "Repo shape". No code
+    written yet — this is the planned stack from the architecture pass, not a scan
+    result.
+
+north_star:
+  goal: >
+    A free, MIT-licensed, headless commerce framework built from decoupled,
+    independently-swappable subsystems (schema-first catalog, marketing catalog
+    genuinely separate from the sales catalog, CMS, theming, cart, payments,
+    checkout/orders, account, inventory, plugins) communicating only through shared
+    core types, adapter interfaces, or a typed event bus. Fills a real gap: no
+    existing free/OSS commerce platform (Medusa, Saleor, Vendure, Spree/Solidus,
+    Shopware, Bagisto, Sylius) cleanly separates sales catalog from marketing catalog,
+    and most force infrastructure or a stack a solo JS/TS developer doesn't need.
+  audience: >
+    Primary near-term consumer: shop.mdostal.com (the first real reference
+    deployment). Broader audience: developers who want free/OSS commerce without
+    adopting a full framework's infrastructure overhead, and anyone who wants the
+    sales/marketing-catalog separation this project specifically fills. Explicitly
+    "give it away" — public repo, MIT license, no paid tier baked into core.
+  expected_scale: >
+    Unknown/not the point yet. Designed for low-SKU shops (its first prover,
+    shop.mdostal.com, is single-digit-to-dozens of SKUs) but the adapter architecture
+    is meant to not artificially cap scale — a deployment can swap in
+    heavier-duty adapters (search index, DB, inventory/IMS) without touching core
+    subsystem code as it grows.
+  pain_points: >
+    Every evaluated free/OSS option was wrong-stack (PHP/Ruby/Python for a JS/TS
+    developer), wrong-shape (needs a long-running server / message queue, not
+    serverless-friendly), or unnecessary overhead (DB + Redis for a shop that doesn't
+    need them) for a small catalog. None separate marketing catalog from sales
+    catalog. Full CBA: shop/.pHive/epics/v1-launch/docs/oss-cart-cba.md (sibling repo).
+  success: >
+    shop.mdostal.com runs successfully on this framework's packages as a real,
+    functioning shop — proof by use, not just documentation. Beyond that, adoption by
+    others is a bonus, not a requirement for v1 to be "done."
+  avoid: >
+    Tight coupling between subsystems (the explicit prime directive in
+    docs/ARCHITECTURE.md — no subsystem may import another's internals). Forcing a
+    specific DB, payment provider, or whole-site theme model the way most existing
+    platforms do. Building infrastructure (message queues, multi-service deploys)
+    that a low-SKU shop doesn't need just because "real" commerce platforms have it.
