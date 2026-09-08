@@ -1,0 +1,80 @@
+id: mcp-02-mcp-server-and-reference-wiring
+epic: ai-mcp-interface
+title: MCP server wrapper (@modelcontextprotocol/sdk) + reference storefront entry point
+status: done
+complexity: medium
+methodology: classic
+depends_on: [mcp-01-tool-definitions-and-handlers]
+
+description: |
+  Wraps mcp-01's protocol-agnostic tool-definitions + handlers in a real MCP
+  server using the low-level @modelcontextprotocol/sdk Server API (not the
+  high-level McpServer helper, which requires zod schemas for tool inputs --
+  the low-level API accepts plain JSON Schema directly for ListTools'
+  inputSchema, keeping tool-definitions.ts genuinely protocol-agnostic with
+  zero zod dependency). createCommerceMcpServer(deps) registers
+  ListToolsRequestSchema/CallToolRequestSchema handlers backed by mcp-01's
+  TOOL_DEFINITIONS + createCommerceToolHandlers output.
+
+  Adds a standalone entry point in the reference storefront
+  (apps/reference-storefront/mcp-server.ts) that builds the same service
+  graph lib/services.ts wires (via getServices()), adapts each real service
+  to ai-interface's structural interfaces (no new interfaces needed --
+  the real services already satisfy them structurally, same as everywhere
+  else), and starts the MCP server over stdio -- the concrete proof an
+  MCP-compatible agent can shop/manage this reference storefront, per the
+  founder's positioning.
+
+acceptance_criteria:
+  - "Given createCommerceMcpServer(deps), when the underlying Server's registered ListTools handler is invoked (Server mocked in tests, no real stdio process), then it returns exactly the 10 tool definitions from mcp-01 in valid MCP Tool shape (name, description, inputSchema)"
+  - "Given createCommerceMcpServer(deps), when the registered CallTool handler is invoked with a known tool name and arguments, then it delegates to mcp-01's handlers and returns an MCP CallToolResult (content array) wrapping the handler's result"
+  - "Given an unknown tool name, when CallTool is invoked, then it returns an MCP error result rather than throwing an unhandled exception"
+  - "Given apps/reference-storefront/mcp-server.ts, when inspected, then it is the only file (besides lib/services.ts) that constructs a concrete adapter chain -- it reuses getServices() rather than building its own"
+  - "Given the epic's decisions doc, when re-read, then open question 3 (ship now vs. fast-follow) is confirmed correct in hindsight -- catalog/cart/checkout/cms/inventory all existed and needed zero changes to be wrapped"
+
+steps:
+  - id: research
+    description: Confirm the low-level @modelcontextprotocol/sdk Server API's setRequestHandler signature and the ListTools/CallTool schema shapes.
+    agent: researcher
+  - id: implement
+    description: Implement mcp-server.ts (createCommerceMcpServer) and the reference storefront's mcp-server.ts entry point.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests mocking @modelcontextprotocol/sdk's Server class, capturing registered handlers, and invoking them directly to prove correct tool listing and delegation.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Grep-verify the reference storefront's mcp-server.ts sources services only from getServices(), never constructing its own adapters.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch, merge epic to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/ai-interface/src/tool-definitions.ts
+      purpose: The 10 tool definitions this story's MCP server exposes verbatim
+    - path: packages/ai-interface/src/handlers.ts
+      purpose: createCommerceToolHandlers -- what CallTool delegates to
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: getServices() -- the one seam the new mcp-server.ts entry point reuses rather than duplicating
+
+files_to_modify:
+  - file: packages/ai-interface/package.json
+    change: Add @modelcontextprotocol/sdk dependency
+  - file: packages/ai-interface/src/mcp-server.ts
+    change: createCommerceMcpServer(deps) -- low-level Server wrapper
+  - file: packages/ai-interface/src/index.ts
+    change: Export mcp-server module
+  - file: apps/reference-storefront/mcp-server.ts
+    change: New -- standalone stdio MCP server entry point reusing getServices()
+  - file: apps/reference-storefront/package.json
+    change: Add @mercatus-liber/ai-interface + @modelcontextprotocol/sdk dependencies, an "mcp" script
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "mcp-server.ts entry point sources every service from getServices() -- no second concrete-adapter-construction path in the app"

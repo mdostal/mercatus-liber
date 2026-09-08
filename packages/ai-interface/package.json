@@ -1,0 +1,30 @@
+{
+  "name": "@mercatus-liber/ai-interface",
+  "version": "0.1.0",
+  "description": "AI/MCP interface (subsystem 14) -- protocol-agnostic JSON Schema tool definitions + handlers wrapping commerce operations, plus an MCP server. Depends on @mercatus-liber/core for shared types only; every operation is a narrow structural interface, satisfied by the real subsystem services without a package import, same pattern as every other subsystem.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
