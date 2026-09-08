@@ -1,0 +1,118 @@
+id: set-01-adapter-info-module
+epic: admin-adapter-visibility-settings
+title: "reference-storefront: adapter-info descriptor module reflecting services.ts's real wiring"
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/admin-adapter-visibility-settings/docs/design-discussion.md sections 2-3
+  in full first -- it has the exact current state of apps/reference-storefront/lib/services.ts
+  (line numbers for every relevant create*Adapter call) and the resolved design decision (no
+  new package, a small hand-maintained descriptor module).
+
+  Read the WHOLE current apps/reference-storefront/lib/services.ts file yourself before writing
+  anything -- confirm the persistence/CMS/payments/analytics wiring lines are still where the
+  design doc says (a concurrent epic may have shifted line numbers slightly, though not the
+  underlying choices).
+
+  Deliverables:
+  - New file apps/reference-storefront/lib/adapter-info.ts exporting:
+    - `type AdapterStatus = "active" | "unconfigured"`
+    - `interface AdapterInfo { subsystem: string; adapter: string; detail: string; status:
+      AdapterStatus }`
+    - `function getAdapterInfo(): AdapterInfo[]` returning exactly 4 entries, computed fresh
+      on each call (reads process.env directly, no caching):
+      1. `{ subsystem: "Persistence (catalog)", adapter: "SQLite (in-memory)", detail:
+         "createSqliteAdapter(':memory:') -- packages/adapter-sqlite, no external database
+         configured", status: "active" }` (hardcoded today, no env branch exists -- report
+         this honestly, don't invent a branch that doesn't exist).
+      2. `{ subsystem: "CMS", adapter: "In-memory (reference default)", detail:
+         "createInMemoryCmsAdapter() -- packages/cms, no external CMS (e.g. Sanity)
+         configured", status: "active" }`.
+      3. `{ subsystem: "Payments", adapter: "Stripe", detail: <derived>, status: <derived> }`
+         -- status is "active" when `process.env.STRIPE_SECRET_KEY` is truthy, else
+         "unconfigured". detail should note whether the key looks like a test key
+         (`sk_test_` prefix), a live key (`sk_live_` prefix), or is unset (be honest and
+         generic if the prefix doesn't match either -- don't assume every possible Stripe key
+         format).
+      4. `{ subsystem: "Analytics", adapter: <derived>, detail: <derived>, status: "active" }`
+         -- adapter is "PostHog" when `process.env.POSTHOG_API_KEY` is truthy, else "No-op
+         (disabled)"; status is always "active" either way since a no-op adapter is a
+         deliberately valid, fully-functional configuration in this repo's own posture (not an
+         error state) -- do NOT mark the no-op case "unconfigured"; that would misrepresent an
+         intentional choice as a problem.
+  - This module reads environment variables directly (mirroring exactly what
+    lib/services.ts already reads at the same env var names) -- it does NOT import or call
+    getServices()/buildServices(), and does NOT need to touch services.ts at all. It's a pure,
+    side-effect-free descriptor function.
+
+acceptance_criteria:
+  - "Given no environment variables are set, when getAdapterInfo() is called, then persistence and CMS report status 'active' (they have no configurable state), payments reports status 'unconfigured', and analytics reports adapter 'No-op (disabled)' with status 'active'"
+  - "Given process.env.STRIPE_SECRET_KEY is set to a value starting with 'sk_test_', when getAdapterInfo() is called, then the payments entry reports status 'active' and its detail mentions this is a test-mode key"
+  - "Given process.env.STRIPE_SECRET_KEY is set to a value starting with 'sk_live_', when getAdapterInfo() is called, then the payments entry reports status 'active' and its detail mentions this is a live-mode key"
+  - "Given process.env.POSTHOG_API_KEY is set to any truthy value, when getAdapterInfo() is called, then the analytics entry reports adapter 'PostHog' and status 'active'"
+  - "Given getAdapterInfo() is called twice with different env var values in between (e.g. via vi.stubEnv or direct process.env mutation in a test), then each call reflects the CURRENT environment, proving the function is not cached/memoized"
+
+steps:
+  - id: research
+    description: Re-read the current lib/services.ts wiring lines and the design discussion doc's exact adapter-choice summary before writing any code.
+    agent: researcher
+  - id: implement
+    description: Write the adapter-info module per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write a vitest suite (check if this app has any existing test setup to extend, or create a minimal one following whatever convention this app already uses, if any -- otherwise, verify manually via a small script/dev-server check and document that clearly) covering every acceptance criterion above.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the honesty requirement -- no fabricated env-var branches for persistence/CMS that don't actually exist in services.ts, and the no-op-analytics-is-not-an-error framing.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/admin-adapter-visibility-settings.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: "The source of truth this module describes -- persistence (~line 136), CMS (~lines 241-244), payments (~lines 109-120, 145-149), analytics (~lines 131-133). Re-verify exact current lines, do not trust these numbers blindly if the file has shifted."
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/adapter-info.ts
+    change: New file, getAdapterInfo() per the description above.
+
+design_decisions:
+  - decision: "adapter-info.ts reads process.env directly rather than deriving from a running services instance."
+    rationale: "Keeps this module trivially pure/testable and avoids any risk of it needing to construct or touch real adapters (e.g. actually instantiating Stripe) just to describe them -- it reports what services.ts WOULD choose given the current environment, mirroring that file's own env-reading logic exactly."
+  - decision: "A no-op analytics adapter is reported as status 'active', never 'unconfigured'."
+    rationale: "This repo treats the no-op analytics adapter as a deliberately valid, fully-functional default (see docs/subsystems/13-analytics-tracking.md) -- reporting it as an error/unconfigured state would misrepresent an intentional, correct configuration."
+
+risks: []
+
+references:
+  - path: .pHive/epics/admin-adapter-visibility-settings/docs/design-discussion.md
+    relevant_excerpt: |
+      §2-3 have the exact current wiring lines and the reasoning for why this is a small,
+      hand-maintained, app-layer descriptor rather than dynamic adapter introspection.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: reference_storefront.adapter_info_accuracy
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite (or documented manual verification) for lib/adapter-info.ts
+  verify_at: integrate
+  owner: tester

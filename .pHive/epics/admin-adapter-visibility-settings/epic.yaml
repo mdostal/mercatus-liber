@@ -1,0 +1,40 @@
+name: admin-adapter-visibility-settings
+title: Admin Adapter-Visibility Settings Page
+description: >
+  A read-only /admin/settings page showing which concrete adapter this running instance
+  chose for persistence, CMS, and payments (plus a bonus analytics row) -- visibility into
+  "how this instance is actually running." Resolved design question: no new packages/*
+  subsystem, since no adapter in this repo self-identifies (unlike plugins' self-describing
+  Plugin.name) and the only place that knows which concrete factory was chosen is
+  apps/reference-storefront/lib/services.ts itself. A small, hand-maintained descriptor
+  module (lib/adapter-info.ts) is written next to each create*Adapter(...) call site so it
+  can never silently drift from reality. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: patch
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [app-layer, admin-ui, introspection]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    app-layer: "No new subsystem package -- resolved as composition-root metadata, per the design question in design-discussion.md §3"
+    admin-ui: "First purely read-only introspection page in /admin distinct from both list-CRUD pages and the metrics dashboard"
+    introspection: "Central design question: whether adapters self-identify (they don't, except plugins) or need an explicit hand-maintained descriptor"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session (no live multi-agent planning team spawned this run); design discussion grounded in a dedicated codebase-research pass instead, matching the rigor of every prior epic's own research-grounded planning this wave.
+
+stories:
+  - id: set-01-adapter-info-module
+    title: "reference-storefront: adapter-info descriptor module reflecting services.ts's real wiring"
+    complexity: low
+    depends_on: []
+  - id: set-02-admin-settings-page-and-closeout
+    title: "/admin/settings page, nav link, live verification, epic-backlog closeout (final epic of the hand-off brief)"
+    complexity: low
+    depends_on: [set-01-adapter-info-module]
