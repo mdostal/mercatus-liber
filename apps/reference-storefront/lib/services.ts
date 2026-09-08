@@ -1,6 +1,11 @@
 import { createAccountService, createInMemoryCustomerProfileRepository, type AccountService } from "@mercatus-liber/account";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import {
+  createAdvertisingService,
+  createInMemoryCampaignRepository,
+  type AdvertisingService,
+} from "@mercatus-liber/advertising";
+import {
   createNoopAdapter,
   createPostHogAdapter,
   registerAnalyticsSync,
@@ -80,6 +85,7 @@ export interface Services {
   promotions: PromotionsService;
   bundles: BundlesService;
   recommendations: RecommendationsService;
+  advertising: AdvertisingService;
 }
 
 /**
@@ -201,6 +207,14 @@ async function buildServices(): Promise<Services> {
     repository: createInMemoryRecommendationRepository(),
   });
 
+  // Core-only dependency, mirroring promotions/bundles/recommendations
+  // exactly (see design-discussion.md §3 for the advertising epic) -- never
+  // imports cms/service-areas/catalog. Targeting is resolved at the
+  // app-composition layer (cms-sections.tsx's AdSlot), not here.
+  const advertising = createAdvertisingService({
+    repository: createInMemoryCampaignRepository(),
+  });
+
   const marketingCatalog = createMarketingCatalogService({
     categories: createInMemoryCategoryRepository(),
     assignments: createInMemoryProductCategoryRepository(),
@@ -275,6 +289,7 @@ async function buildServices(): Promise<Services> {
     promotions,
     bundles,
     recommendations,
+    advertising,
   };
 }
 

@@ -20,7 +20,7 @@ export default async function HomePage() {
     <main>
       {home.sections.map((section, i) => (
         // Sections are an ordered list, not individually id-addressable in this minimal demo -- index is a stable enough key here.
-        <CmsSection key={i} section={section} />
+        <CmsSection key={i} section={section} pageSlug="home" />
       ))}
     </main>
   );

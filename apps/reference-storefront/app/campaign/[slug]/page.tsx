@@ -22,7 +22,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
         </p>
       )}
       {page.sections.map((section, i) => (
-        <CmsSection key={i} section={section} />
+        <CmsSection key={i} section={section} pageSlug={slug} />
       ))}
     </main>
   );

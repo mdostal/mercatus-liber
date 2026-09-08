@@ -29,6 +29,9 @@ importers:
       '@mercatus-liber/adapter-sqlite':
         specifier: workspace:*
         version: link:../../packages/adapter-sqlite
+      '@mercatus-liber/advertising':
+        specifier: workspace:*
+        version: link:../../packages/advertising
       '@mercatus-liber/ai-interface':
         specifier: workspace:*
         version: link:../../packages/ai-interface
