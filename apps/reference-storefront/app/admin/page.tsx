@@ -21,6 +21,9 @@ export default function AdminHomePage() {
         <li>
           <Link href="/admin/plugins">Plugins</Link>
         </li>
+        <li>
+          <Link href="/admin/promotions">Promotions</Link>
+        </li>
       </ul>
     </main>
   );

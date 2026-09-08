@@ -28,6 +28,7 @@
     "@mercatus-liber/payments": "workspace:*",
     "@mercatus-liber/pdp": "workspace:*",
     "@mercatus-liber/plugins": "workspace:*",
+    "@mercatus-liber/promotions": "workspace:*",
     "@mercatus-liber/search": "workspace:*",
     "@mercatus-liber/service-areas": "workspace:*",
     "@mercatus-liber/theming": "workspace:*",

@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/promotions",
+  "version": "0.1.0",
+  "description": "Coupon codes and percentage/fixed discounts, cart-level and product-level (subsystem 16). Depends on @mercatus-liber/core only -- never imports @mercatus-liber/cart, @mercatus-liber/checkout-orders, or @mercatus-liber/catalog. Product-scope promotions store bare skuId strings and are validated against a cart's own line items at evaluation time, not resolved through catalog. Publishes promotions.redeemed; subscribes to checkout.order.paid to increment redemption counts on completed purchases only.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
