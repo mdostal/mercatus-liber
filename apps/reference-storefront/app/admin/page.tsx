@@ -27,6 +27,9 @@ export default function AdminHomePage() {
         <li>
           <Link href="/admin/bundles">Bundles</Link>
         </li>
+        <li>
+          <Link href="/admin/recommendations">Recommendations</Link>
+        </li>
       </ul>
     </main>
   );
