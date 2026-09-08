@@ -1,0 +1,50 @@
+id: janus-01-dogfood-attempt
+epic: admin-janus-dogfood
+title: Janus dogfood attempt -- documented outcome
+status: done
+complexity: small
+methodology: classic
+depends_on: []
+
+description: |
+  Investigate whether Janus (the Pantheon UI/portal capability slot, a sibling
+  private repo at /Users/mdostal/Documents/work/pantheon/janus) can realistically
+  render Mercatus Liber's admin surface right now, and document the honest
+  outcome -- per the epic's own allowance that a documented non-viability
+  closes this story exactly as well as a working integration would.
+
+acceptance_criteria:
+  - "Given Janus's actual README/package.json (not assumption), when read, then the finding accurately reflects what Janus is (Pantheon UI/portal slot rendering 'god' contracts via a seam, not a general-purpose page builder) and its distribution state (private, unpublished, no CLI on PATH)"
+  - "Given the finding, when weighed against Mercatus Liber's own prime directive (standalone, MIT, giftable, no dependency on Mathew's private infra), then the doc states a clear go/no-go conclusion with reasoning, not just raw facts"
+  - "Given the conclusion, when it is 'not viable now', then the doc names the concrete fallback path taken instead and the condition under which revisiting Janus would make sense later"
+
+steps:
+  - id: research
+    description: Read Janus's README.md, package.json, and bin/ directly from its checkout to ground the finding in fact, not memory.
+    agent: researcher
+  - id: implement
+    description: Write the dogfood-attempt finding and conclusion to docs/janus-dogfood-attempt.md.
+    agent: developer
+    depends_on: [research]
+  - id: review
+    description: Verify the doc's conclusion follows from the stated facts and correctly identifies the fallback.
+    agent: reviewer
+    depends_on: [implement]
+  - id: integrate
+    description: Commit to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Epic 10's own scope and the "success or honest documented failure" allowance.
+
+files_to_modify:
+  - file: .pHive/epics/admin-janus-dogfood/docs/janus-dogfood-attempt.md
+    change: The dogfood attempt's finding and conclusion
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "The conclusion must not introduce any dependency (code or doc-implied) from Mercatus Liber packages onto the private Janus/Pantheon repo"

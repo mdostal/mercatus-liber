@@ -1,0 +1,81 @@
+id: janus-02-admin-catalog-cms-orders-ui
+epic: admin-janus-dogfood
+title: Hand-built admin UI -- catalog, CMS pages, and orders (fallback per janus-01's outcome)
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [janus-01-dogfood-attempt]
+
+description: |
+  Per janus-01's documented conclusion (Janus not viable now), build the admin
+  surface directly in the reference storefront under /admin: a landing page
+  linking to catalog (list products + status), CMS (list pages + status/type),
+  and orders (list all orders + status -- requires adding an all-orders list
+  capability to checkout-orders, since today only listByCustomerId exists).
+  Wired the same way as the rest of the reference storefront: lib/services.ts
+  remains the only adapter-importing module, every admin page reads through
+  the existing service interfaces (or the one new listOrders() addition),
+  no new subsystem coupling.
+
+acceptance_criteria:
+  - "Given checkout-orders' OrderRepository, when extended with listAll(filter?), then the in-memory repository implements it and CheckoutOrdersService exposes listOrders(filter?) delegating to it -- covered by a new test proving it returns all orders across customers/guests, optionally filtered by status"
+  - "Given /admin, when visited, then it lists links to /admin/catalog, /admin/cms, /admin/orders, and the existing /admin/plugins"
+  - "Given /admin/catalog, when visited, then it lists every product from catalog.listProducts() with id, title, status"
+  - "Given /admin/cms, when visited, then it lists every page from cms.listPages() with id, title, pageType, status"
+  - "Given /admin/orders, when visited, then it lists every order from checkout.listOrders() with id, status, customerId (or 'guest'), item count"
+  - "Given the new admin pages, when checked, then none of them import a concrete adapter directly -- only lib/services.ts's getServices()"
+
+steps:
+  - id: research
+    description: Confirm exact shapes of catalog.listProducts, cms.listPages, and checkout-orders' existing OrderRepository/CheckoutOrdersService before extending.
+    agent: researcher
+  - id: implement
+    description: Add OrderRepository.listAll + CheckoutOrdersService.listOrders; build /admin, /admin/catalog, /admin/cms, /admin/orders pages.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Unit test for listOrders (all orders, guest + customer, status filter); integration check that admin pages render seeded data.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Grep-verify no admin page imports a concrete adapter; only lib/services.ts does.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/checkout-orders/src/types.ts
+      purpose: OrderRepository interface to extend with listAll
+    - path: packages/checkout-orders/src/service.ts
+      purpose: CheckoutOrdersService to extend with listOrders
+    - path: packages/checkout-orders/src/in-memory-repository.ts
+      purpose: In-memory implementation to extend
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: The only module admin pages may source concrete service instances from
+    - path: apps/reference-storefront/app/admin/plugins/page.tsx
+      purpose: Existing admin page pattern to follow (force-dynamic, getServices())
+
+files_to_modify:
+  - file: packages/checkout-orders/src/types.ts
+    change: Add listAll(filter?) to OrderRepository
+  - file: packages/checkout-orders/src/service.ts
+    change: Add listOrders(filter?) to CheckoutOrdersService, delegating to repository.listAll
+  - file: packages/checkout-orders/src/in-memory-repository.ts
+    change: Implement listAll
+  - file: apps/reference-storefront/app/admin/page.tsx
+    change: New admin landing page linking to sub-pages
+  - file: apps/reference-storefront/app/admin/catalog/page.tsx
+    change: New -- lists products
+  - file: apps/reference-storefront/app/admin/cms/page.tsx
+    change: New -- lists CMS pages
+  - file: apps/reference-storefront/app/admin/orders/page.tsx
+    change: New -- lists all orders
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Admin pages import only lib/services.ts; checkout-orders' new listOrders is additive, not a new cross-subsystem dependency"
