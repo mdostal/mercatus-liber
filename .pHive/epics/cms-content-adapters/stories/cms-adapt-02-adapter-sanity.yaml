@@ -1,0 +1,80 @@
+id: cms-adapt-02-adapter-sanity
+epic: cms-content-adapters
+title: "@mercatus-liber/adapter-sanity: CmsPersistenceAdapter backed by Sanity's Content API"
+status: pending
+complexity: large
+methodology: classic
+depends_on: [cms-adapt-01-persistence-adapter-bundle]
+
+description: |
+  New package @mercatus-liber/adapter-sanity, depending on @mercatus-liber/cms
+  for the CmsPersistenceAdapter/Page/MarketingPageMeta types it implements
+  (same pattern as adapter-sqlite/adapter-postgres depending on
+  @mercatus-liber/core for CatalogPersistenceAdapter). Public surface is
+  exactly CmsPersistenceAdapter -- no Sanity-specific type leaks through.
+  createSanityAdapter({ projectId, dataset, token, apiVersion?, fetchImpl? })
+  issues real Sanity Content API requests (GROQ queries via the Query API,
+  writes via the Mutations API) through an injectable fetch client, same
+  disclosed-double pattern as adapter-shopify (no live Sanity project/token
+  exists in this environment; tested against a stateful recording fake).
+
+  Unlike adapter-shopify, Sanity documents accept a caller-specified _id at
+  creation time (createOrReplace), so Page.id maps directly to Sanity's
+  _id -- no id-bridging metafield needed. Document per this epic's own
+  docs/cms-adapters-design.md.
+
+acceptance_criteria:
+  - "Given the adapter's public surface, when inspected, then it exposes exactly { pages, marketingMeta } -- identical shape to the in-memory CmsPersistenceAdapter, no Sanity-specific member leaks through"
+  - "Given pages.save/get/getBySlug/list, when run against a recording fake fetch simulating Sanity's Query/Mutations APIs, then Page fields round-trip exactly, including status and sections"
+  - "Given marketingMeta.save/getByPageId, when run against the fake, then MarketingPageMeta round-trips exactly, including productIds order (a curated ORDERED list, not a set)"
+  - "Given the same canonical scenarios the in-memory CMS adapter's own tests cover (save+get by id, get by slug, list with pageType/status filters, missing-record returns null, marketing meta round-trip), when run against this adapter, then they pass identically -- proving behavioral parity"
+  - "Given the package's dependencies, when inspected, then it depends on @mercatus-liber/cms only (for the types it implements) -- no dependency on any other subsystem package"
+
+steps:
+  - id: research
+    description: Confirm CmsPersistenceAdapter's exact shape (from cms-adapt-01) and re-read adapter-shopify's injectable-fetch-client + fake-store pattern as the template.
+    agent: researcher
+  - id: implement
+    description: Implement the Sanity GROQ query/mutation builders, document<->domain mapping, and createSanityAdapter.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Port the in-memory CMS adapter's canonical scenarios against a recording fake Sanity store.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify the public surface is exactly CmsPersistenceAdapter; verify the design doc's disclosed gaps are still accurate.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch, merge epic to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/adapter-shopify/src/graphql-client.ts
+      purpose: The injectable-fetch-client pattern this story's Sanity client mirrors
+    - path: packages/adapter-shopify/test/fake-shopify-store.ts
+      purpose: The stateful recording-fake pattern this story's fake Sanity store mirrors
+    - path: packages/cms/src/types.ts
+      purpose: CmsPersistenceAdapter, Page, MarketingPageMeta -- the exact contract this adapter implements
+
+files_to_modify:
+  - file: packages/adapter-sanity/package.json
+    change: New package, depends on @mercatus-liber/cms only
+  - file: packages/adapter-sanity/src/sanity-client.ts
+    change: Injectable Sanity Query/Mutations API client
+  - file: packages/adapter-sanity/src/mapping.ts
+    change: Page/MarketingPageMeta <-> Sanity document mapping
+  - file: packages/adapter-sanity/src/index.ts
+    change: createSanityAdapter -- the CmsPersistenceAdapter implementation
+  - file: packages/adapter-sanity/test/fake-sanity-store.ts
+    change: Stateful recording fake
+  - file: packages/adapter-sanity/test/adapter.test.ts
+    change: Canonical scenario set ported against the fake
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Public surface is exactly CmsPersistenceAdapter -- proves CMS is genuinely swappable, same rule adapter-postgres/adapter-shopify proved for catalog"

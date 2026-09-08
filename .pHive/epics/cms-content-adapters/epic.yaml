@@ -1,0 +1,26 @@
+name: cms-content-adapters
+title: CMS Content Adapters
+description: >
+  Formalizes CMS's persistence interfaces as an explicit adapter contract (CmsPersistenceAdapter,
+  mirroring CatalogPersistenceAdapter) and proves it with a reference third-party adapter
+  (adapter-sanity, wrapping Sanity's real Content API) -- per Mathew's explicit ask that Sanity
+  and other CMS/design-system tooling be adapters, wrappable alongside or instead of the
+  built-in CMS. See docs/cms-adapters-design.md for the full design and disclosed gaps.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: cms-adapt-01-persistence-adapter-bundle
+    title: CmsPersistenceAdapter bundle -- createCmsService refactor, createInMemoryCmsAdapter
+    complexity: small
+    depends_on: []
+  - id: cms-adapt-02-adapter-sanity
+    title: "@mercatus-liber/adapter-sanity: CmsPersistenceAdapter backed by Sanity's Content API"
+    complexity: large
+    depends_on: [cms-adapt-01-persistence-adapter-bundle]

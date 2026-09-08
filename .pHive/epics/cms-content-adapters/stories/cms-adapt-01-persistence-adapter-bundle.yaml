@@ -1,0 +1,77 @@
+id: cms-adapt-01-persistence-adapter-bundle
+epic: cms-content-adapters
+title: CmsPersistenceAdapter bundle -- createCmsService refactor, createInMemoryCmsAdapter
+status: done
+complexity: small
+methodology: classic
+depends_on: []
+
+description: |
+  Add CmsPersistenceAdapter { pages: PageRepository; marketingMeta:
+  MarketingPageMetaRepository } to packages/cms/src/types.ts -- the same
+  bundled-interface shape CatalogPersistenceAdapter already established.
+  Refactor createCmsService to take { persistence: CmsPersistenceAdapter;
+  components: ComponentRegistry } instead of three loose top-level params.
+  Add createInMemoryCmsAdapter() bundling the existing two in-memory
+  repositories, mirroring adapter-sqlite's convenience-factory pattern.
+  Update all 3 call sites (cms's own tests, reference-storefront's
+  lib/services.ts and test/helpers.ts).
+
+acceptance_criteria:
+  - "Given CmsPersistenceAdapter, when inspected, then it has exactly { pages, marketingMeta } -- same bundled shape as CatalogPersistenceAdapter"
+  - "Given createCmsService, when called, then its signature is { persistence: CmsPersistenceAdapter; components: ComponentRegistry } -- no more loose pages/marketingMeta top-level params"
+  - "Given createInMemoryCmsAdapter(), when used, then it behaves identically to the previous createInMemoryPageRepository() + createInMemoryMarketingPageMetaRepository() pairing -- no behavior change, only a shape change"
+  - "Given every existing CMS test, when run after the refactor, then all still pass unmodified in behavior (only wiring syntax changes)"
+
+steps:
+  - id: research
+    description: Re-read CatalogPersistenceAdapter's exact shape and all 3 current createCmsService call sites.
+    agent: researcher
+  - id: implement
+    description: Add CmsPersistenceAdapter type, createInMemoryCmsAdapter factory, refactor createCmsService and all call sites.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Run full existing CMS + reference-storefront test suites to confirm no behavior regression.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify the refactor is purely a shape change -- no persistence behavior differs.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/core/src/repositories.ts
+      purpose: CatalogPersistenceAdapter -- the bundled-interface shape this story mirrors for CMS
+    - path: packages/cms/src/service.ts
+      purpose: createCmsService's current three-loose-params signature to refactor
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Call site to update
+    - path: apps/reference-storefront/test/helpers.ts
+      purpose: Call site to update
+
+files_to_modify:
+  - file: packages/cms/src/types.ts
+    change: Add CmsPersistenceAdapter
+  - file: packages/cms/src/in-memory-repository.ts
+    change: Add createInMemoryCmsAdapter()
+  - file: packages/cms/src/service.ts
+    change: Refactor createCmsService's deps shape
+  - file: packages/cms/src/index.ts
+    change: Export CmsPersistenceAdapter, createInMemoryCmsAdapter
+  - file: packages/cms/test/cms.test.ts
+    change: Update to new deps shape
+  - file: apps/reference-storefront/lib/services.ts
+    change: Update to new deps shape
+  - file: apps/reference-storefront/test/helpers.ts
+    change: Update to new deps shape
+
+cross_cutting:
+  - concern: adapter-parity
+    action: "CmsPersistenceAdapter must be structurally identical in spirit to CatalogPersistenceAdapter -- same bundling pattern, so the next epic's adapter-sanity slots in exactly like adapter-postgres/adapter-shopify did for catalog"
