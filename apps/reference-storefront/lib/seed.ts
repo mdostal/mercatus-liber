@@ -4,6 +4,7 @@ import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
 import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
+import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 
 interface DemoProduct {
@@ -250,7 +251,35 @@ async function seedServiceAreas(
   await cms.publishPage(locationPage.id);
 }
 
-/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. */
+/**
+ * Seeds the rec-04 acceptance demo: one curated, active RecommendationRule
+ * from the Dragon Cable Organizer to the Dragon Desk Mat, placement "both"
+ * (so it satisfies both the PDP and cart resolution paths -- see
+ * resolvePdpRecommendations/resolveCartRecommendations in
+ * components/recommendation-shelf.tsx), labeled "Customers also bought". The
+ * two products already share the "desk-accessories" category (see
+ * DEMO_PRODUCTS above), so this also reads naturally as a real
+ * "customers also bought" pairing, and the desk mat itself is left with no
+ * curated rule of its own -- its PDP demonstrates the same-category fallback
+ * shelf instead (it falls back to the organizer via that shared category).
+ */
+async function seedRecommendations(
+  recommendations: RecommendationsService,
+  productIdBySlug: Map<string, string>,
+): Promise<void> {
+  const organizerId = productIdBySlug.get("dragon-cable-organizer");
+  const matId = productIdBySlug.get("dragon-desk-mat");
+  if (!organizerId || !matId) return;
+
+  await recommendations.createRule({
+    sourceProductId: organizerId,
+    label: "Customers also bought",
+    placement: "both",
+    targetProductIds: [matId],
+  });
+}
+
+/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. `recommendations` is optional too -- most test files don't need the rec-04 acceptance demo (one curated RecommendationRule); see seedRecommendations. */
 export async function seedCatalog(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -258,6 +287,7 @@ export async function seedCatalog(
   inventory: InventoryAdapter,
   serviceAreas?: ServiceAreaService,
   bundles?: BundlesService,
+  recommendations?: RecommendationsService,
 ): Promise<void> {
   const categoryIdBySlug = await seedCategories(marketingCatalog);
   const productIdBySlug = new Map<string, string>();
@@ -291,4 +321,5 @@ export async function seedCatalog(
   await seedCmsPages(cms, productIdBySlug);
   if (serviceAreas) await seedServiceAreas(serviceAreas, cms, productIdBySlug);
   if (bundles) await seedServiceBundle(catalog, inventory, bundles);
+  if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
 }
