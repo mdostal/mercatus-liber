@@ -23,11 +23,14 @@ export interface Order {
   shippingInfo: ShippingInfo;
   paymentSessionId: string | null;
   paymentRedirectUrl: string | null;
+  /** null for guest checkout. Added for the account subsystem (10) -- see acct-01. Backward compatible: existing callers that never pass customerId keep getting null. */
+  customerId: string | null;
 }
 
 export interface OrderRepository {
   get(id: string): Promise<Order | null>;
   getByIdempotencyKey(key: string): Promise<Order | null>;
+  listByCustomerId(customerId: string): Promise<Order[]>;
   save(order: Order): Promise<void>;
 }
 

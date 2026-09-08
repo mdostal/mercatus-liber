@@ -15,6 +15,8 @@ export interface StartCheckoutInput {
   shippingInfo: ShippingInfo;
   successUrl: string;
   cancelUrl: string;
+  /** Omit or pass null/undefined for guest checkout. */
+  customerId?: string | null;
 }
 
 export interface CheckoutResult {
@@ -25,6 +27,8 @@ export interface CheckoutResult {
 export interface CheckoutOrdersService {
   startCheckout(input: StartCheckoutInput): Promise<CheckoutResult>;
   getOrder(id: string): Promise<Order | null>;
+  /** Delegates directly to the repository -- exposed here so consumers (e.g. the account subsystem's OrderLookup) can depend on this service alone instead of reaching into the repository. */
+  listOrdersByCustomer(customerId: string): Promise<Order[]>;
 }
 
 export function createCheckoutOrdersService(deps: {
@@ -78,6 +82,7 @@ export function createCheckoutOrdersService(deps: {
         shippingInfo: input.shippingInfo,
         paymentSessionId: null,
         paymentRedirectUrl: null,
+        customerId: input.customerId ?? null,
       };
       await repository.save(order);
       await events.publish("checkout.order.placed", { orderId });
@@ -105,6 +110,10 @@ export function createCheckoutOrdersService(deps: {
 
     async getOrder(id: string): Promise<Order | null> {
       return repository.get(id);
+    },
+
+    async listOrdersByCustomer(customerId: string): Promise<Order[]> {
+      return repository.listByCustomerId(customerId);
     },
   };
 }

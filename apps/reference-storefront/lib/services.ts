@@ -1,3 +1,4 @@
+import { createAccountService, createInMemoryCustomerProfileRepository, type AccountService } from "@mercatus-liber/account";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { createCartService, createInMemoryCartRepository, type CartService } from "@mercatus-liber/cart";
 import { createCatalogService, type CatalogService } from "@mercatus-liber/catalog";
@@ -49,6 +50,7 @@ export interface Services {
   theming: ThemingService;
   pdp: PdpService;
   cms: CmsService;
+  account: AccountService;
 }
 
 let servicesPromise: Promise<Services> | null = null;
@@ -100,9 +102,17 @@ async function buildServices(): Promise<Services> {
     components: createComponentRegistry(),
   });
 
+  // `checkout` structurally satisfies account's OrderLookup interface
+  // (getOrder + listOrdersByCustomer) already -- no adapter object needed.
+  const account = createAccountService({
+    profiles: createInMemoryCustomerProfileRepository(),
+    orders: checkout,
+    events,
+  });
+
   await seedCatalog(catalog, marketingCatalog, cms);
 
-  return { events, catalog, cart, checkout, marketingCatalog, search, theming, pdp, cms };
+  return { events, catalog, cart, checkout, marketingCatalog, search, theming, pdp, cms, account };
 }
 
 /** Lazily builds the service graph once per server process and reuses it across requests. */

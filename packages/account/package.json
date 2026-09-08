@@ -1,0 +1,33 @@
+{
+  "name": "@mercatus-liber/account",
+  "version": "0.1.0",
+  "description": "Customer profile, order dashboard, and event-driven activity log (subsystem 10). Depends on @mercatus-liber/core only; reads orders via a narrow structural OrderLookup interface, never importing @mercatus-liber/checkout-orders directly. Auth is explicitly out of scope -- bare customerId, no session/password system.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@mercatus-liber/cart": "workspace:*",
+    "@mercatus-liber/catalog": "workspace:*",
+    "@mercatus-liber/checkout-orders": "workspace:*",
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
