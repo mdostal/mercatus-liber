@@ -1,0 +1,75 @@
+id: audit-01-findings-and-analytics-fixes
+epic: commerce-gap-audit
+title: Audit findings + client-side analytics event coverage fixes
+status: done
+complexity: small
+methodology: classic
+depends_on: []
+
+description: |
+  Read every file in packages/plugins, packages/analytics, and packages/cms
+  directly (not from memory) and document findings in docs/audit-findings.md.
+  Fix the one real, small, in-scope gap found: client-side analytics only
+  covered product_viewed (PDP) -- search_performed and category_viewed had
+  no coverage despite both pages already existing. Generalizes
+  product-viewed-tracker.tsx into a reusable InteractionTracker component
+  and wires it into all three pages. Everything else found (plugin pricing
+  hooks, CMS third-party adapters, location page type, ad-slot management)
+  is documented as genuinely separate scope and already backlogged as
+  epics 18-23 in the planning commit that preceded this epic.
+
+acceptance_criteria:
+  - "Given docs/audit-findings.md, when read, then it covers plugins/analytics/CMS with concrete findings grounded in the actual file contents, not assumption"
+  - "Given the search page, when a query is submitted, then a search_performed client analytics event fires with the query text and result count"
+  - "Given the category page, when visited, then a category_viewed client analytics event fires with the category id and slug"
+  - "Given the PDP page, when visited, then it still fires product_viewed via the same InteractionTracker component (no regression from the product-viewed-tracker.tsx generalization)"
+  - "Given the new InteractionTracker component, when inspected, then it is a single reusable component (not three near-duplicate tracker components)"
+
+steps:
+  - id: research
+    description: Read packages/plugins/src, packages/analytics/src, and packages/cms/src in full; confirm which reference-storefront pages already exist and which analytics events they lack.
+    agent: researcher
+  - id: implement
+    description: Write docs/audit-findings.md; implement InteractionTracker; wire into PDP/search/category; remove product-viewed-tracker.tsx.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend existing reference-storefront test coverage if any covers these pages' rendering; otherwise verify via build + typecheck (client-component event firing isn't unit-testable without a browser, consistent with theme-switcher.tsx's own untested-directly precedent).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no dangling references to product-viewed-tracker.tsx remain.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch, merge epic to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/components/product-viewed-tracker.tsx
+      purpose: The existing single-purpose tracker this story generalizes
+    - path: apps/reference-storefront/app/search/page.tsx
+      purpose: Missing search_performed coverage
+    - path: apps/reference-storefront/app/category/[slug]/page.tsx
+      purpose: Missing category_viewed coverage
+
+files_to_modify:
+  - file: .pHive/epics/commerce-gap-audit/docs/audit-findings.md
+    change: Audit findings document
+  - file: apps/reference-storefront/components/interaction-tracker.tsx
+    change: New -- generalized client analytics tracker component
+  - file: apps/reference-storefront/components/product-viewed-tracker.tsx
+    change: Removed -- superseded by interaction-tracker.tsx
+  - file: apps/reference-storefront/app/products/[slug]/page.tsx
+    change: Use InteractionTracker instead of ProductViewedTracker
+  - file: apps/reference-storefront/app/search/page.tsx
+    change: Add InteractionTracker for search_performed
+  - file: apps/reference-storefront/app/category/[slug]/page.tsx
+    change: Add InteractionTracker for category_viewed
+
+cross_cutting:
+  - concern: analytics-coverage
+    action: "Every page with a meaningful shopper interaction should fire a client-side event -- this story closes the gap for pages that already existed"

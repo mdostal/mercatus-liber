@@ -1,3 +1,4 @@
+import { InteractionTracker } from "../../components/interaction-tracker";
 import { getServices } from "../../lib/services";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export default async function SearchPage({
 
   return (
     <main>
+      {q && <InteractionTracker eventName="search_performed" properties={{ query: q, resultCount: results.length }} />}
       <h1>Search</h1>
       <form method="get" action="/search">
         <input type="text" name="q" defaultValue={q ?? ""} placeholder="Search products..." />

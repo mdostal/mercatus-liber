@@ -1,0 +1,23 @@
+name: commerce-gap-audit
+title: Commerce Gap Audit
+description: >
+  Audits plugins/analytics/CMS coverage across the repo per Mathew's explicit instruction
+  ("double check ALL THE PLUGINS, all the parts for analytics, etc across the board"), closes
+  the small real gaps found (client-side analytics event coverage), and documents what's
+  genuinely missing at the subsystem level as backlog items -- already added to
+  .pHive/planning/epic-backlog.md as epics 18-23. Prerequisite for epic 15's redefined variants
+  (15a/15b) so the demo work proves real coverage rather than whatever happened to ship first.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: patch
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: audit-01-findings-and-analytics-fixes
+    title: Audit findings + client-side analytics event coverage fixes
+    complexity: small
+    depends_on: []
