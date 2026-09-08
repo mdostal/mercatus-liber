@@ -68,6 +68,9 @@ importers:
       '@mercatus-liber/search':
         specifier: workspace:*
         version: link:../../packages/search
+      '@mercatus-liber/service-areas':
+        specifier: workspace:*
+        version: link:../../packages/service-areas
       '@mercatus-liber/theming':
         specifier: workspace:*
         version: link:../../packages/theming

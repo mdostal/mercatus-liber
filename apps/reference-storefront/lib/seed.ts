@@ -2,6 +2,7 @@ import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
 import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
+import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 
 interface DemoProduct {
   slug: string;
@@ -103,12 +104,67 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
   await cms.publishPage(campaign.id);
 }
 
-/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. */
+/**
+ * Seeds a handful of demo service areas (generic local pickup/delivery
+ * regions for this dragon-merch demo shop -- see epic 15a/15b for the real
+ * ATT-style business seed data). The desk mat is deliberately assigned to
+ * only 2 of the 3 areas, proving a product can be available in a subset of
+ * areas, not all-or-nothing. Also publishes one CMS "location" page,
+ * proving the ServiceArea-data / CMS-page-layout split end to end.
+ */
+async function seedServiceAreas(
+  serviceAreas: ServiceAreaService,
+  cms: CmsService,
+  productIdBySlug: Map<string, string>,
+): Promise<void> {
+  const portland = await serviceAreas.createServiceArea({
+    slug: "portland-or",
+    name: "Portland, OR",
+    region: "Pacific Northwest",
+    description: "Local pickup and delivery for Portland-area customers.",
+    phone: "(555) 555-0110",
+  });
+  const austin = await serviceAreas.createServiceArea({
+    slug: "austin-tx",
+    name: "Austin, TX",
+    region: "Texas",
+    description: "Local pickup and delivery for the Austin area.",
+    phone: "(555) 555-0120",
+  });
+  const chicago = await serviceAreas.createServiceArea({
+    slug: "chicago-il",
+    name: "Chicago, IL",
+    region: "Midwest",
+    description: "Local pickup for Chicago-area customers.",
+    phone: null,
+  });
+
+  const organizerId = productIdBySlug.get("dragon-cable-organizer");
+  const matId = productIdBySlug.get("dragon-desk-mat");
+
+  for (const area of [portland, austin, chicago]) {
+    if (organizerId) await serviceAreas.assignProductToServiceArea(organizerId, area.id);
+  }
+  for (const area of [portland, austin]) {
+    if (matId) await serviceAreas.assignProductToServiceArea(matId, area.id);
+  }
+
+  const locationPage = await cms.createPage({
+    pageType: "location",
+    slug: portland.slug,
+    title: portland.name,
+    sections: [{ componentType: "service-area-info", config: { hours: "Mon-Fri 9am-5pm" } }],
+  });
+  await cms.publishPage(locationPage.id);
+}
+
+/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. */
 export async function seedCatalog(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
   cms: CmsService,
   inventory: InventoryAdapter,
+  serviceAreas?: ServiceAreaService,
 ): Promise<void> {
   const categoryIdBySlug = await seedCategories(marketingCatalog);
   const productIdBySlug = new Map<string, string>();
@@ -140,4 +196,5 @@ export async function seedCatalog(
   }
 
   await seedCmsPages(cms, productIdBySlug);
+  if (serviceAreas) await seedServiceAreas(serviceAreas, cms, productIdBySlug);
 }

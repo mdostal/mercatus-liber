@@ -1,7 +1,7 @@
 id: svcarea-02-reference-storefront-location-pages
 epic: service-areas-location-pages
 title: Reference storefront /locations index + /locations/[slug] pages, seeded demo data
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [svcarea-01-service-areas-package]
