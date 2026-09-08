@@ -1,0 +1,70 @@
+id: deploy-01-create-store-scaffolder
+epic: deploy-tool-and-auto-update
+title: "@mercatus-liber/create-store: scaffolds a new deployable store, writes the manifest"
+status: done
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  New package @mercatus-liber/create-store. scaffoldStore({ targetDir,
+  storeName, adapter, theme, plugins }) creates a new project directory
+  containing: a package.json declaring the chosen adapter package
+  (@mercatus-liber/adapter-sqlite | adapter-postgres | adapter-shopify) plus
+  the core subsystem packages as dependencies; a minimal service-wiring
+  entry point (services.ts) demonstrating the same composition pattern
+  apps/reference-storefront/lib/services.ts uses, parameterized by the
+  chosen adapter/theme; and mercatus-liber.config.json -- the manifest
+  recording every choice plus the exact package versions written, which
+  deploy-02's auto-update tool reads. A CLI entry point (bin/cli.ts) wraps
+  scaffoldStore for `npx @mercatus-liber/create-store <name>` usage.
+
+acceptance_criteria:
+  - "Given scaffoldStore({ targetDir, storeName: 'my-shop', adapter: 'sqlite', theme: 'classic', plugins: [] }), when it completes, then targetDir contains package.json, services.ts, and mercatus-liber.config.json"
+  - "Given the generated package.json, when inspected, then its dependencies include @mercatus-liber/core, @mercatus-liber/catalog, @mercatus-liber/cart, @mercatus-liber/checkout-orders, @mercatus-liber/theming, and @mercatus-liber/adapter-sqlite (the chosen adapter) -- not adapter-postgres or adapter-shopify"
+  - "Given adapter: 'shopify' is chosen instead, when scaffoldStore runs, then the generated package.json depends on @mercatus-liber/adapter-shopify instead of adapter-sqlite, and services.ts's generated wiring calls createShopifyAdapter"
+  - "Given the generated mercatus-liber.config.json, when read back via the manifest module's own reader, then it round-trips storeName/adapter/theme/plugins and a generatedAt ISO timestamp exactly"
+  - "Given targetDir already exists and is non-empty, when scaffoldStore is called without an explicit overwrite option, then it throws rather than silently clobbering an existing directory"
+
+steps:
+  - id: research
+    description: Re-read apps/reference-storefront/lib/services.ts as the composition pattern this story's generated services.ts must mirror in miniature.
+    agent: researcher
+  - id: implement
+    description: Implement manifest.ts (StoreManifest type + read/write), scaffold.ts (scaffoldStore + per-adapter template generation), cli.ts.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for scaffold output per adapter choice, manifest round-trip, and the existing-non-empty-targetDir guard, using real temp directories (node:fs + os.tmpdir()) -- no network calls needed for scaffolding.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify generated package.json only ever includes the ONE chosen adapter package, never all three.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: The composition pattern (one module builds the full service graph, only it imports concrete adapters) this story's generated services.ts template mirrors
+    - path: .pHive/epics/deploy-tool-and-auto-update/docs/deploy-tool-scope.md
+      purpose: Full scope and disclosed gaps (no full Next.js app template -- wiring layer + manifest only)
+
+files_to_modify:
+  - file: packages/create-store/package.json
+    change: New package
+  - file: packages/create-store/src/manifest.ts
+    change: StoreManifest type, readManifest/writeManifest
+  - file: packages/create-store/src/scaffold.ts
+    change: scaffoldStore -- generates package.json, services.ts, manifest per adapter choice
+  - file: packages/create-store/src/cli.ts
+    change: CLI entry point wrapping scaffoldStore
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Generated services.ts imports exactly one concrete adapter package -- the one the caller chose -- mirroring the reference storefront's own single-seam rule"

@@ -1,0 +1,76 @@
+id: deploy-02-auto-update
+epic: deploy-tool-and-auto-update
+title: "@mercatus-liber/auto-update: version checking + test-gated apply-or-rollback"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [deploy-01-create-store-scaffolder]
+
+description: |
+  New package @mercatus-liber/auto-update. RegistryClient is a narrow
+  injectable interface ({ getLatestVersion(pkgName): Promise<string> });
+  createNpmRegistryClient(fetchImpl?) is the real implementation (hits
+  registry.npmjs.org, injectable fetch for tests -- same disclosed-gap
+  pattern as adapter-shopify's injectable GraphQL client: these packages
+  are not yet published to npm, so this is tested against a recording fake,
+  documented in deploy-tool-scope.md, not fabricated as a live integration
+  test). checkForUpdates(manifest, registry) reads a StoreManifest
+  (deploy-01's format) and reports which @mercatus-liber/* packages have a
+  newer version available. applyUpdates(targetDir, report, { runTests })
+  bumps package.json + the manifest, then calls the caller-supplied
+  runTests(targetDir); if it returns false, the change is rolled back
+  (package.json and manifest restored to their pre-update content) -- the
+  actual "safe for unattended maintenance" property the commercial thesis
+  needs. A CLI entry point wraps both.
+
+acceptance_criteria:
+  - "Given a manifest listing @mercatus-liber/catalog at version 0.1.0, when checkForUpdates runs against a fake registry client returning 0.2.0 for that package, then the report lists it as an available update with fromVersion/toVersion"
+  - "Given a manifest where every listed package's version already matches the registry's answer, when checkForUpdates runs, then the report's updates list is empty"
+  - "Given applyUpdates runs with a runTests function that resolves true, when it completes, then the target package.json and manifest reflect the new versions"
+  - "Given applyUpdates runs with a runTests function that resolves false, when it completes, then the target package.json and manifest are byte-identical to their pre-update content -- the update was fully rolled back, not partially applied"
+  - "Given the package's dependencies, when inspected, then it depends on @mercatus-liber/core only (for the manifest's re-used version type, if any) -- no dependency on any subsystem package other than create-store's manifest module it reads"
+
+steps:
+  - id: research
+    description: Confirm deploy-01's exact StoreManifest shape and file locations (package.json, mercatus-liber.config.json) this story reads and rewrites.
+    agent: researcher
+  - id: implement
+    description: Implement registry-client.ts, check-updates.ts, apply-update.ts (with rollback), cli.ts.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for checkForUpdates (available/none), applyUpdates' commit path and its rollback path, using real temp directories seeded with deploy-01's scaffoldStore output.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify the rollback path leaves the target directory byte-identical to its pre-update state -- not just "close enough."
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch, merge epic to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/create-store/src/manifest.ts
+      purpose: StoreManifest shape this story's checkForUpdates/applyUpdates read and rewrite
+    - path: packages/adapter-shopify/src/graphql-client.ts
+      purpose: The injectable-fetch-client pattern this story's RegistryClient mirrors
+
+files_to_modify:
+  - file: packages/auto-update/package.json
+    change: New package
+  - file: packages/auto-update/src/registry-client.ts
+    change: RegistryClient interface + createNpmRegistryClient
+  - file: packages/auto-update/src/check-updates.ts
+    change: checkForUpdates
+  - file: packages/auto-update/src/apply-update.ts
+    change: applyUpdates -- test-gated apply-or-rollback
+  - file: packages/auto-update/src/cli.ts
+    change: CLI entry point
+
+cross_cutting:
+  - concern: safe-unattended-maintenance
+    action: "applyUpdates must never leave the target project in a state where a version bump was written but the test gate wasn't honored -- rollback is all-or-nothing"
