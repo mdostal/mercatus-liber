@@ -35,6 +35,9 @@ importers:
       '@mercatus-liber/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
+      '@mercatus-liber/bundles':
+        specifier: workspace:*
+        version: link:../../packages/bundles
       '@mercatus-liber/cart':
         specifier: workspace:*
         version: link:../../packages/cart
