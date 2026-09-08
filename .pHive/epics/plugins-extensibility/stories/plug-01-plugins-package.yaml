@@ -1,0 +1,63 @@
+id: plug-01-plugins-package
+epic: plugins-extensibility
+title: Plugins package (registry, lifecycle, reference order-notification plugin)
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Implement packages/plugins per docs/subsystems/12-plugins-extensibility.md:
+  a Plugin interface (name + an init(ctx) lifecycle hook), a PluginRegistry
+  (register/list/init-all), and a PluginContext exposing only the event bus
+  -- the entire default surface a plugin gets. Ships one reference plugin
+  (order-notification): subscribes to checkout.order.placed and appends an
+  in-memory notification record, proving the extension point actually works
+  for something real, per the subsystem doc's own suggested example.
+
+acceptance_criteria:
+  - "Given a Plugin registered via PluginRegistry.register, when initAll(ctx) runs, then the plugin's init hook is called exactly once with a context exposing only { events }"
+  - "Given the order-notification reference plugin is initialized with a real event bus, when a checkout.order.placed event fires, then listNotifications() includes a record for that order"
+  - "Given two plugins are registered, when initAll runs, then both are initialized independently -- one plugin's init throwing does not prevent the other from initializing (best-effort, not all-or-nothing)"
+  - "Given the package's public exports, when inspected, then it imports @core/schema only -- no import of checkout-orders, catalog, or any other subsystem package (plugins depend on core interfaces only, per the dependency-direction rule)"
+
+steps:
+  - id: research
+    description: Re-read docs/subsystems/12-plugins-extensibility.md, especially the "core subsystems must never import from plugins" direction rule.
+    agent: researcher
+  - id: implement
+    description: Implement Plugin/PluginContext/PluginRegistry types and the order-notification reference plugin.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for registry init-all behavior (including one-plugin-throws-doesn't-block-others), and the reference plugin's event-subscription behavior using a real event bus.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no import of any other subsystem package in packages/plugins/src, and confirm no core subsystem package (checkout-orders, catalog, etc.) imports from packages/plugins -- the direction only ever goes one way.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/12-plugins-extensibility.md
+      purpose: The plugin lifecycle concept, the "every adapter interface is already a plugin point" framing, and the one-directional dependency rule this story must enforce.
+
+files_to_modify:
+  - file: packages/plugins/package.json
+    change: New package depending on @mercatus-liber/core only
+  - file: packages/plugins/src/types.ts
+    change: Plugin, PluginContext, PluginRegistry interfaces
+  - file: packages/plugins/src/registry.ts
+    change: createPluginRegistry() -- register/list/initAll, best-effort init
+  - file: packages/plugins/src/order-notification-plugin.ts
+    change: Reference plugin subscribing to checkout.order.placed
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/plugins/src must never import any other subsystem package; verify no other subsystem package imports from packages/plugins (the direction is strictly one-way)"

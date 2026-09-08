@@ -1,0 +1,30 @@
+name: plugins-extensibility
+title: Plugins & Extensibility
+description: >
+  Plugin lifecycle + registry (subsystem 12): the entire surface a plugin
+  gets by default is @mercatus-liber/core's types plus the event bus --
+  nothing else. Every adapter interface defined elsewhere (payments,
+  inventory, persistence, search index, CMS components) IS already a plugin
+  point by construction; this subsystem's real job is the event-subscription
+  extension point plus proving it works with one reference plugin (an
+  order-notification plugin subscribing to checkout.order.placed). The one
+  dependency-direction rule that matters: core subsystems must never import
+  from plugins -- only the reverse.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: plug-01-plugins-package
+    title: Plugins package (registry, lifecycle, reference order-notification plugin)
+    complexity: medium
+    depends_on: []
+  - id: plug-02-reference-storefront-plugin-admin-page
+    title: Reference storefront -- register the plugin + minimal admin/plugins page
+    complexity: medium
+    depends_on: [plug-01-plugins-package]

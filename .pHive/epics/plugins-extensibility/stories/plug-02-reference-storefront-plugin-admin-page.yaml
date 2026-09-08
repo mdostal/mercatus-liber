@@ -1,0 +1,56 @@
+id: plug-02-reference-storefront-plugin-admin-page
+epic: plugins-extensibility
+title: Reference storefront -- register the plugin + minimal admin/plugins page
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [plug-01-plugins-package]
+
+description: |
+  Register the order-notification reference plugin in lib/services.ts and
+  add a minimal /admin/plugins page listing registered plugins and recent
+  notifications -- the first page under an /admin route, which sets up the
+  natural landing spot for later admin-view work (epic 10's Janus dogfood).
+
+acceptance_criteria:
+  - "Given a demo checkout places an order, when /admin/plugins is visited afterward, then the order-notification plugin's notification for that order is listed"
+  - "Given `pnpm turbo run build` at the repo root, when run, then the whole workspace (now 17 packages/apps) still builds together"
+
+steps:
+  - id: research
+    description: Confirm plug-01's PluginRegistry/order-notification plugin shape.
+    agent: researcher
+  - id: implement
+    description: Register the plugin in lib/services.ts, add app/admin/plugins/page.tsx.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend the reference-storefront's test suite proving a placed order produces a listable notification.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm lib/services.ts remains the sole concrete-service wiring point (grep check, same as every prior epic).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch; this closes the plugins-extensibility epic.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Existing wiring pattern to extend with plugin registry initialization.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire PluginRegistry + order-notification plugin
+  - file: apps/reference-storefront/app/admin/plugins/page.tsx
+    change: New -- lists registered plugins + recent notifications
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Verify lib/services.ts remains the only module importing concrete adapters/plugins after this story's additions"
+  - concern: documentation
+    action: "Update apps/reference-storefront/README.md noting the plugin wiring and the new /admin route namespace"
