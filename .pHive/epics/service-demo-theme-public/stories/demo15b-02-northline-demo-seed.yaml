@@ -1,7 +1,7 @@
 id: demo15b-02-northline-demo-seed
 epic: service-demo-theme-public
 title: Env-selectable Northline demo seed (services, 8 areas, CMS) in reference-storefront
-status: pending
+status: done
 complexity: large
 methodology: classic
 depends_on: [demo15b-01-northline-theme-bundle]
