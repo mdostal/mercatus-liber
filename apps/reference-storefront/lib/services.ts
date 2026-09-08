@@ -6,6 +6,7 @@ import {
   registerAnalyticsSync,
   type AnalyticsAdapter,
 } from "@mercatus-liber/analytics";
+import { createBundlesService, createInMemoryBundleRepository, type BundlesService } from "@mercatus-liber/bundles";
 import { createCartService, createInMemoryCartRepository, type CartService } from "@mercatus-liber/cart";
 import { createCatalogService, type CatalogService } from "@mercatus-liber/catalog";
 import {
@@ -72,6 +73,7 @@ export interface Services {
   plugins: PluginRegistry;
   orderNotificationPlugin: OrderNotificationPlugin;
   promotions: PromotionsService;
+  bundles: BundlesService;
 }
 
 /**
@@ -175,6 +177,15 @@ async function buildServices(): Promise<Services> {
     },
   });
 
+  // `catalog` structurally satisfies bundles' own narrow SkuPriceLookup
+  // interface (getSku(id) -> { id, price, title? }) already -- no adapter
+  // object needed, same structural-satisfaction pattern used for
+  // account/inventory's OrderLookup below.
+  const bundles = createBundlesService({
+    repository: createInMemoryBundleRepository(),
+    skuLookup: catalog,
+  });
+
   const marketingCatalog = createMarketingCatalogService({
     categories: createInMemoryCategoryRepository(),
     assignments: createInMemoryProductCategoryRepository(),
@@ -227,7 +238,7 @@ async function buildServices(): Promise<Services> {
   if (process.env.DEMO_BRAND === "northline") {
     await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
   } else {
-    await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas);
+    await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas, bundles);
   }
 
   return {
@@ -247,6 +258,7 @@ async function buildServices(): Promise<Services> {
     plugins,
     orderNotificationPlugin,
     promotions,
+    bundles,
   };
 }
 

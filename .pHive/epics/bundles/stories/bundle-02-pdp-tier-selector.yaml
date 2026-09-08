@@ -1,0 +1,120 @@
+id: bundle-02-pdp-tier-selector
+epic: bundles
+title: "reference-storefront: bundle tier selector on the PDP, add-tier-to-cart orchestration"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [bundle-01-bundles-subsystem]
+
+description: |
+  App-layer composition only -- packages/pdp itself is NOT touched by this story (see
+  design-discussion.md §5 for why: bundles is resolved at the app-composition layer, the same
+  established pattern the product page already uses for stock lookup).
+
+  Read the actual committed bundles package before writing any code (its exact method names
+  may differ slightly from the story-01 spec's paraphrase):
+  packages/bundles/src/types.ts
+  packages/bundles/src/service.ts
+
+  Read the current product page and PDP template components as your integration point:
+  apps/reference-storefront/app/products/[slug]/page.tsx (stock-lookup composition pattern,
+  lines ~42-50, is the exact precedent to mirror)
+  apps/reference-storefront/components/pdp-tabbed-detail.tsx
+  apps/reference-storefront/components/pdp-long-scroll.tsx
+  apps/reference-storefront/lib/actions.ts (addToCartAction's existing shape)
+  apps/reference-storefront/lib/services.ts (how to get a bundles service instance -- likely
+  needs wiring in here the same way promotions/pdp/cart etc. already are, unless a concurrent
+  piece of work has already done it -- re-read this file fresh right before you touch it)
+
+  Deliverables:
+  - apps/reference-storefront/lib/services.ts: wire createBundlesService (in-memory
+    repository, satisfying SkuPriceLookup with `catalog` the same way cart's SkuLookup is
+    satisfied structurally elsewhere in this file) and expose it on the returned services
+    object + its type, if not already present.
+  - apps/reference-storefront/app/products/[slug]/page.tsx: after the existing
+    viewModel/stock composition, call `bundles.getBundleForProduct(viewModel.product.id)`. If
+    a bundle exists, compute each tier's pricing via `bundles.computeTierPricing(bundle.id,
+    tier.id)` for every tier, and render a new component instead of (or above) the normal
+    per-SKU add-to-cart form.
+  - New component apps/reference-storefront/components/bundle-tier-selector.tsx: renders one
+    radio button or one `<form>` per tier (label + computed total price using this app's
+    existing `((amount)/100).toFixed(2)} {currency}` formatting convention), each submitting
+    to a new `addBundleTierToCartAction` server action carrying `bundleId` + `tierId`.
+  - New server action in lib/actions.ts: `addBundleTierToCartAction(formData)` -- reads
+    bundleId/tierId, resolves the tier's cart id (mirror addToCartAction's
+    getOrCreateCartId() call), looks up the bundle+tier via the bundles service to get its
+    skuIds, then calls `cart.addItem(cartId, skuId, 1)` once per skuId in that tier (quantity
+    fixed at 1 per SKU -- a tier selection isn't a "buy N of the whole package" quantity
+    control), then `revalidatePath("/cart")`.
+  - When a product has NO bundle, the page/templates render exactly as they do today -- zero
+    behavior change for every existing product (verify this explicitly as an acceptance
+    criterion, not just an assumption).
+
+acceptance_criteria:
+  - "Given a product with no attached bundle, when its PDP renders, then the page is byte-identical in structure to before this story (existing per-SKU add-to-cart form only, no tier selector rendered)"
+  - "Given a product with an attached 3-tier bundle, when its PDP renders, then a tier selector shows all 3 tiers with correct computed total prices (sum of each tier's constituent SKU prices)"
+  - "Given a shopper submits the 'Complete Overhaul' tier's form, when addBundleTierToCartAction runs, then the cart ends up with one line item per constituent SKU of that tier (quantity 1 each), verifiable via cart.getCart(cartId)"
+  - "Given a shopper submits a tier twice (e.g. double-click), when addBundleTierToCartAction runs both times, then cart.addItem's existing same-skuId-merges-quantity behavior applies naturally (quantity 2 for each constituent SKU) -- no special dedup logic needed in this story, since cart's existing addItem semantics already handle it"
+
+steps:
+  - id: research
+    description: Re-read the committed packages/bundles public surface and the current product page/templates/actions before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the PDP tier-selector composition per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the golden path (no-bundle product unchanged, bundled product shows tiers with correct prices, selecting a tier adds the right cart lines) via a dev server; add automated coverage if this app has any test harness for its routes/actions, otherwise document the manual verification steps taken.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the zero-regression claim for non-bundled products and that packages/pdp itself was not modified.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/bundles.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/products/[slug]/page.tsx
+      purpose: "Lines ~42-50 are the exact precedent for composing a service NOT part of pdp's own view model onto this page (stock lookup) -- bundles composition mirrors this."
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: "addToCartAction (lines ~13-20) is the exact single-SKU precedent; addBundleTierToCartAction is its multi-SKU sibling."
+    - path: apps/reference-storefront/components/pdp-tabbed-detail.tsx
+      purpose: Existing per-SKU add-to-cart form structure/styling convention to match visually for the new tier-selector component.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/products/[slug]/page.tsx
+    change: Compose bundles.getBundleForProduct + computeTierPricing per tier; render BundleTierSelector when a bundle exists.
+  - file: apps/reference-storefront/components/bundle-tier-selector.tsx
+    change: New component, one form per tier.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: Add addBundleTierToCartAction.
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire bundles service if not already present (check for concurrent changes first).
+
+design_decisions:
+  - decision: "Tier selection adds each constituent SKU at quantity 1, with no quantity selector on the tier form itself."
+    rationale: "A package tier is 'one of this configuration,' not a quantity control -- matches the ATT acceptance shape (you pick Product Only vs. + Pro Setup vs. Complete Overhaul, you don't specify how many of the whole package)."
+
+risks:
+  - severity: low
+    description: "packages/pdp itself stays untouched, so a future deployment wanting bundle data inside pdp's own PdpViewModel (rather than app-composed) would need a separate follow-up change."
+    mitigation: "Explicitly documented as the resolution to PDP's open question 1 in docs/subsystems/04-pdp.md and design-discussion.md §5 -- not an oversight."
+
+references:
+  - path: .pHive/epics/bundles/docs/design-discussion.md
+    relevant_excerpt: |
+      §5: "a documented future extension for subsystem 04's own data contract -- v1 handles it
+      entirely at the app-composition layer, the same way stock already does."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "UI/orchestration story wiring an already-tested backend computation (bundle-01) into a page and a new server action; the acceptance criteria above are the observable surface, verified via the golden-path check in the test step since this app has no existing UI test harness to extend."

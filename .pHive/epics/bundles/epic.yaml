@@ -1,0 +1,49 @@
+name: bundles
+title: Bundles
+description: >
+  Multi-product bundles sold as a single purchasable selection (backlog epic 21). New
+  subsystem 17 (@mercatus-liber/bundles, core-only dependency) resolved design question: a
+  peer subsystem referencing catalog SKUs by id, never a Product/Sku or CartItem extension --
+  a selected tier becomes N ordinary cart.addItem calls at the app layer, so cart,
+  checkout-orders, promotions, and inventory all require zero code changes. Acceptance shape:
+  a 3-tier package selector (Product Only / + Pro Setup / Complete Overhaul), All That
+  Technology's real confirmed PDP direction, explicitly deferred to this epic by the internal
+  recreation repo. See docs/subsystems/17-bundles.md and docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [backend, new-subsystem, admin-ui, pdp-integration]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    backend: "New package (bundles) with domain model + service + in-memory adapter"
+    new-subsystem: "Design question (extend Product/Sku vs. peer subsystem) required resolving before decomposition, per epic-backlog.md epic 21 description"
+    admin-ui: "Admin CRUD for bundles, mirroring epic 20's established admin-mutation pattern"
+    pdp-integration: "App-layer composition onto the product page, resolving PDP subsystem's own open question 1"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session (no live multi-agent planning team spawned this run); design discussion grounded in a dedicated codebase-research pass instead, matching the rigor of epic 20's own research-grounded planning.
+
+stories:
+  - id: bundle-01-bundles-subsystem
+    title: "@mercatus-liber/bundles: Bundle/BundleTier domain model, in-memory adapter, tier pricing"
+    complexity: medium
+    depends_on: []
+  - id: bundle-02-pdp-tier-selector
+    title: "reference-storefront: bundle tier selector on the PDP, add-tier-to-cart orchestration"
+    complexity: medium
+    depends_on: [bundle-01-bundles-subsystem]
+  - id: bundle-03-admin-bundles-crud
+    title: "/admin/bundles: list + create/edit/deactivate bundles"
+    complexity: medium
+    depends_on: [bundle-01-bundles-subsystem]
+  - id: bundle-04-acceptance-seed-and-closeout
+    title: "Seed a 3-tier demo bundle (ATT acceptance shape), decoupling verification, epic-backlog closeout"
+    complexity: low
+    depends_on: [bundle-02-pdp-tier-selector, bundle-03-admin-bundles-crud]

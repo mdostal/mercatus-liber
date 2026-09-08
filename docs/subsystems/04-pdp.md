@@ -36,8 +36,15 @@ touching this subsystem's code at all, as long as the template consumes the same
 this subsystem exposes.
 
 ## Open questions
-1. Does the PDP data contract need to support "bundle" products (multiple SKUs sold as one
-   purchasable unit) at v1, or is that a documented future extension?
+1. **Resolved 2026-09-08 (epic 21, `bundles`, subsystem 17):** bundles are handled entirely at
+   the app-composition layer for v1, not folded into this subsystem's own `PdpViewModel`/
+   `ProductLookup` contract — the reference-storefront's product page composes
+   `bundles.getBundleForProduct(product.id)` alongside its existing stock-lookup composition
+   (same established pattern, same file) and renders a tier selector when a bundle exists.
+   This data contract stays untouched; see `docs/subsystems/17-bundles.md` and
+   `.pHive/epics/bundles/docs/design-discussion.md` §5 for the full resolution. Folding bundles
+   directly into `PdpViewModel` remains a documented future option if a deployment needs it at
+   larger scale.
 2. Real-time inventory read at PDP render time — direct interface call (simplest) vs. a cached/
    event-driven stock snapshot (better at scale, more complexity)? Start with the direct call;
    the founder's own CBA explicitly said don't over-build for volume that isn't here.

@@ -18,6 +18,7 @@
     "@mercatus-liber/adapter-sqlite": "workspace:*",
     "@mercatus-liber/ai-interface": "workspace:*",
     "@mercatus-liber/analytics": "workspace:*",
+    "@mercatus-liber/bundles": "workspace:*",
     "@mercatus-liber/cart": "workspace:*",
     "@mercatus-liber/catalog": "workspace:*",
     "@mercatus-liber/checkout-orders": "workspace:*",

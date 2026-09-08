@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import type { TierPricing } from "@mercatus-liber/bundles";
 import { PdpLongScroll } from "../../../components/pdp-long-scroll";
 import { PdpTabbedDetail } from "../../../components/pdp-tabbed-detail";
+import { BundleTierSelector } from "../../../components/bundle-tier-selector";
 import { InteractionTracker } from "../../../components/interaction-tracker";
 import { getServices } from "../../../lib/services";
 import { readActiveThemeBundle } from "../../../lib/theme-cookie";
@@ -26,7 +28,7 @@ export default async function ProductPage({
 }) {
   const { slug } = await params;
   const { template } = await searchParams;
-  const { pdp, inventory } = await getServices();
+  const { pdp, inventory, bundles } = await getServices();
 
   // Explicit ?template= always wins; otherwise fall back to the active
   // theme's PDP choice (a per-request, per-call override -- never mutates
@@ -49,6 +51,21 @@ export default async function ProductPage({
     stockBySkuId[sku.id] = level ? level.onHand - level.reserved : 0;
   }
 
+  // Bundles is deliberately NOT part of pdp's view model, same "app composes
+  // multiple services" pattern as stock above -- see design-discussion.md §5,
+  // which resolves docs/subsystems/04-pdp.md's open question 1 this way for
+  // v1 rather than folding bundle data into PdpViewModel itself. When a
+  // product has no attached bundle, this is a no-op and the page renders
+  // exactly as it did before this story.
+  const bundle = await bundles.getBundleForProduct(viewModel.product.id);
+  const pricingByTierId: Record<string, TierPricing> = {};
+  if (bundle) {
+    for (const tier of bundle.tiers) {
+      const pricing = await bundles.computeTierPricing(bundle.id, tier.id);
+      if (pricing) pricingByTierId[tier.id] = pricing;
+    }
+  }
+
   const Component =
     (viewModel.templateKey && TEMPLATE_COMPONENTS[viewModel.templateKey as keyof typeof TEMPLATE_COMPONENTS]) ||
     PdpTabbedDetail;
@@ -56,6 +73,7 @@ export default async function ProductPage({
   return (
     <>
       <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug }} />
+      {bundle ? <BundleTierSelector bundle={bundle} pricingByTierId={pricingByTierId} /> : null}
       <Component viewModel={viewModel} stockBySkuId={stockBySkuId} />
     </>
   );
