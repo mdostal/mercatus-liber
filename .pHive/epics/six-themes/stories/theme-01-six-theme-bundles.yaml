@@ -1,0 +1,64 @@
+id: theme-01-six-theme-bundles
+epic: six-themes
+title: Six theme bundles (ThemeBundle type, applyTheme helper, 6 concrete presets)
+status: done
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Extend packages/theming (no new package -- a theme bundle is sugar over
+  the existing ThemingService primitives, per docs/ARCHITECTURE.md principle
+  3 and docs/subsystems/06-theming-layout.md's "Theme bundles" section) with:
+  a ThemeBundle type (key, label, tokens, defaultTemplatesByPageType), an
+  applyTheme(themingService, bundle) helper that calls setTokens +
+  setDefaultTemplate for each page type the bundle configures, and 6
+  concrete bundles shipped as data (distinct style-token palettes: classic,
+  dark, minimal, vibrant, retro, high-contrast). Ships zero new
+  infrastructure -- proves "building a full theme is just calling the
+  primitives that already exist" concretely.
+
+acceptance_criteria:
+  - "Given the 6 shipped theme bundles, when inspected, then each has a unique key, a distinct token palette (no two bundles share identical tokens), and every bundle configures at least the 'pdp' page type's default template"
+  - "Given applyTheme(themingService, bundle) runs, when getTokens() and resolveTemplate('pdp') are checked afterward, then they reflect the bundle's tokens and chosen template -- applyTheme is proven to be pure composition of setTokens/setDefaultTemplate, not a separate code path"
+  - "Given applyTheme is called twice with two different bundles in sequence, when the theming state is inspected, then the second bundle's settings fully override the first's (no residue) -- switching themes is idempotent, not additive"
+  - "Given the package's public exports, when inspected, then ThemeBundle/applyTheme/the 6 bundles add zero new dependencies -- still @mercatus-liber/core only"
+
+steps:
+  - id: research
+    description: Re-read packages/theming/src/service.ts (pt-01) and docs/subsystems/06-theming-layout.md's Theme bundles section as the primitives this story composes, not replaces.
+    agent: researcher
+  - id: implement
+    description: Implement ThemeBundle type, applyTheme helper, and 6 concrete bundles as data.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for bundle distinctness, applyTheme's pure-composition behavior, and idempotent theme switching.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify applyTheme adds no new state/dependencies beyond composing existing ThemingService methods.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/theming/src/service.ts
+      purpose: The existing ThemingService primitives (setTokens, setDefaultTemplate, resolveTemplate) this story composes via applyTheme -- never reimplemented.
+    - path: docs/subsystems/06-theming-layout.md
+      purpose: "Theme bundles" section -- the design intent this story implements literally.
+
+files_to_modify:
+  - file: packages/theming/src/theme-bundles.ts
+    change: ThemeBundle type, applyTheme helper, 6 concrete bundles
+  - file: packages/theming/src/index.ts
+    change: Export the new theme-bundles module
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "applyTheme must be pure composition of existing ThemingService methods -- no parallel state, no new package dependency"

@@ -1,10 +1,12 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
 import { getServices } from "./services";
+import { THEME_COOKIE } from "./theme-cookie";
 
 export async function addToCartAction(formData: FormData): Promise<void> {
   const skuId = String(formData.get("skuId"));
@@ -40,4 +42,11 @@ export async function startCheckoutAction(): Promise<void> {
   });
 
   redirect(result.redirectUrl);
+}
+
+export async function setThemeAction(formData: FormData): Promise<void> {
+  const theme = String(formData.get("theme"));
+  const cookieStore = await cookies();
+  cookieStore.set(THEME_COOKIE, theme, { sameSite: "lax", path: "/" });
+  revalidatePath("/", "layout");
 }

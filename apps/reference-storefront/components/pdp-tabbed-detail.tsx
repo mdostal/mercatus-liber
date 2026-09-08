@@ -22,7 +22,7 @@ export function PdpTabbedDetail({
   return (
     <main>
       <h1>{product.title}</h1>
-      <p style={{ fontSize: 12, color: "#666" }}>Layout: tabbed-detail</p>
+      <p style={{ fontSize: 12, color: "var(--color-accent)" }}>Layout: tabbed-detail</p>
 
       <details open>
         <summary>Description</summary>
@@ -39,7 +39,12 @@ export function PdpTabbedDetail({
               {(sku.price.amount / 100).toFixed(2)} {sku.price.currency} -- in stock: {stockBySkuId[sku.id] ?? 0}
             </span>{" "}
             <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
-            <button type="submit">Add to cart</button>
+            <button
+              type="submit"
+              style={{ background: "var(--color-primary)", color: "var(--color-background)", borderRadius: "var(--radius)", border: "none", padding: "4px 12px" }}
+            >
+              Add to cart
+            </button>
           </form>
         ))}
       </details>

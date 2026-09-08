@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PdpLongScroll } from "../../../components/pdp-long-scroll";
 import { PdpTabbedDetail } from "../../../components/pdp-tabbed-detail";
 import { getServices } from "../../../lib/services";
+import { readActiveThemeBundle } from "../../../lib/theme-cookie";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,16 @@ export default async function ProductPage({
   const { slug } = await params;
   const { template } = await searchParams;
   const { pdp, inventory } = await getServices();
-  const viewModel = await pdp.getViewModel(slug, template);
+
+  // Explicit ?template= always wins; otherwise fall back to the active
+  // theme's PDP choice (a per-request, per-call override -- never mutates
+  // the shared theming singleton, so concurrent requests with different
+  // themes never race each other). Only pdp's own internal default (theming
+  // .resolveTemplate) is used if neither is provided.
+  const activeTheme = await readActiveThemeBundle();
+  const templateOverride = template ?? activeTheme.defaultTemplatesByPageType.pdp;
+
+  const viewModel = await pdp.getViewModel(slug, templateOverride);
   if (!viewModel) notFound();
 
   // Stock is deliberately NOT part of pdp's view model (see pt-02's design

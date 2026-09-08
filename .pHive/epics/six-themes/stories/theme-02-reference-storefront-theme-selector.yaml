@@ -1,0 +1,81 @@
+id: theme-02-reference-storefront-theme-selector
+epic: six-themes
+title: Reference storefront -- selectable theme applying real CSS custom properties
+status: done
+
+execution_note: >
+  Design correction from the original story sketch: Next.js App Router
+  layouts do NOT receive searchParams (only pages do -- this is an
+  intentional framework constraint so a layout isn't forced to re-render per
+  query param). Switched the mechanism to a cookie (ml_theme, mirrors the
+  existing cart-cookie/customer-cookie pattern) set via a form + server
+  action, which layouts CAN read. Also: theme selection is deliberately NOT
+  applied by mutating the shared/global ThemingService singleton per request
+  -- that would race across concurrent requests with different selected
+  themes. Instead each request resolves its own bundle from THEME_BUNDLES
+  (a pure lookup, no shared mutable state) and passes the bundle's PDP
+  template choice as an explicit per-call override to pdp.getViewModel,
+  exactly like the existing ?template= override already does.
+complexity: medium
+methodology: classic
+depends_on: [theme-01-six-theme-bundles]
+
+description: |
+  Wire theme selection into apps/reference-storefront: a `?theme=` query
+  param (defaulting to the first bundle) selects one of the 6 bundles,
+  applyTheme runs against the app's theming instance, and the root layout
+  renders the resulting tokens as real CSS custom properties (a `<style>`
+  block setting `:root` variables) -- with key inline styles across existing
+  components (layout header, PDP components) switched from hardcoded hex
+  values to `var(--token-name)`, so switching themes visibly changes the
+  site, not just internal state.
+
+acceptance_criteria:
+  - "Given `?theme=dark` on any page, when rendered, then the page's CSS custom properties match the dark bundle's tokens exactly"
+  - "Given no theme query param, when rendered, then the first shipped bundle applies as the default (same override precedence as resolveTemplate itself)"
+  - "Given `pnpm turbo run build` at the repo root, when run, then the whole workspace (still 17 packages/apps -- this story adds no new package) builds together"
+
+steps:
+  - id: research
+    description: Confirm theme-01's ThemeBundle/applyTheme shape and identify which existing inline styles in layout.tsx/PDP components should switch to CSS custom properties.
+    agent: researcher
+  - id: implement
+    description: Add theme selection to lib/services.ts (reading a searchParam or similar per-request signal), render :root custom properties in the layout, switch key inline styles to var(--token-name).
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend the reference-storefront's test suite proving applyTheme + a bundle selection produces the expected token set.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm lib/services.ts remains the sole concrete-service wiring point (grep check, same as every prior epic).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch; this closes the six-themes epic.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/app/layout.tsx
+      purpose: Root layout this story extends with :root CSS custom properties from the active theme's tokens.
+    - path: apps/reference-storefront/components/pdp-tabbed-detail.tsx
+      purpose: One of the components with hardcoded inline styles to switch to token-driven var(--...) references.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: Resolve and apply the active theme bundle per request
+  - file: apps/reference-storefront/app/layout.tsx
+    change: Render :root CSS custom properties from the active theme's tokens
+  - file: apps/reference-storefront/components/pdp-tabbed-detail.tsx
+    change: Switch key inline styles to var(--token-name)
+  - file: apps/reference-storefront/components/pdp-long-scroll.tsx
+    change: Switch key inline styles to var(--token-name)
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Verify lib/services.ts remains the only module importing concrete adapters after this story's additions"
+  - concern: documentation
+    action: "Update apps/reference-storefront/README.md documenting the ?theme= selector and the 6 available theme keys"
