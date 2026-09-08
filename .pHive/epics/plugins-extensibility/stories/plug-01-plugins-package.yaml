@@ -1,7 +1,7 @@
 id: plug-01-plugins-package
 epic: plugins-extensibility
 title: Plugins package (registry, lifecycle, reference order-notification plugin)
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: []
