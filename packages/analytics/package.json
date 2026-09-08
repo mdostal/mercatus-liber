@@ -1,0 +1,30 @@
+{
+  "name": "@mercatus-liber/analytics",
+  "version": "0.1.0",
+  "description": "AnalyticsAdapter interface + event-bus subscriber (subsystem 13). Depends on @mercatus-liber/core only -- a one-directional read-only subscriber over the existing event bus, never a dependency of any other subsystem. Ships a PostHog reference adapter enabled by default, plus a no-op adapter for disabled/privacy-conscious deployments.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*",
+    "posthog-node": "^5.51.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

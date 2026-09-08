@@ -3,3 +3,7 @@ packages:
   - "apps/*"
 allowBuilds:
   better-sqlite3: true
+minimumReleaseAgeExclude:
+  - '@posthog/core@1.50.6'
+  - '@posthog/types@1.409.1'
+  - posthog-node@5.51.7
