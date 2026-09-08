@@ -25,6 +25,7 @@
     "@mercatus-liber/checkout-orders": "workspace:*",
     "@mercatus-liber/cms": "workspace:*",
     "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/internal-bi": "workspace:*",
     "@mercatus-liber/inventory": "workspace:*",
     "@mercatus-liber/marketing-catalog": "workspace:*",
     "@mercatus-liber/payments": "workspace:*",

@@ -19,6 +19,9 @@ export default function AdminHomePage() {
           <Link href="/admin/orders">Orders</Link>
         </li>
         <li>
+          <Link href="/admin/metrics">Metrics</Link>
+        </li>
+        <li>
           <Link href="/admin/plugins">Plugins</Link>
         </li>
         <li>

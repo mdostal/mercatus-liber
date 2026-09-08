@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/internal-bi",
+  "version": "0.1.0",
+  "description": "Owned, internal business-intelligence layer -- revenue over time, order volume, top products, conversion funnel, promotion redemption rates, and (contract-only) inventory turns -- architected as an explicit, swappable BiMetricsAdapter contract (subsystem 20). Depends on @mercatus-liber/core only; reads orders/skus/promotions via narrow structural interfaces, never importing @mercatus-liber/checkout-orders, @mercatus-liber/catalog, or @mercatus-liber/promotions directly. The conversion funnel is backed by its own small, in-memory, going-forward-only event log, populated by subscribing to a fixed allow-list of existing bus events -- never a direct call into any other subsystem.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

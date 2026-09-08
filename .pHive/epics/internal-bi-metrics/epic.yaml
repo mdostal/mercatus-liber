@@ -1,0 +1,53 @@
+name: internal-bi-metrics
+title: Internal BI / Metrics
+description: >
+  An owned, internal business-intelligence layer -- revenue over time, order volume, top
+  products, conversion funnel, promotion redemption rates, and (contract-only) inventory
+  turns -- distinct from @mercatus-liber/analytics (subsystem 13, write-only PostHog
+  forwarding). New subsystem 20 (@mercatus-liber/internal-bi, core-only dependency) resolved
+  as an explicit BiMetricsAdapter contract (mirroring CatalogPersistenceAdapter/
+  CmsPersistenceAdapter) with a default reference implementation reading on-demand from
+  checkout-orders/catalog/promotions plus a small self-owned, going-forward-only event log for
+  funnel data. Requires one additive Order.createdAt timestamp field (precedented by
+  discountTotal's own additive addition in epic 20). Surfaced at /admin/metrics. Inventory
+  turns and historical backfill explicitly documented as out of scope for v1 -- no
+  infrastructure exists in this repo for either. See docs/subsystems/20-internal-bi.md and
+  docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [backend, new-subsystem, admin-ui, existing-subsystem-additive-change]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    backend: "New package (internal-bi) with an explicit adapter contract, default implementation, and a self-owned event log"
+    new-subsystem: "Design question (what's computable from existing data vs. needs new infra, and what the adapter contract itself should look like) required resolving before decomposition, per the hand-off brief's item 5"
+    admin-ui: "First admin surface in this repo to show computed/aggregate metrics rather than a plain list"
+    existing-subsystem-additive-change: "Order.createdAt is the first change to an existing subsystem's package this whole wave -- precedented by discountTotal, but flagged explicitly rather than treated as routine"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session (no live multi-agent planning team spawned this run); design discussion grounded in a dedicated codebase-research pass instead, matching the rigor of epics 20-23's own research-grounded planning.
+
+stories:
+  - id: bi-01-order-timestamp
+    title: "checkout-orders: additive Order.createdAt timestamp field"
+    complexity: low
+    depends_on: []
+  - id: bi-02-internal-bi-subsystem
+    title: "@mercatus-liber/internal-bi: BiMetricsAdapter contract, default implementation, event-log funnel tracking"
+    complexity: high
+    depends_on: [bi-01-order-timestamp]
+  - id: bi-03-admin-metrics-dashboard
+    title: "/admin/metrics: revenue/order-volume/top-products/funnel/redemption-rate dashboard"
+    complexity: medium
+    depends_on: [bi-02-internal-bi-subsystem]
+  - id: bi-04-acceptance-verify-and-closeout
+    title: "Live-verify metrics reflect real activity, decoupling verification, epic-backlog closeout"
+    complexity: low
+    depends_on: [bi-03-admin-metrics-dashboard]

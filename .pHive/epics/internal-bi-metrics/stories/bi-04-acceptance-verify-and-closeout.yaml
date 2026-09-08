@@ -1,0 +1,103 @@
+id: bi-04-acceptance-verify-and-closeout
+epic: internal-bi-metrics
+title: "Live-verify metrics reflect real activity, decoupling verification, epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [bi-03-admin-metrics-dashboard]
+
+description: |
+  Unlike epics 20-23's closeout stories (which seeded static demo data), this story's
+  acceptance test is genuinely LIVE: place real orders and redeem a real promotion through the
+  actual running app, then confirm /admin/metrics reflects that real activity -- proving the
+  event-log funnel tracking and revenue/order-volume computation actually work end-to-end, not
+  just against unit-test fixtures.
+
+  Read apps/reference-storefront/lib/seed.ts in full (now includes bundle/recommendation/
+  advertising demos) and the committed internal-bi package's public surface:
+  packages/internal-bi/src/types.ts
+  packages/internal-bi/src/service.ts
+
+  Steps (all against a real, running dev server -- curl-based, no throwaway API routes or
+  env-gated test-only code; confirm via git status/git diff that nothing extraneous remains
+  before your final commit):
+  1. Note the /admin/metrics dashboard's starting state (should reflect zero or whatever the
+     seed data already produced from prior epics' demo orders, if any were seeded -- check).
+  2. Add an item to a cart via the real add-to-cart form (progressive-enhancement POST,
+     matching the pattern used by every prior epic's live verification in this wave).
+  3. Complete a checkout via the real startCheckoutAction, optionally with the seeded
+     promotions coupon code from epic 20's demo data if that's still easy to exercise (bonus,
+     not required).
+  4. Revisit /admin/metrics and confirm: order volume's total increased by exactly 1; the new
+     order appears reflected in revenue-over-time's correct bucket (today's date); the
+     conversion funnel's item_added and checkout_started/order_paid-relevant counts increased
+     appropriately (note: payment will likely fail loudly without a live Stripe key in this
+     dev environment, per this repo's established "checkout fails loudly without Stripe"
+     posture from prior epics -- if checkout.order.paid can't be reached, that's expected and
+     fine; verify what CAN be verified -- item_added and checkout_started/order placed -- and
+     document honestly what couldn't be exercised for that reason, rather than faking it).
+  5. Confirm the promotion-redemption-rates table matches whatever promotions exist in seed
+     data (from epic 20) with their real redemptionCount/usageLimit values.
+  6. Run this exact decoupling grep and record clean output:
+     grep -rn "@mercatus-liber/internal-bi" packages/cart packages/checkout-orders/src
+     packages/catalog/src packages/promotions/src packages/bundles/src
+     packages/recommendations/src packages/inventory/src packages/pdp/src packages/cms/src
+     packages/analytics/src packages/advertising/src
+     Every one of those must return zero hits.
+  7. Update .pHive/planning/epic-backlog.md: find epic 24's row (grep "^| 24 |") and change
+     its status column to "done (4/4 stories complete)", matching epic 20-23's row phrasing
+     convention (grep "^| 23 |" for the exact style -- mention the new subsystem, the resolved
+     adapter-contract design question, the Order.createdAt addition, and the admin dashboard
+     concisely). Also update the "Definition of vision fully done" section if it references
+     "epics 1-23" as the complete set (grep "1-23" to find it) to reflect epic 24 also done.
+
+acceptance_criteria:
+  - "Given a genuinely new cart-item-added action taken on a live dev server, when /admin/metrics is revisited, then order volume and/or the conversion funnel's item_added count reflects that real activity (not just seed-time static numbers)"
+  - "Given the decoupling grep across all 11 packages listed above, then every one returns zero hits"
+  - ".pHive/planning/epic-backlog.md epic 24's row reads 'done (4/4 stories complete)' matching sibling completed-epic rows"
+  - "Given the report submitted for this story, then it honestly documents which specific live-activity assertions could and could not be verified (e.g. payment-succeeded-dependent metrics, if Stripe isn't configured in this dev environment), rather than claiming full end-to-end payment verification that didn't actually happen"
+
+steps:
+  - id: implement
+    description: Exercise the live golden path and update epic-backlog.md per the description above.
+    agent: developer
+  - id: test
+    description: Run the decoupling grep and record output; confirm the live-activity assertions on /admin/metrics.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edits are accurate and that the report is honest about what could/couldn't be verified given this dev environment's constraints (no live Stripe key).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/internal-bi-metrics; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Epic 24's row and the vision-summary section -- both need updating as this story's last step."
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: Epic 24 row -> done; vision-summary section updated if it references "epics 1-23" as complete.
+
+design_decisions: []
+risks:
+  - severity: low
+    description: "Full payment-succeeded verification may not be exercisable without a live Stripe key in this dev environment."
+    mitigation: "Story explicitly instructs honest reporting of what could/couldn't be verified rather than overclaiming, matching this repo's established 'checkout fails loudly without Stripe' posture documented in prior epics (e.g. epic 11, 15a)."
+
+references:
+  - path: .pHive/epics/internal-bi-metrics/docs/design-discussion.md
+    relevant_excerpt: |
+      Full design rationale this epic's live verification demonstrates end-to-end.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout/live-acceptance story verified via the acceptance criteria's manual live-activity check and the decoupling grep; epic-backlog.md's done/not-started status is qualitative, not a numeric trend."

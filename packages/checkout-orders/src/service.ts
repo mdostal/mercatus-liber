@@ -128,6 +128,7 @@ export function createCheckoutOrdersService(deps: {
         customerId: input.customerId ?? null,
         discountTotal: adjustment.discountTotal,
         appliedPromotionCode: adjustment.appliedCode,
+        createdAt: new Date().toISOString(),
       };
       await repository.save(order);
 

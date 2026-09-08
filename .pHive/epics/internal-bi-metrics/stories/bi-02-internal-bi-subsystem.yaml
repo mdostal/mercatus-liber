@@ -1,0 +1,167 @@
+id: bi-02-internal-bi-subsystem
+epic: internal-bi-metrics
+title: "@mercatus-liber/internal-bi: BiMetricsAdapter contract, default implementation, event-log funnel tracking"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [bi-01-order-timestamp]
+
+description: |
+  New package packages/internal-bi (subsystem 20, see docs/subsystems/20-internal-bi.md,
+  already written during planning). Depends on @mercatus-liber/core only -- never imports
+  checkout-orders, catalog, promotions, cart, cms, analytics, inventory, bundles,
+  recommendations, or advertising.
+
+  Read .pHive/epics/internal-bi-metrics/docs/design-discussion.md section 3 for the full
+  BiMetricsAdapter shape and the event-log-for-funnel design. Read
+  packages/inventory/src/subscriber.ts (registerInventorySync) as the EXACT pattern to mirror
+  for this package's own event subscriber -- narrow structural OrderLookup-style interfaces,
+  event-triggered lookups, never a direct call into another subsystem.
+
+  Read the committed bi-01 story's result first (packages/checkout-orders/src/types.ts's
+  Order.createdAt field, now committed) -- this story depends on it.
+
+  Deliverables:
+  - `packages/internal-bi/src/types.ts`:
+    - Narrow structural interfaces this package declares itself (satisfied structurally by
+      checkout-orders/catalog/promotions' real services at the app-composition layer, never
+      imported directly): `OrderMetricsSource { listOrders(): Promise<{id, items:
+      {skuId,quantity,priceAtPurchase:Money}[], status, createdAt, discountTotal:
+      Money}[]> }`, `SkuMetricsSource { getSku(id): Promise<{id, productId, price:Money}|null>;
+      getProduct(id): Promise<{id, title}|null> }`, `PromotionMetricsSource { listPromotions():
+      Promise<{id, code:string|null, redemptionCount:number, usageLimit:number|null}[]> }`.
+    - `BiMetricsAdapter` interface exactly as specified in design-discussion.md §3 (the six
+      methods: getRevenueOverTime, getOrderVolume, getTopProducts, getConversionFunnel,
+      getPromotionRedemptionRates, getInventoryTurns).
+    - `BiEvent` type for the funnel log: `{ id, eventType: string, occurredAt: string, payload:
+      Record<string, unknown> }`.
+    - `BiEventLogRepository` interface (append/list, adapter pattern) +
+      `createInMemoryBiEventLogRepository()` reference implementation.
+  - `packages/internal-bi/src/service.ts`: `createDefaultBiAdapter(deps: { orders:
+    OrderMetricsSource; skus: SkuMetricsSource; promotions: PromotionMetricsSource; eventLog:
+    BiEventLogRepository }): BiMetricsAdapter`:
+    - `getRevenueOverTime(range, bucket)`: filter orders to `status !== "cancelled"` and
+      `createdAt` within range, bucket by day/week/month (ISO-week/month truncation of
+      createdAt), sum `(sum of item priceAtPurchase*quantity) - discountTotal` per bucket.
+    - `getOrderVolume(range?)`: total count + count grouped by status, filtered to range when
+      given.
+    - `getTopProducts(range?, limit=10)`: aggregate units/revenue per skuId across matching
+      orders' items, resolve productId+title via `skus.getSku`/`skus.getProduct`, sort by
+      revenue desc, cap at limit.
+    - `getConversionFunnel(range?)`: read `eventLog.list()`, filter to range when given, count
+      occurrences per a fixed funnel-stage mapping: `cart.item.added` -> "item_added",
+      `checkout.order.placed` -> "checkout_started", `checkout.order.paid` -> "order_paid".
+      Return as an ordered array of `{stage, count}` in a sensible funnel order.
+    - `getPromotionRedemptionRates()`: map `promotions.listPromotions()` directly to the
+      output shape (no computation needed, redemptionCount/usageLimit are already aggregate
+      counters).
+    - `getInventoryTurns()`: always returns `null` (per design-discussion.md §4 -- no
+      inventory movement history exists anywhere in this repo; this is a deliberate,
+      documented non-goal for the reference implementation, not a stub to "finish later"
+      silently).
+  - `packages/internal-bi/src/subscriber.ts`: `registerBiEventLogSync(deps: { events:
+    EventBus; eventLog: BiEventLogRepository }): void` -- subscribes to `cart.item.added`,
+    `checkout.order.placed`, `checkout.order.paid`, `promotions.redeemed`, appending a
+    `BiEvent` to the log for each (with `occurredAt: new Date().toISOString()` at the moment
+    the subscriber fires, NOT any timestamp from the event payload itself, since cart/promotion
+    events don't carry one). Mirrors registerInventorySync's structure exactly (one
+    events.subscribe call per topic, in the same function).
+  - `packages/internal-bi/src/index.ts`: re-export public surface.
+
+acceptance_criteria:
+  - "Given 3 orders with createdAt spanning 2 different days, when getRevenueOverTime({from,to}, 'day') is called, then it returns one bucket per distinct day with correctly summed (subtotal - discountTotal) revenue"
+  - "Given orders with a mix of statuses, when getOrderVolume() is called with no range, then total equals the full count and byStatus correctly groups all of them"
+  - "Given orders containing several distinct skuIds with varying quantities/prices, when getTopProducts(undefined, 2) is called, then it returns exactly 2 entries, correctly ranked by total revenue descending, with titles resolved via the injected SkuMetricsSource"
+  - "Given the event log has 5 cart.item.added, 3 checkout.order.placed, and 2 checkout.order.paid entries, when getConversionFunnel() is called, then it returns those exact counts per stage in funnel order"
+  - "Given registerBiEventLogSync is wired to a live EventBus and events.publish('checkout.order.paid', {orderId}) is called, when getConversionFunnel() is subsequently called, then the order_paid stage count has incremented by exactly 1"
+  - "Given 2 promotions with different redemptionCount/usageLimit values, when getPromotionRedemptionRates() is called, then it returns both, with values matching the source promotions exactly"
+  - "Given getInventoryTurns() is called with any input, then it always returns null (never throws, never a fabricated number)"
+
+steps:
+  - id: research
+    description: Read packages/inventory/src/subscriber.ts and packages/checkout-orders/src/types.ts's committed Order.createdAt field before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the internal-bi package per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write vitest tests in packages/internal-bi/test/internal-bi.test.ts covering every acceptance criterion above, including a live EventBus wiring test for the funnel subscriber.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check correctness of the bucketing/aggregation math, that getInventoryTurns never fabricates data, and convention compliance (structural-interface naming, package.json scoping to core-only).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/internal-bi-metrics.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/inventory/src/subscriber.ts
+      purpose: Exact event-subscriber pattern to mirror for registerBiEventLogSync.
+    - path: packages/checkout-orders/src/types.ts
+      purpose: Order's committed shape (including the new createdAt field from bi-01) that OrderMetricsSource structurally mirrors.
+    - path: packages/promotions/src/types.ts
+      purpose: Promotion's shape that PromotionMetricsSource structurally mirrors.
+    - path: packages/core/src/event-bus.ts
+      purpose: EventBus interface + createInMemoryEventBus for tests.
+
+files_to_modify:
+  - file: packages/internal-bi/package.json
+    change: New package, dependencies -> @mercatus-liber/core only.
+  - file: packages/internal-bi/tsconfig.json
+    change: Extend ../../tsconfig.base.json, reference ../core.
+  - file: packages/internal-bi/src/types.ts
+    change: OrderMetricsSource, SkuMetricsSource, PromotionMetricsSource, BiMetricsAdapter, BiEvent, BiEventLogRepository types.
+  - file: packages/internal-bi/src/in-memory-repository.ts
+    change: createInMemoryBiEventLogRepository().
+  - file: packages/internal-bi/src/service.ts
+    change: createDefaultBiAdapter(deps) -> BiMetricsAdapter.
+  - file: packages/internal-bi/src/subscriber.ts
+    change: registerBiEventLogSync(deps).
+  - file: packages/internal-bi/src/index.ts
+    change: Re-export public surface.
+  - file: packages/internal-bi/test/internal-bi.test.ts
+    change: Tests for every acceptance criterion.
+
+design_decisions:
+  - decision: "getInventoryTurns always returns null in the default implementation, never a fabricated or misleading number."
+    rationale: "No inventory movement history exists anywhere in this repo (design-discussion.md §4) -- the contract carries the method for a future real adapter, but the default must be honest about what it can't compute."
+  - decision: "The funnel event log is populated strictly going forward from when the subscriber is wired -- no attempt to backfill or reconstruct history."
+    rationale: "The event bus itself retains nothing; any backfill claim would be fabricated. Matches epic 22's honest treatment of analytics having no read side."
+
+risks:
+  - severity: low
+    description: "getRevenueOverTime's day/week/month bucketing logic has some inherent complexity (timezone/boundary handling)."
+    mitigation: "Use simple UTC-based ISO-string truncation (date portion for day, ISO week number for week, YYYY-MM for month) -- document the exact bucketing rule in a code comment; this is a reference implementation, not a timezone-perfect analytics engine."
+
+references:
+  - path: .pHive/epics/internal-bi-metrics/docs/design-discussion.md
+    relevant_excerpt: |
+      §3 has the complete BiMetricsAdapter interface and default-implementation design this
+      story implements verbatim.
+  - path: docs/subsystems/20-internal-bi.md
+    relevant_excerpt: |
+      Full subsystem doc (purpose, depends-on, responsibilities, explicit non-goals,
+      decoupling notes with the exact grep command to run before merge).
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: internal_bi.metric_computation_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite in packages/internal-bi/test/internal-bi.test.ts
+  verify_at: integrate
+  owner: tester
