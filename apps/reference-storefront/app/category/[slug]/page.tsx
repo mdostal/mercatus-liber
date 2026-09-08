@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { InteractionTracker } from "../../../components/interaction-tracker";
 import { getServices } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   return (
     <main>
+      <InteractionTracker eventName="category_viewed" properties={{ categoryId: category.id, slug: category.slug }} />
       <h1>{category.title}</h1>
       <p>{category.description}</p>
       <ul>

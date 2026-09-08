@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PdpLongScroll } from "../../../components/pdp-long-scroll";
 import { PdpTabbedDetail } from "../../../components/pdp-tabbed-detail";
-import { ProductViewedTracker } from "../../../components/product-viewed-tracker";
+import { InteractionTracker } from "../../../components/interaction-tracker";
 import { getServices } from "../../../lib/services";
 import { readActiveThemeBundle } from "../../../lib/theme-cookie";
 
@@ -55,7 +55,7 @@ export default async function ProductPage({
 
   return (
     <>
-      <ProductViewedTracker productId={viewModel.product.id} slug={viewModel.product.slug} />
+      <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug }} />
       <Component viewModel={viewModel} stockBySkuId={stockBySkuId} />
     </>
   );
