@@ -1,7 +1,7 @@
 id: cf-03-catalog-package
 epic: core-foundation
 title: Catalog package (products, SKUs, attribute map)
-status: pending
+status: done
 complexity: high
 methodology: classic
 depends_on: [cf-01-monorepo-scaffold-core-schema, cf-02-adapter-sqlite]
@@ -42,7 +42,7 @@ steps:
     depends_on: [review]
 
 context:
-  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
   key_files:
     - path: docs/subsystems/01-catalog.md
       purpose: Full responsibility list, explicit non-responsibilities, and the decoupling notes this story must satisfy.

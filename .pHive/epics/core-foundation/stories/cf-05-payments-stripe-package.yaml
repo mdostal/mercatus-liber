@@ -41,7 +41,7 @@ steps:
     depends_on: [review]
 
 context:
-  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
   key_files:
     - path: docs/subsystems/08-payments.md
       purpose: PaymentAdapter interface contract and the hard rule -- never hand-build payments/tax/PCI, always delegate to Stripe's hosted surfaces.

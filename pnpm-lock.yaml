@@ -23,7 +23,7 @@ importers:
 
   packages/adapter-sqlite:
     dependencies:
-      '@osc/core':
+      '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../core
       better-sqlite3:
@@ -33,6 +33,25 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.11
         version: 7.6.13
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1))
+
+  packages/catalog:
+    dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@mercatus-liber/adapter-sqlite':
+        specifier: workspace:*
+        version: link:../adapter-sqlite
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

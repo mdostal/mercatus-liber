@@ -1,4 +1,4 @@
-import type { Product, ProductAttribute, Sku } from "@osc/core";
+import type { Product, ProductAttribute, Sku } from "@mercatus-liber/core";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createSqliteAdapter } from "../src/index.js";
 

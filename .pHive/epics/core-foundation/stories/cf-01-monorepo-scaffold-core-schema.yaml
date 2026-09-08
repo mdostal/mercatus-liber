@@ -39,7 +39,7 @@ steps:
     depends_on: [review]
 
 context:
-  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
   tech_stack:
     languages: [typescript]
     build_tools: [pnpm, turborepo]

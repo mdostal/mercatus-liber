@@ -40,7 +40,7 @@ steps:
     depends_on: [review]
 
 context:
-  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
   key_files:
     - path: docs/subsystems/00-core-schema.md
       purpose: The repository interface contracts this adapter must satisfy exactly.

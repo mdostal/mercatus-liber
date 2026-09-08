@@ -1,4 +1,4 @@
-# @osc/core
+# @mercatus-liber/core
 
 Shared core schema types and adapter/event-bus interfaces. Types and interfaces only — no
 storage, no business logic, no framework code. Every other subsystem package imports from here

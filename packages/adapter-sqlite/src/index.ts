@@ -9,7 +9,7 @@ import type {
   ProductStatus,
   Sku,
   SkuRepository,
-} from "@osc/core";
+} from "@mercatus-liber/core";
 import { SCHEMA_SQL } from "./schema.js";
 
 interface ProductRow {
@@ -69,9 +69,9 @@ function rowToAttribute(row: AttributeRow): ProductAttribute {
 
 /**
  * Reference SQLite persistence adapter. Public surface is exactly the
- * CatalogPersistenceAdapter interface from @osc/core -- no SQLite-specific type
+ * CatalogPersistenceAdapter interface from @mercatus-liber/core -- no SQLite-specific type
  * (Database, statements, row shapes) is exported. Swapping this for
- * @osc/adapter-postgres must never require a caller-side change.
+ * @mercatus-liber/adapter-postgres must never require a caller-side change.
  */
 export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
   const db = new Database(path);

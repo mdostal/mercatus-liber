@@ -42,7 +42,7 @@ steps:
     depends_on: [review]
 
 context:
-  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
   key_files:
     - path: docs/subsystems/09-checkout-orders.md
       purpose: The checkout flow, Order entity shape, and the decoupling notes -- inventory/account react to this subsystem's events, never the reverse.

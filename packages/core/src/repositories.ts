@@ -1,6 +1,6 @@
 /**
  * Persistence adapter contracts. Core defines these; it implements none of them.
- * Concrete packages (e.g. @osc/adapter-sqlite, @osc/adapter-postgres) implement
+ * Concrete packages (e.g. @mercatus-liber/adapter-sqlite, @mercatus-liber/adapter-postgres) implement
  * these interfaces -- swapping one for the other must never require a change to
  * any subsystem that depends on them. See docs/subsystems/00-core-schema.md and
  * docs/ARCHITECTURE.md's "DB adapters are a contract" principle.
@@ -30,7 +30,7 @@ export interface ProductAttributeRepository {
 /**
  * The bundle of repositories a persistence adapter must provide to back the
  * catalog subsystem. Every other subsystem's own repository interfaces live in
- * that subsystem's own package (e.g. CartRepository in @osc/cart), following this
+ * that subsystem's own package (e.g. CartRepository in @mercatus-liber/cart), following this
  * same shape -- core does not enumerate them all here, which would recreate the
  * tight coupling this project exists to avoid.
  */

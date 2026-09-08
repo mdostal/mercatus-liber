@@ -6,7 +6,7 @@ description: >
   recorded — all against a reference SQLite persistence adapter, with every
   subsystem boundary (catalog/cart/payments/checkout) already respecting the
   no-tight-coupling prime directive from docs/ARCHITECTURE.md.
-target_codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
 methodology: classic
 version_bump: minor
 sidecar_retention: transient

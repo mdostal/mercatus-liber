@@ -41,7 +41,7 @@ steps:
     depends_on: [review]
 
 context:
-  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
   key_files:
     - path: docs/subsystems/07-cart.md
       purpose: Responsibilities, price-snapshot behavior, and the explicit non-responsibilities (checkout/payments) this story must respect.

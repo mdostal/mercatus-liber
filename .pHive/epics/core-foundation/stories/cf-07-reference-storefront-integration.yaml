@@ -41,7 +41,7 @@ steps:
     depends_on: [review]
 
 context:
-  codebase: /Users/mdostal/Documents/work/personal/open-source-commerce
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
   key_files:
     - path: docs/ARCHITECTURE.md
       purpose: "Repo shape confirms apps/reference-storefront's role: wiring packages together for demos/tests, not a subsystem itself."

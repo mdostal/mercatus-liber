@@ -1,7 +1,7 @@
 {
-  "name": "@osc/adapter-sqlite",
+  "name": "@mercatus-liber/adapter-sqlite",
   "version": "0.1.0",
-  "description": "Reference persistence adapter backed by SQLite. Implements @osc/core's repository interfaces -- its public surface is exactly those interfaces, no SQLite-specific types leak out. Chosen as the first reference adapter for lowest local-dev friction (no external DB service required); @osc/adapter-postgres proves the same contract with a second backend.",
+  "description": "Reference persistence adapter backed by SQLite. Implements @mercatus-liber/core's repository interfaces -- its public surface is exactly those interfaces, no SQLite-specific types leak out. Chosen as the first reference adapter for lowest local-dev friction (no external DB service required); @mercatus-liber/adapter-postgres proves the same contract with a second backend.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,7 +19,7 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@osc/core": "workspace:*",
+    "@mercatus-liber/core": "workspace:*",
     "better-sqlite3": "^13.0.3"
   },
   "devDependencies": {

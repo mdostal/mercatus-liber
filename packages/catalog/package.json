@@ -1,7 +1,7 @@
 {
-  "name": "@mercatus-liber/core",
+  "name": "@mercatus-liber/catalog",
   "version": "0.1.0",
-  "description": "Shared core schema types and adapter/event-bus interfaces. Types and interfaces only -- no storage, no business logic, no framework code. @osc is a placeholder scope for the project's working name (see docs/NAMING-CANDIDATES.md); rename when the real name is picked.",
+  "description": "Product/SKU/attribute engine (subsystem 01). Depends on @mercatus-liber/core only -- persistence is injected via CatalogPersistenceAdapter, never imported concretely, so this package works with any adapter (adapter-sqlite is a devDependency for tests only).",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,12 @@
     "test": "vitest run",
     "lint": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
   "devDependencies": {
+    "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@types/node": "^22.7.5",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
   }
