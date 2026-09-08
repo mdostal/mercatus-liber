@@ -17,7 +17,7 @@ vertical-slice invariant), not just "some files exist."_
 | 9 | `six-themes` | 6 optional drop-in themes built on the theming system (06) — the "roll it with 6 optional themes" deliverable | **done** (2/2 stories complete) | 3, 4 |
 | 10 | `admin-janus-dogfood` | Admin view for catalog/CMS/orders management — attempt to build it via Janus's composer (dogfood), fall back to hand-built admin UI documented as a subsystem-12-style plugin if Janus integration isn't viable | **done** (2/2 stories complete — Janus dogfood documented non-viable, hand-built /admin shipped) | 1, 4, 6 |
 | 11 | `shop-migration` | Migrate `shop.mdostal.com` off its own custom cart onto these packages — the "proof by use" success criterion from north_star | not started | 1 (minimum), ideally 2-4 |
-| 12 | `analytics-tracking` | 13 analytics — event-bus subscriber, PostHog adapter enabled by default, client-side `trackEvent()` helper | not started | 1 |
+| 12 | `analytics-tracking` | 13 analytics — event-bus subscriber, PostHog adapter enabled by default, client-side `trackEvent()` helper | **done** (2/2 stories complete) | 1 |
 | 13 | `ai-mcp-interface` | 14 AI/MCP interface — MCP server + skills/tool catalog wrapping catalog/cart/checkout (shopper side) and catalog/CMS/inventory (admin side) | not started | 1 (shopper side), 4 + 6 (admin side) |
 | 14 | `adapter-shopify` | A **Shopify commerce-backend adapter** — proves the persistence/commerce-backend interface can wrap an entire third-party platform, not just a raw DB. Lets a client already on Shopify adopt Mercatus Liber's admin/AI-agent/plugin layer *without* migrating off Shopify. | not started | 1, 8 (pattern proven by adapter-postgres first) |
 | 15 | `att-recreation-acceptance-test` | **The real acceptance test.** Fully recreate client **All That Technology**'s site/functionality (home-automation installs — TV mounting, cameras, doorbells, fiber; Royse City TX service-area business, 8 core cities, multi-location marketing pattern) using Mercatus Liber's plugins/features, runnable on either the native stack or the Shopify adapter (14) — client's choice. See memory `mercatus-liber-destination-and-acceptance-test` for full context. | not started | 2, 4, 6, 14 |
@@ -34,8 +34,9 @@ vertical-slice invariant), not just "some files exist."_
   on it would break Mercatus Liber's own standalone/giftable positioning), fallback hand-built
   admin UI shipped instead. See `.pHive/epics/admin-janus-dogfood/docs/janus-dogfood-attempt.md`.
 - Epic 11: `shop.mdostal.com` actually running on these packages.
-- Epic 12: analytics on by default (PostHog), config-swappable, zero per-subsystem
-  instrumentation debt.
+- Epic 12: **done.** Analytics on by default (PostHog, no-op when unconfigured),
+  config-swappable, zero per-subsystem instrumentation debt -- `@mercatus-liber/analytics`
+  depends only on `@mercatus-liber/core` and subscribes to the existing event bus.
 - Epic 13: AI/MCP interface live — an agent can shop and (with proper authorization) manage
   admin operations through the same interfaces a human uses.
 - Epic 14: a real Shopify adapter exists — a client can run Mercatus Liber's plugin/admin/AI

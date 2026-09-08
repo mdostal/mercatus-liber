@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PdpLongScroll } from "../../../components/pdp-long-scroll";
 import { PdpTabbedDetail } from "../../../components/pdp-tabbed-detail";
+import { ProductViewedTracker } from "../../../components/product-viewed-tracker";
 import { getServices } from "../../../lib/services";
 import { readActiveThemeBundle } from "../../../lib/theme-cookie";
 
@@ -52,5 +53,10 @@ export default async function ProductPage({
     (viewModel.templateKey && TEMPLATE_COMPONENTS[viewModel.templateKey as keyof typeof TEMPLATE_COMPONENTS]) ||
     PdpTabbedDetail;
 
-  return <Component viewModel={viewModel} stockBySkuId={stockBySkuId} />;
+  return (
+    <>
+      <ProductViewedTracker productId={viewModel.product.id} slug={viewModel.product.slug} />
+      <Component viewModel={viewModel} stockBySkuId={stockBySkuId} />
+    </>
+  );
 }

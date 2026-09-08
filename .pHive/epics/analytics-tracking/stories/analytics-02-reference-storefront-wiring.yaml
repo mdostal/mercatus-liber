@@ -1,7 +1,7 @@
 id: analytics-02-reference-storefront-wiring
 epic: analytics-tracking
 title: Reference storefront wiring -- server-side subscriber wired by default, client-side trackEvent() helper
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [analytics-01-adapter-and-subscriber]
