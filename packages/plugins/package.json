@@ -1,0 +1,29 @@
+{
+  "name": "@mercatus-liber/plugins",
+  "version": "0.1.0",
+  "description": "Plugin lifecycle + registry (subsystem 12). Depends on @mercatus-liber/core only -- a plugin's entire default surface is core types plus the event bus. Every adapter interface defined elsewhere is already a plugin point by construction; this package's job is the event-subscription extension point plus one reference plugin. Core subsystems must never import from this package -- only the reverse.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

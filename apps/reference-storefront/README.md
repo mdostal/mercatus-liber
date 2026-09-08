@@ -29,6 +29,13 @@ yet, see cf-05/cf-07 execution notes in `.pHive/epics/core-foundation/`).
 `/category/[slug]`, `/search`, `/campaign/[slug]` (CMS marketing/campaign page), `/order/[id]`,
 `/order/confirmed`, `/account` (order history + recent activity -- see below).
 
+## Plugins
+`/admin/plugins` is the first page under an `/admin` route (setting up the landing spot for
+later admin-view work) and lists registered plugins plus recent notifications from the
+`order-notification` reference plugin (`@mercatus-liber/plugins`) -- proof the event-
+subscription extension point works for something real. A plugin's entire default surface is
+`@mercatus-liber/core` plus the event bus, nothing else.
+
 ## Inventory
 PDP shows a real "in stock: N" figure per SKU, sourced from `@mercatus-liber/inventory` (not
 hardcoded). Stock is reserved the moment an order is placed (`checkout.order.placed`) --

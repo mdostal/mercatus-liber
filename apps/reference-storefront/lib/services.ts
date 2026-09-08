@@ -16,6 +16,7 @@ import {
 } from "@mercatus-liber/checkout-orders";
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
 import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter } from "@mercatus-liber/inventory";
+import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
 import {
   createInMemoryCategoryRepository,
   createInMemoryProductCategoryRepository,
@@ -53,6 +54,8 @@ export interface Services {
   cms: CmsService;
   account: AccountService;
   inventory: InventoryAdapter;
+  plugins: PluginRegistry;
+  orderNotificationPlugin: OrderNotificationPlugin;
 }
 
 let servicesPromise: Promise<Services> | null = null;
@@ -118,9 +121,28 @@ async function buildServices(): Promise<Services> {
   const inventory = createInMemoryInventoryAdapter();
   registerInventorySync({ events, inventory, orders: checkout });
 
+  const plugins = createPluginRegistry();
+  const orderNotificationPlugin = createOrderNotificationPlugin();
+  plugins.register(orderNotificationPlugin);
+  await plugins.initAll({ events });
+
   await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
-  return { events, catalog, cart, checkout, marketingCatalog, search, theming, pdp, cms, account, inventory };
+  return {
+    events,
+    catalog,
+    cart,
+    checkout,
+    marketingCatalog,
+    search,
+    theming,
+    pdp,
+    cms,
+    account,
+    inventory,
+    plugins,
+    orderNotificationPlugin,
+  };
 }
 
 /** Lazily builds the service graph once per server process and reuses it across requests. */
