@@ -31,6 +31,8 @@ export interface OrderRepository {
   get(id: string): Promise<Order | null>;
   getByIdempotencyKey(key: string): Promise<Order | null>;
   listByCustomerId(customerId: string): Promise<Order[]>;
+  /** Every order regardless of customer, guest or not -- the admin-view read path. */
+  listAll(filter?: { status?: OrderStatus }): Promise<Order[]>;
   save(order: Order): Promise<void>;
 }
 

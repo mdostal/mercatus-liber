@@ -1,7 +1,7 @@
 id: janus-02-admin-catalog-cms-orders-ui
 epic: admin-janus-dogfood
 title: Hand-built admin UI -- catalog, CMS pages, and orders (fallback per janus-01's outcome)
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [janus-01-dogfood-attempt]

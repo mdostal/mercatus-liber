@@ -18,6 +18,11 @@ export function createInMemoryOrderRepository(): OrderRepository {
     async listByCustomerId(customerId: string): Promise<Order[]> {
       return [...orders.values()].filter((order) => order.customerId === customerId).map((order) => structuredClone(order));
     },
+    async listAll(filter?: { status?: Order["status"] }): Promise<Order[]> {
+      return [...orders.values()]
+        .filter((order) => !filter?.status || order.status === filter.status)
+        .map((order) => structuredClone(order));
+    },
     async save(order: Order): Promise<void> {
       orders.set(order.id, structuredClone(order));
     },
