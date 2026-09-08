@@ -1,0 +1,145 @@
+id: bundle-01-bundles-subsystem
+epic: bundles
+title: "@mercatus-liber/bundles: Bundle/BundleTier domain model, in-memory adapter, tier pricing"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  New package packages/bundles (subsystem 17, see docs/subsystems/17-bundles.md, already
+  written during planning). Depends on @mercatus-liber/core only -- never imports cart,
+  checkout-orders, promotions, or inventory. Declares its own narrow SkuPriceLookup structural
+  interface (satisfied by catalog's CatalogService, never imported directly) to validate
+  skuIds and compute a tier's live sum-of-parts price.
+
+  Deliverables:
+  - `Bundle` type: { id, productId (the base product this bundle is attached to), title,
+    tiers: BundleTier[], status: "active"|"inactive" }.
+  - `BundleTier` type: { id, label (free text, e.g. "Product Only"/"+ Pro Setup"/"Complete
+    Overhaul" -- no hardcoded vocabulary), skuIds: string[] (the FULL set of SKUs to add when
+    this tier is selected, not a delta from the prior tier) }.
+  - `BundleRepository` interface (get/list/save, adapter pattern) +
+    `createInMemoryBundleRepository()` reference implementation, mirroring the Map+
+    structuredClone pattern already used in packages/cart/src/in-memory-repository.ts and
+    packages/promotions/src/in-memory-repository.ts.
+  - `SkuPriceLookup` structural interface: `{ getSku(id: string): Promise<{ id, price: Money,
+    title?: string } | null> }` or the narrowest shape actually needed -- read
+    packages/promotions/src/types.ts and packages/cart/src/types.ts's own SkuLookup-style
+    interfaces first for the exact doc-comment convention to match (each subsystem declares
+    its own copy of this kind of interface, never imports another package's).
+  - `BundlesService` with:
+    - `createBundle(input): Promise<Bundle>`
+    - `getBundle(id): Promise<Bundle | null>`
+    - `getBundleForProduct(productId): Promise<Bundle | null>` -- the PDP-facing read; returns
+      the first active bundle attached to that product, or null. Assume at most one active
+      bundle per product for v1 (simplifying assumption -- note it in a code comment).
+    - `listBundles(): Promise<Bundle[]>`
+    - `updateBundle(id, input): Promise<Bundle | null>` (mirror promotions' updatePromotion
+      get-merge-save shape, added there for its own admin edit story)
+    - `deactivateBundle(id): Promise<Bundle | null>`
+    - `computeTierPricing(bundleId, tierId): Promise<{ total: Money; lines: { skuId: string;
+      title: string; unitAmount: Money }[] } | null>` -- looks up the bundle+tier, resolves
+      each skuId via SkuPriceLookup, sums the Money amounts (validate all SKUs share one
+      currency; throw or return null on a currency mismatch -- pick one and document it),
+      returns null if the bundle/tier isn't found.
+  - Validation on createBundle/updateBundle: every skuId in every tier must resolve via
+    SkuPriceLookup (reject/throw with a clear error naming the missing skuId otherwise); a
+    bundle must have at least one tier; a tier must have at least one skuId.
+
+acceptance_criteria:
+  - "Given a bundle with tiers [{label:'Product Only', skuIds:['a']}, {label:'+ Pro Setup', skuIds:['a','b']}, {label:'Complete Overhaul', skuIds:['a','b','c']}] where a/b/c have prices 10000/5000/8000 (cents, USD), when computeTierPricing is called for the 'Complete Overhaul' tier, then it returns total {amount:23000,currency:'USD'} and 3 lines"
+  - "Given a product with an active bundle attached, when getBundleForProduct(productId) is called, then it returns that bundle"
+  - "Given a product with no bundle attached, when getBundleForProduct(productId) is called, then it returns null"
+  - "Given a createBundle call referencing a skuId that SkuPriceLookup cannot resolve, when createBundle is called, then it rejects clearly naming the missing skuId, and no Bundle is persisted"
+  - "Given an existing bundle, when updateBundle changes its title, then getBundle reflects the new title while preserving its id and tiers"
+  - "Given a deactivated bundle, when getBundleForProduct is called for its product, then it returns null (deactivated bundles are excluded from the PDP-facing lookup, still visible via listBundles/getBundle for admin purposes)"
+
+steps:
+  - id: research
+    description: Read packages/promotions/src/types.ts, in-memory-repository.ts, and service.ts (all committed on master) for the exact structural-interface and repository patterns to mirror in this new package.
+    agent: researcher
+  - id: implement
+    description: Build the bundles package per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write vitest tests in packages/bundles/test/bundles.test.ts covering every acceptance criterion above.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check correctness, convention compliance (structural-interface naming, package.json scoping to core-only), and the "at most one active bundle per product" assumption is documented, not silently baked in.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/bundles.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/promotions/src/in-memory-repository.ts
+      purpose: Exact Map+structuredClone pattern to follow for the in-memory BundleRepository (this package is newer than cart's and already established the convention a second time).
+    - path: packages/promotions/src/types.ts
+      purpose: Doc-comment convention for a subsystem's own narrow structural interface onto catalog-shaped data.
+    - path: packages/promotions/src/service.ts
+      purpose: updatePromotion's get-merge-save shape to mirror for updateBundle.
+    - path: packages/core/src/schema.ts
+      purpose: Money type definition (amount: int minor units, currency: ISO 4217 string) -- lines 41-46.
+    - path: packages/cart/package.json
+      purpose: Exact package.json shape/scoping convention (dependencies -> core only).
+
+files_to_modify:
+  - file: packages/bundles/package.json
+    change: New package, dependencies -> @mercatus-liber/core only, devDependencies -> @types/node, typescript, vitest.
+  - file: packages/bundles/tsconfig.json
+    change: Extend ../../tsconfig.base.json, reference ../core.
+  - file: packages/bundles/src/types.ts
+    change: Bundle, BundleTier, BundleRepository, SkuPriceLookup, CreateBundleInput types.
+  - file: packages/bundles/src/in-memory-repository.ts
+    change: createInMemoryBundleRepository().
+  - file: packages/bundles/src/service.ts
+    change: createBundlesService(deps) -> BundlesService.
+  - file: packages/bundles/src/index.ts
+    change: Re-export public surface.
+  - file: packages/bundles/test/bundles.test.ts
+    change: Tests for every acceptance criterion.
+
+design_decisions:
+  - decision: "At most one active bundle per product for v1."
+    rationale: "The 3-tier acceptance shape is one bundle with 3 tiers, not 3 competing bundles on one product. Keeps getBundleForProduct's return type a single nullable Bundle rather than a list, simplest possible PDP integration. Documented explicitly rather than silently assumed."
+  - decision: "computeTierPricing recomputes from live catalog prices on every call, never caches into the Bundle record."
+    rationale: "Guarantees the PDP's displayed price and the cart's actual line-item total can never drift out of sync, since both ultimately read the same catalog SKU prices -- see design-discussion.md §4."
+
+risks:
+  - severity: low
+    description: "A tier's constituent SKUs could theoretically span multiple currencies."
+    mitigation: "Validate all constituent SKUs share one currency in computeTierPricing; document the chosen failure behavior (reject clearly) rather than silently summing mismatched currencies."
+
+references:
+  - path: .pHive/epics/bundles/docs/design-discussion.md
+    relevant_excerpt: |
+      §3-4 have the full Bundle/BundleTier shape and the "sum-of-parts, no separate discount
+      mechanism" pricing decision this story implements verbatim.
+  - path: docs/subsystems/17-bundles.md
+    relevant_excerpt: |
+      Full subsystem doc (purpose, depends-on, responsibilities, explicit non-goals,
+      decoupling notes with the exact grep command to run before merge).
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: bundles.tier_pricing_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite in packages/bundles/test/bundles.test.ts
+  verify_at: integrate
+  owner: tester

@@ -1,0 +1,122 @@
+id: bundle-03-admin-bundles-crud
+epic: bundles
+title: "/admin/bundles: list + create/edit/deactivate bundles"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [bundle-01-bundles-subsystem]
+
+description: |
+  Mirror the /admin/promotions CRUD area (epic 20, already committed on master) exactly for
+  bundles. Read these committed files as your templates before writing anything:
+  apps/reference-storefront/app/admin/promotions/page.tsx
+  apps/reference-storefront/app/admin/promotions/new/page.tsx
+  apps/reference-storefront/app/admin/promotions/[id]/page.tsx
+  apps/reference-storefront/app/admin/promotions/PromotionFormFields.tsx
+  apps/reference-storefront/lib/actions.ts (createPromotionAction/updatePromotionAction/
+  deactivatePromotionAction + their parsePromotionFormData helper)
+
+  Read the committed bundles package's public surface before writing any admin code (its
+  exact method names may differ slightly from the story-01 spec's paraphrase):
+  packages/bundles/src/types.ts
+  packages/bundles/src/service.ts
+
+  A bundle's form is more complex than a promotion's flat fields -- it has a nested list of
+  tiers, each with its own label and a list of skuIds. Keep the form as plain HTML as
+  everything else in this app (no client-side dynamic-add-row JS): support a fixed, generous
+  number of tier slots (e.g. 5) and a fixed generous number of SKU-id inputs per tier (e.g.
+  6), each posted as indexed form fields (e.g. `tier_0_label`, `tier_0_skuIds` as a
+  comma-or-newline-separated text input parsed server-side, `tier_1_label`, ...), with empty
+  slots simply omitted from the parsed result. This is a plain, un-fancy admin form consistent
+  with this app's existing zero-client-JS posture -- do not add a client component or a
+  JS-driven repeatable-fieldset UI.
+
+  Deliverables:
+  - apps/reference-storefront/app/admin/bundles/page.tsx -- read-only list (columns: base
+    product id/title if easily resolvable via catalog.getProduct, tier count, status), edit
+    link + deactivate form per row, matching admin/promotions/page.tsx's exact structure.
+  - apps/reference-storefront/app/admin/bundles/new/page.tsx -- create form per the tiers
+    approach above.
+  - apps/reference-storefront/app/admin/bundles/[id]/page.tsx -- edit form pre-filled,
+    posting to updateBundleAction; deactivate action too.
+  - apps/reference-storefront/app/admin/bundles/BundleFormFields.tsx -- shared form-fields
+    component (mirrors PromotionFormFields.tsx's role).
+  - New server actions in lib/actions.ts: createBundleAction, updateBundleAction,
+    deactivateBundleAction, each parsing the indexed tier fields, calling the bundles service,
+    and revalidatePath("/admin/bundles").
+  - Add a `<Link href="/admin/bundles">Bundles</Link>` entry to
+    apps/reference-storefront/app/admin/page.tsx's existing nav list (a concurrent piece of
+    work, bundle-02, is NOT touching this file -- only bundle-03 and, previously, promo-04
+    have -- re-read it fresh right before your final commit in case something else landed).
+
+acceptance_criteria:
+  - "Given at least one bundle exists, when /admin/bundles is visited, then it renders a table listing all bundles with their tier count and status"
+  - "Given the new-bundle form is submitted with a base product id, a title, and 2+ tiers each with a label and comma-separated skuIds, when createBundleAction runs, then a new Bundle exists (visible on GET /admin/bundles) with the submitted tiers parsed correctly"
+  - "Given an existing bundle, when its edit form is submitted with a changed tier label, then updateBundleAction persists the change and the list/detail pages reflect it"
+  - "Given an active bundle, when its deactivate action is submitted, then its status becomes 'inactive' and getBundleForProduct for its product now returns null (per bundle-01's own acceptance criteria), while it remains visible/editable in the admin list"
+  - "Given all bundles-epic stories are merged, when grep -rn '@mercatus-liber/bundles' packages/cart packages/checkout-orders/src packages/promotions/src packages/inventory/src packages/pdp/src is run, then every one of those returns zero hits"
+
+steps:
+  - id: research
+    description: Re-read the committed promotions admin CRUD files and the committed bundles package's public surface before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the /admin/bundles CRUD UI per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the golden path (create with multiple tiers, list, edit, deactivate) via a dev server; run the decoupling grep from the last acceptance criterion and record clean output.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check convention compliance with the promotions admin pages' structure and that the tier-parsing logic handles empty/partial slots cleanly.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/bundles.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/admin/promotions/PromotionFormFields.tsx
+      purpose: Exact shared-form-fields component pattern to mirror for BundleFormFields.tsx.
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: "parsePromotionFormData (lines ~65-90) is the exact FormData-parsing convention to mirror for the tier-indexed bundle fields."
+
+files_to_modify:
+  - file: apps/reference-storefront/app/admin/bundles/page.tsx
+    change: New file, read-only list.
+  - file: apps/reference-storefront/app/admin/bundles/new/page.tsx
+    change: New file, create form.
+  - file: apps/reference-storefront/app/admin/bundles/[id]/page.tsx
+    change: New file, edit form + deactivate action.
+  - file: apps/reference-storefront/app/admin/bundles/BundleFormFields.tsx
+    change: New file, shared tiered-form fields.
+  - file: apps/reference-storefront/app/admin/page.tsx
+    change: Add Bundles nav link.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: Add createBundleAction, updateBundleAction, deactivateBundleAction.
+
+design_decisions:
+  - decision: "Fixed-slot plain-HTML tier form (no client-side dynamic add-row) with a fixed generous slot count."
+    rationale: "Matches this app's zero-client-JS-framework posture (same reasoning epic 20's promotions admin UI documented) -- this is a reference/demo admin console, not a production-grade form builder."
+
+risks:
+  - severity: low
+    description: "A fixed slot count (e.g. 5 tiers x 6 SKUs) is an arbitrary ceiling."
+    mitigation: "Generous enough for the 3-tier acceptance shape and any realistic bundle; documented as a known reference-implementation limitation, not silently hidden."
+
+references:
+  - path: .pHive/epics/bundles/docs/design-discussion.md
+    relevant_excerpt: |
+      "Admin CRUD convention confirmed unchanged from epic 20" -- this story is the direct
+      mirror of that established pattern for the bundles domain.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Admin CRUD UI story verified via the acceptance criteria's manual golden-path check and the decoupling grep; no numeric trend to track."

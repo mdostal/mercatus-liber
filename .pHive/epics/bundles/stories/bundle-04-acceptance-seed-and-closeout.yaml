@@ -1,0 +1,93 @@
+id: bundle-04-acceptance-seed-and-closeout
+epic: bundles
+title: "Seed a 3-tier demo bundle (ATT acceptance shape), decoupling verification, epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [bundle-02-pdp-tier-selector, bundle-03-admin-bundles-crud]
+
+description: |
+  This story proves the epic's real-world acceptance shape end-to-end in mercatus-liber's OWN
+  reference-storefront seed data -- it does NOT touch, read as a code dependency, or modify
+  ~/Documents/work/clients/att-recreation-internal in any way. That repo is referenced only as
+  the shape inspiration (a 3-tier package selector: "Product Only" / "+ Pro Setup" / "Complete
+  Overhaul") already cited in this epic's design discussion and subsystem doc.
+
+  Read apps/reference-storefront/lib/seed.ts in full first -- it's the existing demo-data
+  seeding script (DEMO_PRODUCTS array, category seeding, etc.).
+
+  Deliverables:
+  - Extend lib/seed.ts to seed 2-3 extra demo SKUs suitable for a service-style 3-tier bundle
+    (e.g. a base "install service" product/SKU, a "pro setup add-on" SKU, a "complete
+    overhaul add-on" SKU -- names your own choice, following this file's existing
+    dragon-branded demo-product tone) and one Bundle attached to the base product with exactly
+    3 tiers labeled "Product Only" / "+ Pro Setup" / "Complete Overhaul", where each tier's
+    skuIds is the correct cumulative set (tier 1: [base], tier 2: [base, addon1], tier 3:
+    [base, addon1, addon2]).
+  - Verify end-to-end against a real dev server: visiting the seeded product's PDP shows the
+    3-tier selector with correct computed prices; selecting "Complete Overhaul" adds exactly 3
+    cart lines; checking out (or at minimum previewing checkout) reflects all 3 line items.
+  - Run the full cross-package decoupling grep for this epic (the same command from
+    bundle-03's last acceptance criterion) one final time across the whole merged epic branch
+    and record clean output.
+  - Update .pHive/planning/epic-backlog.md epic 21's row status from "not started" to "done"
+    (matching epic 20's row phrasing convention exactly -- "done (N/N stories complete)"), and
+    update the "Definition of vision fully done" section's epics-20-23 status line the same
+    way epic 20's completion updated it (grep that file for "Epic 20" to find the exact
+    sentence to extend/edit).
+
+acceptance_criteria:
+  - "Given the seeded demo bundle, when its product's PDP is visited on a live dev server, then the 3-tier selector renders with the correct label text and correct computed prices for each tier"
+  - "Given the 'Complete Overhaul' tier is selected and submitted, when the resulting cart is inspected, then it contains exactly 3 line items matching the tier's 3 constituent SKUs"
+  - "Given the full grep -rn '@mercatus-liber/bundles' packages/cart packages/checkout-orders/src packages/promotions/src packages/inventory/src packages/pdp/src is run, then every one of those returns zero hits"
+  - ".pHive/planning/epic-backlog.md epic 21's row reads 'done (4/4 stories complete)' matching sibling completed-epic rows, and the vision-summary section's epics-20-23 line is updated to reflect epic 21 done"
+
+steps:
+  - id: implement
+    description: Extend seed.ts and verify the golden path per the description above.
+    agent: developer
+  - id: test
+    description: Run the decoupling grep and record output; verify the PDP/cart golden path on a live dev server.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edits are accurate and match sibling completed-epic phrasing.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/bundles; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: Existing demo-data seeding script to extend with bundle demo data.
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Epic 21's row (table, roughly line 31) and the vision-summary section's epics-20-23 sentence (roughly line 82-84, already once edited when epic 20 completed) -- both need updating as this story's last step."
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/seed.ts
+    change: Add 2-3 demo SKUs + one 3-tier Bundle.
+  - file: .pHive/planning/epic-backlog.md
+    change: Epic 21 row -> done; vision-summary epics-20-23 sentence updated.
+
+design_decisions:
+  - decision: "The acceptance demo lives in mercatus-liber's own reference-storefront seed data, not in the internal ATT recreation repo."
+    rationale: "Per the hand-off brief's own instruction: use the ATT recreation as the shape reference only, don't touch its content. Proving the framework capability belongs in the framework's own reference app."
+
+risks: []
+
+references:
+  - path: .pHive/epics/bundles/docs/design-discussion.md
+    relevant_excerpt: |
+      §0: cites the ATT recreation's confirmed PDP direction (3-tier package selector) as the
+      acceptance shape this story seeds and verifies.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout/acceptance-demo story verified via the acceptance criteria's manual golden-path check and the decoupling grep; epic-backlog.md's done/not-started status is qualitative, not a numeric trend."
