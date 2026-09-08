@@ -13,6 +13,11 @@ import { createCartService, createInMemoryCartRepository } from "@mercatus-liber
 import { createCatalogService } from "@mercatus-liber/catalog";
 import { createCheckoutOrdersService, createInMemoryOrderRepository } from "@mercatus-liber/checkout-orders";
 import { createInMemoryEventBus } from "@mercatus-liber/core";
+import {
+  createInMemoryCategoryRepository,
+  createInMemoryProductCategoryRepository,
+  createMarketingCatalogService,
+} from "@mercatus-liber/marketing-catalog";
 import { describe, expect, it, vi } from "vitest";
 import { seedCatalog } from "../lib/seed.js";
 
@@ -22,7 +27,12 @@ describe("core-foundation vertical slice (seed -> browse -> cart -> checkout -> 
 
     const persistence = createSqliteAdapter(":memory:");
     const catalog = createCatalogService({ persistence, events });
-    await seedCatalog(catalog);
+    const marketingCatalog = createMarketingCatalogService({
+      categories: createInMemoryCategoryRepository(),
+      assignments: createInMemoryProductCategoryRepository(),
+      attributes: catalog,
+    });
+    await seedCatalog(catalog, marketingCatalog);
 
     const cart = createCartService({
       repository: createInMemoryCartRepository(),

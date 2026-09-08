@@ -41,6 +41,8 @@ describe("catalog service", () => {
       "catalog.product.updated",
       "catalog.product.archived",
       "catalog.sku.created",
+      "catalog.attribute.updated",
+      "catalog.attribute.removed",
     ]) {
       events.subscribe(name, async (payload) => {
         emitted.push({ event: name, payload });
@@ -204,9 +206,17 @@ describe("catalog service", () => {
       });
       const attrs = await catalog.listAttributes(product.id);
       expect(attrs).toHaveLength(2);
+      expect(emitted).toContainEqual({
+        event: "catalog.attribute.updated",
+        payload: { productId: product.id, key: "printer_compatible" },
+      });
 
       await catalog.removeAttribute(product.id, "materials");
       expect(await catalog.listAttributes(product.id)).toHaveLength(1);
+      expect(emitted).toContainEqual({
+        event: "catalog.attribute.removed",
+        payload: { productId: product.id, key: "materials" },
+      });
     });
   });
 });

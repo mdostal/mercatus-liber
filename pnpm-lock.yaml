@@ -38,9 +38,15 @@ importers:
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@mercatus-liber/marketing-catalog':
+        specifier: workspace:*
+        version: link:../../packages/marketing-catalog
       '@mercatus-liber/payments':
         specifier: workspace:*
         version: link:../../packages/payments
+      '@mercatus-liber/search':
+        specifier: workspace:*
+        version: link:../../packages/search
       next:
         specifier: ^16.3.4
         version: 16.3.4(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -161,6 +167,28 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1))
 
+  packages/marketing-catalog:
+    dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@mercatus-liber/adapter-sqlite':
+        specifier: workspace:*
+        version: link:../adapter-sqlite
+      '@mercatus-liber/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1))
+
   packages/payments:
     dependencies:
       '@mercatus-liber/core':
@@ -170,6 +198,28 @@ importers:
         specifier: ^22.6.1
         version: 22.6.1(@types/node@22.20.1)
     devDependencies:
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1))
+
+  packages/search:
+    dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@mercatus-liber/adapter-sqlite':
+        specifier: workspace:*
+        version: link:../adapter-sqlite
+      '@mercatus-liber/catalog':
+        specifier: workspace:*
+        version: link:../catalog
       '@types/node':
         specifier: ^22.7.5
         version: 22.20.1

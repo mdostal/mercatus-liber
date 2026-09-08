@@ -15,6 +15,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </a>
           {" · "}
           <a href="/cart">Cart</a>
+          {" · "}
+          <a href="/search">Search</a>
         </header>
         {children}
       </body>

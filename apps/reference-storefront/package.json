@@ -18,7 +18,9 @@
     "@mercatus-liber/catalog": "workspace:*",
     "@mercatus-liber/checkout-orders": "workspace:*",
     "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/marketing-catalog": "workspace:*",
     "@mercatus-liber/payments": "workspace:*",
+    "@mercatus-liber/search": "workspace:*",
     "next": "^16.3.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

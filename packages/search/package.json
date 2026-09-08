@@ -1,0 +1,31 @@
+{
+  "name": "@mercatus-liber/search",
+  "version": "0.1.0",
+  "description": "SearchIndexAdapter interface + default in-memory implementation (subsystem 03). Depends on @mercatus-liber/core only; syncs with catalog purely by reacting to event-bus notifications through a narrow structural ProductDataLookup interface, never importing @mercatus-liber/catalog directly.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@mercatus-liber/catalog": "workspace:*",
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
