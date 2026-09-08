@@ -1,32 +1,36 @@
 import { notFound } from "next/navigation";
-import { addToCartAction } from "../../../lib/actions";
+import { PdpLongScroll } from "../../../components/pdp-long-scroll";
+import { PdpTabbedDetail } from "../../../components/pdp-tabbed-detail";
 import { getServices } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+/**
+ * Template-key -> component map, the app-layer half of the theming contract
+ * (theming resolves WHICH key; this map decides what that key renders as).
+ * Adding a new registered template requires one more entry here.
+ */
+const TEMPLATE_COMPONENTS = {
+  "pdp.tabbed-detail": PdpTabbedDetail,
+  "pdp.long-scroll": PdpLongScroll,
+} as const;
+
+export default async function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ template?: string }>;
+}) {
   const { slug } = await params;
-  const { catalog } = await getServices();
-  const product = await catalog.getProductBySlug(slug);
-  if (!product) notFound();
+  const { template } = await searchParams;
+  const { pdp } = await getServices();
+  const viewModel = await pdp.getViewModel(slug, template);
+  if (!viewModel) notFound();
 
-  const skus = await catalog.listSkusByProduct(product.id);
+  const Component =
+    (viewModel.templateKey && TEMPLATE_COMPONENTS[viewModel.templateKey as keyof typeof TEMPLATE_COMPONENTS]) ||
+    PdpTabbedDetail;
 
-  return (
-    <main>
-      <h1>{product.title}</h1>
-      <p>{product.description}</p>
-      {skus.map((sku) => (
-        <form action={addToCartAction} key={sku.id} style={{ marginBottom: 12 }}>
-          <input type="hidden" name="skuId" value={sku.id} />
-          <span>
-            {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")} --{" "}
-            {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
-          </span>{" "}
-          <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
-          <button type="submit">Add to cart</button>
-        </form>
-      ))}
-    </main>
-  );
+  return <Component viewModel={viewModel} />;
 }

@@ -25,8 +25,18 @@ step will fail at the live Stripe API call (expected -- no key exists in this pr
 yet, see cf-05/cf-07 execution notes in `.pHive/epics/core-foundation/`).
 
 ## Routes
-`/` (catalog + top-level categories), `/products/[slug]`, `/cart`, `/category/[slug]`,
-`/search`, `/order/[id]`, `/order/confirmed`.
+`/` (catalog + top-level categories), `/products/[slug]` (themed PDP -- see below), `/cart`,
+`/category/[slug]`, `/search`, `/order/[id]`, `/order/confirmed`.
+
+## Theming / PDP
+`/products/[slug]` is driven by `@mercatus-liber/pdp`'s view model and `@mercatus-liber/theming`'s
+resolved template key -- **not** hardcoded markup. `components/pdp-tabbed-detail.tsx` and
+`components/pdp-long-scroll.tsx` are the two default templates (theming stays framework-agnostic;
+turning a template *key* into real JSX is this app's job, same pattern as `lib/services.ts` for
+adapters). Try `?template=pdp.long-scroll` on any product page to see the same data rendered
+differently. Adding a third layout: register it with `theming.registerTemplate()`, add a
+component, add one branch to the template-key map in `app/products/[slug]/page.tsx` -- no other
+package changes.
 
 ## Testing
 `test/integration.test.ts` drives the full seed -> browse -> cart -> checkout -> paid flow
