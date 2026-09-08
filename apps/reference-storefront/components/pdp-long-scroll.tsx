@@ -2,7 +2,13 @@ import type { PdpViewModel } from "@mercatus-liber/pdp";
 import { addToCartAction } from "../lib/actions";
 
 /** The "pdp.long-scroll" template component -- same view-model data as pdp-tabbed-detail, different presentation (everything inline, eBay-style, no collapsing). */
-export function PdpLongScroll({ viewModel }: { viewModel: PdpViewModel }) {
+export function PdpLongScroll({
+  viewModel,
+  stockBySkuId = {},
+}: {
+  viewModel: PdpViewModel;
+  stockBySkuId?: Record<string, number>;
+}) {
   const { product, skus, optionValues } = viewModel;
 
   return (
@@ -29,6 +35,7 @@ export function PdpLongScroll({ viewModel }: { viewModel: PdpViewModel }) {
           <div>
             Price: {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
           </div>
+          <div>In stock: {stockBySkuId[sku.id] ?? 0}</div>
           <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
           <button type="submit">Add to cart</button>
         </form>

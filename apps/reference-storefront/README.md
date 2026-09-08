@@ -29,6 +29,15 @@ yet, see cf-05/cf-07 execution notes in `.pHive/epics/core-foundation/`).
 `/category/[slug]`, `/search`, `/campaign/[slug]` (CMS marketing/campaign page), `/order/[id]`,
 `/order/confirmed`, `/account` (order history + recent activity -- see below).
 
+## Inventory
+PDP shows a real "in stock: N" figure per SKU, sourced from `@mercatus-liber/inventory` (not
+hardcoded). Stock is reserved the moment an order is placed (`checkout.order.placed`) --
+before payment even confirms -- and committed (permanently decremented) on
+`checkout.order.paid`. The default in-house adapter **allows oversell/backorder by design**
+(`reserve()` never throws): matches a made-to-order 3D-print shop, and avoids an event-bus
+subscriber failure breaking checkout. Hard-blocking at zero stock is a documented future
+config option, not silently assumed. See `docs/subsystems/11-inventory.md`.
+
 ## Account (demo only -- no real auth)
 `/account` is keyed by a `ml_customer_id` cookie (mirrors `cart-cookie.ts`'s pattern), created
 automatically on first checkout via `lib/customer-cookie.ts`. This is **not** an auth system --

@@ -12,8 +12,8 @@ import { buildTestCatalogServices } from "./helpers.js";
 
 describe("PDP theming wiring", () => {
   it("defaults to the first-registered template (tabbed-detail) with no override", async () => {
-    const { catalog, marketingCatalog, cms } = buildTestCatalogServices();
-    await seedCatalog(catalog, marketingCatalog, cms);
+    const { catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
+    await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
     const theming = createThemingService();
     const pdp = createPdpService({ catalog, theming });
@@ -23,8 +23,8 @@ describe("PDP theming wiring", () => {
   });
 
   it("an override resolves to a different template with the same underlying data", async () => {
-    const { catalog, marketingCatalog, cms } = buildTestCatalogServices();
-    await seedCatalog(catalog, marketingCatalog, cms);
+    const { catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
+    await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
     const theming = createThemingService();
     const pdp = createPdpService({ catalog, theming });

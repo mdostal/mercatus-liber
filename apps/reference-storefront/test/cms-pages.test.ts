@@ -9,8 +9,8 @@ import { buildTestCatalogServices } from "./helpers.js";
 
 describe("seeded CMS pages", () => {
   it("seeds a published home page with a hero-banner and a category-spot section", async () => {
-    const { catalog, marketingCatalog, cms } = buildTestCatalogServices();
-    await seedCatalog(catalog, marketingCatalog, cms);
+    const { catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
+    await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
     const home = await cms.getPageBySlug("home");
     expect(home).not.toBeNull();
@@ -22,8 +22,8 @@ describe("seeded CMS pages", () => {
   });
 
   it("seeds a published marketing page with a curated single-product mini-catalog", async () => {
-    const { catalog, marketingCatalog, cms } = buildTestCatalogServices();
-    await seedCatalog(catalog, marketingCatalog, cms);
+    const { catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
+    await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
     const campaign = await cms.getPageBySlug("fall-sale");
     expect(campaign).not.toBeNull();

@@ -1,4 +1,4 @@
-/** Shared test wiring -- the catalog/marketing-catalog/cms combo every test file in this suite needs, kept in one place to avoid drift as more services get added. */
+/** Shared test wiring -- the catalog/marketing-catalog/cms/inventory combo every test file in this suite needs, kept in one place to avoid drift as more services get added. */
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { createCatalogService, type CatalogService } from "@mercatus-liber/catalog";
 import {
@@ -9,6 +9,7 @@ import {
   type CmsService,
 } from "@mercatus-liber/cms";
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
+import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter, type OrderLookup } from "@mercatus-liber/inventory";
 import {
   createInMemoryCategoryRepository,
   createInMemoryProductCategoryRepository,
@@ -21,9 +22,19 @@ export interface TestCatalogServices {
   catalog: CatalogService;
   marketingCatalog: MarketingCatalogService;
   cms: CmsService;
+  inventory: InventoryAdapter;
 }
 
-export function buildTestCatalogServices(events: EventBus = createInMemoryEventBus()): TestCatalogServices {
+/**
+ * `orders` defaults to a no-op OrderLookup (returns null) -- fine for tests
+ * that only seed/browse and never exercise a real checkout; pass a real
+ * checkout-orders instance (which structurally satisfies OrderLookup) when a
+ * test needs reserve/commit/release to actually fire.
+ */
+export function buildTestCatalogServices(
+  events: EventBus = createInMemoryEventBus(),
+  orders: OrderLookup = { getOrder: async () => null },
+): TestCatalogServices {
   const persistence = createSqliteAdapter(":memory:");
   const catalog = createCatalogService({ persistence, events });
   const marketingCatalog = createMarketingCatalogService({
@@ -36,5 +47,7 @@ export function buildTestCatalogServices(events: EventBus = createInMemoryEventB
     marketingMeta: createInMemoryMarketingPageMetaRepository(),
     components: createComponentRegistry(),
   });
-  return { events, catalog, marketingCatalog, cms };
+  const inventory = createInMemoryInventoryAdapter();
+  registerInventorySync({ events, inventory, orders });
+  return { events, catalog, marketingCatalog, cms, inventory };
 }

@@ -11,7 +11,7 @@ vertical-slice invariant), not just "some files exist."_
 | 3 | `pdp-theming` | 04 PDP (2+ layout configs), 06 theming/layout system | **done** (all 3 stories complete) | 1, 2 |
 | 4 | `cms-pages` | 05 CMS — all 5 page types (home, category, marketing/campaign, search, PDP wiring), component registry | **done** (2/2 stories complete) | 2, 3 |
 | 5 | `customer-account` | 10 account — profile, dashboard, order tracking | **done** (2/2 stories complete) | 1 |
-| 6 | `inventory` | 11 inventory — in-house adapter + external-IMS adapter contract | not started | 1 |
+| 6 | `inventory` | 11 inventory — in-house adapter + external-IMS adapter contract | **done** (2/2 stories complete) | 1 |
 | 7 | `plugins-extensibility` | 12 plugins — plugin lifecycle, event-bus extension points, one reference plugin | not started | 1 |
 | 8 | `adapter-postgres` | Second reference DB adapter (Postgres) — proves the persistence interface is truly adapter-agnostic | not started | 1 |
 | 9 | `six-themes` | 6 optional drop-in themes built on the theming system (06) — the "roll it with 6 optional themes" deliverable | not started | 3, 4 |

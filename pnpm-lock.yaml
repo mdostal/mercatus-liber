@@ -44,6 +44,9 @@ importers:
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@mercatus-liber/inventory':
+        specifier: workspace:*
+        version: link:../../packages/inventory
       '@mercatus-liber/marketing-catalog':
         specifier: workspace:*
         version: link:../../packages/marketing-catalog
@@ -216,6 +219,34 @@ importers:
 
   packages/core:
     devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1))
+
+  packages/inventory:
+    dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@mercatus-liber/adapter-sqlite':
+        specifier: workspace:*
+        version: link:../adapter-sqlite
+      '@mercatus-liber/cart':
+        specifier: workspace:*
+        version: link:../cart
+      '@mercatus-liber/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@mercatus-liber/checkout-orders':
+        specifier: workspace:*
+        version: link:../checkout-orders
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

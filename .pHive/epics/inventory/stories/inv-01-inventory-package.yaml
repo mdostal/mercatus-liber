@@ -1,0 +1,81 @@
+id: inv-01-inventory-package
+epic: inventory
+title: Inventory package (reserve/commit/release, event-driven sync)
+status: done
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Implement packages/inventory per docs/subsystems/11-inventory.md: a
+  StockLevel (onHand/reserved, available = onHand - reserved) per SKU, the
+  InventoryAdapter interface (getStock/setStock/reserve/commit/release), a
+  default in-house in-memory implementation, and an event-driven subscriber
+  that: initializes stock at 0 on catalog.sku.created, reserves on
+  checkout.order.placed, commits (permanent decrement of both onHand and
+  reserved) on checkout.order.paid, and releases (undoes a reservation,
+  restoring availability) on payments.payment.failed. Order line items are
+  read via a narrow structural OrderLookup interface (satisfied by
+  checkout-orders' CheckoutOrdersService) -- never an import of
+  @mercatus-liber/checkout-orders. reserve() deliberately does NOT throw on
+  insufficient stock (see the epic's design decision) -- it always succeeds,
+  matching a made-to-order shop and avoiding an event-bus subscriber failure
+  breaking checkout.
+
+acceptance_criteria:
+  - "Given a catalog.sku.created event, when processed, then getStock(skuId) returns { onHand: 0, reserved: 0 } -- a stock record exists even before anyone stocks it"
+  - "Given setStock(skuId, 10) followed by reserve(skuId, 3), when getStock runs, then onHand=10, reserved=3, and available (onHand-reserved)=7"
+  - "Given a checkout.order.placed event for an order with line items, when processed, then reserve() is called for each line item's skuId+quantity via the OrderLookup-resolved order data"
+  - "Given a checkout.order.paid event for the same order, when processed, then commit() decrements BOTH onHand and reserved by each line item's quantity"
+  - "Given a payments.payment.failed event referencing an order, when processed, then release() restores availability by decrementing reserved (onHand unchanged) for each line item"
+  - "Given reserve() is called for more quantity than is available, when it runs, then it succeeds anyway (no throw) -- oversell/backorder is allowed by the default adapter, not hard-blocked"
+  - "Given the package's public exports, when inspected, then it imports @core/schema only -- no import of @mercatus-liber/checkout-orders"
+
+steps:
+  - id: research
+    description: Re-read docs/subsystems/11-inventory.md and account's OrderLookup pattern (acct-01) as the structural-interface reference.
+    agent: researcher
+  - id: implement
+    description: Implement StockLevel/InventoryAdapter types, the default in-memory adapter, and the event-driven subscriber.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for reserve/commit/release/setStock semantics, the oversell-allowed behavior, and the full event-driven sync chain (sku created -> order placed -> order paid, and separately the release-on-payment-failed path) using real checkout-orders/cart/catalog instances in tests only.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no import of @mercatus-liber/checkout-orders in packages/inventory/src, and that reserve() genuinely never throws.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/11-inventory.md
+      purpose: The reserve/commit/release pattern, the decoupling notes, and open questions 1-2 (reserve timing, oversell tolerance) this story resolves with documented decisions rather than leaving ambiguous.
+    - path: packages/account/src/service.ts
+      purpose: Reference pattern for an event-triggered structural OrderLookup used purely for reactive lookups, not request-time queries.
+
+files_to_modify:
+  - file: packages/inventory/package.json
+    change: New package depending on @mercatus-liber/core only
+  - file: packages/inventory/src/types.ts
+    change: StockLevel, InventoryAdapter, OrderLookup structural interface
+  - file: packages/inventory/src/in-memory-adapter.ts
+    change: Default in-house InventoryAdapter implementation
+  - file: packages/inventory/src/subscriber.ts
+    change: Event-bus subscriber wiring catalog/checkout/payments events to inventory operations
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/inventory/src must never import @mercatus-liber/checkout-orders -- structural OrderLookup interface only"
+
+design_decisions:
+  - decision: reserve() never throws; oversell/backorder is allowed by default
+    rationale: "Resolves docs/subsystems/11-inventory.md open question 2 explicitly -- matches a made-to-order 3D-print shop (the project's own north_star) and avoids an event-bus subscriber failure (AggregateError from the in-memory EventBus) breaking checkout.order.placed's publish call in checkout-orders. Hard-block is a documented future configuration option."
+  - decision: External-IMS adapter is a contract (the interface), not a second concrete implementation
+    rationale: "Matches the DB-adapter pattern where adapter-postgres is a separate future epic (8) proving the same interface is adapter-agnostic -- this epic only needs to prove the in-house default works and the interface is honestly IMS-shaped, not build a second real integration."

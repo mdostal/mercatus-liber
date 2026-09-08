@@ -12,8 +12,8 @@ import { buildTestCatalogServices } from "./helpers.js";
 
 describe("account dashboard data", () => {
   it("shows a completed checkout in order history, and a paid notification in recent activity", async () => {
-    const { events, catalog, marketingCatalog, cms } = buildTestCatalogServices();
-    await seedCatalog(catalog, marketingCatalog, cms);
+    const { events, catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
+    await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
     const cart = createCartService({ repository: createInMemoryCartRepository(), skus: catalog, events });
     const checkout = createCheckoutOrdersService({
