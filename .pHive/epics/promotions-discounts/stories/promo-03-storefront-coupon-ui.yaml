@@ -1,0 +1,96 @@
+id: promo-03-storefront-coupon-ui
+epic: promotions-discounts
+title: "reference-storefront: coupon code input on cart, discounted total display"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [promo-02-checkout-orders-integration]
+
+description: |
+  Shopper-facing coupon entry on apps/reference-storefront/app/cart/page.tsx, following this
+  app's existing plain-HTML-form conventions exactly (no new UI framework/library, no client
+  component -- this app is Server Components + <form action={...}> throughout).
+
+  Deliverables:
+  - CartPage: after computing `lines` (existing code), call
+    `checkout.previewCheckout({ cartId, couponCode: <value from a cookie or query param -- see
+    design decision below> })` and render a grand total line (which does not exist anywhere
+    today -- this is the first total display in the app) showing subtotal, discount (if any),
+    and final total, using the same `((amount)/100).toFixed(2)} {currency}` formatting already
+    used per-line in this file.
+  - A coupon-code `<form>` with a text input + submit button, posting to a new server action
+    `applyCouponAction(formData)` in lib/actions.ts that stores the entered code (cookie, same
+    pattern as `THEME_COOKIE`/cart-cookie.ts) and calls `revalidatePath("/cart")`.
+  - `startCheckoutAction` (existing) reads the stored coupon-code cookie (if any) and passes it
+    as `couponCode` into `checkout.startCheckout(...)`.
+  - If `previewCheckout` reports the code didn't apply (appliedCode null when a code was
+    entered), show a plain "Coupon code not valid" message on the page -- no client-side
+    validation, this is a fully server-rendered round trip like every other page in this app.
+
+acceptance_criteria:
+  - "Given a cart with items and no coupon entered, when the cart page renders, then it shows a grand total (new) equal to the sum of all line totals, with zero discount shown"
+  - "Given a cart with items and a valid coupon code submitted via the form, when the page re-renders after the form submission, then it shows the discounted total and the applied code"
+  - "Given a cart with items and an invalid coupon code submitted, when the page re-renders, then it shows 'Coupon code not valid' and the full (undiscounted) total"
+  - "Given a valid coupon was applied and the shopper proceeds to checkout, when startCheckoutAction runs, then the resulting Order (verifiable via checkout.getOrder) has the same appliedPromotionCode and discountTotal previewCheckout showed"
+
+steps:
+  - id: research
+    description: Re-read cart/page.tsx, lib/actions.ts, lib/cart-cookie.ts, lib/theme-cookie.ts (or equivalent) for the exact cookie-read/write and form-action conventions to mirror.
+    agent: researcher
+  - id: implement
+    description: Implement the coupon UI per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Add/extend integration-level tests if this app has any (check for an existing test setup under apps/reference-storefront); at minimum, manually verify via `pnpm dev` that the golden path (add item, apply valid coupon, see discount, check out) and the invalid-code path both render correctly.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review for convention compliance (Server Components only, no new client-side state, cookie pattern matches existing cookies).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/promotions-discounts.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/cart/page.tsx
+      purpose: Existing cart page to extend with coupon form + grand total display.
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: "Existing server-action conventions (addToCartAction, startCheckoutAction) -- applyCouponAction and the couponCode-passing change to startCheckoutAction go here."
+    - path: apps/reference-storefront/lib/cart-cookie.ts
+      purpose: Exact cookie get/set pattern to mirror for a new coupon-code cookie.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/cart/page.tsx
+    change: Add previewCheckout call, grand-total display, coupon form.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: Add applyCouponAction; extend startCheckoutAction to pass stored couponCode.
+  - file: apps/reference-storefront/lib/coupon-cookie.ts
+    change: New file, mirrors cart-cookie.ts's get/set pattern for the coupon code.
+
+design_decisions:
+  - decision: "Coupon code stored in a cookie, not cart/order state."
+    rationale: "Matches this app's existing pattern for shopper-scoped, not-yet-committed state (theme, cart id, customer id all live in cookies here) -- no new state-management concept introduced."
+
+risks:
+  - severity: low
+    description: "This is the first page in the app to display a grand total at all -- if previewCheckout's Money formatting differs subtly from the existing per-line formatting, the numbers could look inconsistent."
+    mitigation: "Reuse the exact same `((amount)/100).toFixed(2)} {currency}` expression already used for per-line totals in this file, applied to previewCheckout's returned total/discountTotal fields."
+
+references:
+  - path: .pHive/epics/promotions-discounts/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: "Cart stays untouched... The 'discounted total before you pay' experience is served
+      by checkout-orders' previewCheckout, called from the storefront's cart/checkout page the
+      same way catalog is already called from CartPage today."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "UI-only story wiring an already-tested backend computation (promo-01/promo-02) into a page; the acceptance criteria above are the observable surface, verified manually per the test step since this app has no existing UI test harness to extend."

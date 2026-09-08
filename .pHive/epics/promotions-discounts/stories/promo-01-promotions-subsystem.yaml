@@ -1,0 +1,183 @@
+id: promo-01-promotions-subsystem
+epic: promotions-discounts
+title: "@mercatus-liber/promotions: Promotion domain model, in-memory adapter, evaluate()"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  New package `packages/promotions` (subsystem 16, see docs/subsystems/16-promotions.md,
+  already written during planning). Depends on @mercatus-liber/core only -- never imports
+  cart, checkout-orders, or catalog (SKU-scoped promotions store bare skuId strings, matched
+  against a cart's own line items at evaluation time, not resolved through catalog).
+
+  Deliverables:
+  - `Promotion` type + `PromotionKind` ("percentage"|"fixed") + `PromotionScope`
+    ("cart"|"product") -- see design-discussion.md §4 for the exact field list.
+  - `PromotionRepository` interface (get/list/save, adapter pattern) +
+    `createInMemoryPromotionRepository()` reference implementation, structured exactly like
+    `packages/cart/src/in-memory-repository.ts` (structuredClone in/out, Map-backed).
+  - `PromotionsService` with `createPromotion`, `getPromotion`, `listPromotions`,
+    `deactivatePromotion`, and the core computation `evaluate(input): Promise<PromotionEvaluation>`
+    where input is `{ items: {skuId, quantity, priceSnapshot: Money}[], couponCode?: string | null }`
+    and the result carries adjusted per-line unitAmounts, discountTotal, total, and either
+    appliedCode or a rejection reason (unknown_code | expired | not_yet_active |
+    usage_limit_reached | below_minimum | none). evaluate() never throws for an invalid/absent
+    code -- "no discount applied" is a normal result shape, not an error.
+  - Event wiring: subscribe to `checkout.order.paid` (published by checkout-orders, subsystem
+    09) to increment `redemptionCount` on the promotion that was actually applied to that
+    order -- NOT on `checkout.order.placed` (a merely-started checkout). Since evaluate() is a
+    pure computation, the service also needs a way to know which promotion/code was applied to
+    a given order at evaluation time; store this as part of the service's own bookkeeping (a
+    small in-memory map from an evaluation's returned `appliedCode`/promotion id back to
+    increment-on-redeem is enough for the reference implementation -- do not over-engineer this;
+    see risk section below). Publish `promotions.redeemed` after incrementing, payload
+    `{ promotionId, orderId, discountAmount: Money }`, fire-and-forget (no subscriber depends on
+    this yet; it exists for the future internal-BI subsystem per the wider backlog brief).
+  - Validation rules for evaluate(): code lookup is case-sensitive exact match; a promotion is
+    eligible when `status === "active"`, `startsAt` is null or in the past, `endsAt` is null or
+    in the future, `usageLimit` is null or `redemptionCount < usageLimit`, and (cart scope only)
+    the cart's pre-discount subtotal >= `minCartAmount` (when set). Product-scope promotions
+    apply their discount only to line items whose skuId is in `targetSkuIds`, leaving other
+    lines unadjusted. One promotion per evaluate() call: a supplied couponCode takes precedence;
+    if none is supplied, apply the single highest-discountTotal-value active auto-applied
+    (code === null) promotion, if any are eligible.
+
+acceptance_criteria:
+  - "Given a cart-scope fixed promotion with code 'SAVE10' (amount 1000, currency USD) and a cart subtotal of 5000, when evaluate() is called with couponCode 'SAVE10', then discountTotal is {amount:1000,currency:'USD'} and total is 4000"
+  - "Given a product-scope percentage promotion (value 20) targeting skuId 'sku-a' only, when evaluate() is called with a cart containing sku-a (price 1000) and sku-b (price 1000, not targeted), then only sku-a's line is discounted (unitAmount 800) and sku-b's line is unchanged (unitAmount 1000)"
+  - "Given an expired promotion (endsAt in the past) with a valid-looking code, when evaluate() is called with that code, then the result has appliedCode null and rejectionReason 'expired', with zero discount applied (pass-through unitAmounts)"
+  - "Given a usage-limited promotion at its limit (redemptionCount === usageLimit), when evaluate() is called with its code, then rejectionReason is 'usage_limit_reached'"
+  - "Given a promotion is applied and checkout.order.paid is published for that order, when the subscriber handles it, then redemptionCount increments by exactly 1 and a promotions.redeemed event is published"
+  - "Given checkout.order.paid fires twice for the same orderId (a redelivered event), when the subscriber handles the redelivery, then redemptionCount does not increment a second time (idempotent, same guard pattern as checkout-orders' own payments.payment.succeeded subscriber)"
+
+steps:
+  - id: research
+    description: Confirm exact Money/EventBus shapes from @mercatus-liber/core and the in-memory-repository.ts pattern from cart before writing types.
+    agent: researcher
+  - id: implement
+    description: Implement the promotions package per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write vitest tests in packages/promotions/test/ covering every acceptance criterion above, using createInMemoryEventBus from @mercatus-liber/core the same way checkout-orders/test/checkout-orders.test.ts does.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review for correctness, convention compliance (structural-interface naming, package.json scoping to core-only), and that evaluate() never throws for invalid input.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/promotions-discounts.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/cart/src/in-memory-repository.ts
+      purpose: Exact pattern to follow for the in-memory PromotionRepository (Map + structuredClone).
+    - path: packages/cart/package.json
+      purpose: Exact package.json shape/scoping convention (dependencies -> core only, everything else in devDependencies).
+    - path: packages/core/src/schema.ts
+      purpose: Money type definition ({amount: int minor units, currency: ISO 4217 string}).
+    - path: packages/core/src/event-bus.ts
+      purpose: EventBus interface (publish/subscribe) + createInMemoryEventBus for tests.
+    - path: packages/checkout-orders/test/checkout-orders.test.ts
+      purpose: Test-setup pattern (createInMemoryEventBus, vi.fn mocks, describe/it/beforeEach shape) to mirror.
+    - path: packages/checkout-orders/src/service.ts
+      purpose: "Lines 45-58 show the exact idempotent-subscriber pattern (payments.payment.succeeded -> guard on order.status) to mirror for checkout.order.paid -> redemption increment."
+
+files_to_modify:
+  - file: packages/promotions/package.json
+    change: New package, dependencies -> @mercatus-liber/core only (workspace:*), devDependencies -> @types/node, typescript, vitest.
+  - file: packages/promotions/tsconfig.json
+    change: Extend ../../tsconfig.base.json, reference ../core, matching packages/checkout-orders/tsconfig.json.
+  - file: packages/promotions/src/types.ts
+    change: Promotion, PromotionKind, PromotionScope, PromotionRepository, PromotionEvaluation, RejectionReason types.
+  - file: packages/promotions/src/in-memory-repository.ts
+    change: createInMemoryPromotionRepository().
+  - file: packages/promotions/src/service.ts
+    change: createPromotionsService(deps) -> PromotionsService (create/get/list/deactivate/evaluate) + checkout.order.paid subscriber + promotions.redeemed publish.
+  - file: packages/promotions/src/index.ts
+    change: Re-export public surface.
+  - file: packages/promotions/test/promotions.test.ts
+    change: Tests for every acceptance criterion.
+
+code_examples:
+  - title: In-memory repository pattern to mirror exactly
+    file: packages/cart/src/in-memory-repository.ts
+    snippet: |
+      export function createInMemoryCartRepository(): CartRepository {
+        const carts = new Map<string, Cart>();
+        return {
+          async get(id: string): Promise<Cart | null> {
+            const cart = carts.get(id);
+            return cart ? structuredClone(cart) : null;
+          },
+          async save(cart: Cart): Promise<void> {
+            carts.set(cart.id, structuredClone(cart));
+          },
+        };
+      }
+  - title: Idempotent event-subscriber guard pattern to mirror
+    file: packages/checkout-orders/src/service.ts
+    snippet: |
+      events.subscribe<{ sessionId: string; orderRef: string | null }>(
+        "payments.payment.succeeded",
+        async ({ orderRef }) => {
+          if (!orderRef) return;
+          const order = await repository.get(orderRef);
+          if (!order || order.status !== "pending_payment") return; // idempotent guard
+          const paid: Order = { ...order, status: "paid" };
+          await repository.save(paid);
+          await events.publish("checkout.order.paid", { orderId: paid.id });
+        },
+      );
+
+design_decisions:
+  - decision: "evaluate() returns a rejection reason instead of throwing for invalid/expired/exhausted codes."
+    rationale: "An invalid coupon code is expected shopper-facing UX ('that code doesn't work'), not an exceptional error -- matches how the wider design-discussion.md frames it."
+  - decision: "Redemption-count increments on checkout.order.paid, not checkout.order.placed."
+    rationale: "redemptionCount must reflect completed purchases only, per design-discussion.md §5 open question 2 -- an abandoned checkout must not consume a limited coupon's usage slot."
+
+risks:
+  - severity: medium
+    description: "The service needs to know, at redemption time, which promotion (if any) was applied to a given order -- but evaluate() is a pure computation with no order concept. Naively this needs order-to-promotion bookkeeping."
+    mitigation: "Keep this minimal for the reference implementation: an in-memory Map<orderId, {promotionId, discountAmount}> populated by whoever calls evaluate() and decides to proceed to checkout (i.e. checkout-orders' PricingAdjuster caller records the applied promotion against the orderId once the order is created -- see promo-02's design). Do not build a general-purpose order-promotion-audit-log table; that's over-engineering for this epic's scope."
+  - severity: low
+    description: "Concurrent redemption-count increments under the in-memory Map have no locking."
+    mitigation: "Documented as an accepted open item in docs/subsystems/16-promotions.md open question 1, matching every other in-memory reference repo's posture in this codebase."
+
+references:
+  - path: .pHive/epics/promotions-discounts/docs/design-discussion.md
+    relevant_excerpt: |
+      §4 "What a Promotion looks like" has the full field-by-field type definition this story
+      implements verbatim, plus the validation-case list evaluate() must reject cleanly.
+  - path: docs/subsystems/16-promotions.md
+    relevant_excerpt: |
+      Full subsystem doc (purpose, depends-on, responsibilities, explicit non-goals,
+      decoupling notes with the exact grep command to run before merge).
+  - path: docs/subsystems/07-cart.md
+    relevant_excerpt: |
+      Lines 25-29: "Pricing rules/discounts beyond price snapshotting... if/when a promotions
+      concept exists, it's either part of checkout (09) or its own subsystem, not bolted onto
+      cart." -- the binding constraint this story's package placement satisfies.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: promotions.evaluate_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite in packages/promotions/test/promotions.test.ts
+  verify_at: integrate
+  owner: tester

@@ -1,0 +1,116 @@
+id: promo-04-admin-promotions-crud
+epic: promotions-discounts
+title: "/admin/promotions: list + create/edit/deactivate promotions, epic-backlog closeout"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [promo-01-promotions-subsystem]
+
+description: |
+  First admin-side mutation UI in the app -- every existing /admin/* page (catalog, cms,
+  orders, plugins) is read-only. This story establishes the precedent: a list view matching
+  existing admin conventions exactly, plus a create/edit form using the app's one existing
+  form-mutation convention (`"use server"` actions in lib/actions.ts + revalidatePath),
+  applied here for the first time on the admin side.
+
+  Deliverables:
+  - `apps/reference-storefront/app/admin/promotions/page.tsx`: Server Component, `export const
+    dynamic = "force-dynamic"`, fetches `promotions.listPromotions()`, renders a `<table>`
+    matching app/admin/catalog/page.tsx's exact structure/back-link convention (columns: code
+    or "(auto)", kind, scope, value, status, redemptionCount/usageLimit, an edit link per row,
+    a deactivate form per row).
+  - `apps/reference-storefront/app/admin/promotions/new/page.tsx`: a plain `<form>` (text/select
+    inputs matching the Promotion field list) posting to a new `createPromotionAction` server
+    action.
+  - `apps/reference-storefront/app/admin/promotions/[id]/page.tsx`: same form pre-filled for
+    editing, posting to `updatePromotionAction`; also a `deactivatePromotionAction` form button.
+  - New server actions in lib/actions.ts: `createPromotionAction`, `updatePromotionAction`,
+    `deactivatePromotionAction`, each calling the promotions service methods from promo-01 and
+    `revalidatePath("/admin/promotions")`.
+  - Add a `<Link href="/admin/promotions">Promotions</Link>` entry to `app/admin/page.tsx`'s
+    existing nav list.
+  - Epic-backlog closeout (do this LAST, after all four stories are integrated and this is the
+    final story to merge): update `.pHive/planning/epic-backlog.md` epic 20's row status from
+    "not started" to "done", matching the style of every other completed epic's status text
+    (see epic 19's row for the exact phrasing convention -- "done (N/N stories complete)").
+    Also run the decoupling verification grep from docs/subsystems/16-promotions.md's
+    "Decoupling notes" section and paste its (clean) output into this story's completion notes
+    or PR description before merging --no-ff to master.
+
+acceptance_criteria:
+  - "Given at least one promotion exists, when /admin/promotions is visited, then it renders a table listing all promotions with their code/kind/scope/value/status/redemption info"
+  - "Given the new-promotion form is submitted with valid fields, when createPromotionAction runs, then a new Promotion exists (visible on GET /admin/promotions) with the submitted field values"
+  - "Given an existing promotion, when its edit form is submitted with changed fields, then updatePromotionAction persists the change and the list page reflects it"
+  - "Given an active promotion, when its deactivate action is submitted, then its status becomes 'inactive' and it is excluded from future evaluate() auto-apply consideration (still individually visible/editable in the admin list)"
+  - "Given all four stories in this epic are merged, when `grep -rn '@mercatus-liber/promotions' packages/cart packages/checkout-orders/src` is run, then packages/cart has zero hits and packages/checkout-orders/src has hits only inside types.ts comments"
+  - ".pHive/planning/epic-backlog.md epic 20's row reads 'done' with the standard phrasing, matching sibling completed-epic rows"
+
+steps:
+  - id: research
+    description: Re-read app/admin/catalog/page.tsx, app/admin/page.tsx, and lib/actions.ts's existing action conventions.
+    agent: researcher
+  - id: implement
+    description: Implement the admin CRUD pages + actions per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the golden path (create, list, edit, deactivate) via `pnpm dev`; run the decoupling grep and record clean output.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review for convention compliance with the existing read-only admin pages' structure, and confirm the epic-backlog.md update is accurate.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/promotions-discounts, then this story's completion is the trigger to merge the whole epic branch --no-ff to master (see epic-backlog.md update in this story's own scope above).
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/admin/catalog/page.tsx
+      purpose: Exact read-only admin table convention to match for the promotions list page.
+    - path: apps/reference-storefront/app/admin/page.tsx
+      purpose: Admin nav index -- add the Promotions link here.
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: The one existing form-action convention in the app -- new admin actions follow this shape (first time used admin-side).
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Epic 20's row (table, roughly line 30) -- status field to update from 'not started' to 'done' as this story's last step."
+
+files_to_modify:
+  - file: apps/reference-storefront/app/admin/promotions/page.tsx
+    change: New file, read-only list.
+  - file: apps/reference-storefront/app/admin/promotions/new/page.tsx
+    change: New file, create form.
+  - file: apps/reference-storefront/app/admin/promotions/[id]/page.tsx
+    change: New file, edit form + deactivate action.
+  - file: apps/reference-storefront/app/admin/page.tsx
+    change: Add Promotions nav link.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: Add createPromotionAction, updatePromotionAction, deactivatePromotionAction.
+  - file: .pHive/planning/epic-backlog.md
+    change: Epic 20 row status -> done, per-story completion note.
+
+design_decisions:
+  - decision: "Plain server-rendered forms, no client-side validation library."
+    rationale: "Matches the zero-client-JS-framework posture of every other page in this app; this is a reference/demo storefront+admin, not a production admin console."
+
+risks:
+  - severity: low
+    description: "This is the first admin mutation surface in the app -- there's no existing precedent to copy exactly, only the shopper-facing lib/actions.ts pattern to adapt."
+    mitigation: "Explicitly documented as a new precedent in this story and in design-discussion.md §2, not something to force-fit into the read-only admin pattern."
+
+references:
+  - path: .pHive/epics/promotions-discounts/docs/design-discussion.md
+    relevant_excerpt: |
+      §2: "A promotions admin CRUD UI is a new precedent (first admin-side mutation), not a
+      copy of an existing pattern -- it follows the one existing form-mutation convention in
+      the app instead."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Admin CRUD UI story verified via the acceptance criteria's manual golden-path check and the decoupling grep; no numeric trend to track beyond epic-backlog.md's own done/not-started status, which is qualitative."

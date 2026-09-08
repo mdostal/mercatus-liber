@@ -1,0 +1,47 @@
+name: promotions-discounts
+title: Promotions & Discounts
+description: >
+  Coupon codes, percentage/fixed discounts, cart- and product-level (backlog epic 20).
+  New subsystem 16 (@mercatus-liber/promotions, core-only dependency) satisfies a narrow
+  optional PricingAdjuster structural interface checkout-orders (09) declares in its own
+  types.ts -- resolved design question: own subsystem, not a checkout-orders extension or a
+  cart addition (cart's own subsystem doc already rules discounts out of scope). See
+  docs/subsystems/16-promotions.md and docs/design-discussion.md for the full rationale.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [backend, new-subsystem, admin-ui, checkout-integration]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    backend: "New package (promotions) with domain model + service + in-memory adapter"
+    new-subsystem: "Design question (own subsystem vs. checkout extension) required resolving before decomposition, per epic-backlog.md epic 20 description"
+    admin-ui: "Admin CRUD for promotions is explicit epic scope and a new precedent (first admin-side mutation UI in the app)"
+    checkout-integration: "Narrow optional structural interface into checkout-orders' existing startCheckout seam"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session (no live multi-agent planning team spawned this run); design discussion grounded in a dedicated codebase-research pass instead (see docs/research findings in design-discussion.md §2), matching the rigor of prior epics' research briefs.
+
+stories:
+  - id: promo-01-promotions-subsystem
+    title: "@mercatus-liber/promotions: Promotion domain model, in-memory adapter, evaluate()"
+    complexity: medium
+    depends_on: []
+  - id: promo-02-checkout-orders-integration
+    title: "checkout-orders: optional PricingAdjuster interface, previewCheckout, Order.discountTotal"
+    complexity: medium
+    depends_on: [promo-01-promotions-subsystem]
+  - id: promo-03-storefront-coupon-ui
+    title: "reference-storefront: coupon code input on cart/checkout, discounted total display"
+    complexity: low
+    depends_on: [promo-02-checkout-orders-integration]
+  - id: promo-04-admin-promotions-crud
+    title: "/admin/promotions: list + create/edit/deactivate promotions, epic-backlog closeout"
+    complexity: medium
+    depends_on: [promo-01-promotions-subsystem]

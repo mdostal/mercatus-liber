@@ -1,0 +1,156 @@
+id: promo-02-checkout-orders-integration
+epic: promotions-discounts
+title: "checkout-orders: optional PricingAdjuster interface, previewCheckout, Order.discountTotal"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [promo-01-promotions-subsystem]
+
+description: |
+  Give checkout-orders (subsystem 09) an optional structural interface it can consult to
+  adjust prices before creating a payment session, per design-discussion.md §3. This story
+  touches ONLY packages/checkout-orders and apps/reference-storefront/lib/services.ts --
+  checkout-orders' package.json dependencies stay @mercatus-liber/core-only (promotions is
+  wired at the app's services.ts DI layer only, exactly like every other cross-subsystem
+  wiring in this repo).
+
+  Deliverables:
+  - `PricingAdjustment` and `PricingAdjuster` types added to packages/checkout-orders/src/types.ts
+    (exact shape in design-discussion.md §3 -- copy it, don't redesign it).
+  - `createCheckoutOrdersService(deps)` gains an OPTIONAL `pricing?: PricingAdjuster` dep. When
+    absent, a built-in pass-through adjustment is used (unitAmount === priceSnapshot,
+    discountTotal zero, appliedCode null) -- this must be unconditionally covered by a
+    regression test proving zero behavior change for the existing (pre-promotions) test suite.
+  - `startCheckout` gains an optional `couponCode?: string | null` field on its input. It calls
+    `pricing.computeAdjustment({ items: shopperCart.items, couponCode: input.couponCode })` (or
+    the pass-through) BETWEEN the existing cart-snapshot line (service.ts line 70-72) and the
+    order-construction line (currently line 74-89) -- use the adjustment's per-line unitAmount
+    for both `order.items[].priceAtPurchase` (replacing the direct priceSnapshot copy) and the
+    Stripe `lineItems[].unitAmount` (replacing the direct priceSnapshot use at the current
+    lines 95-102).
+  - `Order` gains two new fields: `discountTotal: Money` and `appliedPromotionCode: string |
+    null`, both additive with safe defaults (mirror how `customerId` was added in acct-01 --
+    check packages/checkout-orders/src/types.ts's existing comment on that field for the exact
+    backward-compatibility framing to reuse).
+  - New `previewCheckout(input: { cartId, couponCode?: string | null }):
+    Promise<PricingAdjustment>` method on `CheckoutOrdersService` -- looks up the cart via the
+    existing `CartLookup`, runs the same adjustment computation, but does NOT create an order or
+    a payment session. This is what the storefront's cart page will call in promo-03 to show a
+    discounted total before checkout.
+  - apps/reference-storefront/lib/services.ts: wire `createPromotionsService(...)` from
+    @mercatus-liber/promotions (added to that app's package.json devDependencies... no, this
+    app IS the composition root, so it goes in regular dependencies there, matching how
+    @mercatus-liber/cart etc. are already regular deps of the app) and pass it as `checkout`'s
+    new `pricing` dep. Add a code comment at the wiring site matching the existing "structurally
+    satisfies" comments already present for other cross-service wiring (see services.ts lines
+    156-168 for the exact comment style to match).
+  - The applied-promotion bookkeeping risk flagged in promo-01: once `startCheckout` computes an
+    adjustment with a non-null `appliedCode`, record `{orderId, promotionId, discountAmount}`
+    against the promotions service so its `checkout.order.paid` subscriber (from promo-01) can
+    find it later. The cleanest shape: `PricingAdjuster` gains a second optional method,
+    `recordApplication?(input: {orderId, appliedCode, discountAmount}): Promise<void>`, called
+    by startCheckout right after order.save() succeeds, only when `adjustment.appliedCode` is
+    non-null and `deps.pricing.recordApplication` exists. Confirm this shape against promo-01's
+    actual implementation before finalizing (promo-01 lands first; read its committed
+    packages/promotions/src/types.ts before writing this integration).
+
+acceptance_criteria:
+  - "Given no PricingAdjuster is wired (pricing dep omitted), when startCheckout runs exactly as it did before this story, then order.items[].priceAtPurchase and the Stripe lineItems match priceSnapshot byte-for-byte and order.discountTotal is zero -- proves zero regression for deployments that haven't adopted promotions"
+  - "Given a wired PricingAdjuster and a valid couponCode reducing the cart total, when startCheckout is called with that couponCode, then order.items[].priceAtPurchase reflects the adjusted (discounted) amounts, order.discountTotal is non-zero, order.appliedPromotionCode equals the code, and the Stripe payment session's lineItems also reflect the discounted amounts"
+  - "Given a wired PricingAdjuster and an invalid/unknown couponCode, when startCheckout is called with that code, then the order proceeds at full price (pass-through), discountTotal is zero, and appliedPromotionCode is null (no error thrown to the shopper)"
+  - "Given a cart, when previewCheckout is called with a couponCode, then it returns the same PricingAdjustment startCheckout would have used, without creating any Order or calling PaymentSessionCreator"
+  - "Given services.ts wires promotions in, when grep -rn '@mercatus-liber/promotions' packages/checkout-orders/src is run, then the only hits are in types.ts comments (English prose), never an import statement"
+
+steps:
+  - id: research
+    description: Read promo-01's committed packages/promotions/src/types.ts and service.ts to confirm the PromotionsService shape this story integrates against.
+    agent: researcher
+  - id: implement
+    description: Implement the integration per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend packages/checkout-orders/test/checkout-orders.test.ts (or add a sibling test file) covering every acceptance criterion, including the zero-pricing-dep regression case.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review for the decoupling invariant (no direct import of promotions in checkout-orders source) and backward compatibility of the pass-through path.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/promotions-discounts.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/checkout-orders/src/service.ts
+      purpose: "startCheckout implementation -- exact insertion point is between line 70-72 (cart snapshot) and line 74 (order construction); Stripe lineItems built at lines 95-102."
+    - path: packages/checkout-orders/src/types.ts
+      purpose: "Where PricingAdjustment/PricingAdjuster get added, alongside the existing CartLookup/PaymentSessionCreator interfaces they should match in style."
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: "The only file that imports concrete adapter/service implementations (lines 44-56 comment) -- promotions gets wired here, in the same style as cart/catalog/checkout wiring already present."
+
+files_to_modify:
+  - file: packages/checkout-orders/src/types.ts
+    change: Add PricingAdjustment, PricingAdjuster types; add discountTotal + appliedPromotionCode to Order.
+  - file: packages/checkout-orders/src/service.ts
+    change: Optional pricing dep + pass-through default; call computeAdjustment in startCheckout; add previewCheckout; call recordApplication after order.save when applicable.
+  - file: packages/checkout-orders/test/checkout-orders.test.ts
+    change: New/extended test cases per acceptance criteria.
+  - file: apps/reference-storefront/lib/services.ts
+    change: Import + wire createPromotionsService, pass as checkout's pricing dep.
+  - file: apps/reference-storefront/package.json
+    change: Add @mercatus-liber/promotions as a regular dependency (composition root, same as cart/catalog).
+
+code_examples:
+  - title: Exact seam in startCheckout to insert the adjustment call
+    file: packages/checkout-orders/src/service.ts
+    snippet: |
+      const shopperCart = await cart.getCart(input.cartId);
+      if (!shopperCart) throw new CartNotFoundForCheckoutError(input.cartId);
+      if (shopperCart.items.length === 0) throw new EmptyCartError(input.cartId);
+      // <-- adjustment call goes here, before order construction below
+      const orderId = randomUUID();
+      const order: Order = {
+        ...
+        items: shopperCart.items.map((item) => ({
+          skuId: item.skuId,
+          quantity: item.quantity,
+          priceAtPurchase: item.priceSnapshot, // <-- replace with adjustment.items[i].unitAmount
+        })),
+
+design_decisions:
+  - decision: "pricing dep is optional with a built-in pass-through, not a required constructor arg."
+    rationale: "Every existing deployment/test wires createCheckoutOrdersService without a promotions concept; making pricing required would be a breaking change to every caller. Optional + pass-through preserves the additive-only version_bump: minor commitment in epic.yaml."
+  - decision: "recordApplication is a second optional method on PricingAdjuster, not a separate interface."
+    rationale: "Keeps checkout-orders' promotions-facing surface to one named interface (matches the one-interface-per-capability convention used by CartLookup/PaymentSessionCreator) while still letting promo-01's redemption bookkeeping (risk noted in that story) work without checkout-orders owning an order-to-promotion table itself."
+
+risks:
+  - severity: medium
+    description: "recordApplication's exact signature depends on promo-01's actual committed PromotionsService shape, which may differ slightly from what this story assumes (promo-01 lands first, but the interface details were designed together)."
+    mitigation: "Research step explicitly re-reads promo-01's committed source before implementing; adjust the exact method signature to match reality rather than forcing promo-01's code to match this story's guess."
+
+references:
+  - path: .pHive/epics/promotions-discounts/docs/design-discussion.md
+    relevant_excerpt: |
+      §3 has the exact PricingAdjustment/PricingAdjuster TypeScript shape and the
+      pass-through-when-unwired behavioral contract this story implements.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: checkout_orders.pricing_adjustment_applied_rate
+  direction: up
+  unit: count
+  baseline: 0
+  target: 1
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite added/extended in packages/checkout-orders/test/
+  verify_at: integrate
+  owner: tester
