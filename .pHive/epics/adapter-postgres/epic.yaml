@@ -1,0 +1,28 @@
+name: adapter-postgres
+title: Postgres Reference Adapter
+description: >
+  A second reference implementation of @mercatus-liber/core's
+  CatalogPersistenceAdapter interface (products/skus/attributes), backed by
+  real Postgres SQL via the `pg` driver -- proving the persistence interface
+  from cf-02 is genuinely adapter-agnostic, not secretly SQLite-shaped. Tests
+  mirror adapter-sqlite's exact scenarios (same assertions, different
+  backend) to prove behavioral parity, not just type-compatibility. No live
+  Postgres server is available in this environment; tests run against a
+  small stateful fake Pool double that mimics Postgres query/upsert
+  semantics for this adapter's specific SQL -- a disclosed simplification
+  (same shape as the Stripe live-key gap from cf-05), not a substitute for
+  real integration verification against an actual Postgres instance.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: pg-01-adapter-postgres-package
+    title: Postgres reference adapter, tested for behavioral parity with adapter-sqlite
+    complexity: high
+    depends_on: []
