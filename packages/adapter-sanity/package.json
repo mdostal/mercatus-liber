@@ -1,0 +1,29 @@
+{
+  "name": "@mercatus-liber/adapter-sanity",
+  "version": "0.1.0",
+  "description": "CmsPersistenceAdapter backed by Sanity's real Content API (Query + Mutations). Proves CMS (subsystem 05) is genuinely swappable, same as adapter-postgres/adapter-shopify proved for catalog persistence. Public surface is exactly CmsPersistenceAdapter; depends on @mercatus-liber/cms only, for the types it implements.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/cms": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

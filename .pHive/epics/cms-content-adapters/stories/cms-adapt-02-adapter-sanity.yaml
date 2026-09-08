@@ -1,7 +1,7 @@
 id: cms-adapt-02-adapter-sanity
 epic: cms-content-adapters
 title: "@mercatus-liber/adapter-sanity: CmsPersistenceAdapter backed by Sanity's Content API"
-status: pending
+status: done
 complexity: large
 methodology: classic
 depends_on: [cms-adapt-01-persistence-adapter-bundle]
