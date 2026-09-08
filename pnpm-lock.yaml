@@ -44,6 +44,9 @@ importers:
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@mercatus-liber/inventory':
+        specifier: workspace:*
+        version: link:../../packages/inventory
       '@mercatus-liber/marketing-catalog':
         specifier: workspace:*
         version: link:../../packages/marketing-catalog

@@ -1,7 +1,7 @@
 id: inv-02-reference-storefront-stock-display
 epic: inventory
 title: Reference storefront -- seeded stock + PDP stock display
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [inv-01-inventory-package]

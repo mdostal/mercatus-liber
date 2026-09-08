@@ -24,13 +24,23 @@ export default async function ProductPage({
 }) {
   const { slug } = await params;
   const { template } = await searchParams;
-  const { pdp } = await getServices();
+  const { pdp, inventory } = await getServices();
   const viewModel = await pdp.getViewModel(slug, template);
   if (!viewModel) notFound();
+
+  // Stock is deliberately NOT part of pdp's view model (see pt-02's design
+  // decision -- no inventory epic existed yet); composed here at the app
+  // layer instead, same "app composes multiple services" pattern as
+  // everything else in this reference storefront.
+  const stockBySkuId: Record<string, number> = {};
+  for (const sku of viewModel.skus) {
+    const level = await inventory.getStock(sku.id);
+    stockBySkuId[sku.id] = level ? level.onHand - level.reserved : 0;
+  }
 
   const Component =
     (viewModel.templateKey && TEMPLATE_COMPONENTS[viewModel.templateKey as keyof typeof TEMPLATE_COMPONENTS]) ||
     PdpTabbedDetail;
 
-  return <Component viewModel={viewModel} />;
+  return <Component viewModel={viewModel} stockBySkuId={stockBySkuId} />;
 }

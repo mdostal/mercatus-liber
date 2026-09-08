@@ -1,5 +1,6 @@
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
+import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 
 interface DemoProduct {
@@ -10,6 +11,7 @@ interface DemoProduct {
   size: string;
   priceCents: number;
   categorySlugs: string[];
+  stockUnits: number;
 }
 
 const DEMO_PRODUCTS: DemoProduct[] = [
@@ -22,6 +24,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     priceCents: 1999,
     // Shared category ("desk-accessories") proves many-to-many assignment.
     categorySlugs: ["desk-accessories", "3d-printed"],
+    stockUnits: 12,
   },
   {
     slug: "dragon-desk-mat",
@@ -31,6 +34,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     size: "medium",
     priceCents: 2999,
     categorySlugs: ["desk-accessories"],
+    stockUnits: 5,
   },
 ];
 
@@ -99,11 +103,12 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
   await cms.publishPage(campaign.id);
 }
 
-/** Seeds a handful of demo products/SKUs (published/active), category assignments, and CMS pages. */
+/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. */
 export async function seedCatalog(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
   cms: CmsService,
+  inventory: InventoryAdapter,
 ): Promise<void> {
   const categoryIdBySlug = await seedCategories(marketingCatalog);
   const productIdBySlug = new Map<string, string>();
@@ -117,11 +122,16 @@ export async function seedCatalog(
     });
     productIdBySlug.set(demo.slug, product.id);
     await catalog.publishProduct(product.id);
-    await catalog.generateSkus(
+    const skus = await catalog.generateSkus(
       product.id,
       { color: [demo.color], size: [demo.size] },
       { amount: demo.priceCents, currency: "USD" },
     );
+    // catalog.sku.created already initialized each SKU at onHand=0 via the
+    // inventory subscriber -- this sets the real seeded stock level.
+    for (const sku of skus) {
+      await inventory.setStock(sku.id, demo.stockUnits);
+    }
 
     for (const categorySlug of demo.categorySlugs) {
       const categoryId = categoryIdBySlug.get(categorySlug);

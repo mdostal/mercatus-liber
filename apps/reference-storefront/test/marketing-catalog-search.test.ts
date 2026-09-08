@@ -13,8 +13,8 @@ import { buildTestCatalogServices } from "./helpers.js";
 
 describe("seeded marketing catalog + search", () => {
   it("assigns the seeded products to categories, including a shared category (many-to-many)", async () => {
-    const { catalog, marketingCatalog, cms } = buildTestCatalogServices();
-    await seedCatalog(catalog, marketingCatalog, cms);
+    const { catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
+    await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
     const deskAccessories = await marketingCatalog.getCategoryBySlug("desk-accessories");
     expect(deskAccessories).not.toBeNull();
@@ -28,12 +28,12 @@ describe("seeded marketing catalog + search", () => {
   });
 
   it("indexes every seeded product for search without a manual reindex call", async () => {
-    const { events, catalog, marketingCatalog, cms } = buildTestCatalogServices();
+    const { events, catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
 
     const search = createInMemoryIndex();
     registerCatalogSearchSync({ events, index: search, products: catalog });
 
-    await seedCatalog(catalog, marketingCatalog, cms);
+    await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
     const results = await search.query({ text: "dragon" });
     expect(results.length).toBeGreaterThanOrEqual(2);

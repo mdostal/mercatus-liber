@@ -15,6 +15,7 @@ import {
   type CheckoutOrdersService,
 } from "@mercatus-liber/checkout-orders";
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
+import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter } from "@mercatus-liber/inventory";
 import {
   createInMemoryCategoryRepository,
   createInMemoryProductCategoryRepository,
@@ -51,6 +52,7 @@ export interface Services {
   pdp: PdpService;
   cms: CmsService;
   account: AccountService;
+  inventory: InventoryAdapter;
 }
 
 let servicesPromise: Promise<Services> | null = null;
@@ -110,9 +112,15 @@ async function buildServices(): Promise<Services> {
     events,
   });
 
-  await seedCatalog(catalog, marketingCatalog, cms);
+  // `checkout` structurally satisfies inventory's OrderLookup interface too.
+  // Registered before seeding so seeded SKUs get their catalog.sku.created
+  // init-at-0 handler fired, then seed.ts sets real stock afterward.
+  const inventory = createInMemoryInventoryAdapter();
+  registerInventorySync({ events, inventory, orders: checkout });
 
-  return { events, catalog, cart, checkout, marketingCatalog, search, theming, pdp, cms, account };
+  await seedCatalog(catalog, marketingCatalog, cms, inventory);
+
+  return { events, catalog, cart, checkout, marketingCatalog, search, theming, pdp, cms, account, inventory };
 }
 
 /** Lazily builds the service graph once per server process and reuses it across requests. */

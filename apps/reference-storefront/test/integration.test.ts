@@ -16,8 +16,8 @@ import { buildTestCatalogServices } from "./helpers.js";
 
 describe("core-foundation vertical slice (seed -> browse -> cart -> checkout -> paid)", () => {
   it("takes a shopper from browsing the seeded catalog to a paid order", async () => {
-    const { events, catalog, marketingCatalog, cms } = buildTestCatalogServices();
-    await seedCatalog(catalog, marketingCatalog, cms);
+    const { events, catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
+    await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
     const cart = createCartService({
       repository: createInMemoryCartRepository(),
