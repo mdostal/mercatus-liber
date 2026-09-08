@@ -8,31 +8,16 @@
  * Playwright test against a live `next dev` server + real Stripe test mode is
  * the natural follow-up once a key is dropped (see cf-07's execution_note).
  */
-import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { createCartService, createInMemoryCartRepository } from "@mercatus-liber/cart";
-import { createCatalogService } from "@mercatus-liber/catalog";
 import { createCheckoutOrdersService, createInMemoryOrderRepository } from "@mercatus-liber/checkout-orders";
-import { createInMemoryEventBus } from "@mercatus-liber/core";
-import {
-  createInMemoryCategoryRepository,
-  createInMemoryProductCategoryRepository,
-  createMarketingCatalogService,
-} from "@mercatus-liber/marketing-catalog";
 import { describe, expect, it, vi } from "vitest";
 import { seedCatalog } from "../lib/seed.js";
+import { buildTestCatalogServices } from "./helpers.js";
 
 describe("core-foundation vertical slice (seed -> browse -> cart -> checkout -> paid)", () => {
   it("takes a shopper from browsing the seeded catalog to a paid order", async () => {
-    const events = createInMemoryEventBus();
-
-    const persistence = createSqliteAdapter(":memory:");
-    const catalog = createCatalogService({ persistence, events });
-    const marketingCatalog = createMarketingCatalogService({
-      categories: createInMemoryCategoryRepository(),
-      assignments: createInMemoryProductCategoryRepository(),
-      attributes: catalog,
-    });
-    await seedCatalog(catalog, marketingCatalog);
+    const { events, catalog, marketingCatalog, cms } = buildTestCatalogServices();
+    await seedCatalog(catalog, marketingCatalog, cms);
 
     const cart = createCartService({
       repository: createInMemoryCartRepository(),

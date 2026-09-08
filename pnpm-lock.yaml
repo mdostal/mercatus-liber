@@ -35,6 +35,9 @@ importers:
       '@mercatus-liber/checkout-orders':
         specifier: workspace:*
         version: link:../../packages/checkout-orders
+      '@mercatus-liber/cms':
+        specifier: workspace:*
+        version: link:../../packages/cms
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../../packages/core

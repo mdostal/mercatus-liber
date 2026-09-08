@@ -1,7 +1,7 @@
 id: cms-02-reference-storefront-cms-home-and-marketing-page
 epic: cms-pages
 title: Reference storefront -- CMS-authored home page + one marketing/campaign page
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [cms-01-cms-package]
