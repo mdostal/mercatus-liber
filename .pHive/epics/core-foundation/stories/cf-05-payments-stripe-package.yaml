@@ -1,10 +1,18 @@
 id: cf-05-payments-stripe-package
 epic: core-foundation
 title: Payments package + Stripe Checkout Sessions adapter
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [cf-01-monorepo-scaffold-core-schema]
+
+execution_note: >
+  No Stripe test-mode API key exists in Portunus for this project (checked
+  personalsites-487021 and the shared tree; the only stripe-* keys found belong to
+  an unrelated client project, ffe-cicd-stripe-dev-*, not appropriate to borrow).
+  Implemented against a mocked Stripe SDK instead of live test-mode calls. Real
+  live-session verification against Stripe's actual test-mode API is a follow-up
+  once a key is dropped for this project -- flagged to the user, not a blocker.
 
 description: |
   Implement packages/payments per docs/subsystems/08-payments.md: the
