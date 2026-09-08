@@ -1,0 +1,71 @@
+id: svcarea-02-reference-storefront-location-pages
+epic: service-areas-location-pages
+title: Reference storefront /locations index + /locations/[slug] pages, seeded demo data
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [svcarea-01-service-areas-package]
+
+description: |
+  Wires @mercatus-liber/service-areas into lib/services.ts (the one seam)
+  and adds two routes: /locations (index listing every service area) and
+  /locations/[slug] (detail: the area's own data -- name/region/phone --
+  plus its assigned products, plus any CMS "location" page's sections if
+  one exists for that slug, same composition pattern the category page
+  uses). Seeds a handful of demo cities via seed.ts. Fires a
+  location_viewed client analytics event via InteractionTracker (the
+  commerce-gap-audit epic's component), same pattern as category_viewed.
+
+acceptance_criteria:
+  - "Given /locations, when visited, then it lists every seeded service area with a link to its detail page"
+  - "Given /locations/[slug], when visited for a real seeded area, then it shows the area's name/region/phone and the products assigned to it"
+  - "Given /locations/[slug], when visited for an unknown slug, then it 404s (notFound()), same pattern as the category/PDP pages"
+  - "Given /locations/[slug], when visited, then a location_viewed analytics event fires with the area's id and slug"
+  - "Given the new pages, when grepped, then neither imports a concrete adapter directly -- only lib/services.ts's getServices()"
+
+steps:
+  - id: research
+    description: Re-read the category page (app/category/[slug]/page.tsx) as the closest existing pattern (data + CMS composition + InteractionTracker) this story mirrors.
+    agent: researcher
+  - id: implement
+    description: Wire service-areas into lib/services.ts; add app/locations/page.tsx and app/locations/[slug]/page.tsx; seed demo service areas.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Integration test proving seeded service areas + product assignments render correctly through the wired services (same pattern as admin-views.test.ts / marketing-catalog-search.test.ts).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Grep-verify no new page imports a concrete adapter directly.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch, merge epic to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/app/category/[slug]/page.tsx
+      purpose: Closest existing page pattern (data lookup + product listing + InteractionTracker) this story mirrors
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: The only module admin/storefront pages may source concrete service instances from
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: Existing seed pattern to extend with demo service areas
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire service-areas
+  - file: apps/reference-storefront/lib/seed.ts
+    change: Seed demo service areas + product assignments
+  - file: apps/reference-storefront/app/locations/page.tsx
+    change: New -- service area index
+  - file: apps/reference-storefront/app/locations/[slug]/page.tsx
+    change: New -- service area detail
+  - file: apps/reference-storefront/test/service-areas.test.ts
+    change: New -- integration test
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "New pages import only lib/services.ts; service-areas wiring adds no new cross-subsystem coupling"

@@ -1,0 +1,80 @@
+id: svcarea-01-service-areas-package
+epic: service-areas-location-pages
+title: "@mercatus-liber/service-areas package + CMS location page type + service-area-info component"
+status: done
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  New package @mercatus-liber/service-areas, mirroring marketing-catalog's
+  exact shape (Category/CategoryRepository/ProductCategoryRepository/
+  MarketingCatalogService pattern) for ServiceArea instead: ServiceArea
+  entity (id/slug/name/region/description/phone), ServiceAreaRepository
+  (CRUD), ServiceAreaProductRepository (many-to-many product<->area
+  assignment, same key-pair-set in-memory pattern as
+  ProductCategoryRepository), ServiceAreaService (CRUD + assignment +
+  listProductIdsInServiceArea/listServiceAreasForProduct). Also adds
+  "location" to CMS's PageType union and a new "service-area-info"
+  component to DEFAULT_COMPONENTS -- the CMS half of the data/layout
+  split docs/subsystems/15-service-areas.md establishes.
+
+acceptance_criteria:
+  - "Given ServiceAreaService, when createServiceArea/getServiceArea/getServiceAreaBySlug/listServiceAreas run, then they behave exactly like marketing-catalog's category CRUD (same shape, same semantics)"
+  - "Given assignProductToServiceArea/unassignProductFromServiceArea, when run, then listProductIdsInServiceArea and listServiceAreasForProduct reflect the assignment correctly, including a product assigned to a subset of areas (not all-or-nothing)"
+  - "Given CMS's PageType, when inspected, then it includes 'location' alongside the existing 5 types"
+  - "Given CMS's DEFAULT_COMPONENTS, when inspected, then it includes a new 'service-area-info' component alongside the existing 4"
+  - "Given the package's dependencies, when inspected, then it depends on @mercatus-liber/core only -- no dependency on catalog itself (product<->area assignment is id-based, no catalog read needed for this story's scope)"
+
+steps:
+  - id: research
+    description: Re-read marketing-catalog's types.ts/service.ts/in-memory-repository.ts in full as the exact pattern this story mirrors.
+    agent: researcher
+  - id: implement
+    description: Implement service-areas package; add "location" PageType and "service-area-info" component to CMS.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Mirror marketing-catalog's own test suite scenarios for CRUD + assignment; add a CMS test confirming the new page type/component are usable end to end.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify service-areas depends on core only; verify CMS changes are additive (no existing page type/component removed or renamed).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/marketing-catalog/src/types.ts
+      purpose: The exact CRUD + many-to-many-assignment pattern this story mirrors for service areas
+    - path: packages/marketing-catalog/src/service.ts
+      purpose: Service-layer pattern to mirror
+    - path: packages/cms/src/types.ts
+      purpose: PageType union to extend with "location"
+    - path: packages/cms/src/component-registry.ts
+      purpose: DEFAULT_COMPONENTS to extend with "service-area-info"
+
+files_to_modify:
+  - file: packages/service-areas/package.json
+    change: New package, depends on @mercatus-liber/core only
+  - file: packages/service-areas/src/types.ts
+    change: ServiceArea, ServiceAreaRepository, ServiceAreaProductRepository
+  - file: packages/service-areas/src/service.ts
+    change: createServiceAreaService
+  - file: packages/service-areas/src/in-memory-repository.ts
+    change: In-memory ServiceAreaRepository + ServiceAreaProductRepository
+  - file: packages/service-areas/src/index.ts
+    change: Public exports
+  - file: packages/cms/src/types.ts
+    change: Add "location" to PageType
+  - file: packages/cms/src/component-registry.ts
+    change: Add "service-area-info" to DEFAULT_COMPONENTS
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "service-areas depends on @mercatus-liber/core only, one-directional like marketing-catalog -- catalog never imports it"
