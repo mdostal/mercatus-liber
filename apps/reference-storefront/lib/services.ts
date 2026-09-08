@@ -31,6 +31,12 @@ import {
 import { createStripeAdapter } from "@mercatus-liber/payments";
 import { createPdpService, type PdpService } from "@mercatus-liber/pdp";
 import { createInMemoryIndex, registerCatalogSearchSync, type SearchIndexAdapter } from "@mercatus-liber/search";
+import {
+  createInMemoryServiceAreaProductRepository,
+  createInMemoryServiceAreaRepository,
+  createServiceAreaService,
+  type ServiceAreaService,
+} from "@mercatus-liber/service-areas";
 import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
 import { seedCatalog } from "./seed";
 
@@ -60,6 +66,7 @@ export interface Services {
   cms: CmsService;
   account: AccountService;
   inventory: InventoryAdapter;
+  serviceAreas: ServiceAreaService;
   plugins: PluginRegistry;
   orderNotificationPlugin: OrderNotificationPlugin;
 }
@@ -140,7 +147,12 @@ async function buildServices(): Promise<Services> {
   plugins.register(orderNotificationPlugin);
   await plugins.initAll({ events });
 
-  await seedCatalog(catalog, marketingCatalog, cms, inventory);
+  const serviceAreas = createServiceAreaService({
+    areas: createInMemoryServiceAreaRepository(),
+    assignments: createInMemoryServiceAreaProductRepository(),
+  });
+
+  await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas);
 
   return {
     events,
@@ -155,6 +167,7 @@ async function buildServices(): Promise<Services> {
     cms,
     account,
     inventory,
+    serviceAreas,
     plugins,
     orderNotificationPlugin,
   };

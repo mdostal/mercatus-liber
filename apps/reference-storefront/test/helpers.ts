@@ -15,6 +15,12 @@ import {
   createMarketingCatalogService,
   type MarketingCatalogService,
 } from "@mercatus-liber/marketing-catalog";
+import {
+  createInMemoryServiceAreaProductRepository,
+  createInMemoryServiceAreaRepository,
+  createServiceAreaService,
+  type ServiceAreaService,
+} from "@mercatus-liber/service-areas";
 
 export interface TestCatalogServices {
   events: EventBus;
@@ -22,6 +28,7 @@ export interface TestCatalogServices {
   marketingCatalog: MarketingCatalogService;
   cms: CmsService;
   inventory: InventoryAdapter;
+  serviceAreas: ServiceAreaService;
 }
 
 /**
@@ -47,5 +54,9 @@ export function buildTestCatalogServices(
   });
   const inventory = createInMemoryInventoryAdapter();
   registerInventorySync({ events, inventory, orders });
-  return { events, catalog, marketingCatalog, cms, inventory };
+  const serviceAreas = createServiceAreaService({
+    areas: createInMemoryServiceAreaRepository(),
+    assignments: createInMemoryServiceAreaProductRepository(),
+  });
+  return { events, catalog, marketingCatalog, cms, inventory, serviceAreas };
 }

@@ -1,0 +1,29 @@
+{
+  "name": "@mercatus-liber/service-areas",
+  "version": "0.1.0",
+  "description": "ServiceArea entity + product<->area assignment (subsystem 15) -- the multi-location marketing pattern a service-area business needs. Depends on @mercatus-liber/core only; catalog never depends on this package, same one-directional rule as marketing-catalog (02). See docs/subsystems/15-service-areas.md.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

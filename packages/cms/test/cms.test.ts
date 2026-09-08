@@ -14,9 +14,20 @@ describe("cms service", () => {
     });
   });
 
-  it("ships exactly the 4 default components: hero-banner, ad-slot, category-spot, product-grid", () => {
+  it("ships exactly the 5 default components: hero-banner, ad-slot, category-spot, product-grid, service-area-info", () => {
     const types = cms.components.list().map((c) => c.type).sort();
-    expect(types).toEqual(["ad-slot", "category-spot", "hero-banner", "product-grid"]);
+    expect(types).toEqual(["ad-slot", "category-spot", "hero-banner", "product-grid", "service-area-info"]);
+  });
+
+  it("accepts a 'location' page -- the service-areas subsystem's page type", async () => {
+    const page = await cms.createPage({
+      pageType: "location",
+      slug: "royse-city-tx",
+      title: "Royse City, TX",
+      sections: [{ componentType: "service-area-info", config: { hours: "Mon-Fri 8am-6pm" } }],
+    });
+    expect(page.pageType).toBe("location");
+    expect((await cms.listPages({ pageType: "location" })).map((p) => p.id)).toEqual([page.id]);
   });
 
   it("creates a page as draft and publishPage transitions it to published", async () => {

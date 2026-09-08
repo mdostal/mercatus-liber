@@ -51,6 +51,18 @@ async function ProductGrid({ config }: { config: Record<string, unknown> }) {
   );
 }
 
+async function ServiceAreaInfo({ config }: { config: Record<string, unknown> }) {
+  return (
+    <section style={{ marginBottom: 16 }}>
+      {config.hours ? (
+        <p>
+          <strong>Hours:</strong> {String(config.hours)}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 /**
  * componentType -> React component map -- the app-layer half of the CMS
  * contract (the CMS package only knows a section HAS a componentType +
@@ -67,6 +79,8 @@ export async function CmsSection({ section }: { section: ComponentInstance }) {
       return <ProductGrid config={section.config} />;
     case "ad-slot":
       return null; // no ad content in this reference demo
+    case "service-area-info":
+      return <ServiceAreaInfo config={section.config} />;
     default:
       return null;
   }
