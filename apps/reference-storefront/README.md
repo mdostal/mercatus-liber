@@ -1,0 +1,31 @@
+# Reference Storefront
+
+A minimal Next.js app proving the `core-foundation` epic's vertical slice end-to-end: browse a
+seeded catalog, add items to a cart, check out via Stripe, see the order.
+
+**This is a proof-of-integration demo, not a production storefront template.** No theming, no
+PDP layout options, no CMS -- those arrive in later epics (`pdp-theming`, `cms-pages`). Data is
+entirely in-memory (SQLite `:memory:`, in-memory cart/order repositories) and reseeded fresh on
+every process start.
+
+## The one architectural rule this app exists to prove
+`lib/services.ts` is **the only module in this repo** that imports concrete adapter
+implementations (`@mercatus-liber/adapter-sqlite`, the Stripe payment adapter from
+`@mercatus-liber/payments`). Every subsystem package it wires together
+(catalog/cart/checkout-orders) only ever depends on `@mercatus-liber/core` plus narrow
+structural interfaces -- see each package's own `src/` for confirmation. Deleting/replacing an
+adapter here should never require touching a subsystem package's code.
+
+## Running it
+```
+STRIPE_SECRET_KEY=sk_test_... STRIPE_WEBHOOK_SECRET=whsec_... pnpm dev
+```
+Without a real Stripe test-mode key, browsing/cart works fully; the "Check out with Stripe"
+step will fail at the live Stripe API call (expected -- no key exists in this project's vault
+yet, see cf-05/cf-07 execution notes in `.pHive/epics/core-foundation/`).
+
+## Testing
+`test/integration.test.ts` drives the full seed -> browse -> cart -> checkout -> paid flow
+against a **fake** payments adapter (no live Stripe key available yet) -- see the test file's
+own header comment for why, and what the natural follow-up (a live Playwright E2E test) looks
+like once a key exists.

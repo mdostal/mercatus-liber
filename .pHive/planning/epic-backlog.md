@@ -6,7 +6,7 @@ vertical-slice invariant), not just "some files exist."_
 
 | # | Epic ID | Covers | Status | Depends on |
 |---|---|---|---|---|
-| 1 | `core-foundation` | 00 core schema, `adapter-sqlite` (reference DB adapter), 01 catalog, 07 cart, 08 payments (Stripe), 09 checkout-orders. The smallest real vertical slice: browse a seeded catalog → add to cart → checkout via Stripe → order recorded. | **in progress** (cf-01, cf-02 done; cf-03 in progress) | — |
+| 1 | `core-foundation` | 00 core schema, `adapter-sqlite` (reference DB adapter), 01 catalog, 07 cart, 08 payments (Stripe), 09 checkout-orders, reference-storefront integration. The smallest real vertical slice: browse a seeded catalog → add to cart → checkout via Stripe → order recorded. | **done** (all 7 stories complete) | — |
 | 2 | `marketing-catalog-search` | 02 marketing catalog, 03 search (default in-repo index adapter) | not started | 1 |
 | 3 | `pdp-theming` | 04 PDP (2+ layout configs), 06 theming/layout system | not started | 1, 2 |
 | 4 | `cms-pages` | 05 CMS — all 5 page types (home, category, marketing/campaign, search, PDP wiring), component registry | not started | 2, 3 |

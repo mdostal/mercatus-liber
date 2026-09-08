@@ -49,6 +49,8 @@ export class InvalidIdentifyingAttributesError extends Error {
 export interface CatalogService {
   createProduct(input: NewProductInput): Promise<Product>;
   updateProduct(id: string, patch: UpdateProductInput): Promise<Product>;
+  /** draft -> active. See docs/subsystems/01-catalog.md open question 1 -- no separate "active but hidden" state yet. */
+  publishProduct(id: string): Promise<Product>;
   archiveProduct(id: string): Promise<void>;
   getProduct(id: string): Promise<Product | null>;
   getProductBySlug(slug: string): Promise<Product | null>;
@@ -116,6 +118,14 @@ export function createCatalogService(deps: {
       const updated: Product = { ...existing, ...patch };
       await persistence.products.save(updated);
       await events.publish("catalog.product.updated", { id: updated.id });
+      return updated;
+    },
+
+    async publishProduct(id) {
+      const existing = await requireProduct(id);
+      const updated: Product = { ...existing, status: "active" };
+      await persistence.products.save(updated);
+      await events.publish("catalog.product.updated", { id });
       return updated;
     },
 

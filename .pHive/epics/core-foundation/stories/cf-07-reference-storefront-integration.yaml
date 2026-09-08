@@ -1,10 +1,21 @@
 id: cf-07-reference-storefront-integration
 epic: core-foundation
 title: Reference storefront — end-to-end integration proof
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: [cf-06-checkout-orders-package]
+
+execution_note: >
+  "End-to-end test (e.g. Playwright)" simplified to a Vitest integration test
+  driving the same seed->browse->cart->checkout->paid chain against a fake
+  payments adapter, consistent with cf-05/cf-06 -- no live Stripe test-mode key
+  exists for this project yet, so a literal browser-driven Playwright test
+  against real Stripe test mode is deferred, not fabricated. Also simplified:
+  Stripe successUrl points to a static /order/confirmed page rather than a
+  dynamic /order/[id] redirect (would need Stripe's {CHECKOUT_SESSION_ID}
+  placeholder + a session-id lookup this reference app doesn't build out).
+  /order/[id] still exists as a standalone, real order-lookup page.
 
 description: |
   Build apps/reference-storefront: a minimal Next.js app wiring cf-01 through cf-06

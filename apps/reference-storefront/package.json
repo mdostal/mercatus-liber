@@ -1,0 +1,33 @@
+{
+  "name": "@mercatus-liber/reference-storefront",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal Next.js app proving the core-foundation vertical slice end-to-end: browse a seeded catalog, add to cart, check out via Stripe, see the order. NOT a production storefront template -- theming/PDP/CMS come in later epics. This is the ONLY place in the repo that imports concrete adapters (adapter-sqlite, the Stripe payment adapter); see lib/services.ts.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@mercatus-liber/cart": "workspace:*",
+    "@mercatus-liber/catalog": "workspace:*",
+    "@mercatus-liber/checkout-orders": "workspace:*",
+    "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/payments": "workspace:*",
+    "next": "^16.3.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

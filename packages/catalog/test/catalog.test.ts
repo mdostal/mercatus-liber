@@ -78,6 +78,19 @@ describe("catalog service", () => {
     expect(emitted).toContainEqual({ event: "catalog.product.archived", payload: { id: product.id } });
   });
 
+  it("publishes a draft product to active", async () => {
+    const product = await catalog.createProduct({
+      slug: "p3",
+      title: "P3",
+      description: "d",
+      identifyingAttributeKeys: [],
+    });
+    expect(product.status).toBe("draft");
+    const published = await catalog.publishProduct(product.id);
+    expect(published.status).toBe("active");
+    expect((await catalog.getProduct(product.id))?.status).toBe("active");
+  });
+
   it("throws ProductNotFoundError for an unknown product id", async () => {
     await expect(catalog.updateProduct("missing", { title: "x" })).rejects.toThrow(ProductNotFoundError);
     await expect(catalog.archiveProduct("missing")).rejects.toThrow(ProductNotFoundError);
