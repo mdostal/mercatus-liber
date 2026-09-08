@@ -1,7 +1,7 @@
 id: theme-01-six-theme-bundles
 epic: six-themes
 title: Six theme bundles (ThemeBundle type, applyTheme helper, 6 concrete presets)
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: []
