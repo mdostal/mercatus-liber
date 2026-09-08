@@ -27,6 +27,8 @@ export interface PromotionsService {
   createPromotion(input: CreatePromotionInput): Promise<Promotion>;
   getPromotion(id: string): Promise<Promotion | null>;
   listPromotions(): Promise<Promotion[]>;
+  /** Merges the given fields into an existing promotion; null if no promotion has this id. Id/redemptionCount are never overwritten. */
+  updatePromotion(id: string, input: Partial<CreatePromotionInput>): Promise<Promotion | null>;
   deactivatePromotion(id: string): Promise<Promotion | null>;
   /**
    * Pure computation over cart line items + an optional coupon code -- never
@@ -158,6 +160,14 @@ export function createPromotionsService(deps: { repository: PromotionRepository;
 
     async listPromotions(): Promise<Promotion[]> {
       return repository.list();
+    },
+
+    async updatePromotion(id: string, input: Partial<CreatePromotionInput>): Promise<Promotion | null> {
+      const existing = await repository.get(id);
+      if (!existing) return null;
+      const updated: Promotion = { ...existing, ...input, id: existing.id, redemptionCount: existing.redemptionCount };
+      await repository.save(updated);
+      return updated;
     },
 
     async deactivatePromotion(id: string): Promise<Promotion | null> {

@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import type { CreatePromotionInput } from "@mercatus-liber/promotions";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
 import { getServices } from "./services";
@@ -49,4 +50,55 @@ export async function setThemeAction(formData: FormData): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(THEME_COOKIE, theme, { sameSite: "lax", path: "/" });
   revalidatePath("/", "layout");
+}
+
+/** Parses the promotions admin form fields shared by create and update. */
+function parsePromotionFormData(formData: FormData): CreatePromotionInput {
+  const code = String(formData.get("code") ?? "").trim();
+  const targetSkuIds = String(formData.get("targetSkuIds") ?? "")
+    .split(",")
+    .map((skuId) => skuId.trim())
+    .filter((skuId) => skuId.length > 0);
+  const minCartAmount = String(formData.get("minCartAmount") ?? "").trim();
+  const startsAt = String(formData.get("startsAt") ?? "").trim();
+  const endsAt = String(formData.get("endsAt") ?? "").trim();
+  const usageLimit = String(formData.get("usageLimit") ?? "").trim();
+  const status = String(formData.get("status") ?? "active");
+
+  return {
+    code: code.length > 0 ? code : null,
+    kind: formData.get("kind") === "fixed" ? "fixed" : "percentage",
+    scope: formData.get("scope") === "product" ? "product" : "cart",
+    value: Number(formData.get("value") ?? 0),
+    currency: String(formData.get("currency") ?? "USD"),
+    targetSkuIds,
+    minCartAmount: minCartAmount.length > 0 ? { amount: Number(minCartAmount), currency: String(formData.get("currency") ?? "USD") } : null,
+    startsAt: startsAt.length > 0 ? new Date(startsAt).toISOString() : null,
+    endsAt: endsAt.length > 0 ? new Date(endsAt).toISOString() : null,
+    usageLimit: usageLimit.length > 0 ? Number(usageLimit) : null,
+    status: status === "inactive" ? "inactive" : "active",
+  };
+}
+
+export async function createPromotionAction(formData: FormData): Promise<void> {
+  const { promotions } = await getServices();
+  await promotions.createPromotion(parsePromotionFormData(formData));
+  revalidatePath("/admin/promotions");
+  redirect("/admin/promotions");
+}
+
+export async function updatePromotionAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("id"));
+  const { promotions } = await getServices();
+  const updated = await promotions.updatePromotion(id, parsePromotionFormData(formData));
+  if (!updated) throw new Error(`No such promotion: ${id}`);
+  revalidatePath("/admin/promotions");
+  redirect("/admin/promotions");
+}
+
+export async function deactivatePromotionAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("id"));
+  const { promotions } = await getServices();
+  await promotions.deactivatePromotion(id);
+  revalidatePath("/admin/promotions");
 }
