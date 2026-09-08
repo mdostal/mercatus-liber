@@ -21,6 +21,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <a href="/campaign/fall-sale">Fall Sale</a>
           {" · "}
           <a href="/account">Account</a>
+          {" · "}
+          <a href="/admin/plugins">Admin: Plugins</a>
         </header>
         {children}
       </body>

@@ -24,6 +24,7 @@
     "@mercatus-liber/marketing-catalog": "workspace:*",
     "@mercatus-liber/payments": "workspace:*",
     "@mercatus-liber/pdp": "workspace:*",
+    "@mercatus-liber/plugins": "workspace:*",
     "@mercatus-liber/search": "workspace:*",
     "@mercatus-liber/theming": "workspace:*",
     "next": "^16.3.4",
