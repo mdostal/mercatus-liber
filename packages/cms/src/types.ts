@@ -1,4 +1,4 @@
-export type PageType = "home" | "category" | "marketing" | "search" | "pdp";
+export type PageType = "home" | "category" | "marketing" | "search" | "pdp" | "location";
 export type PageStatus = "draft" | "published";
 
 /** A content-authored block a page references by type + config -- the composable building block every page type's content is made of. */

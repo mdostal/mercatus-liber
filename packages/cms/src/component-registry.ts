@@ -6,6 +6,7 @@ export const DEFAULT_COMPONENTS: ComponentDefinition[] = [
   { type: "ad-slot", label: "Ad Slot", description: "A promotional placement." },
   { type: "category-spot", label: "Category Spot", description: "A featured-category tile linking to a category page." },
   { type: "product-grid", label: "Product Grid", description: "A grid of products -- reused across category/marketing/search pages." },
+  { type: "service-area-info", label: "Service Area Info", description: "Contact/hours/local marketing copy for a location page (subsystem 15) -- the structured phone/name/region live on the ServiceArea entity itself, this component is for richer authored content." },
 ];
 
 export function createComponentRegistry(initial: ComponentDefinition[] = DEFAULT_COMPONENTS): ComponentRegistry {
