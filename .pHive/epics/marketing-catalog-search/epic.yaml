@@ -1,0 +1,31 @@
+name: marketing-catalog-search
+title: Marketing Catalog + Search
+description: >
+  Layers the marketing catalog (categories, genuinely separate from the sales
+  catalog -- the gap that motivated this whole project) and a search subsystem
+  on top of core-foundation. Both are read-only consumers of catalog data, kept
+  decoupled via events (search) and a one-directional read interface (marketing
+  catalog). Closes with the reference storefront gaining category browse and
+  search pages.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: mc-01-marketing-catalog-package
+    title: Marketing catalog package (categories, hierarchy, product assignment)
+    complexity: medium
+    depends_on: []
+  - id: mc-02-search-package
+    title: Search package (index adapter interface + default implementation, event-driven reindex)
+    complexity: medium
+    depends_on: []
+  - id: mc-03-reference-storefront-category-search-pages
+    title: Reference storefront -- category browse + search pages
+    complexity: medium
+    depends_on: [mc-01-marketing-catalog-package, mc-02-search-package]

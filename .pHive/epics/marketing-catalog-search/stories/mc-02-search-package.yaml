@@ -1,0 +1,69 @@
+id: mc-02-search-package
+epic: marketing-catalog-search
+title: Search package (index adapter interface + default implementation, event-driven reindex)
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Implement packages/search per docs/subsystems/03-search.md: the
+  SearchIndexAdapter interface (index/remove/query/reindexAll), a default
+  in-process implementation (no external service required), and event-bus
+  subscriptions to catalog.product.*/catalog.sku.* that incrementally update
+  the index -- search never queries catalog directly at request time, only via
+  events, so it can be deleted and rebuilt from catalog's own data at any time.
+
+acceptance_criteria:
+  - "Given a catalog.product.created event is published, when the search subsystem's subscriber runs, then the product becomes queryable via the search index without any direct call back into catalog"
+  - "Given a catalog.product.archived event, when processed, then the product is removed from search results"
+  - "Given a query with a text term and a facet filter, when query() runs against the default index, then only matching, indexed documents are returned"
+  - "Given reindexAll() is called against a full document set, when complete, then the index matches exactly what was passed in (no stale entries from before)"
+  - "Given the package's public exports, when inspected, then it imports @core/schema and the event bus only -- no import of @mercatus-liber/catalog"
+
+steps:
+  - id: research
+    description: Confirm the event-bus subscription pattern already used by inventory-style reactive subsystems (checkout-orders' payment-succeeded subscriber is the closest existing reference).
+    agent: researcher
+  - id: implement
+    description: Implement SearchIndexAdapter interface, a default in-memory adapter, and the catalog-event subscriber that maintains it.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for index/remove/query/reindexAll and for the event-subscriber's incremental maintenance behavior (publish events on a real event bus, assert search state after).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify search never imports catalog directly -- only reacts to events.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/03-search.md
+      purpose: SearchIndexAdapter contract, the "search is a read-optimized copy, holds no unique data" decoupling test, and the facet/facetable convention from catalog's ProductAttribute.
+    - path: packages/checkout-orders/src/service.ts
+      purpose: Existing event-bus subscription pattern (events.subscribe inside the service factory) to follow.
+
+files_to_modify:
+  - file: packages/search/package.json
+    change: New package depending on @mercatus-liber/core only
+  - file: packages/search/src/types.ts
+    change: SearchIndexAdapter interface, SearchDocument/SearchQuery/SearchResult shapes
+  - file: packages/search/src/in-memory-index.ts
+    change: Default in-process index implementation
+  - file: packages/search/src/subscriber.ts
+    change: Event-bus subscriber wiring catalog.* events to index maintenance
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/search/src must never import @mercatus-liber/catalog -- event-bus subscription only"
+
+design_decisions:
+  - decision: Default index implementation is in-memory, documented with an honest low-SKU ceiling
+    rationale: "Matches docs/ARCHITECTURE.md principle 4 (adapters over hard dependencies, zero infra out of the box); Solr/Elasticsearch/Algolia/Meilisearch are later, optional adapter swaps."

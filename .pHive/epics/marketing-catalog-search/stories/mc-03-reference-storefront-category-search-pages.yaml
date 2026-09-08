@@ -1,0 +1,66 @@
+id: mc-03-reference-storefront-category-search-pages
+epic: marketing-catalog-search
+title: Reference storefront -- category browse + search pages
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [mc-01-marketing-catalog-package, mc-02-search-package]
+
+description: |
+  Extend apps/reference-storefront (lib/services.ts remains the only place
+  concrete adapters/implementations are wired) with: seeded demo categories +
+  product assignments, a category browse page, and a basic search page/results
+  view backed by the search package's default index, kept in sync via its
+  event-bus subscriber (wired once at service-graph construction, same as
+  every other subscriber in this app).
+
+acceptance_criteria:
+  - "Given the reference storefront's seed data, when it runs, then demo products are assigned to at least two categories (one shared, proving many-to-many) and the search index reflects all seeded products without a manual reindex call"
+  - "Given a category page route, when visited for a seeded category, then it lists exactly the products assigned to that category"
+  - "Given the search page, when queried with a term matching a seeded product's title, then that product appears in results"
+  - "Given `pnpm turbo run build` at the repo root, when run, then the whole workspace (now 10 packages/apps) still builds together"
+
+steps:
+  - id: research
+    description: Confirm the seed.ts pattern from core-foundation (cf-07) as the extension point for category/search seeding.
+    agent: researcher
+  - id: implement
+    description: Extend seed.ts, add category and search pages, wire the search subscriber in lib/services.ts.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend test/integration.test.ts (or a new test file) covering category listing and search query against seeded data.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm lib/services.ts is still the sole concrete-adapter wiring point (grep check, same as cf-07).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch; this closes the marketing-catalog-search epic.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: The existing service-wiring module this story extends, not replaces.
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: Existing seed pattern to extend with category assignments.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/seed.ts
+    change: Add demo categories + product-category assignments
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire marketing-catalog service + search index/subscriber
+  - file: apps/reference-storefront/app/category/[slug]/page.tsx
+    change: New category browse page
+  - file: apps/reference-storefront/app/search/page.tsx
+    change: New search page
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "Verify lib/services.ts remains the only module importing concrete adapters after this story's additions"
+  - concern: documentation
+    action: "Update apps/reference-storefront/README.md's route list if new pages change what's documented there"

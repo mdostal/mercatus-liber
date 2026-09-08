@@ -1,0 +1,65 @@
+id: mc-01-marketing-catalog-package
+epic: marketing-catalog-search
+title: Marketing catalog package (categories, hierarchy, product assignment)
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Implement packages/marketing-catalog per docs/subsystems/02-marketing-catalog.md:
+  Category CRUD (hierarchical, arbitrary depth, parent nullable for top-level),
+  many-to-many product<->category assignment owned by this package (never a
+  field on core's Product type), and a rule-based attribute-suggestion helper
+  (given a product's full attribute map, suggest likely categories from a
+  configured rule set). Reads catalog only via its public interface
+  (structural, no import of @mercatus-liber/catalog), matching the pattern
+  established in cf-04/cf-06.
+
+acceptance_criteria:
+  - "Given a category with a parent id, when listed, then the hierarchy (parent/children) is correctly reconstructable from the flat repository data"
+  - "Given a product id and a category id, when assignProductToCategory runs, then listCategoriesForProduct(productId) includes it and listProductsInCategory(categoryId) includes the product"
+  - "Given a product can belong to multiple categories simultaneously, when assigned to two categories, then both assignments persist independently (many-to-many, not overwrite)"
+  - "Given a configured suggestion rule (e.g. attribute key '<X>' -> category slug '<Y>'), when suggestCategories(productId) runs against a product with that attribute, then the matching category is included in the suggestions, marked as assistive (never auto-applied)"
+  - "Given the package's public exports, when inspected, then it imports @core/schema only -- no import of @mercatus-liber/catalog (structural CatalogAttributeLookup interface instead, per the cf-04 pattern)"
+
+steps:
+  - id: research
+    description: Re-read docs/subsystems/02-marketing-catalog.md and the cf-04 cart package as the structural-interface pattern reference.
+    agent: researcher
+  - id: implement
+    description: Implement Category CRUD, hierarchy helpers, product<->category assignment, and rule-based suggestion.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Unit tests for hierarchy reconstruction, many-to-many assignment, and suggestion rules -- using a real catalog instance (adapter-sqlite) only in tests, per the structural-interface pattern.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Verify no import of @mercatus-liber/catalog in src/, and that Product in @mercatus-liber/core was NOT modified to add a category field.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit and push to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/02-marketing-catalog.md
+      purpose: Full responsibility list and the "catalog never knows categories exist" decoupling test this story must satisfy.
+    - path: packages/cart/src/types.ts
+      purpose: Reference pattern for a narrow structural interface (SkuLookup) satisfied by a sibling package without importing it.
+
+files_to_modify:
+  - file: packages/marketing-catalog/package.json
+    change: New package depending on @mercatus-liber/core only
+  - file: packages/marketing-catalog/src/types.ts
+    change: Category entity, repository interfaces, CatalogAttributeLookup structural interface
+  - file: packages/marketing-catalog/src/service.ts
+    change: Category CRUD, hierarchy, assignment, suggestion rules
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "packages/marketing-catalog/src must never import @mercatus-liber/catalog directly -- structural interface only, per the prime directive"
