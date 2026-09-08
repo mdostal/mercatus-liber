@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createComponentRegistry } from "../src/component-registry.js";
-import { createInMemoryMarketingPageMetaRepository, createInMemoryPageRepository } from "../src/in-memory-repository.js";
+import { createInMemoryCmsAdapter } from "../src/in-memory-repository.js";
 import { createCmsService, type CmsService } from "../src/service.js";
 import { PageNotFoundError } from "../src/types.js";
 
@@ -9,8 +9,7 @@ describe("cms service", () => {
 
   beforeEach(() => {
     cms = createCmsService({
-      pages: createInMemoryPageRepository(),
-      marketingMeta: createInMemoryMarketingPageMetaRepository(),
+      persistence: createInMemoryCmsAdapter(),
       components: createComponentRegistry(),
     });
   });

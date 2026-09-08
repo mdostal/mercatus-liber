@@ -1,4 +1,4 @@
-import type { MarketingPageMeta, MarketingPageMetaRepository, Page, PageRepository } from "./types.js";
+import type { CmsPersistenceAdapter, MarketingPageMeta, MarketingPageMetaRepository, Page, PageRepository } from "./types.js";
 
 export function createInMemoryPageRepository(): PageRepository {
   const pages = new Map<string, Page>();
@@ -35,5 +35,13 @@ export function createInMemoryMarketingPageMetaRepository(): MarketingPageMetaRe
     async save(meta) {
       metaByPageId.set(meta.pageId, structuredClone(meta));
     },
+  };
+}
+
+/** Bundles the two in-memory repositories into one CmsPersistenceAdapter -- the default, zero-infra adapter, same convenience-factory pattern as adapter-sqlite for catalog. */
+export function createInMemoryCmsAdapter(): CmsPersistenceAdapter {
+  return {
+    pages: createInMemoryPageRepository(),
+    marketingMeta: createInMemoryMarketingPageMetaRepository(),
   };
 }
