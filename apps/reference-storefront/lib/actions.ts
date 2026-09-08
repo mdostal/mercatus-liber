@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
+import { readCouponCode, setCouponCode } from "./coupon-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
 import { getServices } from "./services";
 import { THEME_COOKIE } from "./theme-cookie";
@@ -18,11 +19,18 @@ export async function addToCartAction(formData: FormData): Promise<void> {
   revalidatePath("/cart");
 }
 
+export async function applyCouponAction(formData: FormData): Promise<void> {
+  const code = String(formData.get("code") ?? "").trim();
+  await setCouponCode(code);
+  revalidatePath("/cart");
+}
+
 export async function startCheckoutAction(): Promise<void> {
   const cartId = await readCartId();
   if (!cartId) throw new Error("Cannot check out -- no cart exists yet.");
 
   const customerId = await getOrCreateCustomerId();
+  const couponCode = await readCouponCode();
   const { checkout } = await getServices();
   const result = await checkout.startCheckout({
     cartId,
@@ -31,6 +39,7 @@ export async function startCheckoutAction(): Promise<void> {
     // since each cart only checks out once in this minimal demo flow.
     idempotencyKey: cartId,
     customerId,
+    couponCode,
     shippingInfo: { name: "Demo Shopper", email: "demo@example.com", address: "1 Main St" },
     // Minimal demo simplification: a static confirmation page rather than a
     // dynamic /order/[id] redirect (which would need the order id embedded
