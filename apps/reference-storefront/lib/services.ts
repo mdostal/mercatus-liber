@@ -28,7 +28,7 @@ import {
   createMarketingCatalogService,
   type MarketingCatalogService,
 } from "@mercatus-liber/marketing-catalog";
-import { createStripeAdapter } from "@mercatus-liber/payments";
+import { createStripeAdapter, type PaymentAdapter } from "@mercatus-liber/payments";
 import { createPdpService, type PdpService } from "@mercatus-liber/pdp";
 import { createInMemoryIndex, registerCatalogSearchSync, type SearchIndexAdapter } from "@mercatus-liber/search";
 import {
@@ -72,6 +72,30 @@ export interface Services {
   orderNotificationPlugin: OrderNotificationPlugin;
 }
 
+/**
+ * The Stripe SDK throws synchronously at construction time ("Neither apiKey
+ * nor config.authenticator provided") when given an empty secretKey --
+ * which would otherwise break every page in this app, not just checkout,
+ * since `checkout` here is also used to build `account`/`inventory` (via
+ * their structural OrderLookup dependency) and so can't simply be built
+ * lazily as a whole the way shop.mdostal.com's own services.ts does. This
+ * wrapper defers constructing the real Stripe client until a payment
+ * method is actually called, so pages that never touch checkout never pay
+ * for (or fail on) an unconfigured Stripe key.
+ */
+function createLazyStripeAdapter(config: { secretKey: string; webhookSecret: string; events: EventBus }): PaymentAdapter {
+  let real: PaymentAdapter | null = null;
+  function get(): PaymentAdapter {
+    if (!real) real = createStripeAdapter(config);
+    return real;
+  }
+  return {
+    createPaymentSession: (input) => get().createPaymentSession(input),
+    confirmPayment: (sessionId) => get().confirmPayment(sessionId),
+    handleWebhookEvent: (rawBody, signature) => get().handleWebhookEvent(rawBody, signature),
+  };
+}
+
 let servicesPromise: Promise<Services> | null = null;
 
 async function buildServices(): Promise<Services> {
@@ -95,7 +119,7 @@ async function buildServices(): Promise<Services> {
     events,
   });
 
-  const payments = createStripeAdapter({
+  const payments = createLazyStripeAdapter({
     secretKey: process.env.STRIPE_SECRET_KEY ?? "",
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
     events,
