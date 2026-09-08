@@ -1,0 +1,100 @@
+id: mcp-01-tool-definitions-and-handlers
+epic: ai-mcp-interface
+title: "@mercatus-liber/ai-interface: JSON Schema tool definitions + protocol-agnostic handlers, confirm-gated admin writes"
+status: done
+complexity: large
+methodology: classic
+depends_on: []
+
+description: |
+  New package @mercatus-liber/ai-interface, depending on @mercatus-liber/core
+  only for shared types (Money/Product/Sku) -- every commerce operation it
+  wraps is expressed as a narrow structural interface (CatalogLookup,
+  SearchLookup, CartOps, CheckoutOps, CatalogAdminOps, CmsAdminOps,
+  InventoryAdminOps), the same "narrow dependency, structurally satisfied,
+  never a package import" pattern every other subsystem uses -- even though
+  docs/subsystems/14-ai-mcp-interface.md's own "Depends on" section would
+  permit direct imports of other subsystems' public interfaces, this keeps
+  the pattern uniform and the package trivially testable with recording
+  fakes.
+
+  Ships 10 tool definitions as plain JSON Schema (protocol-agnostic --
+  resolves open question 4): 6 shopper-side (search_products, get_product,
+  add_to_cart, get_cart, start_checkout, get_order_status) and 4 admin-side
+  (create_product, update_product, manage_cms_page, adjust_inventory).
+  Every handler delegates directly to its structural-interface dependency --
+  zero duplicated business logic (if checkout has a bug, calling it via
+  start_checkout has the same bug a human clicking "buy" would hit).
+
+  Resolves open question 1 (authorization model) concretely: shopper reads
+  (search/get_product/get_cart/get_order_status) and low-risk cart writes
+  (add_to_cart) execute directly. start_checkout also executes directly --
+  it only ever returns a Stripe-hosted redirect URL, never completes a
+  charge itself, so Stripe's own hosted checkout page IS the human-in-the-
+  loop step; no separate confirmation layer is invented on top of it. Every
+  admin write tool (create_product, update_product, manage_cms_page,
+  adjust_inventory) requires an explicit confirm:true input field -- called
+  without it, the handler returns { requiresConfirmation: true, preview }
+  instead of executing, modeling "agent proposes, a human or policy
+  approves" exactly as the doc's open question 1 suggests.
+
+acceptance_criteria:
+  - "Given the 10 tool definitions, when inspected, then each has a name, description, category ('shopper'|'admin'), a valid JSON Schema inputSchema (type: 'object', properties, required), and a requiresConfirmation flag that is true for exactly the 4 admin tools and false for all 6 shopper tools"
+  - "Given createCommerceToolHandlers(deps) wired to recording-fake structural interfaces, when a shopper tool (e.g. add_to_cart) is called, then it delegates directly to the corresponding fake method with the tool's input, unmodified, and returns the fake's result"
+  - "Given an admin write tool (e.g. update_product) is called WITHOUT confirm:true, when the handler runs, then it returns { requiresConfirmation: true, preview: {...} } and does NOT call the underlying CatalogAdminOps.updateProduct fake at all"
+  - "Given the same admin write tool is called WITH confirm:true, when the handler runs, then it calls the underlying fake with the input (minus the confirm flag) and returns the real result, not a preview"
+  - "Given the package's dependencies, when inspected, then it imports @mercatus-liber/core for shared types only -- no import of @mercatus-liber/catalog, cart, checkout-orders, cms, inventory, marketing-catalog, or search"
+  - "Given docs/subsystems/14-ai-mcp-interface.md's 4 open questions, when this story's docs/ai-mcp-interface-decisions.md is read, then each is given a concrete resolution, not left open"
+
+steps:
+  - id: research
+    description: Re-read every structural-interface pattern already established (SkuLookup, OrderLookup, ProductDataLookup) and the exact method signatures of catalog/cart/checkout-orders/cms/inventory/search services this package's handlers will delegate to.
+    agent: researcher
+  - id: implement
+    description: Implement tool-definitions.ts, types.ts (structural interfaces), confirmation.ts, handlers.ts.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Tests for tool-definition shape, handler delegation for every shopper tool, and confirm-gating for every admin tool (both the no-confirm preview path and the confirm:true execute path).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Grep-verify zero import of any subsystem package other than core; verify every admin tool is actually confirm-gated (no accidental direct-execute admin tool).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feature branch.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: docs/subsystems/14-ai-mcp-interface.md
+      purpose: Full spec and the 4 open questions this story resolves
+    - path: packages/cart/src/types.ts
+      purpose: SkuLookup -- the canonical example of the structural-interface pattern this story's CatalogLookup/CartOps/etc. mirror
+    - path: packages/inventory/src/types.ts
+      purpose: OrderLookup -- another canonical structural-interface example, plus InventoryAdapter's actual method shapes (setStock/getStock) that InventoryAdminOps must match
+
+files_to_modify:
+  - file: packages/ai-interface/package.json
+    change: New package, depends on @mercatus-liber/core only
+  - file: packages/ai-interface/src/types.ts
+    change: Structural interfaces (CatalogLookup, SearchLookup, CartOps, CheckoutOps, CatalogAdminOps, CmsAdminOps, InventoryAdminOps)
+  - file: packages/ai-interface/src/tool-definitions.ts
+    change: 10 tool definitions as plain JSON Schema
+  - file: packages/ai-interface/src/confirmation.ts
+    change: requireConfirmation helper for the preview-then-execute pattern
+  - file: packages/ai-interface/src/handlers.ts
+    change: createCommerceToolHandlers(deps)
+  - file: packages/ai-interface/src/index.ts
+    change: Public exports
+  - file: .pHive/epics/ai-mcp-interface/docs/ai-mcp-interface-decisions.md
+    change: Concrete resolution of the doc's 4 open questions
+
+cross_cutting:
+  - concern: subsystem-decoupling
+    action: "ai-interface depends on @mercatus-liber/core only, via structural interfaces for every commerce operation -- same pattern as every other subsystem, even though the subsystem doc itself would permit direct imports"
+  - concern: zero-duplicated-business-logic
+    action: "Every handler is a thin delegation to its structural-interface dependency -- no validation, pricing, or business rule is reimplemented here"

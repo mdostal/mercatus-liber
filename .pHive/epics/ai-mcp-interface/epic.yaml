@@ -1,0 +1,32 @@
+name: ai-mcp-interface
+title: AI / MCP Interface (subsystem 14)
+description: >
+  The founder's positioning for the whole project: "an AI / Human commerce tool -- full
+  skills, full MCP, fully expected to interact and be used" (docs/subsystems/14-ai-mcp-interface.md).
+  A protocol-agnostic tool-definitions + handlers core (zero duplicated business logic --
+  every tool delegates to the same structural interfaces the reference storefront's own
+  services satisfy), wrapped by a real MCP server. Resolves the doc's 4 open questions:
+  (1) auth/confirmation model -- reads and low-money-risk shopper ops execute directly;
+  start_checkout is already human-gated by Stripe's own hosted checkout page; admin writes
+  require an explicit confirm:true, previewing otherwise; (2) rate limiting -- explicitly
+  deferred, documented as a non-blocking follow-up; (3) ship now -- core-foundation, cms,
+  and inventory epics are all done, nothing left to wrap; (4) tool definitions are plain
+  JSON Schema, protocol-agnostic, reusable outside MCP.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: mcp-01-tool-definitions-and-handlers
+    title: "@mercatus-liber/ai-interface: JSON Schema tool definitions + protocol-agnostic handlers, confirm-gated admin writes"
+    complexity: large
+    depends_on: []
+  - id: mcp-02-mcp-server-and-reference-wiring
+    title: MCP server wrapper (@modelcontextprotocol/sdk) + reference storefront entry point
+    complexity: medium
+    depends_on: [mcp-01-tool-definitions-and-handlers]
