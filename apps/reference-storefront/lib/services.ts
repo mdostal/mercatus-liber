@@ -11,8 +11,7 @@ import { createCatalogService, type CatalogService } from "@mercatus-liber/catal
 import {
   createCmsService,
   createComponentRegistry,
-  createInMemoryMarketingPageMetaRepository,
-  createInMemoryPageRepository,
+  createInMemoryCmsAdapter,
   type CmsService,
 } from "@mercatus-liber/cms";
 import {
@@ -118,8 +117,7 @@ async function buildServices(): Promise<Services> {
   const pdp = createPdpService({ catalog, theming });
 
   const cms = createCmsService({
-    pages: createInMemoryPageRepository(),
-    marketingMeta: createInMemoryMarketingPageMetaRepository(),
+    persistence: createInMemoryCmsAdapter(),
     components: createComponentRegistry(),
   });
 

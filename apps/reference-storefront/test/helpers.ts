@@ -4,8 +4,7 @@ import { createCatalogService, type CatalogService } from "@mercatus-liber/catal
 import {
   createCmsService,
   createComponentRegistry,
-  createInMemoryMarketingPageMetaRepository,
-  createInMemoryPageRepository,
+  createInMemoryCmsAdapter,
   type CmsService,
 } from "@mercatus-liber/cms";
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
@@ -43,8 +42,7 @@ export function buildTestCatalogServices(
     attributes: catalog,
   });
   const cms = createCmsService({
-    pages: createInMemoryPageRepository(),
-    marketingMeta: createInMemoryMarketingPageMetaRepository(),
+    persistence: createInMemoryCmsAdapter(),
     components: createComponentRegistry(),
   });
   const inventory = createInMemoryInventoryAdapter();

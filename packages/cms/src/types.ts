@@ -59,6 +59,18 @@ export interface ComponentRegistry {
   get(type: string): ComponentDefinition | null;
 }
 
+/**
+ * The bundle of repositories a CMS persistence adapter must provide --
+ * same bundled-interface pattern as @mercatus-liber/core's
+ * CatalogPersistenceAdapter. Swapping one implementation for another
+ * (in-memory, a DB-backed one, @mercatus-liber/adapter-sanity) must never
+ * require a change to createCmsService or anything that depends on it.
+ */
+export interface CmsPersistenceAdapter {
+  pages: PageRepository;
+  marketingMeta: MarketingPageMetaRepository;
+}
+
 export class PageNotFoundError extends Error {
   constructor(id: string) {
     super(`Page not found: ${id}`);

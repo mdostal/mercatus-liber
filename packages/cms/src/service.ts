@@ -1,12 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { PageNotFoundError } from "./types.js";
 import type {
+  CmsPersistenceAdapter,
   ComponentInstance,
   ComponentRegistry,
   MarketingPageMeta,
-  MarketingPageMetaRepository,
   Page,
-  PageRepository,
   PageStatus,
   PageType,
 } from "./types.js";
@@ -43,11 +42,11 @@ export interface CmsService {
 }
 
 export function createCmsService(deps: {
-  pages: PageRepository;
-  marketingMeta: MarketingPageMetaRepository;
+  persistence: CmsPersistenceAdapter;
   components: ComponentRegistry;
 }): CmsService {
-  const { pages, marketingMeta, components } = deps;
+  const { pages, marketingMeta } = deps.persistence;
+  const { components } = deps;
 
   async function requirePage(id: string): Promise<Page> {
     const page = await pages.get(id);
