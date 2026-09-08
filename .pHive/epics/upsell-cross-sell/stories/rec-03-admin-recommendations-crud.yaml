@@ -1,0 +1,119 @@
+id: rec-03-admin-recommendations-crud
+epic: upsell-cross-sell
+title: "/admin/recommendations: list + create/edit/deactivate recommendation rules"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [rec-01-recommendations-subsystem]
+
+description: |
+  Mirror the /admin/bundles and /admin/promotions CRUD areas (epics 20/21, already committed
+  on master) exactly for recommendation rules -- this one is simpler than bundles' nested-tier
+  form since a RecommendationRule is flat fields plus one multi-value field.
+
+  Read these committed files as your exact templates:
+  apps/reference-storefront/app/admin/bundles/page.tsx
+  apps/reference-storefront/app/admin/bundles/new/page.tsx
+  apps/reference-storefront/app/admin/bundles/[id]/page.tsx
+  apps/reference-storefront/app/admin/bundles/BundleFormFields.tsx
+  apps/reference-storefront/lib/actions.ts (read the WHOLE current file -- createBundleAction/
+  updateBundleAction/deactivateBundleAction + parseBundleFormData is the closest-shaped
+  pattern; other stories may have added more actions since)
+
+  Read the committed recommendations package's public surface before writing any admin code:
+  packages/recommendations/src/types.ts
+  packages/recommendations/src/service.ts
+  `RecommendationRule = { id, sourceProductId, label, placement: "pdp"|"cart"|"both",
+  targetProductIds: string[], status }`. `CreateRuleInput` likely mirrors this minus id. Read
+  types.ts for exact field names.
+
+  Deliverables:
+  - apps/reference-storefront/app/admin/recommendations/page.tsx -- read-only list (columns:
+    source product title (via catalog.getProduct, fallback to raw id), label, placement,
+    target count, status), edit link + deactivate form per row.
+  - apps/reference-storefront/app/admin/recommendations/new/page.tsx -- create form: a text
+    input for sourceProductId, a text input for label, a select for placement (pdp/cart/both),
+    a textarea for targetProductIds (comma-or-newline-separated, parsed server-side).
+  - apps/reference-storefront/app/admin/recommendations/[id]/page.tsx -- edit form pre-filled,
+    posting to updateRuleAction; deactivate action too.
+  - apps/reference-storefront/app/admin/recommendations/RecommendationFormFields.tsx -- shared
+    form-fields component.
+  - New server actions in lib/actions.ts: createRecommendationRuleAction,
+    updateRecommendationRuleAction, deactivateRecommendationRuleAction, each parsing the
+    comma-separated targetProductIds textarea, calling the recommendations service, and
+    revalidatePath("/admin/recommendations").
+  - Add a `<Link href="/admin/recommendations">Recommendations</Link>` entry to
+    apps/reference-storefront/app/admin/page.tsx's existing nav list (re-read this file fresh
+    right before your final commit in case a concurrent piece of work already touched it).
+
+acceptance_criteria:
+  - "Given at least one rule exists, when /admin/recommendations is visited, then it renders a table listing all rules with their source product, label, placement, and status"
+  - "Given the new-rule form is submitted with a sourceProductId, a label, a placement, and 2+ comma-separated targetProductIds, when createRecommendationRuleAction runs, then a new RecommendationRule exists (visible on GET /admin/recommendations) with the submitted values parsed correctly"
+  - "Given an existing rule, when its edit form is submitted with a changed label, then updateRecommendationRuleAction persists the change and the list/detail pages reflect it"
+  - "Given an active rule, when its deactivate action is submitted, then its status becomes 'inactive' and getRecommendationsForProduct for its sourceProductId now returns an empty list, while it remains visible/editable in the admin list"
+  - "Given all upsell-cross-sell-epic stories are merged, when grep -rn '@mercatus-liber/recommendations' packages/cart packages/checkout-orders/src packages/promotions/src packages/bundles/src packages/inventory/src packages/pdp/src packages/marketing-catalog/src packages/analytics/src is run, then every one of those returns zero hits"
+
+steps:
+  - id: research
+    description: Re-read the committed bundles admin CRUD files and the committed recommendations package's public surface before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the /admin/recommendations CRUD UI per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the golden path (create, list, edit, deactivate) via a dev server; run the decoupling grep from the last acceptance criterion and record clean output.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check convention compliance with the bundles/promotions admin pages' structure.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/upsell-cross-sell.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/admin/bundles/BundleFormFields.tsx
+      purpose: Closest-shaped existing admin form to mirror (flat fields + a multi-value textarea, same as bundles' skuIds field).
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: parseBundleFormData is the closest-shaped FormData-parsing convention to mirror.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/admin/recommendations/page.tsx
+    change: New file, read-only list.
+  - file: apps/reference-storefront/app/admin/recommendations/new/page.tsx
+    change: New file, create form.
+  - file: apps/reference-storefront/app/admin/recommendations/[id]/page.tsx
+    change: New file, edit form + deactivate action.
+  - file: apps/reference-storefront/app/admin/recommendations/RecommendationFormFields.tsx
+    change: New file, shared form fields.
+  - file: apps/reference-storefront/app/admin/page.tsx
+    change: Add Recommendations nav link.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: Add createRecommendationRuleAction, updateRecommendationRuleAction, deactivateRecommendationRuleAction.
+
+design_decisions:
+  - decision: "sourceProductId and targetProductIds are entered as raw text (ids or slugs resolved by the admin themselves), no product picker UI."
+    rationale: "Matches this app's zero-client-JS-framework posture -- a searchable product picker would need client-side interactivity this app deliberately doesn't have anywhere yet."
+
+risks:
+  - severity: low
+    description: "An admin could typo a product id with no immediate feedback (per rec-01's deliberate no-catalog-validation design)."
+    mitigation: "Documented as an accepted v1 tradeoff in docs/subsystems/18-recommendations.md open question 1 -- the rule simply won't render that product until corrected."
+
+references:
+  - path: .pHive/epics/upsell-cross-sell/docs/design-discussion.md
+    relevant_excerpt: |
+      "Admin UI conventions confirmed unchanged" section of the research grounding this
+      story is the direct mirror of the established pattern from epics 20/21.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Admin CRUD UI story verified via the acceptance criteria's manual golden-path check and the decoupling grep; no numeric trend to track."

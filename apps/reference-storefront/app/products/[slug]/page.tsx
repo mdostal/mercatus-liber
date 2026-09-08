@@ -4,6 +4,7 @@ import { PdpLongScroll } from "../../../components/pdp-long-scroll";
 import { PdpTabbedDetail } from "../../../components/pdp-tabbed-detail";
 import { BundleTierSelector } from "../../../components/bundle-tier-selector";
 import { InteractionTracker } from "../../../components/interaction-tracker";
+import { RecommendationShelf, resolvePdpRecommendations } from "../../../components/recommendation-shelf";
 import { getServices } from "../../../lib/services";
 import { readActiveThemeBundle } from "../../../lib/theme-cookie";
 
@@ -28,7 +29,7 @@ export default async function ProductPage({
 }) {
   const { slug } = await params;
   const { template } = await searchParams;
-  const { pdp, inventory, bundles } = await getServices();
+  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog } = await getServices();
 
   // Explicit ?template= always wins; otherwise fall back to the active
   // theme's PDP choice (a per-request, per-call override -- never mutates
@@ -70,11 +71,23 @@ export default async function ProductPage({
     (viewModel.templateKey && TEMPLATE_COMPONENTS[viewModel.templateKey as keyof typeof TEMPLATE_COMPONENTS]) ||
     PdpTabbedDetail;
 
+  // Recommendations is deliberately NOT part of pdp's view model, same
+  // "app composes multiple services" pattern as stock/bundles above -- see
+  // design-discussion.md §3 (upsell-cross-sell). Curated rule first, falling
+  // back to the same-category heuristic, or nothing at all when neither
+  // yields a product -- this call is a no-op for a product with no attached
+  // recommendation data, matching this story's zero-regression requirement.
+  const recommendationShelf = await resolvePdpRecommendations(
+    { recommendations, catalog, marketingCatalog },
+    viewModel.product.id,
+  );
+
   return (
     <>
       <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug }} />
       {bundle ? <BundleTierSelector bundle={bundle} pricingByTierId={pricingByTierId} /> : null}
       <Component viewModel={viewModel} stockBySkuId={stockBySkuId} />
+      {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </>
   );
 }

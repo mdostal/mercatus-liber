@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { BundleTier, CreateBundleInput } from "@mercatus-liber/bundles";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
+import type { CreateRuleInput } from "@mercatus-liber/recommendations";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
 import { readCouponCode, setCouponCode } from "./coupon-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
@@ -196,4 +197,51 @@ export async function deactivateBundleAction(formData: FormData): Promise<void> 
   const { bundles } = await getServices();
   await bundles.deactivateBundle(id);
   revalidatePath("/admin/bundles");
+}
+
+/**
+ * Parses the recommendations admin form fields shared by create and update.
+ * targetProductIds is a single comma-or-newline-separated textarea, same
+ * splitting convention as a bundle tier's skuIds field (see
+ * parseBundleFormData above).
+ */
+function parseRecommendationRuleFormData(formData: FormData): CreateRuleInput {
+  const targetProductIds = String(formData.get("targetProductIds") ?? "")
+    .split(/[,\n]/)
+    .map((productId) => productId.trim())
+    .filter((productId) => productId.length > 0);
+
+  const placement = formData.get("placement");
+  const status = String(formData.get("status") ?? "active");
+
+  return {
+    sourceProductId: String(formData.get("sourceProductId") ?? "").trim(),
+    label: String(formData.get("label") ?? "").trim(),
+    placement: placement === "pdp" || placement === "cart" ? placement : "both",
+    targetProductIds,
+    status: status === "inactive" ? "inactive" : "active",
+  };
+}
+
+export async function createRecommendationRuleAction(formData: FormData): Promise<void> {
+  const { recommendations } = await getServices();
+  await recommendations.createRule(parseRecommendationRuleFormData(formData));
+  revalidatePath("/admin/recommendations");
+  redirect("/admin/recommendations");
+}
+
+export async function updateRecommendationRuleAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("id"));
+  const { recommendations } = await getServices();
+  const updated = await recommendations.updateRule(id, parseRecommendationRuleFormData(formData));
+  if (!updated) throw new Error(`No such recommendation rule: ${id}`);
+  revalidatePath("/admin/recommendations");
+  redirect("/admin/recommendations");
+}
+
+export async function deactivateRecommendationRuleAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("id"));
+  const { recommendations } = await getServices();
+  await recommendations.deactivateRule(id);
+  revalidatePath("/admin/recommendations");
 }

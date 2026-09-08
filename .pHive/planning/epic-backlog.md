@@ -29,7 +29,7 @@ vertical-slice invariant), not just "some files exist."_
 | 19 | `service-areas-location-pages` | **Added 2026-09-08 (Mathew's explicit ask: "ensure we can make the location based pages for service area").** New subsystem (service-areas: city/region entities distinct from marketing-catalog's product categories, same "data vs. page layout" split as 02/05) + a new CMS `location` page type + reference-storefront `/locations/[slug]` route -- the multi-location marketing pattern ATT's real business needs (8 core cities). | **done** (2/2 stories complete) | 2, 4 |
 | 20 | `promotions-discounts` | Coupon codes, percentage/fixed cart- and product-level discounts. New subsystem 16 (`@mercatus-liber/promotions`, core-only dependency) resolved design question: own subsystem, not a checkout-orders extension or a cart addition -- satisfies an optional `PricingAdjuster` structural interface checkout-orders declares in its own `types.ts`. Admin CRUD at `/admin/promotions` (first admin-side mutation UI). See `docs/subsystems/16-promotions.md` and `.pHive/epics/promotions-discounts/docs/design-discussion.md`. | **done** (4/4 stories complete) | 7, 9 |
 | 21 | `bundles` | Multi-SKU tiered package selector (e.g. "Product Only" / "+ Pro Setup" / "Complete Overhaul") sold from a single PDP. New subsystem 17 (`@mercatus-liber/bundles`, references SKUs by id only, never forks/extends `Product`/`Sku`) resolved design question: a tier selection becomes N ordinary per-SKU cart lines orchestrated at the app layer, not a new line-item shape cart/checkout-orders/promotions/inventory have to learn. Admin CRUD at `/admin/bundles`. See `docs/subsystems/17-bundles.md` and `.pHive/epics/bundles/docs/design-discussion.md`. | **done** (4/4 stories complete) | 1 |
-| 22 | `upsell-cross-sell` | **Backlogged 2026-09-08.** "Customers also bought" / PDP and cart recommendations. Distinct from marketing-catalog's `SuggestionRule` (which suggests *categories* for a product, not products for a shopper) -- a genuinely new recommendation surface. | not started | 1, 4, 9 |
+| 22 | `upsell-cross-sell` | "Customers also bought" / PDP and cart recommendations. New subsystem 18 (`@mercatus-liber/recommendations`, core-only dependency) resolved design question: an explicit, admin-authored source-product -> target-products mapping, never inferred/computed, distinct from marketing-catalog's `SuggestionRule` (which suggests *categories* for a product, not products for a shopper) -- a genuinely new recommendation surface. PDP/cart resolution and the same-category fallback are app-composed orchestration, not part of the package itself. Admin CRUD at `/admin/recommendations`. See `docs/subsystems/18-recommendations.md` and `.pHive/epics/upsell-cross-sell/docs/design-discussion.md`. | **done** (4/4 stories complete) | 1, 4, 9 |
 | 23 | `advertising` | **Backlogged 2026-09-08.** CMS already ships a static `ad-slot` component (subsystem 05) but nothing manages ad campaigns/creative/targeting/rotation to actually fill it -- currently just a hand-authored config block. This epic would add that management layer. | not started | 4 |
 
 ## Definition of "vision fully done"
@@ -79,9 +79,9 @@ vertical-slice invariant), not just "some files exist."_
   re-created with plugins and features") — is done in both its 2026-09-08-redefined variants:
   15a (private, real ATT identity, in a brand-new non-public sibling repo, never touching ATT's
   actual live site or mercatus-liber's own git history) and 15b (public, obfuscated demo,
-  "Northline Home Tech," the framework's give-away example). Epics 20-21 (`promotions-discounts`,
-  `bundles`) are **done** as of 2026-09-08 (4/4 stories each). Epics 22-23 (upsell-cross-sell,
-  advertising) remain backlogged — real, identified gaps, not yet built, no approval gate,
+  "Northline Home Tech," the framework's give-away example). Epics 20-22 (`promotions-discounts`,
+  `bundles`, `upsell-cross-sell`) are **done** as of 2026-09-08 (4/4 stories each). Epic 23
+  (advertising) remains backlogged — a real, identified gap, not yet built, no approval gate,
   available to pick up any time.
 - Real questions/approval gates still standing for any future work: anything that changes the
   architecture's prime directive, anything requiring a new external credential/service, and

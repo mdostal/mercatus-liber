@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/recommendations",
+  "version": "0.1.0",
+  "description": "Admin-curated, explicit product-to-product recommendations (\"Customers also bought\") for the PDP and cart page (subsystem 18). Depends on @mercatus-liber/core only -- never imports @mercatus-liber/cart, @mercatus-liber/checkout-orders, @mercatus-liber/promotions, @mercatus-liber/bundles, @mercatus-liber/inventory, @mercatus-liber/catalog, or @mercatus-liber/analytics. Deliberately thinner than promotions/bundles: it never validates product ids against catalog at write time -- product ids are stored as bare strings and resolved by the app-composition layer at render time.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
