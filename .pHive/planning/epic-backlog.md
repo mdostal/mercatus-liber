@@ -32,7 +32,7 @@ vertical-slice invariant), not just "some files exist."_
 | 22 | `upsell-cross-sell` | "Customers also bought" / PDP and cart recommendations. New subsystem 18 (`@mercatus-liber/recommendations`, core-only dependency) resolved design question: an explicit, admin-authored source-product -> target-products mapping, never inferred/computed, distinct from marketing-catalog's `SuggestionRule` (which suggests *categories* for a product, not products for a shopper) -- a genuinely new recommendation surface. PDP/cart resolution and the same-category fallback are app-composed orchestration, not part of the package itself. Admin CRUD at `/admin/recommendations`. See `docs/subsystems/18-recommendations.md` and `.pHive/epics/upsell-cross-sell/docs/design-discussion.md`. | **done** (4/4 stories complete) | 1, 4, 9 |
 | 23 | `advertising` | CMS already ships a static `ad-slot` component (subsystem 05); this epic added the management layer that fills it -- new subsystem 19 (`@mercatus-liber/advertising`, core-only dependency) resolved design question: an admin-curated Campaign/Creative model with optional service-area/page-slug targeting and stateless weighted-random rotation, resolved at the app-composition layer (`cms-sections.tsx`'s AdSlot), never inside `packages/cms` itself. Admin CRUD at `/admin/advertising`. See `docs/subsystems/19-advertising.md` and `.pHive/epics/advertising/docs/design-discussion.md`. | **done** (4/4 stories complete) | 4 |
 | 24 | `internal-bi-metrics` | **Backlogged 2026-09-08 (from the 20260908 hand-off brief).** Subsystem 13 (`@mercatus-liber/analytics`) forwards events to external tools (PostHog) -- that's marketing/tracking analytics, write-only, no read side. There is no owned, internal business-intelligence layer: revenue over time, order volume, top products/services, conversion funnel, inventory turns, promotion redemption rates. This epic builds that as its own subsystem -- new subsystem 20 (`@mercatus-liber/internal-bi`) resolved design question: an explicit, contract-shaped `BiMetricsAdapter` (mirroring `CatalogPersistenceAdapter`/`CmsPersistenceAdapter`) so a deployment can plug in a real BI tool later, with `createDefaultBiAdapter` as the zero-infra reference implementation reading straight from the existing persistence adapters (catalog/checkout-orders/inventory/promotions) plus a new event-log-backed conversion funnel. Required one additive, backward-compatible field, `Order.createdAt` (bi-01), the same low-risk pattern as prior `Order` extensions. Surfaced as a real dashboard at `/admin/metrics`, live-verified against genuine cart/checkout activity on a running dev server. See `docs/subsystems/20-internal-bi.md` and `.pHive/epics/internal-bi-metrics/docs/design-discussion.md`. | **done** (4/4 stories complete) | 1, 6, 9, 20 |
-| 25 | `admin-adapter-visibility-settings` | **Backlogged 2026-09-08 (from the 20260908 hand-off brief).** A settings page in `/admin` showing which concrete adapter is active for each swappable subsystem (persistence, CMS, payments) -- visibility into "how this instance is actually running," making the "adapters and options for how it runs" pitch concrete in the UI itself. Depends on epic 18 (`cms-content-adapters`) having formalized the CMS adapter contract. | not started | 1, 18 |
+| 25 | `admin-adapter-visibility-settings` | **Backlogged 2026-09-08 (from the 20260908 hand-off brief).** A settings page in `/admin` showing which concrete adapter is active for each swappable subsystem (persistence, CMS, payments) -- visibility into "how this instance is actually running," making the "adapters and options for how it runs" pitch concrete in the UI itself. Resolved design question: no new `packages/*` subsystem -- this is metadata about this one app's own composition choices, not a reusable cross-deployment domain capability, so it lives as a small hand-maintained `apps/reference-storefront/lib/adapter-info.ts` descriptor (`getAdapterInfo()`) next to `services.ts`'s own `create*Adapter(...)` calls instead. Surfaced at `/admin/settings` (plus a bonus analytics row), live-verified on a running dev server: payments genuinely shows "unconfigured" in this environment (no `STRIPE_SECRET_KEY` set), analytics never does. See `.pHive/epics/admin-adapter-visibility-settings/docs/design-discussion.md`. | **done** (2/2 stories complete) | 1, 18 |
 
 ## Definition of "vision fully done"
 - Epics 1-8 complete: full framework functional end-to-end (catalog → marketing catalog →
@@ -75,11 +75,10 @@ vertical-slice invariant), not just "some files exist."_
   Codebase and seed content only: no DNS/hosting cutover, no live Stripe key, no final
   pricing/SKU/logo decisions -- those remain Mathew's to take when ready, per that epic's own
   documented scope boundary.
-- Epics 1-24 are all done (epics 20-23 were added later by epic 17's audit and are now closed
-  out too -- see below; epic 24, `internal-bi-metrics`, was backlogged 2026-09-08 from the
-  hand-off brief and is now closed out as well). Epic 25 (`admin-adapter-visibility-settings`),
-  backlogged the same day from the same brief, remains **not started** -- the backlog is not
-  yet fully drained. Epic 15 — the actual finish line,
+- Epics 1-25 are all done (epics 20-23 were added later by epic 17's audit and are now closed
+  out too -- see below; epics 24 and 25, `internal-bi-metrics` and
+  `admin-adapter-visibility-settings`, were both backlogged 2026-09-08 from the hand-off brief
+  and are now closed out as well -- the backlog is fully drained). Epic 15 — the actual finish line,
   not epic 13, per Mathew's own 2026-09-07 framing ("the true test is if we can replicate
   everything we want for dostal tech to sell there AND do the All That Technology fully
   re-created with plugins and features") — is done in both its 2026-09-08-redefined variants:
@@ -87,8 +86,13 @@ vertical-slice invariant), not just "some files exist."_
   actual live site or mercatus-liber's own git history) and 15b (public, obfuscated demo,
   "Northline Home Tech," the framework's give-away example). Epics 20-23 (`promotions-discounts`,
   `bundles`, `upsell-cross-sell`, `advertising`) are **done** as of 2026-09-08 (4/4 stories each)
-  -- all four epics identified by epic 17's audit as genuinely missing are now built, closing out
-  this backlog wave entirely.
+  -- all four epics identified by epic 17's audit as genuinely missing are now built. Epics 24
+  (`internal-bi-metrics`) and 25 (`admin-adapter-visibility-settings`) -- the remaining two items
+  from that same 2026-09-08 hand-off brief -- are also **done** (4/4 and 2/2 stories
+  respectively). **That closes out the entire 2026-09-08 hand-off brief: all six epics it named
+  (20 through 25) are now built.** This is a bounded claim about that one backlogged
+  wave of work, not a claim that the product vision is "finished forever" -- future epics can
+  still be added to this backlog the same way epics 17-25 were.
 - Real questions/approval gates still standing for any future work: anything that changes the
   architecture's prime directive, anything requiring a new external credential/service, and
   15a's content must never be wired to a public route/deploy target (it already isn't — no

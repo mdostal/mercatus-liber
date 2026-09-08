@@ -1,0 +1,113 @@
+id: set-02-admin-settings-page-and-closeout
+epic: admin-adapter-visibility-settings
+title: "/admin/settings page, nav link, live verification, epic-backlog closeout (final epic of the hand-off brief)"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [set-01-adapter-info-module]
+
+description: |
+  This is the LAST story in the entire 2026-09-08 hand-off brief (epics 20-25). Its closeout
+  step wraps up the whole wave, not just this one epic -- read that carefully below.
+
+  Read the committed apps/reference-storefront/lib/adapter-info.ts (from set-01) in full.
+  Read apps/reference-storefront/app/admin/plugins/page.tsx as the closest existing precedent
+  for a minimal "list what's active" read-only admin page (async Server Component,
+  getServices() or a plain import, a simple list/table, no forms).
+  Read apps/reference-storefront/app/admin/page.tsx for the current nav list.
+
+  Deliverables:
+  - New file apps/reference-storefront/app/admin/settings/page.tsx: `export const dynamic =
+    "force-dynamic"`, calls `getAdapterInfo()` from lib/adapter-info.ts directly (no service
+    call needed -- it's a pure function), renders a `<table>` with columns Subsystem / Adapter
+    / Detail / Status, using a visually distinct marker for "unconfigured" rows (e.g. bold or a
+    plain-text "⚠" prefix -- keep it simple, no CSS framework, matching this app's existing
+    inline-style conventions).
+  - Add a `<Link href="/admin/settings">Settings</Link>` entry to
+    apps/reference-storefront/app/admin/page.tsx's existing nav list.
+  - Live-verify on a real dev server (curl-based): visit /admin/settings in this dev
+    environment's actual current state (no live Stripe key expected, per this repo's
+    established posture) and confirm the payments row genuinely shows "unconfigured" -- this
+    environment IS the live proof of the unconfigured case, no faking needed. If a POSTHOG_API_KEY
+    happens to be set in this environment, note what the analytics row shows; if not, confirm
+    it shows "No-op (disabled)" with status "active" (never "unconfigured").
+  - Run a repo-wide grep for "lib/adapter-info" and "/admin/settings" to confirm this new
+    module/page aren't accidentally imported by any packages/* package (they shouldn't be --
+    this is pure apps/reference-storefront application code, not a subsystem, so there's no
+    packages/* decoupling grep required for this epic, unlike every domain-model epic before
+    it -- note this explicitly in your report rather than fabricating an irrelevant grep
+    command).
+  - **Final wave closeout** (do this LAST): update .pHive/planning/epic-backlog.md:
+    1. Epic 25's row (grep "^| 25 |") -> status "done (2/2 stories complete)", with a
+       description update matching the style of epics 20-24's own completed rows (mention the
+       resolved "no new subsystem" design decision and the /admin/settings page concisely).
+    2. Find wherever the file claims "epics 1-24" are the complete set (grep "1-24") and
+       extend to "epics 1-25."
+    3. This closes out the ENTIRE 2026-09-08 hand-off brief (promotions, bundles,
+       upsell-cross-sell, advertising, internal-bi-metrics, and this settings page). Add one
+       clear, honest closing note to the "Definition of vision fully done" section (or
+       wherever the most similar existing wave-completion note lives -- check how epic 17's
+       or epic 19's own completion was narrated for the right tone) stating plainly that the
+       2026-09-08 hand-off brief's full scope (epics 20-25) is now done, without overclaiming
+       anything beyond what these six epics actually covered (do not claim the whole product
+       vision is "finished forever" -- just that this specific wave of backlogged work is
+       drained, the same honest, bounded framing every closeout in this wave has used).
+
+acceptance_criteria:
+  - "Given /admin/settings is visited on a live dev server, when the payments row is inspected, then it genuinely shows status 'unconfigured' in this environment (a real, not simulated, observation)"
+  - "Given the analytics row, when inspected, then it never shows 'unconfigured' regardless of whether POSTHOG_API_KEY is set -- only 'PostHog'/'active' or 'No-op (disabled)'/'active'"
+  - "Given the existing /admin nav, when visited after this story, then a working 'Settings' link is present"
+  - ".pHive/planning/epic-backlog.md epic 25's row reads 'done (2/2 stories complete)', and the file's 'epics 1-24 complete' claim is extended to 'epics 1-25', and a clear, bounded closing note marks the 2026-09-08 hand-off brief's full six-epic scope as drained"
+
+steps:
+  - id: research
+    description: Re-read the committed adapter-info module and the current admin nav/plugins-page conventions.
+    agent: researcher
+  - id: implement
+    description: Build the settings page and nav link per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Live-verify the page on a dev server and confirm the genuinely-unconfigured payments case; run the repo-wide grep noted above.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edits are accurate, honestly bounded, and match sibling completed-epic phrasing.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/admin-adapter-visibility-settings; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router (Server Components), monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/admin/plugins/page.tsx
+      purpose: Closest existing minimal read-only admin page structure to mirror.
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Epic 25's row and the vision-summary section -- both need updating as this story's last step, including the final wave-closeout note."
+
+files_to_modify:
+  - file: apps/reference-storefront/app/admin/settings/page.tsx
+    change: New file, the settings page.
+  - file: apps/reference-storefront/app/admin/page.tsx
+    change: Add Settings nav link.
+  - file: .pHive/planning/epic-backlog.md
+    change: Epic 25 row -> done; epics-1-24 claim extended; final wave-closeout note added.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/admin-adapter-visibility-settings/docs/design-discussion.md
+    relevant_excerpt: |
+      Full design rationale -- this story is the final, visible proof of the whole hand-off
+      brief's "adapters and options for how it runs" pitch.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "UI/closeout story verified via the acceptance criteria's live golden-path check; epic-backlog.md's done/not-started status and the wave-closeout note are qualitative, not numeric trends."
