@@ -21,7 +21,7 @@ vertical-slice invariant), not just "some files exist."_
 | 13 | `ai-mcp-interface` | 14 AI/MCP interface — MCP server + skills/tool catalog wrapping catalog/cart/checkout (shopper side) and catalog/CMS/inventory (admin side) | **done** (2/2 stories complete) | 1 (shopper side), 4 + 6 (admin side) |
 | 14 | `adapter-shopify` | A **Shopify commerce-backend adapter** — proves the persistence/commerce-backend interface can wrap an entire third-party platform, not just a raw DB. Lets a client already on Shopify adopt Mercatus Liber's admin/AI-agent/plugin layer *without* migrating off Shopify. | **done** (1/1 story complete) | 1, 8 (pattern proven by adapter-postgres first) |
 | 15 | `att-recreation-acceptance-test` | **The real acceptance test.** Fully recreate client **All That Technology**'s site/functionality (home-automation installs — TV mounting, cameras, doorbells, fiber; Royse City TX service-area business, 8 core cities, multi-location marketing pattern) using Mercatus Liber's plugins/features, runnable on either the native stack or the Shopify adapter (14) — client's choice. See memory `mercatus-liber-destination-and-acceptance-test` for full context. | not started | 2, 4, 6, 14 |
-| 16 | `deploy-tool-and-auto-update` | The **commercial thesis**: a one-command installer to stand up a store on a client's own infrastructure (not just Mathew-hosted), plus an auto-update mechanism for security/maintenance patches — what makes "$1,000 one-time setup, remove folks from Shopify" (e.g. client Cadex) actually operable at more than one client without ongoing hand-holding. | not started | 1, 9 |
+| 16 | `deploy-tool-and-auto-update` | The **commercial thesis**: a one-command installer to stand up a store on a client's own infrastructure (not just Mathew-hosted), plus an auto-update mechanism for security/maintenance patches — what makes "$1,000 one-time setup, remove folks from Shopify" (e.g. client Cadex) actually operable at more than one client without ongoing hand-holding. | **done** (2/2 stories complete) | 1, 9 |
 
 ## Definition of "vision fully done"
 - Epics 1-8 complete: full framework functional end-to-end (catalog → marketing catalog →
@@ -51,6 +51,18 @@ vertical-slice invariant), not just "some files exist."_
   adapter exposes (Shopify assigns its own product/variant ids; the adapter bridges that via a
   reserved metafield so the interface's caller-assigned-id contract still holds) -- see
   `.pHive/epics/adapter-shopify/docs/shopify-adapter-mapping.md`.
+- Epic 16: **done.** The commercial thesis is real code, not just a plan --
+  `@mercatus-liber/create-store` scaffolds a new deployable store (package.json wired to the
+  chosen adapter, a starter services.ts, and the manifest), and `@mercatus-liber/auto-update`
+  checks `@mercatus-liber/*` versions against an injectable registry client and applies updates
+  only if the target project's own tests still pass afterward, rolling back byte-identically
+  otherwise. See `.pHive/epics/deploy-tool-and-auto-update/docs/deploy-tool-scope.md` for
+  disclosed gaps (no full Next.js app template yet, no live npm registry integration test since
+  these packages aren't published yet).
+- **Every ungated epic is now done (1-10, 12-14, 16).** Only epic 11 (`shop-migration`) and
+  epic 15 (`att-recreation-acceptance-test`) remain — both explicitly require Mathew's
+  sign-off before any work starts, per the approval gates below. The backlog does not drain
+  further without that.
 - **Epic 15 is the actual finish line, not epic 13.** Per Mathew's own framing (2026-09-07):
   "the true test is if we can replicate everything we want for dostal tech to sell there AND do
   the All That Technology fully re-created with plugins and features so they could choose to

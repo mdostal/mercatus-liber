@@ -229,6 +229,22 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.13))
 
+  packages/auto-update:
+    dependencies:
+      '@mercatus-liber/create-store':
+        specifier: workspace:*
+        version: link:../create-store
+    devDependencies:
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.13))
+
   packages/cart:
     dependencies:
       '@mercatus-liber/core':
@@ -313,6 +329,22 @@ importers:
 
   packages/core:
     devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.13))
+
+  packages/create-store:
+    dependencies:
+      '@mercatus-liber/theming':
+        specifier: workspace:*
+        version: link:../theming
+    devDependencies:
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

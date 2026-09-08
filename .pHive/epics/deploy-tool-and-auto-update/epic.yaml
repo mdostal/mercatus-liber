@@ -1,0 +1,27 @@
+name: deploy-tool-and-auto-update
+title: Deploy Tool + Auto-Update
+description: >
+  The commercial thesis: a one-command installer to stand up a store on a client's own
+  infrastructure, plus an auto-update mechanism for security/maintenance patches -- what makes
+  "$1,000 one-time setup, remove folks from Shopify" (client Cadex) operable at more than one
+  client without ongoing hand-holding. See
+  .pHive/epics/deploy-tool-and-auto-update/docs/deploy-tool-scope.md for full scope and
+  disclosed gaps.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+stories:
+  - id: deploy-01-create-store-scaffolder
+    title: "@mercatus-liber/create-store: scaffolds a new deployable store, writes the manifest"
+    complexity: medium
+    depends_on: []
+  - id: deploy-02-auto-update
+    title: "@mercatus-liber/auto-update: version checking + test-gated apply-or-rollback"
+    complexity: medium
+    depends_on: [deploy-01-create-store-scaffolder]
