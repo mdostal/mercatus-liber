@@ -24,6 +24,9 @@ export default function AdminHomePage() {
         <li>
           <Link href="/admin/promotions">Promotions</Link>
         </li>
+        <li>
+          <Link href="/admin/bundles">Bundles</Link>
+        </li>
       </ul>
     </main>
   );
