@@ -209,6 +209,7 @@ export function createCatalogService(deps: {
 
     async setAttribute(attribute) {
       await persistence.attributes.save(attribute);
+      await events.publish("catalog.attribute.updated", { productId: attribute.productId, key: attribute.key });
     },
 
     async listAttributes(productId) {
@@ -217,6 +218,7 @@ export function createCatalogService(deps: {
 
     async removeAttribute(productId, key) {
       await persistence.attributes.remove(productId, key);
+      await events.publish("catalog.attribute.removed", { productId, key });
     },
   };
 }

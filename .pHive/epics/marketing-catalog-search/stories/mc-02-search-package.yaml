@@ -1,7 +1,20 @@
 id: mc-02-search-package
 epic: marketing-catalog-search
 title: Search package (index adapter interface + default implementation, event-driven reindex)
-status: pending
+status: done
+
+design_decision_note: >
+  Event payloads stay minimal ({id}, matching the convention already used by
+  catalog/cart/checkout-orders events) rather than being enlarged to carry full
+  product data. Instead the subscriber uses an injected narrow structural
+  ProductDataLookup interface ({getProduct, listAttributes} -- satisfied by
+  @mercatus-liber/catalog's CatalogService, never imported) to fetch fresh data
+  when notified. This is still "never a direct query at request time" (serving
+  a search query never touches catalog) -- it's an event-triggered refresh, the
+  same lookup-on-notification shape already used elsewhere (e.g. checkout-orders
+  reacting to payments.payment.succeeded). Indexes at product granularity;
+  SKU-level faceting (e.g. price range) is a documented future extension, not
+  in this story's acceptance criteria.
 complexity: medium
 methodology: classic
 depends_on: []
