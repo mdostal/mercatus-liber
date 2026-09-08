@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { EventBus } from "@mercatus-liber/core";
+import type { EventBus, Money } from "@mercatus-liber/core";
 import { CartNotFoundForCheckoutError, EmptyCartError } from "./types.js";
 import type {
   CartLookup,
@@ -7,6 +7,8 @@ import type {
   OrderRepository,
   OrderStatus,
   PaymentSessionCreator,
+  PricingAdjuster,
+  PricingAdjustment,
   ShippingInfo,
 } from "./types.js";
 
@@ -18,11 +20,18 @@ export interface StartCheckoutInput {
   cancelUrl: string;
   /** Omit or pass null/undefined for guest checkout. */
   customerId?: string | null;
+  /** Omit or pass null/undefined to check out at full (pre-discount) price. An unknown/ineligible code never throws -- see PricingAdjuster. */
+  couponCode?: string | null;
 }
 
 export interface CheckoutResult {
   order: Order;
   redirectUrl: string;
+}
+
+export interface PreviewCheckoutInput {
+  cartId: string;
+  couponCode?: string | null;
 }
 
 export interface CheckoutOrdersService {
@@ -32,6 +41,25 @@ export interface CheckoutOrdersService {
   listOrdersByCustomer(customerId: string): Promise<Order[]>;
   /** All orders, guest or not -- the admin-view read path (see admin-janus-dogfood epic). */
   listOrders(filter?: { status?: OrderStatus }): Promise<Order[]>;
+  /** Same PricingAdjustment computation startCheckout would use, without creating an order or a payment session -- for cart/checkout-summary display. */
+  previewCheckout(input: PreviewCheckoutInput): Promise<PricingAdjustment>;
+}
+
+/**
+ * Used when no PricingAdjuster is wired at services.ts DI time -- unitAmount
+ * === priceSnapshot, discountTotal zero, appliedCode null. Every deployment
+ * that hasn't adopted promotions gets byte-identical behavior to before this
+ * dependency existed.
+ */
+function passThroughAdjustment(items: { skuId: string; quantity: number; priceSnapshot: Money }[]): PricingAdjustment {
+  const currency = items[0]?.priceSnapshot.currency ?? "USD";
+  const total = items.reduce((sum, item) => sum + item.priceSnapshot.amount * item.quantity, 0);
+  return {
+    items: items.map((item) => ({ skuId: item.skuId, quantity: item.quantity, unitAmount: item.priceSnapshot })),
+    discountTotal: { amount: 0, currency },
+    total: { amount: total, currency },
+    appliedCode: null,
+  };
 }
 
 export function createCheckoutOrdersService(deps: {
@@ -39,8 +67,17 @@ export function createCheckoutOrdersService(deps: {
   cart: CartLookup;
   payments: PaymentSessionCreator;
   events: EventBus;
+  pricing?: PricingAdjuster;
 }): CheckoutOrdersService {
-  const { repository, cart, payments, events } = deps;
+  const { repository, cart, payments, events, pricing } = deps;
+
+  async function computeAdjustment(
+    items: { skuId: string; quantity: number; priceSnapshot: Money }[],
+    couponCode: string | null | undefined,
+  ): Promise<PricingAdjustment> {
+    if (!pricing) return passThroughAdjustment(items);
+    return pricing.computeAdjustment({ items, couponCode: couponCode ?? null });
+  }
 
   // React to async payment confirmation -- never a direct call from startCheckout.
   events.subscribe<{ sessionId: string; orderRef: string | null }>(
@@ -71,6 +108,9 @@ export function createCheckoutOrdersService(deps: {
       if (!shopperCart) throw new CartNotFoundForCheckoutError(input.cartId);
       if (shopperCart.items.length === 0) throw new EmptyCartError(input.cartId);
 
+      const adjustment = await computeAdjustment(shopperCart.items, input.couponCode);
+      const unitAmountBySku = new Map(adjustment.items.map((item) => [item.skuId, item.unitAmount]));
+
       const orderId = randomUUID();
       const order: Order = {
         id: orderId,
@@ -79,22 +119,33 @@ export function createCheckoutOrdersService(deps: {
         items: shopperCart.items.map((item) => ({
           skuId: item.skuId,
           quantity: item.quantity,
-          priceAtPurchase: item.priceSnapshot,
+          priceAtPurchase: unitAmountBySku.get(item.skuId) ?? item.priceSnapshot,
         })),
         status: "pending_payment",
         shippingInfo: input.shippingInfo,
         paymentSessionId: null,
         paymentRedirectUrl: null,
         customerId: input.customerId ?? null,
+        discountTotal: adjustment.discountTotal,
+        appliedPromotionCode: adjustment.appliedCode,
       };
       await repository.save(order);
+
+      if (adjustment.appliedCode !== null) {
+        await pricing?.recordApplication?.({
+          orderId,
+          appliedCode: adjustment.appliedCode,
+          discountAmount: adjustment.discountTotal,
+        });
+      }
+
       await events.publish("checkout.order.placed", { orderId });
 
       const session = await payments.createPaymentSession({
         orderRef: orderId,
         lineItems: shopperCart.items.map((item) => ({
           name: `SKU ${item.skuId}`,
-          unitAmount: item.priceSnapshot,
+          unitAmount: unitAmountBySku.get(item.skuId) ?? item.priceSnapshot,
           quantity: item.quantity,
         })),
         successUrl: input.successUrl,
@@ -121,6 +172,13 @@ export function createCheckoutOrdersService(deps: {
 
     async listOrders(filter?: { status?: OrderStatus }): Promise<Order[]> {
       return repository.listAll(filter);
+    },
+
+    async previewCheckout(input: PreviewCheckoutInput): Promise<PricingAdjustment> {
+      const shopperCart = await cart.getCart(input.cartId);
+      if (!shopperCart) throw new CartNotFoundForCheckoutError(input.cartId);
+      if (shopperCart.items.length === 0) throw new EmptyCartError(input.cartId);
+      return computeAdjustment(shopperCart.items, input.couponCode);
     },
   };
 }

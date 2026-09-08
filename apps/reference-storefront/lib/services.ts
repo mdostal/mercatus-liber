@@ -22,6 +22,7 @@ import {
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
 import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter } from "@mercatus-liber/inventory";
 import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
+import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
 import {
   createInMemoryCategoryRepository,
   createInMemoryProductCategoryRepository,
@@ -70,6 +71,7 @@ export interface Services {
   serviceAreas: ServiceAreaService;
   plugins: PluginRegistry;
   orderNotificationPlugin: OrderNotificationPlugin;
+  promotions: PromotionsService;
 }
 
 /**
@@ -125,11 +127,52 @@ async function buildServices(): Promise<Services> {
     events,
   });
 
+  const promotions = createPromotionsService({
+    repository: createInMemoryPromotionRepository(),
+    events,
+  });
+
+  // checkout's PricingAdjustment (per design-discussion.md §3) carries only
+  // appliedCode, not promotions' own appliedPromotionId -- so this tiny cache
+  // bridges the two at the boundary, letting recordApplication (called with
+  // just an appliedCode) find the promotionId recordAppliedPromotion needs.
+  const promotionIdByAppliedCode = new Map<string, string>();
+
+  // `promotions` structurally satisfies checkout's PricingAdjuster interface
+  // (computeAdjustment via evaluate(), recordApplication via
+  // recordAppliedPromotion()) -- not a direct pass-through, since the two
+  // services' field names/shapes differ slightly at the boundary (evaluate()
+  // returns appliedPromotionId; PricingAdjustment carries only appliedCode).
   const checkout = createCheckoutOrdersService({
     repository: createInMemoryOrderRepository(),
     cart,
     payments,
     events,
+    pricing: {
+      async computeAdjustment(input) {
+        const evaluation = await promotions.evaluate(input);
+        if (evaluation.appliedCode && evaluation.appliedPromotionId) {
+          promotionIdByAppliedCode.set(evaluation.appliedCode, evaluation.appliedPromotionId);
+        }
+        return {
+          items: evaluation.items,
+          discountTotal: evaluation.discountTotal,
+          total: evaluation.total,
+          appliedCode: evaluation.appliedCode,
+        };
+      },
+      // Only ever called by startCheckout when adjustment.appliedCode is
+      // non-null, so the code -> promotionId lookup below always resolves.
+      async recordApplication(input) {
+        const promotionId = promotionIdByAppliedCode.get(input.appliedCode);
+        if (!promotionId) return;
+        await promotions.recordAppliedPromotion({
+          orderId: input.orderId,
+          promotionId,
+          discountAmount: input.discountAmount,
+        });
+      },
+    },
   });
 
   const marketingCatalog = createMarketingCatalogService({
@@ -203,6 +246,7 @@ async function buildServices(): Promise<Services> {
     serviceAreas,
     plugins,
     orderNotificationPlugin,
+    promotions,
   };
 }
 

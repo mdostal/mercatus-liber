@@ -25,6 +25,10 @@ export interface Order {
   paymentRedirectUrl: string | null;
   /** null for guest checkout. Added for the account subsystem (10) -- see acct-01. Backward compatible: existing callers that never pass customerId keep getting null. */
   customerId: string | null;
+  /** Sum of the per-line discount applied at checkout time. Added for the promotions subsystem (16) -- see promo-02. Backward compatible: zero (default currency-matched Money) for every order created before a PricingAdjuster was wired, or when the adjustment applied no discount. */
+  discountTotal: Money;
+  /** The coupon code applied to this order, if any. Added for the promotions subsystem (16) -- see promo-02. Backward compatible: null for every order created before a PricingAdjuster was wired, or when no code was applied. */
+  appliedPromotionCode: string | null;
 }
 
 export interface OrderRepository {
@@ -59,6 +63,42 @@ export interface PaymentSessionCreator {
     successUrl: string;
     cancelUrl: string;
   }): Promise<{ sessionId: string; redirectUrl: string }>;
+}
+
+/** Post-adjustment cart pricing, computed by a PricingAdjuster from a set of pre-discount line items plus an optional coupon code. */
+export interface PricingAdjustment {
+  /** post-discount unit price */
+  items: { skuId: string; quantity: number; unitAmount: Money }[];
+  discountTotal: Money;
+  /** sum(items[].unitAmount * quantity) */
+  total: Money;
+  appliedCode: string | null;
+}
+
+/**
+ * The narrowest dependency checkout-orders has on pricing adjustments -- a
+ * structural interface, not an import of @mercatus-liber/promotions.
+ * @mercatus-liber/promotions's PromotionsService satisfies this shape.
+ * Optional: when no PricingAdjuster is wired at services.ts DI time,
+ * startCheckout/previewCheckout fall through to a pass-through adjustment
+ * (zero discount, unitAmount === priceSnapshot) -- zero behavior change for
+ * any deployment that hasn't adopted promotions yet.
+ */
+export interface PricingAdjuster {
+  computeAdjustment(input: {
+    items: { skuId: string; quantity: number; priceSnapshot: Money }[];
+    couponCode?: string | null;
+  }): Promise<PricingAdjustment>;
+  /**
+   * Bookkeeping only, not part of computeAdjustment's pure computation: called
+   * by startCheckout right after order.save() succeeds, only when the
+   * adjustment carried a non-null appliedCode and this method is present.
+   * Lets a promotions-side implementation track which order redeemed which
+   * code (mirrors PromotionsService.recordAppliedPromotion's input shape).
+   * Optional because a PricingAdjuster with no redemption bookkeeping to do
+   * (or the built-in pass-through) simply omits it.
+   */
+  recordApplication?(input: { orderId: string; appliedCode: string; discountAmount: Money }): Promise<void>;
 }
 
 export class CartNotFoundForCheckoutError extends Error {
