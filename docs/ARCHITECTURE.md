@@ -54,6 +54,8 @@ packages/
   plugins/                # plugin/extension host (subsystem 12)
   adapter-postgres/       # reference DB adapter implementing core persistence interfaces
   adapter-sqlite/         # a second reference DB adapter, proves the adapter boundary is real
+  analytics/               # analytics adapter interface + posthog adapter, event-bus subscriber (subsystem 13)
+  ai-mcp/                  # MCP server + skills/tool definitions wrapping subsystem interfaces (subsystem 14)
 apps/
   reference-storefront/   # a minimal Next.js app wiring the packages together for demos/tests
 docs/
@@ -84,6 +86,8 @@ external consumer, not just the in-repo reference app.
 | 10 | Customer Account | core, checkout-orders (read-only) | [subsystems/10-customer-account.md](subsystems/10-customer-account.md) |
 | 11 | Inventory | core, catalog (read-only) | [subsystems/11-inventory.md](subsystems/11-inventory.md) |
 | 12 | Plugins & Extensibility | core, event bus | [subsystems/12-plugins-extensibility.md](subsystems/12-plugins-extensibility.md) |
+| 13 | Analytics & Tracking | core, event bus (subscriber only) | [subsystems/13-analytics-tracking.md](subsystems/13-analytics-tracking.md) |
+| 14 | AI/MCP Interface | public interfaces of every subsystem it wraps | [subsystems/14-ai-mcp-interface.md](subsystems/14-ai-mcp-interface.md) |
 
 Reading order for anyone new: 00 → 01 → 02 → then whichever subsystem you're actually working
 on. 00 is the only doc every other subsystem doc assumes you've read.
@@ -110,8 +114,20 @@ on. 00 is the only doc every other subsystem doc assumes you've read.
 5. **Events over direct calls for side effects.** Anything that's "X happened, now Y should
    react" (order placed → decrement inventory; checkout completed → notify) goes through the
    event bus, never a direct import from one subsystem into another's internals.
-6. **Give it away.** MIT license, public repo, no telemetry phone-home, no paid tier baked into
-   the core. `shop.mdostal.com` is proof-by-use, not a upsell funnel for this project.
+6. **Give it away.** MIT license, public repo, no *forced* telemetry phone-home to us as the
+   project maintainers, no paid tier baked into the core. `shop.mdostal.com` is proof-by-use,
+   not a upsell funnel for this project. (Distinct from subsystem 13: a *deployment's own*
+   analytics — their PostHog, their events — is an opt-out-able plugin for the deployer's
+   benefit, not data flowing back to us.)
+7. **Analytics on by default, not bolted on.** Every subsystem already publishes semantic
+   events to the bus for its own reasons; analytics (13) is purely a subscriber to that same
+   stream, shipping with a PostHog adapter enabled by default. Adding/swapping analytics
+   providers is a config change, never a per-subsystem instrumentation project.
+8. **Built for AI and human operators equally.** Every capability this framework exposes to a
+   human (shop, browse, manage catalog/CMS/inventory) is also exposed to AI agents via a
+   documented skills/tool catalog and an MCP server (14) that calls the exact same subsystem
+   interfaces — no shadow API, no reduced agent-only surface. This is a first-class design
+   goal, not a later integration.
 
 ## Open questions (repo-level, not subsystem-specific)
 1. Final project name (see `NAMING-CANDIDATES.md` — 50 candidates, pick later).

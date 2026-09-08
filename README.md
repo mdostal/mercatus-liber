@@ -4,7 +4,13 @@ A free, MIT-licensed, headless commerce framework: schema-first product/SKU cata
 pluggable database adapters, a **marketing catalog genuinely separate from the sales
 catalog** (the gap no existing free/OSS commerce platform actually fills), a per-page CMS
 instead of forced whole-site theming, a long-lived cart, adapter-based payments (Stripe first),
-and a plugin system for everything else (OMS, fulfillment, notifications).
+analytics on by default (PostHog, config-swappable), and a plugin system for everything else
+(OMS, fulfillment, notifications).
+
+Built as an **AI *and* human commerce tool from the ground up** — every capability exposed to a
+human storefront/admin UI is equally exposed to AI agents via a documented skills/tool catalog
+and an MCP server, calling the exact same subsystem interfaces. No shadow API, no reduced
+agent-only surface.
 
 **Status:** pre-alpha — architecture and subsystem planning phase, no code yet.
 
