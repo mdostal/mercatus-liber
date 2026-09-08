@@ -1,7 +1,7 @@
 id: cf-01-monorepo-scaffold-core-schema
 epic: core-foundation
 title: Monorepo scaffold + @core/schema package
-status: pending
+status: done
 complexity: medium
 methodology: classic
 depends_on: []
