@@ -40,7 +40,7 @@ blow-by-blow ledger this summarizes.
 
 ## Where things stand today
 
-**Done — the real, working core** (see `.pHive/planning/epic-backlog.md` epics 1–37, 40 for the
+**Done — the real, working core** (see `.pHive/planning/epic-backlog.md` epics 1–40, 45 for the
 full detail on every item below):
 
 - Catalog, cart, checkout, Stripe payments, orders — the base commerce loop, with two real
@@ -74,28 +74,55 @@ full detail on every item below):
   eclectic artisan/handmade-goods shop across Plants, Ceramics & Planters, Textiles & Fiber
   Arts, and Paper & Ephemera, 9 real products including a tiered Trailing Pothos in 3 pot
   sizes, `vibrant` theme by default).
+- **A real documentation feature deep-dive** (epic 38) — 8 narrative deep-dive pages
+  (`apps/docs/content-src/deep-dive/`) with real code pulled directly from the actual packages,
+  not paraphrased — Commerce Core, Theming & Design System, CMS & Marketing, Admin & Access
+  Control, Promotions & Merchandising, Business Intelligence & Analytics, Plugins & AI/Agent
+  Interface, and Adapters & Portability — plus a planning-index landing page, and
+  `sync-content.mjs` extended to publish every epic's own real `design-discussion.md` into a
+  public planning corpus (`content/planning/<epic-name>.md`) so the reasoning behind this
+  project's own decisions is public, not just conclusions. Also found and removed a stray,
+  unwired `mkdocs.yml`/`docs/index.md` duplicate left by an uncoordinated session, keeping the
+  real Nextra site the one canonical docs technology.
+- **Real database persistence plus backup/restore** (epic 39) — catalog persistence gained the
+  same env-var-driven three-state wiring every other adapter already had (`DATABASE_URL` for a
+  real Postgres adapter, else `SQLITE_FILE_PATH` for real file-backed WAL-mode SQLite, else the
+  original ephemeral in-memory default, byte-for-byte unchanged), plus a real backup/restore CLI
+  in `packages/adapter-sqlite` built on better-sqlite3's native Online Backup API rather than an
+  unsafe raw file copy. Live-verified surviving a genuine server restart and a real backup/restore
+  round-trip with byte-for-byte matching data. This work also surfaced a real follow-up gap in
+  demo-seeding idempotency, now tracked as backlog epic 48 — see "Queued, not yet started" below.
+- **SEO & AEO infrastructure** (epic 45) — real per-page `generateMetadata` (product/category/
+  search/home titles and descriptions, replacing one static "Shop" title every route previously
+  shared), canonical URLs, a live-queried `sitemap.xml` (53 real URLs) and `robots.txt`,
+  `Product`/`Organization`+`WebSite`/`BreadcrumbList`/`FAQPage` JSON-LD, and a real `llms.txt`
+  following the `llmstxt.org` convention — closing what had been zero SEO/AEO infrastructure
+  anywhere in the reference storefront, flagged by the epic 40 research pass as the single
+  highest-priority gap found.
 
-**In progress** (see the backlog for exact story-level status):
+**In progress** — nothing is genuinely mid-build right now. The backlog is drained down to work
+that's real and scoped but not yet planned or started (below), plus the open community
+invitation further down.
 
-- **Fulfillment & shipping** — a new `@mercatus-liber/fulfillment` subsystem (who/how an order
-  gets produced — self-fulfilled by default, with real Printful and Printify print-on-demand
-  adapters) and a new `@mercatus-liber/shipping` subsystem (rate shopping, label purchase,
-  tracking — manual/PirateShip by default, a real Shippo adapter for full automation).
-- **SEO & AEO infrastructure** — sitemap, meta tags, structured data, canonical URLs, and
-  answer-engine optimization (`llms.txt`, clean semantic markup, structured Q&A) for both the
-  demo storefronts and the framework's own landing/docs surfaces. Currently zero infrastructure
-  exists here — this is flagged as the single highest-priority gap found by the epic 40 research
-  pass.
-- **Analytics insights & import adapters** — tying the internal BI dashboard together with
-  *both* Google Analytics 4 and PostHog (not an either/or), plus a pluggable
+**Queued, not yet started** (see the backlog for exact status — these are this project's own
+planned work, not community-invitation items; each is real but has zero stories written yet):
+
+- **Fulfillment & shipping** (backlog epics 41–44) — a new `@mercatus-liber/fulfillment`
+  subsystem (who/how an order gets produced — self-fulfilled by default, with real Printful and
+  Printify print-on-demand adapters, both API-verified against real provider docs) and a new
+  `@mercatus-liber/shipping` subsystem (rate shopping, label purchase, tracking —
+  manual/PirateShip by default, a real Shippo adapter for full automation). Printful/Shippo are
+  additionally blocked on a real provider credential neither exists in this environment yet.
+- **Analytics insights & import adapters** (backlog epic 46) — tying the internal BI dashboard
+  together with *both* Google Analytics 4 and PostHog (not an either/or), plus a pluggable
   `AnalyticsInsightsAdapter` contract so anyone can wire in their own analytics system instead,
   surfaced as a real traffic-source/page-ranking insights view in the admin.
-- **Data backup/restore & adapter portability docs** — export/import across persistence
-  adapters, and an honest, explicit capability matrix of which subsystems are swappable today
-  and what "bring your own database" actually looks like in practice.
-- **A genuine feature deep-dive on the documentation site** — going well past the current
-  `docs/subsystems/*.md` mirror into real narrative, example-driven documentation per capability
-  area.
+- **Demo-seed idempotency** (backlog epic 48) — a real gap surfaced by epic 39's live persistence
+  verification: with real file-backed/Postgres persistence now wired, hitting an already-seeded
+  demo a second time (e.g. a restart against the same `SQLITE_FILE_PATH`) crashes with
+  `SQLITE_CONSTRAINT_UNIQUE` on `products.slug`, since every demo's seed function creates
+  products unconditionally instead of checking first. Harmless under the in-memory default; a
+  real correctness gap now that persistent demos are possible.
 
 ## Wanted, not started — the community plugin frontier
 
