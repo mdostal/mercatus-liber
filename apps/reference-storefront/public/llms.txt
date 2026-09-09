@@ -28,13 +28,12 @@ License: MIT. Give it away. (VISION.md, opening paragraph; README.md "Status"/"L
 
 ## Docs
 
-- [Documentation site](https://docs.example.com/PLACEHOLDER-set-NEXT_PUBLIC_DOCS_URL): narrative,
-  example-driven docs (architecture, every subsystem, feature deep-dives), built from this repo's
-  own docs/ with Nextra. This project's docs site is not yet bound to a real public domain --
-  the deployed URL is an operational decision (DNS/domain binding) outside this repo's scope; the
-  app itself resolves it from the `NEXT_PUBLIC_DOCS_URL` environment variable at deploy time (see
-  `app/(landing)/layout.tsx`), so this link is the same honest placeholder that variable's own
-  fallback uses rather than an invented domain.
+- [Documentation site](https://mercatus-liber-docs.vercel.app/): narrative, example-driven docs
+  (architecture, every subsystem, feature deep-dives, the full planning corpus, and the vision/
+  roadmap), built from this repo's own docs/ with Nextra. Currently served from Vercel's own
+  subdomain; a custom domain binding remains a future operational step, not a blocker.
+  The app itself resolves this URL from the `NEXT_PUBLIC_DOCS_URL` environment variable at
+  deploy time (see `app/(landing)/layout.tsx`).
 
 ## Demos
 
