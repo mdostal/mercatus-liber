@@ -186,7 +186,46 @@ function fulfillmentInfo(): AdapterInfo {
 }
 
 /**
- * Returns exactly five entries describing this instance's actual adapter
+ * Mirrors services.ts's own `shipping` map exactly (see its doc comment
+ * there, shipping-02-adapter-shippo-and-wiring): `createManualShippingAdapter()`
+ * (@mercatus-liber/shipping) is always registered under `"manual"` as the
+ * permanent, genuinely honest documented-manual-workflow default (PirateShip
+ * has no public API, confirmed by research -- see manual-adapter.ts);
+ * `SHIPPO_API_TOKEN` set and truthy additionally registers the real Shippo
+ * adapter (@mercatus-liber/adapter-shippo) under `"shippo"` -- same additive
+ * "env var truthy adds a provider, rather than swapping one" shape as
+ * `fulfillmentInfo` above. Unlike every other row in this file, "active"
+ * here does not imply live-verified -- no real Shippo account/token exists
+ * in this environment (see this story's final report and
+ * @mercatus-liber/adapter-shippo's own unit test suite for the real
+ * correctness proof against Shippo's actual, current API shape).
+ */
+function shippingInfo(): AdapterInfo {
+  if (process.env.SHIPPO_API_TOKEN) {
+    return {
+      subsystem: "Shipping",
+      adapter: "Manual (PirateShip) + Shippo (registered)",
+      detail:
+        "SHIPPO_API_TOKEN is set -- createShippoShippingAdapter() (packages/adapter-shippo) is registered " +
+        "alongside createManualShippingAdapter() (packages/shipping), always registered as the permanent " +
+        "documented-manual-workflow default",
+      status: "active",
+    };
+  }
+
+  return {
+    subsystem: "Shipping",
+    adapter: "Manual (PirateShip)",
+    detail:
+      "SHIPPO_API_TOKEN is not set -- only createManualShippingAdapter() (packages/shipping) is registered, " +
+      "a genuinely honest documented-manual-workflow default (PirateShip has no public API, confirmed by " +
+      "research), not an error state",
+    status: "active",
+  };
+}
+
+/**
+ * Returns exactly six entries describing this instance's actual adapter
  * wiring, computed fresh from process.env on every call.
  */
 export function getAdapterInfo(): AdapterInfo[] {
@@ -196,5 +235,6 @@ export function getAdapterInfo(): AdapterInfo[] {
     paymentsInfo(),
     analyticsInfo(),
     fulfillmentInfo(),
+    shippingInfo(),
   ];
 }

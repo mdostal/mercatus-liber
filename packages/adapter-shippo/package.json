@@ -1,0 +1,33 @@
+{
+  "name": "@mercatus-liber/adapter-shippo",
+  "version": "0.1.0",
+  "description": "ShippingAdapter (@mercatus-liber/shipping, epic shipping-rate-and-labels) backed by Shippo's real, current REST API: POST /shipments/ to create a Shipment and read back real carrier rates, POST /transactions/ to purchase a real label from a quoted rate, and GET /tracks/{carrier}/{tracking_number} for real tracking status. Public surface is exactly ShippingAdapter; depends on @mercatus-liber/shipping for the types it implements plus its manual adapter's carrier-detection-from-tracking-number-format helper (Shippo's tracking endpoint is addressed by carrier, but ShippingAdapter.getTrackingStatus takes only a bare tracking number), @mercatus-liber/core for the shared Money type its rate/label mapping produces, and global fetch as the real HTTP client (no new HTTP dependency introduced -- mirrors adapter-printful/adapter-printify's own convention).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/shipping": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

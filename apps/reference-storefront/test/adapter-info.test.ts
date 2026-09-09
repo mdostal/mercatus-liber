@@ -23,9 +23,10 @@ describe("getAdapterInfo", () => {
     vi.stubEnv("PRINTFUL_API_TOKEN", "");
     vi.stubEnv("PRINTIFY_API_TOKEN", "");
     vi.stubEnv("PRINTIFY_SHOP_ID", "");
+    vi.stubEnv("SHIPPO_API_TOKEN", "");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(5);
+    expect(info).toHaveLength(6);
 
     const persistence = info.find((e) => e.subsystem === "Persistence (catalog)")!;
     expect(persistence.status).toBe("active");
@@ -46,6 +47,10 @@ describe("getAdapterInfo", () => {
     const fulfillment = info.find((e) => e.subsystem === "Fulfillment")!;
     expect(fulfillment.adapter).toBe("Manual (self-fulfillment)");
     expect(fulfillment.status).toBe("active");
+
+    const shipping = info.find((e) => e.subsystem === "Shipping")!;
+    expect(shipping.adapter).toBe("Manual (PirateShip)");
+    expect(shipping.status).toBe("active");
   });
 
   it("reports file-backed SQLite as active, naming the exact path, when SQLITE_FILE_PATH is truthy and DATABASE_URL is unset", () => {
@@ -160,6 +165,23 @@ describe("getAdapterInfo", () => {
     expect(fulfillment.detail).toMatch(/printify/i);
   });
 
+  it("reports Shippo as registered alongside manual when SHIPPO_API_TOKEN is truthy", () => {
+    vi.stubEnv("SHIPPO_API_TOKEN", "fake-test-token-for-wiring-verification-only");
+
+    const shipping = getAdapterInfo().find((e) => e.subsystem === "Shipping")!;
+    expect(shipping.adapter).toBe("Manual (PirateShip) + Shippo (registered)");
+    expect(shipping.status).toBe("active");
+    expect(shipping.detail).toMatch(/shippo/i);
+  });
+
+  it("reports manual-only shipping when SHIPPO_API_TOKEN is unset", () => {
+    vi.stubEnv("SHIPPO_API_TOKEN", "");
+
+    const shipping = getAdapterInfo().find((e) => e.subsystem === "Shipping")!;
+    expect(shipping.adapter).toBe("Manual (PirateShip)");
+    expect(shipping.status).toBe("active");
+  });
+
   it("is not cached/memoized -- two calls with different env values in between reflect the current environment each time", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
     const before = getAdapterInfo().find((e) => e.subsystem === "Payments")!;
@@ -171,14 +193,14 @@ describe("getAdapterInfo", () => {
     expect(after.detail).toMatch(/test/i);
   });
 
-  it("always returns exactly five entries in the same subsystem order, persistence and CMS always active regardless of env", () => {
+  it("always returns exactly six entries in the same subsystem order, persistence and CMS always active regardless of env", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_xyz");
     vi.stubEnv("POSTHOG_API_KEY", "phc_xyz");
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(5);
-    expect(info.map((e) => e.subsystem)).toEqual(["Persistence (catalog)", "CMS", "Payments", "Analytics", "Fulfillment"]);
+    expect(info).toHaveLength(6);
+    expect(info.map((e) => e.subsystem)).toEqual(["Persistence (catalog)", "CMS", "Payments", "Analytics", "Fulfillment", "Shipping"]);
     // Persistence and CMS are always "active" (every one of their 2-3
     // states is a valid, functional configuration -- there's no
     // "unconfigured" state for either, unlike payments).
