@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { Product } from "@mercatus-liber/core";
 import { CategoryMagazineGrid } from "../../../../../components/category-magazine-grid";
@@ -7,9 +8,31 @@ import { CategoryStandardGrid } from "../../../../../components/category-standar
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { isDemoSlug, type DemoSlug } from "../../../../../lib/demos";
 import { getServicesForDemo } from "../../../../../lib/services";
+import { canonicalUrl } from "../../../../../lib/site-url";
 import { readActiveThemeBundle } from "../../../../../lib/theme-cookie";
 
 export const dynamic = "force-dynamic";
+
+/** seo-01: real per-category metadata -- title is the exact real category title, description the real category description, canonical the real absolute URL for this category. */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ demoSlug: string; slug: string }>;
+}): Promise<Metadata> {
+  const { demoSlug, slug } = await params;
+  if (!isDemoSlug(demoSlug)) return {};
+  const { marketingCatalog } = await getServicesForDemo(demoSlug);
+  const category = await marketingCatalog.getCategoryBySlug(slug);
+  if (!category) return {};
+
+  const path = `/demo/${demoSlug}/category/${category.slug}`;
+
+  return {
+    title: category.title,
+    description: category.description,
+    alternates: { canonical: canonicalUrl(path) },
+  };
+}
 
 /**
  * Template-key -> component map, the app-layer half of the theming

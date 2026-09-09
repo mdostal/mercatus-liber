@@ -1,4 +1,22 @@
+import type { Metadata } from "next";
 import { DEMO_REGISTRY, DEMO_SLUGS } from "../../lib/demos";
+import { canonicalUrl } from "../../lib/site-url";
+
+/**
+ * seo-01: real, specific metadata for the framework landing page (overriding
+ * app/(landing)/layout.tsx's own generic fallback title/description, same
+ * "page wins over layout" merge behavior generate-metadata.md documents) --
+ * sourced from README.md's own real opening lines 1-16 (the exact same
+ * lines this page's own JSX comments below already cite), not invented copy.
+ */
+export const metadata: Metadata = {
+  title: "Mercatus Liber -- Free, Open-Source Headless Commerce",
+  description:
+    "Mercatus Liber is a free, MIT-licensed, headless commerce framework -- a legitimate open-source " +
+    "alternative to Shopify, Medusa, and Saleor, with a marketing catalog genuinely separate from the sales " +
+    "catalog, and built AI-agent-accessible from the ground up.",
+  alternates: { canonical: canonicalUrl("/") },
+};
 
 /**
  * demo-routing-05: the framework landing page (design-discussion.md §3) --

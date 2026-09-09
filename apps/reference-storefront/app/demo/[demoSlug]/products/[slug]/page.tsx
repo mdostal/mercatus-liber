@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { TierPricing } from "@mercatus-liber/bundles";
 import { PdpLongScroll } from "../../../../../components/pdp-long-scroll";
@@ -8,9 +9,55 @@ import { RecommendationShelf, resolvePdpRecommendations } from "../../../../../c
 import { isDemoSlug } from "../../../../../lib/demos";
 import { isCustomizableProduct } from "../../../../../lib/seed";
 import { getServicesForDemo } from "../../../../../lib/services";
+import { canonicalUrl } from "../../../../../lib/site-url";
 import { readActiveThemeBundle } from "../../../../../lib/theme-cookie";
 
 export const dynamic = "force-dynamic";
+
+/** A description longer than this gets truncated at a word boundary for the <meta name="description"> tag -- Google's own snippet length guidance is ~155-160 chars; 160 gives a little headroom before the ellipsis. */
+const DESCRIPTION_MAX_LENGTH = 160;
+
+function truncateDescription(text: string): string {
+  if (text.length <= DESCRIPTION_MAX_LENGTH) return text;
+  const truncated = text.slice(0, DESCRIPTION_MAX_LENGTH);
+  const lastSpace = truncated.lastIndexOf(" ");
+  return `${truncated.slice(0, lastSpace > 0 ? lastSpace : DESCRIPTION_MAX_LENGTH)}...`;
+}
+
+/**
+ * seo-01: real per-product metadata -- title is the exact real product
+ * title (rendered through the demo layout's `%s | <demo displayName>`
+ * template, so the tab reads e.g. "Embroidered Dad Cap | The Print Shop"),
+ * description is the real product description (truncated sensibly per the
+ * acceptance criteria, since some seeded product descriptions run long).
+ * Calls pdp.getViewModel(slug) directly (no templateOverride -- metadata
+ * never needs a rendering template, only the real product/skus) rather than
+ * threading the page's own already-resolved viewModel through, since
+ * generateMetadata and the page component run as two separate entry points
+ * with no shared closure; Next.js memoizes identical `fetch` calls across
+ * them, and the underlying catalog reads here are cheap in-memory/SQLite
+ * lookups, not a duplicate network round trip.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ demoSlug: string; slug: string }>;
+}): Promise<Metadata> {
+  const { demoSlug, slug } = await params;
+  if (!isDemoSlug(demoSlug)) return {};
+  const { pdp } = await getServicesForDemo(demoSlug);
+  const viewModel = await pdp.getViewModel(slug);
+  if (!viewModel) return {};
+
+  const { product } = viewModel;
+  const path = `/demo/${demoSlug}/products/${product.slug}`;
+
+  return {
+    title: product.title,
+    description: truncateDescription(product.description),
+    alternates: { canonical: canonicalUrl(path) },
+  };
+}
 
 /**
  * Template-key -> component map, the app-layer half of the theming contract

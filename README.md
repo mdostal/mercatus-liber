@@ -114,5 +114,13 @@ and payment keys to get real behavior instead of a local stand-in.
   operational decision (DNS/domain binding, Vercel project creation) outside this repo's
   scope, not something to hardcode as a guess.
 
+**SEO canonical URLs** (epic 45, `seo-01-dynamic-metadata-and-canonical`):
+- `NEXT_PUBLIC_SITE_URL` — `NEXT_PUBLIC_DOCS_URL`'s sibling for `apps/reference-storefront`
+  itself: the real deployed base URL (`commerce.mdostal.com` per
+  `.pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md`) used to build
+  every page's real absolute `<link rel="canonical">` URL (`lib/site-url.ts`). Unlike
+  `NEXT_PUBLIC_DOCS_URL`'s decorative placeholder, canonical tags need to actually resolve in
+  local dev too, so unset falls back to `http://localhost:3000` rather than a placeholder.
+
 ## License
 MIT — see [`LICENSE`](LICENSE). Give it away.
