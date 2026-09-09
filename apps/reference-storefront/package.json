@@ -14,8 +14,11 @@
     "mcp": "tsx mcp-server.ts"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.1",
     "@mercatus-liber/account": "workspace:*",
+    "@mercatus-liber/adapter-clerk": "workspace:*",
     "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@mercatus-liber/admin-auth": "workspace:*",
     "@mercatus-liber/advertising": "workspace:*",
     "@mercatus-liber/ai-interface": "workspace:*",
     "@mercatus-liber/analytics": "workspace:*",

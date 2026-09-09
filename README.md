@@ -41,5 +41,53 @@ No subsystem imports another subsystem's internals. Everything talks through sha
 types, adapter interfaces, or a typed event bus. See `docs/ARCHITECTURE.md` → "Prime directive:
 no tight coupling" for the test used to catch violations.
 
+## Configuration
+Environment variables `apps/reference-storefront` actually reads (confirmed by grepping
+`process.env` across the app, not from memory). None are required to run the app locally —
+every one has a documented, harmless fallback — but real deployments need the identity-provider
+and payment keys to get real behavior instead of a local stand-in.
+
+**Admin authentication** (subsystem 21, `@mercatus-liber/admin-auth` + `@mercatus-liber/adapter-clerk`):
+- `CLERK_SECRET_KEY` — Clerk's Backend API secret key. This is the single signal the app uses to
+  decide whether Clerk is configured at all: when set, `/admin` is gated by real Clerk
+  authentication (`middleware.ts`) and the real `createClerkAdminAuthAdapter()` is wired in
+  (`lib/services.ts`); when unset, Clerk's middleware/provider are skipped entirely and the app
+  falls back to the zero-infra `createDefaultAdminAuthAdapter()` dev adapter.
+- `CLERK_PUBLISHABLE_KEY` — Clerk's publishable key identifying the Clerk instance, required
+  alongside `CLERK_SECRET_KEY` for Clerk's SDK (`<ClerkProvider>`, `clerkMiddleware()`) to
+  function. Its client-exposed equivalent, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, would also be
+  needed if this app ever renders Clerk client components directly (see
+  `packages/adapter-clerk/README.md`).
+- `ADMIN_DEV_PASSWORD` — **local-development-only fallback, never a real security boundary.**
+  Gates the dev-default admin adapter's single shared session cookie (see
+  `packages/admin-auth/src/default-adapter.ts`): whatever value this is set to must match the
+  cookie value for a session to resolve, and it always resolves to a single synthetic "owner"
+  identity. No per-user sessions, no expiry, no CSRF protection, no rate limiting. Unset means
+  no dev session can ever authenticate. Not used at all once `CLERK_SECRET_KEY` is set.
+
+**Payments** (predates this epic):
+- `STRIPE_SECRET_KEY` — Stripe's secret API key. Without it, `lib/services.ts` still constructs
+  the payments adapter (`createLazyStripeAdapter`), but it defers building the real Stripe
+  client until a payment method is actually called — so every page except checkout keeps
+  working, and checkout itself fails loudly only when actually exercised.
+- `STRIPE_WEBHOOK_SECRET` — Stripe's webhook signing secret, used to verify incoming webhook
+  events. Same empty-string fallback as `STRIPE_SECRET_KEY` above.
+
+**Analytics** (predates this epic):
+- `POSTHOG_API_KEY` — PostHog project API key, read server-side. When set, `lib/services.ts`
+  wires the real `createPostHogAdapter()`; when unset, it falls back to a deliberately valid,
+  fully-functional `createNoopAdapter()` (not an error state).
+- `POSTHOG_HOST` — optional PostHog host override, only meaningful alongside `POSTHOG_API_KEY`.
+- `NEXT_PUBLIC_POSTHOG_KEY` — PostHog project API key read client-side
+  (`lib/analytics-client.ts`), for browser-only interaction/impression events. Without it,
+  `trackEvent()` is a safe no-op that never touches the network.
+- `NEXT_PUBLIC_POSTHOG_HOST` — optional client-side PostHog host override; falls back to
+  `https://us.i.posthog.com` when unset.
+
+**Demo content**:
+- `DEMO_BRAND` — when set to `northline`, seeds the app with the "Northline Home Tech" public
+  demo content instead of the default dragon-merch seed. Any other value (including unset)
+  keeps the default seed; not required for normal operation.
+
 ## License
 MIT — see [`LICENSE`](LICENSE). Give it away.

@@ -1,0 +1,139 @@
+id: admin-auth-03-route-and-mutation-gating
+epic: admin-auth-clerk
+title: "reference-storefront: middleware, admin layout gate, requireAdminPermission on every existing admin mutation action"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [admin-auth-02-adapter-clerk]
+
+description: |
+  This is the story that actually closes the live security gap -- every prior piece of work in
+  this epic built the mechanism, this one turns it on.
+
+  Read the committed packages/admin-auth and packages/adapter-clerk public surfaces in full
+  before writing any code.
+
+  Read apps/reference-storefront/app/layout.tsx (root layout, no ClerkProvider today) and
+  apps/reference-storefront/lib/services.ts in full (fresh) -- wire `adminAuth: AdminAuthAdapter`
+  into the Services object, choosing createClerkAdminAuthAdapter() when
+  process.env.CLERK_SECRET_KEY is set, else createDefaultAdminAuthAdapter() (mirror the
+  existing pattern already used for analytics -- process.env.POSTHOG_API_KEY truthy picks
+  PostHog, else a no-op -- same two-branch shape here).
+
+  Read apps/reference-storefront/lib/actions.ts in full -- it has 12 existing "use server"
+  mutation actions across promotions/bundles/recommendations/advertising:
+  createPromotionAction, updatePromotionAction, deactivatePromotionAction, createBundleAction,
+  updateBundleAction, deactivateBundleAction, createRecommendationRuleAction,
+  updateRecommendationRuleAction, deactivateRecommendationRuleAction, createCampaignAction,
+  updateCampaignAction, deactivateCampaignAction.
+
+  Deliverables:
+  1. Add @clerk/nextjs's <ClerkProvider> wrapping the root layout
+     (apps/reference-storefront/app/layout.tsx) -- required for Clerk's client-side pieces
+     (sign-in UI) to function.
+  2. New apps/reference-storefront/middleware.ts using clerkMiddleware() from
+     @clerk/nextjs/server, with a route matcher covering /admin and every /admin/* path,
+     requiring an authenticated session (auth.protect() or the equivalent current API) for
+     those paths only -- shopper-facing routes (/, /products/*, /cart, /checkout, etc.) stay
+     completely untouched, no auth required there. Also configure the standard Next.js
+     middleware `config.matcher` to exclude static assets per Clerk's own documented
+     recommended pattern.
+  3. New apps/reference-storefront/app/admin/layout.tsx: Server Component wrapping every
+     existing admin page (this becomes the new shared parent for all of app/admin/**/page.tsx
+     -- Next.js App Router automatically applies a layout.tsx to every nested route under it,
+     no per-page changes needed for this part). Calls `adminAuth.getCurrentSession()`; if
+     null, redirect to Clerk's sign-in route (defense-in-depth alongside middleware). Render
+     a small persistent header showing the signed-in user's email + role, plus a Clerk
+     <UserButton/> or sign-out link.
+  4. In lib/actions.ts, add a small helper (or import one from packages/admin-auth) --
+     `requireAdminPermission(session: AdminSession | null, action: "mutate" | "manage_users")`
+     that throws a clear error when the session is null or hasPermission(session.role, action)
+     is false. Call it as the FIRST line of every one of the 12 mutation actions listed above,
+     with action="mutate" for all of them (none of these 12 are user-management actions --
+     that's story 04's job). Each action needs its own call to
+     `(await getServices()).adminAuth.getCurrentSession()` first, then the permission check.
+
+acceptance_criteria:
+  - "Given no auth cookie/session, when any /admin/* URL is requested, then the response is a redirect to Clerk's sign-in flow, never the admin page content"
+  - "Given a valid authenticated session with role 'viewer', when any of the 12 listed mutation actions is invoked directly, then it throws/rejects before performing any mutation (verify at least 3 of the 12 explicitly in tests, covering promotions/bundles/advertising)"
+  - "Given a valid authenticated session with role 'admin', when any of the 12 listed mutation actions is invoked, then it succeeds normally (no regression for the role this repo expects to do day-to-day operations)"
+  - "Given a valid authenticated session with role 'owner', when any of the 12 listed mutation actions is invoked, then it succeeds normally"
+  - "Given the dev default adapter (no Clerk configured) with a valid ADMIN_DEV_PASSWORD-gated session, when /admin is visited, then it renders normally (role 'owner', full access) -- proving local development still works without any Clerk account"
+  - "Given shopper-facing routes (home, PDP, cart, checkout), when visited with no session at all, then they render exactly as before this story -- zero regression for the unauthenticated shopper experience"
+
+steps:
+  - id: research
+    description: Re-read the committed admin-auth/adapter-clerk public surfaces, the current lib/actions.ts in full, and Clerk's current documented middleware API shape.
+    agent: researcher
+  - id: implement
+    description: Build the middleware, admin layout, ClerkProvider wiring, and mutation-gating per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write/extend tests covering the role-gating acceptance criteria for at least 3 of the 12 actions (promotions/bundles/advertising), and manually verify the middleware redirect + shopper-route-unaffected behavior on a real dev server using the dev-default adapter (no live Clerk needed for this verification pass).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check ALL 12 mutation actions actually got the guard (not just the 3 tested explicitly) and that no shopper-facing route was accidentally caught by the middleware matcher.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/admin-auth-clerk.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js 16 App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: All 12 mutation actions needing the requireAdminPermission guard added as their first line.
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Where adminAuth gets wired in, using the same env-var-branch pattern as analytics.
+    - path: apps/reference-storefront/app/layout.tsx
+      purpose: Root layout needing ClerkProvider added.
+
+files_to_modify:
+  - file: apps/reference-storefront/middleware.ts
+    change: New file, clerkMiddleware with an /admin/* matcher.
+  - file: apps/reference-storefront/app/admin/layout.tsx
+    change: New file, session check + signed-in-user header.
+  - file: apps/reference-storefront/app/layout.tsx
+    change: Wrap with ClerkProvider.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: requireAdminPermission guard added to all 12 existing mutation actions.
+  - file: apps/reference-storefront/lib/services.ts
+    change: Wire adminAuth (Clerk when configured, dev default otherwise).
+  - file: apps/reference-storefront/package.json
+    change: Add @clerk/nextjs and @mercatus-liber/admin-auth + @mercatus-liber/adapter-clerk dependencies.
+
+design_decisions:
+  - decision: "Middleware handles authentication (logged in or not); the admin layout + per-action guards handle authorization (which role can do what)."
+    rationale: "Route-level middleware can't cleanly express per-role, per-action rules -- the two-layer split matches design-discussion.md §3's explicit reasoning."
+
+risks:
+  - severity: high
+    description: "Missing the guard on even one of the 12 mutation actions would leave a real hole in an otherwise-fixed security gap."
+    mitigation: "The review step explicitly checks all 12, not just the tested sample -- and the acceptance criteria call this out by name."
+
+references:
+  - path: .pHive/epics/admin-auth-clerk/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: full two-layer enforcement design (middleware for authentication, layout + per-action
+      guards for authorization) this story implements.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: reference_storefront.admin_mutation_guard_coverage
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: manual review confirming all 12 mutation actions in lib/actions.ts carry the guard, plus the role-gating test suite
+  verify_at: integrate
+  owner: reviewer

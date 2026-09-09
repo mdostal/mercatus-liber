@@ -1,5 +1,8 @@
+import { cookies } from "next/headers";
 import { createAccountService, createInMemoryCustomerProfileRepository, type AccountService } from "@mercatus-liber/account";
+import { createClerkAdminAuthAdapter } from "@mercatus-liber/adapter-clerk";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
+import { ADMIN_DEV_SESSION_COOKIE, createDefaultAdminAuthAdapter, type AdminAuthAdapter } from "@mercatus-liber/admin-auth";
 import {
   createAdvertisingService,
   createInMemoryCampaignRepository,
@@ -93,6 +96,7 @@ export interface Services {
   recommendations: RecommendationsService;
   advertising: AdvertisingService;
   bi: BiMetricsAdapter;
+  adminAuth: AdminAuthAdapter;
 }
 
 /**
@@ -119,6 +123,34 @@ function createLazyStripeAdapter(config: { secretKey: string; webhookSecret: str
   };
 }
 
+/**
+ * Wraps createDefaultAdminAuthAdapter's dependency-injected cookie reader
+ * (subsystem 21, @mercatus-liber/admin-auth) with a real next/headers
+ * cookies() lookup. That adapter's `getSessionCookie` dependency is
+ * synchronous (`() => string | undefined`), matching how the package (which
+ * depends on @mercatus-liber/core only, no Next.js) was designed -- but
+ * Next's own `cookies()` is async (`Promise<ReadonlyRequestCookies>`, see
+ * node_modules/next/dist/server/request/cookies.d.ts). This wrapper's own
+ * getCurrentSession() awaits cookies() first, stashes the resolved value in
+ * `latestCookieValue`, then calls straight into the base adapter's
+ * getCurrentSession() (which has no `await` before it reads the injected
+ * closure -- see default-adapter.ts), so the read-then-consume pair below
+ * never has an await between them and nothing from a concurrent request can
+ * interleave in that window.
+ */
+function createDevAdminAuthAdapter(): AdminAuthAdapter {
+  let latestCookieValue: string | undefined;
+  const base = createDefaultAdminAuthAdapter({ getSessionCookie: () => latestCookieValue });
+  return {
+    ...base,
+    async getCurrentSession() {
+      const cookieStore = await cookies();
+      latestCookieValue = cookieStore.get(ADMIN_DEV_SESSION_COOKIE)?.value;
+      return base.getCurrentSession();
+    },
+  };
+}
+
 let servicesPromise: Promise<Services> | null = null;
 
 async function buildServices(): Promise<Services> {
@@ -132,6 +164,21 @@ async function buildServices(): Promise<Services> {
     ? createPostHogAdapter({ apiKey: process.env.POSTHOG_API_KEY, host: process.env.POSTHOG_HOST })
     : createNoopAdapter();
   registerAnalyticsSync({ events, analytics });
+
+  // Real Clerk adapter when a real Clerk account is configured; the
+  // zero-infra, local-development-only dev default otherwise -- same
+  // two-branch "env var truthy picks the real adapter, else a harmless
+  // local fallback" shape as the analytics branch above (see
+  // admin-auth-03-route-and-mutation-gating.yaml). CLERK_SECRET_KEY is also
+  // the single signal apps/reference-storefront/app/layout.tsx and
+  // app/admin/layout.tsx use to decide whether to render any Clerk UI at
+  // all -- clerkMiddleware()/<ClerkProvider> both throw immediately when
+  // Clerk isn't actually configured (confirmed by reading @clerk/nextjs's
+  // own source), so every one of those call sites must agree on the same
+  // "is Clerk configured" check.
+  const adminAuth: AdminAuthAdapter = process.env.CLERK_SECRET_KEY
+    ? createClerkAdminAuthAdapter()
+    : createDevAdminAuthAdapter();
 
   const persistence = createSqliteAdapter(":memory:");
   const catalog = createCatalogService({ persistence, events });
@@ -321,6 +368,7 @@ async function buildServices(): Promise<Services> {
     recommendations,
     advertising,
     bi,
+    adminAuth,
   };
 }
 

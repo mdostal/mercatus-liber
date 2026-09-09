@@ -1,0 +1,59 @@
+name: admin-auth-clerk
+title: Admin Authentication (Clerk)
+description: >
+  Every /admin route requires real authentication -- a genuine, silent, and currently
+  live-exploitable security gap (no auth existed anywhere in /admin before this epic). New
+  subsystem 21 (@mercatus-liber/admin-auth, core-only dependency) is the swappable
+  AdminAuthAdapter contract + a zero-infra dev default, mirroring CatalogPersistenceAdapter/
+  CmsPersistenceAdapter/BiMetricsAdapter exactly. The real, deployed implementation is a new
+  sibling package, @mercatus-liber/adapter-clerk, wrapping Clerk's Next.js and Backend SDKs --
+  the user's explicit, deliberate choice ("we will be building on clerk 100%"), not a
+  disclosed-but-deferred option. Three roles (owner/admin/viewer), role data lives in Clerk's
+  own publicMetadata (no second local database to drift). Enforced two-layered: root
+  middleware.ts (authentication) + app/admin/layout.tsx and a requireAdminPermission guard on
+  every existing admin mutation action (authorization). Live end-to-end verification is
+  pending the user's real Clerk credentials -- disclosed gap, same posture as epic 18's Sanity
+  credentials. See docs/subsystems/21-admin-auth.md and docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [security, new-subsystem, admin-ui, existing-surface-change, external-credential]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    security: "A genuine, live-exploitable gap on a real public deployment -- highest priority classification of any epic in this session"
+    new-subsystem: "Design question (contract shape, where role data lives, two-layer enforcement) required resolving before decomposition"
+    admin-ui: "New /admin/settings/users page for owner-level role management"
+    existing-surface-change: "The only epic in this wave that reaches into every prior epic's admin mutation actions at once, not just one new surface"
+    external-credential: "Real Clerk credentials are required for live verification and were not present in this environment's vault at planning time -- disclosed, tracked as an open item, not blocking the buildable-now portions"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session; user directly confirmed the Clerk-specific, adapter-shaped, three-role direction via an explicit clarifying-question exchange before planning began, which stands in for collaborative review's normal purpose here.
+
+stories:
+  - id: admin-auth-01-subsystem
+    title: "@mercatus-liber/admin-auth: AdminAuthAdapter contract, permission checks, zero-infra dev default"
+    complexity: medium
+    depends_on: []
+  - id: admin-auth-02-adapter-clerk
+    title: "@mercatus-liber/adapter-clerk: real AdminAuthAdapter over Clerk's Next.js + Backend SDKs"
+    complexity: high
+    depends_on: [admin-auth-01-subsystem]
+  - id: admin-auth-03-route-and-mutation-gating
+    title: "reference-storefront: middleware, admin layout gate, requireAdminPermission on every existing admin mutation action"
+    complexity: high
+    depends_on: [admin-auth-02-adapter-clerk]
+  - id: admin-auth-04-user-management-page
+    title: "/admin/settings/users: owner-only admin-user list + role assignment"
+    complexity: medium
+    depends_on: [admin-auth-03-route-and-mutation-gating]
+  - id: admin-auth-05-docs-and-closeout
+    title: "README env-var docs, live-verification status, epic-backlog closeout"
+    complexity: low
+    depends_on: [admin-auth-04-user-management-page]

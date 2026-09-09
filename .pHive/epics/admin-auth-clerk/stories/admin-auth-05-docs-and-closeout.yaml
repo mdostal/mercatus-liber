@@ -1,0 +1,113 @@
+id: admin-auth-05-docs-and-closeout
+epic: admin-auth-clerk
+title: "README env-var docs, live-verification status, epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [admin-auth-04-user-management-page]
+
+description: |
+  Read the root README.md in full (currently ~45 lines, no environment-variable section at
+  all -- confirm this is still true, a concurrent piece of work in this same epic wave hasn't
+  touched it).
+
+  Check whether real Clerk credentials have been added to this environment's secret vault
+  since this epic began planning (run: `portunus list 2>&1 | grep -i clerk`, or use the
+  portunus-ask skill to check for a Clerk secret for this project). Two possible outcomes,
+  handle both honestly:
+
+  CASE A -- credentials now exist: actually wire them into a local .env file (never commit
+  real secret values -- add/confirm .env* is already gitignored, which it should already be
+  per this repo's existing .gitignore), start a real dev server with
+  CLERK_SECRET_KEY/CLERK_PUBLISHABLE_KEY set, sign in through Clerk's real hosted flow, assign
+  yourself the "owner" role via Clerk's dashboard or publicMetadata directly (document exactly
+  how you did this), and verify LIVE end-to-end: /admin redirects to sign-in when logged out,
+  /admin renders after a real Clerk sign-in, /admin/settings/users shows you as owner, a role
+  change actually persists in Clerk. Report the real observed behavior.
+
+  CASE B -- no credentials exist yet: do NOT fabricate a live verification. Verify everything
+  that's verifiable without live credentials one more time (dev-default adapter's full
+  behavior on a real dev server: /admin redirects when logged out, renders when the
+  ADMIN_DEV_PASSWORD-gated dev session cookie is present with role owner, all mutation actions
+  still work under the dev-default owner role). State plainly in your report that live Clerk
+  verification remains pending real credentials, exactly like adapter-sanity's own disclosed
+  gap.
+
+  Deliverables:
+  - Add a new "## Configuration" section to README.md documenting: CLERK_SECRET_KEY,
+    CLERK_PUBLISHABLE_KEY (required for real admin auth; without them the app falls back to
+    the zero-infra dev-default adapter), ADMIN_DEV_PASSWORD (dev-only fallback, loudly marked
+    as not a real security boundary), plus the other env vars this app already reads today
+    that were never documented before this story (STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET, POSTHOG_API_KEY, POSTHOG_HOST) -- grep apps/reference-storefront/lib
+    for "process.env" one more time to make sure this list is complete and accurate, not
+    copied from memory.
+  - Add packages/adapter-clerk to the README's package list if one exists (check the README's
+    structure first -- if there's an existing list of published/plannned packages, add this
+    one to it in the right place; if no such list exists, skip this and just add the
+    Configuration section).
+  - Update .pHive/planning/epic-backlog.md: add a new numbered row for this epic (the next
+    available number after the last one currently in the table -- check with grep before
+    picking it) with status "done (5/5 stories complete)" -- or, if CASE B above applied,
+    "done (5/5 stories complete, live Clerk verification pending real credentials)" -- being
+    completely honest about which case actually happened. Include a one-paragraph description
+    matching the style of the six most recent completed rows (mention the new subsystem, the
+    Clerk-specific adapter, the three-role model, and the security-gap context this epic
+    closed). Also add a short new bullet to the "Definition of vision fully done" section (or
+    wherever the most recent similar addendum lives) noting that /admin authentication, which
+    was a completely unaddressed gap discovered during a fresh audit, is now closed.
+
+acceptance_criteria:
+  - "Given the README's new Configuration section, when read, then it lists every environment variable this app's lib/ code actually reads, verified by a fresh grep, not from memory"
+  - "Given CASE A or CASE B genuinely happened, then the report and epic-backlog.md entry both state which one honestly, with zero overclaiming of live verification that didn't happen"
+  - "Given the epic-backlog.md update, then it reads 'done' with the correct story count and an accurate description matching sibling completed rows' style"
+
+steps:
+  - id: implement
+    description: Check credential status, run whichever verification case applies, and write the README/backlog updates per the description above.
+    agent: developer
+  - id: test
+    description: Confirm the env-var list in the new README section is accurate against a fresh grep of the actual code.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the CASE A vs CASE B honesty requirement -- this is the single most important thing to get right in this story.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/admin-auth-clerk; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: README.md
+      purpose: Root README, currently has no Configuration/environment-variable section at all.
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs a new row for this epic and a vision-summary addendum.
+
+files_to_modify:
+  - file: README.md
+    change: New Configuration section.
+  - file: .pHive/planning/epic-backlog.md
+    change: New epic row; vision-summary addendum.
+
+design_decisions: []
+risks:
+  - severity: low
+    description: "Whether live Clerk credentials exist by the time this story runs is genuinely unknown at planning time."
+    mitigation: "Both cases are fully specified in this story's own description -- whichever is true, the story has a correct, honest path to follow."
+
+references:
+  - path: .pHive/epics/admin-auth-clerk/docs/design-discussion.md
+    relevant_excerpt: |
+      §4: the explicit disclosed-gap posture for live Clerk verification, matching epic 18's
+      Sanity credentials.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Docs/closeout story verified via the acceptance criteria's honesty and completeness checks; epic-backlog.md's done status is qualitative."

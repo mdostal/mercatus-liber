@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ClerkProvider } from "@clerk/nextjs";
 import { THEME_BUNDLES } from "@mercatus-liber/theming";
 import { ThemeSwitcher } from "../components/theme-switcher";
 import { readActiveThemeBundle } from "../lib/theme-cookie";
@@ -8,13 +9,28 @@ export const metadata = {
   description: "Minimal integration proof for Mercatus Liber's core-foundation packages.",
 };
 
+/**
+ * Same signal lib/services.ts uses to choose the real Clerk adminAuth
+ * adapter over the dev default. <ClerkProvider/> unconditionally throws
+ * MissingPublishableKeyError/MissingSecretKeyError the moment any
+ * Clerk-aware code runs without a real key configured, and its "keyless"
+ * auto-provisioning fallback needs live network access to Clerk's own API
+ * (confirmed by reading @clerk/nextjs@7.9.1's own ClerkProvider source) --
+ * so every route in this app, not just /admin, would break in local
+ * development without this guard. Skipping the provider entirely when
+ * Clerk isn't configured keeps every shopper-facing route rendering exactly
+ * as before this story; app/admin/layout.tsx's own adminAuth.getCurrentSession()
+ * check (the dev-default adapter, in that case) is the real /admin gate.
+ */
+const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
+
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const activeTheme = await readActiveThemeBundle();
   const rootCssVars = Object.entries(activeTheme.tokens)
     .map(([key, value]) => `${key}: ${value};`)
     .join(" ");
 
-  return (
+  const page = (
     <html lang="en">
       <head>
         {/* Real CSS custom properties from the active theme's tokens -- not just internal ThemingService state. */}
@@ -52,4 +68,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </body>
     </html>
   );
+
+  return clerkConfigured ? <ClerkProvider>{page}</ClerkProvider> : page;
 }

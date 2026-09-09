@@ -1,0 +1,135 @@
+id: admin-auth-02-adapter-clerk
+epic: admin-auth-clerk
+title: "@mercatus-liber/adapter-clerk: real AdminAuthAdapter over Clerk's Next.js + Backend SDKs"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [admin-auth-01-subsystem]
+
+description: |
+  New package packages/adapter-clerk -- mirrors packages/adapter-sanity's role: a sibling
+  package whose entire job is wrapping a third-party SDK to satisfy a subsystem's own
+  contract. This package is ALLOWED and EXPECTED to import a third-party package
+  (@clerk/nextjs) -- that's the point of an adapter-* package, not a decoupling violation.
+
+  Read the committed packages/admin-auth/src/types.ts (from a prior piece of work on this
+  same branch) for the exact AdminAuthAdapter/AdminSession/AdminRole shapes to satisfy.
+
+  Read packages/adapter-sanity/src/index.ts in full as your structural template -- same
+  package.json shape (this one depends on @mercatus-liber/admin-auth as a real dependency,
+  since it implements that package's interface, plus @clerk/nextjs), same "wraps a real SDK,
+  tested against a recording/mocked client since there's no live account in this
+  environment" disclosed-gap posture used for Sanity credentials.
+
+  IMPORTANT -- no live Clerk credentials exist in this environment as of this piece of work.
+  Build the real integration against Clerk's actual published SDK types/API shape (add
+  @clerk/nextjs as a real dependency, do not stub or fake the package itself), but test its
+  logic against a mocked/injected Clerk client rather than a live account -- structure the
+  adapter factory to accept an injectable Clerk client dependency for testability (e.g.
+  `createClerkAdminAuthAdapter(deps?: { clerkClient?: SomeClerkClientType })`, defaulting to
+  the real imported client when not provided), the same dependency-injection shape this whole
+  repo already uses everywhere for testability.
+
+  Deliverables:
+  - packages/adapter-clerk/package.json: dependencies include @mercatus-liber/admin-auth and
+    @clerk/nextjs (a real, pinned version), devDependencies -> @types/node, typescript, vitest.
+  - packages/adapter-clerk/src/index.ts: `createClerkAdminAuthAdapter(deps?): AdminAuthAdapter`
+    implementing:
+    - `getCurrentSession()`: uses Clerk's `auth()` (from @clerk/nextjs/server) to get the
+      current userId; if none, return null. If present, use `currentUser()` (or the injected
+      client's equivalent) to resolve email + `publicMetadata.role` (default to "viewer" if
+      publicMetadata.role is missing/invalid -- fail CLOSED to the least-privileged role, not
+      open, when metadata is malformed or absent).
+    - `listAdminUsers()`: uses the Clerk Backend SDK's user-list call, mapping each user to
+      { userId, email, role: user.publicMetadata.role ?? "viewer" }.
+    - `setAdminUserRole(userId, role)`: uses the Clerk Backend SDK's update-user-metadata call
+      to set `publicMetadata.role`.
+  - A README.md in packages/adapter-clerk explaining: what env vars it needs
+    (CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY -- confirm the exact names Clerk's own SDK
+    expects), that role assignment happens via Clerk's publicMetadata (so an owner using
+    Clerk's own dashboard could also set this manually, not just via this repo's own admin
+    UI), and the explicit disclosed gap: "logic-tested against a mocked client; end-to-end
+    verification against a real Clerk account is pending live credentials."
+
+acceptance_criteria:
+  - "Given an injected mock Clerk client reporting no authenticated user, when getCurrentSession() is called, then it returns null"
+  - "Given an injected mock Clerk client reporting an authenticated user with publicMetadata.role = 'admin', when getCurrentSession() is called, then it returns a session with that exact role"
+  - "Given an injected mock Clerk client reporting an authenticated user with NO publicMetadata.role set (or an invalid value), when getCurrentSession() is called, then it returns role 'viewer' (fail closed, never defaults to a more-privileged role)"
+  - "Given an injected mock Clerk client's user-list call returning 3 users with varying publicMetadata.role values, when listAdminUsers() is called, then it returns all 3 correctly mapped, with any missing/invalid role defaulting to 'viewer'"
+  - "Given setAdminUserRole(userId, 'admin') is called against an injected mock client, then the mock's update-metadata call is invoked with exactly that userId and role"
+  - "Given the real (non-mocked) @clerk/nextjs import resolves and typechecks cleanly against this package's own usage, then the package's typecheck script passes -- proving this is wired against Clerk's real, current SDK shape, not a guessed/outdated one"
+
+steps:
+  - id: research
+    description: Read packages/adapter-sanity/src/index.ts and package.json as the structural template; look up @clerk/nextjs's current published API shape (auth(), currentUser(), clerkClient's user-list/update-metadata methods) to confirm exact current method names/signatures before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the adapter-clerk package per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write vitest tests in packages/adapter-clerk/test/adapter-clerk.test.ts covering every acceptance criterion above, using an injected mock Clerk client (do not attempt any live network call).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the fail-closed default (missing/invalid role never defaults to admin/owner) and that no live Clerk call is ever attempted in the test suite.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/admin-auth-clerk.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/adapter-sanity/src/index.ts
+      purpose: Structural template for a sibling adapter-* package wrapping a real third-party SDK with a disclosed no-live-credentials testing posture.
+    - path: packages/admin-auth/src/types.ts
+      purpose: The exact AdminAuthAdapter/AdminSession/AdminRole contract this package must satisfy.
+
+files_to_modify:
+  - file: packages/adapter-clerk/package.json
+    change: New package, dependencies -> @mercatus-liber/admin-auth + @clerk/nextjs.
+  - file: packages/adapter-clerk/tsconfig.json
+    change: Extend ../../tsconfig.base.json.
+  - file: packages/adapter-clerk/src/index.ts
+    change: createClerkAdminAuthAdapter(deps?) implementing AdminAuthAdapter.
+  - file: packages/adapter-clerk/README.md
+    change: Env vars, role-via-metadata explanation, disclosed testing-gap note.
+  - file: packages/adapter-clerk/test/adapter-clerk.test.ts
+    change: Tests for every acceptance criterion, mocked Clerk client only.
+
+design_decisions:
+  - decision: "Missing or invalid publicMetadata.role always resolves to 'viewer', never a more-privileged default."
+    rationale: "Fail-closed is the only safe default for an access-control adapter -- a malformed or not-yet-set role must never accidentally grant elevated access."
+  - decision: "The adapter factory accepts an injectable Clerk client dependency, defaulting to the real import."
+    rationale: "Matches this repo's dependency-injection convention everywhere else and is what makes the fail-closed/role-mapping logic testable without live credentials."
+
+risks:
+  - severity: medium
+    description: "Live end-to-end verification against a real Clerk account cannot happen in this piece of work -- no credentials exist in this environment yet."
+    mitigation: "Explicitly disclosed in this package's own README and in the epic's final closeout story, matching epic 18's Sanity-credentials posture exactly -- not silently claimed as fully verified."
+
+references:
+  - path: .pHive/epics/admin-auth-clerk/docs/design-discussion.md
+    relevant_excerpt: |
+      §3-4 have the full reasoning for the Clerk-backed implementation and the disclosed
+      live-credentials gap this story explicitly does not paper over.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: adapter_clerk.role_mapping_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite in packages/adapter-clerk/test/adapter-clerk.test.ts
+  verify_at: integrate
+  owner: tester

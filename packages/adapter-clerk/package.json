@@ -1,0 +1,33 @@
+{
+  "name": "@mercatus-liber/adapter-clerk",
+  "version": "0.1.0",
+  "description": "AdminAuthAdapter (subsystem 21) backed by Clerk's real Next.js + Backend SDKs. Proves admin-auth is genuinely swappable, same as adapter-sanity proved for CMS persistence. Public surface is exactly AdminAuthAdapter; depends on @mercatus-liber/admin-auth only for the types it implements, plus @clerk/nextjs as the real identity provider it wraps. Role assignment lives entirely in Clerk's own publicMetadata -- this package owns no user store of its own.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/admin-auth": "workspace:*",
+    "@clerk/nextjs": "^7.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
