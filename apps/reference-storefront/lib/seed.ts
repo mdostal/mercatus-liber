@@ -27,6 +27,14 @@ interface DemoProduct {
    * can never drift out of sync.
    */
   customizable: boolean;
+  /**
+   * image-cdn epic: one real, topically-matched LoremFlickr photo per
+   * product (see Product.images's doc comment, @mercatus-liber/core) --
+   * `url` is a real, working, key-less LoremFlickr URL
+   * (https://loremflickr.com/800/600/<keyword1>,<keyword2>) chosen from the
+   * product's actual title/description, never a generic placeholder.
+   */
+  images: { url: string; alt: string }[];
 }
 
 /**
@@ -72,6 +80,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["embroidery"],
     stockUnits: 12,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/tote,canvas?lock=1", alt: "Natural canvas tote bag with a printed design, carried over the shoulder" }],
   },
   {
     slug: "embroidered-dad-cap",
@@ -84,6 +93,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["embroidery"],
     stockUnits: 5,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/cap,baseball?lock=1", alt: "Navy blue baseball-style cap with a curved brim" }],
   },
   {
     slug: "monogram-stoneware-coaster-set",
@@ -96,6 +106,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["custom-coasters"],
     stockUnits: 35,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/coaster?lock=1", alt: "Set of patterned stoneware-style coasters resting on a wooden table" }],
   },
   {
     slug: "cork-back-print-coaster-set",
@@ -108,6 +119,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["custom-coasters"],
     stockUnits: 50,
     customizable: false,
+    images: [{ url: "https://loremflickr.com/800/600/coaster,cork?lock=1", alt: "Round cork-backed coaster resting on a stone surface" }],
   },
   {
     slug: "embroidered-fleece-hoodie",
@@ -122,6 +134,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["embroidery", "apparel"],
     stockUnits: 25,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/hoodie,fleece?lock=1", alt: "Pullover hoodie with a colorful printed graphic on display" }],
   },
   {
     slug: "embroidered-cotton-tee",
@@ -134,6 +147,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["apparel"],
     stockUnits: 45,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/tshirt,cotton?lock=1", alt: "Striped cotton crewneck t-shirt displayed on a mannequin" }],
   },
   {
     slug: "custom-printed-ceramic-mug",
@@ -146,6 +160,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["drinkware"],
     stockUnits: 55,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/mug,ceramic?lock=1", alt: "Dark ceramic coffee mug photographed in dramatic lighting" }],
   },
   {
     slug: "custom-printed-travel-tumbler",
@@ -158,6 +173,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["drinkware"],
     stockUnits: 40,
     customizable: false,
+    images: [{ url: "https://loremflickr.com/800/600/thermos,steel?lock=1", alt: "Stainless steel travel thermos with visible condensation droplets" }],
   },
   // -- demo-store-catalog-depth additions below (14 new single-SKU
   // products; 4 more real multi-SKU tiered products live in
@@ -173,6 +189,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["embroidery"],
     stockUnits: 28,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/makeup-bag?lock=1", alt: "Striped zip pouch with small items laid out beside it" }],
   },
   {
     slug: "embroidered-luggage-tag",
@@ -185,6 +202,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["embroidery"],
     stockUnits: 20,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/luggage-tag,leather?lock=1", alt: "Brown leather luggage tag with a buckle strap" }],
   },
   {
     slug: "embroidered-canvas-apron",
@@ -200,6 +218,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     priceCents: 3400,
     stockUnits: 16,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/apron,waitress?lock=1", alt: "Person wearing a work apron over their clothing" }],
   },
   {
     slug: "kids-embroidered-tee",
@@ -212,6 +231,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["embroidery", "apparel"],
     stockUnits: 24,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/boy,tshirt?lock=1", alt: "Person wearing a plain crewneck t-shirt" }],
   },
   {
     slug: "birch-wood-slice-coaster-set",
@@ -224,6 +244,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["custom-coasters"],
     stockUnits: 22,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/coaster,birch?lock=1", alt: "Stack of natural wood slice coasters on a lace doily" }],
   },
   {
     slug: "marbled-resin-coaster-set",
@@ -236,6 +257,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["custom-coasters"],
     stockUnits: 30,
     customizable: false,
+    images: [{ url: "https://loremflickr.com/800/600/coaster,agate?lock=1", alt: "Round coaster with a pink and white marbled pattern" }],
   },
   {
     slug: "leather-coaster-set",
@@ -248,6 +270,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["custom-coasters"],
     stockUnits: 18,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/leather,round?lock=1", alt: "Close-up of a round leather surface with visible stitching" }],
   },
   {
     slug: "custom-etched-pint-glass-set",
@@ -260,6 +283,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["drinkware"],
     stockUnits: 34,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/glass,beer?lock=1", alt: "Glass filled with beer, beaded with condensation" }],
   },
   {
     slug: "custom-printed-enamel-camp-mug",
@@ -272,6 +296,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["drinkware"],
     stockUnits: 38,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/mug,speckled?lock=1", alt: "Two-tone speckled ceramic camp mug" }],
   },
   {
     slug: "custom-printed-can-cooler-set",
@@ -284,6 +309,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["drinkware"],
     stockUnits: 40,
     customizable: false,
+    images: [{ url: "https://loremflickr.com/800/600/beer,can?lock=1", alt: "Row of beer cans beside a poured glass" }],
   },
   {
     slug: "custom-vinyl-sticker-sheet",
@@ -296,6 +322,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["stickers-patches"],
     stockUnits: 60,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/sticker,laptop?lock=1", alt: "Sheet of small rectangular stickers with printed logos" }],
   },
   {
     slug: "embroidered-iron-on-patch-set",
@@ -311,6 +338,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     priceCents: 1800,
     stockUnits: 26,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/patch,embroidery?lock=1", alt: "Round embroidered patch with a map and lettering design" }],
   },
   {
     slug: "woven-name-patch-set",
@@ -323,6 +351,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["stickers-patches"],
     stockUnits: 32,
     customizable: true,
+    images: [{ url: "https://loremflickr.com/800/600/patch,woven?lock=1", alt: "Tomato-shaped embroidered patch on a white background" }],
   },
   {
     slug: "die-cut-vinyl-sticker-pack",
@@ -335,6 +364,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlugs: ["stickers-patches"],
     stockUnits: 70,
     customizable: false,
+    images: [{ url: "https://loremflickr.com/800/600/decal,car?lock=1", alt: "Die-cut vinyl decal shaped like a dog silhouette" }],
   },
 ];
 
@@ -363,6 +393,12 @@ interface DemoVariantProduct {
   categorySlugs: string[];
   customizable: boolean;
   tiers: DemoProductTier[];
+  /**
+   * image-cdn epic: one real, topically-matched LoremFlickr photo shared
+   * across every tier/SKU of this product (see DemoProduct.images's doc
+   * comment above -- images live on the shared Product, not per-tier/SKU).
+   */
+  images: { url: string; alt: string }[];
 }
 
 /**
@@ -386,6 +422,7 @@ const DEMO_VARIANT_PRODUCTS: DemoVariantProduct[] = [
       { size: "3-6m", label: "3-6 months", priceCents: 2000, stockUnits: 18 },
       { size: "6-12m", label: "6-12 months", priceCents: 2000, stockUnits: 14 },
     ],
+    images: [{ url: "https://loremflickr.com/800/600/onesie,baby?lock=2", alt: "Striped baby onesie laid flat" }],
   },
   {
     slug: "embroidered-quarter-zip-pullover",
@@ -404,6 +441,7 @@ const DEMO_VARIANT_PRODUCTS: DemoVariantProduct[] = [
       { size: "large", label: "Large", priceCents: 4800, stockUnits: 22 },
       { size: "x-large", label: "X-Large", priceCents: 4800, stockUnits: 12 },
     ],
+    images: [{ url: "https://loremflickr.com/800/600/fleece,pullover?lock=1", alt: "Person wearing a fleece pullover jacket outdoors" }],
   },
   {
     slug: "screen-printed-crewneck-sweatshirt",
@@ -419,6 +457,7 @@ const DEMO_VARIANT_PRODUCTS: DemoVariantProduct[] = [
       { size: "large", label: "Large", priceCents: 4600, stockUnits: 24 },
       { size: "x-large", label: "X-Large", priceCents: 4600, stockUnits: 14 },
     ],
+    images: [{ url: "https://loremflickr.com/800/600/crewneck?lock=1", alt: "Orange and gray raglan-sleeve crewneck sweatshirt on a hanger" }],
   },
   {
     slug: "custom-printed-insulated-water-bottle",
@@ -432,6 +471,7 @@ const DEMO_VARIANT_PRODUCTS: DemoVariantProduct[] = [
       { size: "20oz", label: "20oz", priceCents: 2800, stockUnits: 32 },
       { size: "32oz", label: "32oz", priceCents: 3400, stockUnits: 24 },
     ],
+    images: [{ url: "https://loremflickr.com/800/600/bottle,steel?lock=1", alt: "Stainless steel insulated water bottle standing upright" }],
   },
 ];
 
@@ -810,6 +850,7 @@ export async function seedCatalog(
       title: demo.title,
       description: demo.description,
       identifyingAttributeKeys: ["color", "size"],
+      images: demo.images,
     });
     productIdBySlug.set(demo.slug, product.id);
     await catalog.publishProduct(product.id);
@@ -839,6 +880,7 @@ export async function seedCatalog(
       title: demo.title,
       description: demo.description,
       identifyingAttributeKeys: ["color", "size"],
+      images: demo.images,
     });
     productIdBySlug.set(demo.slug, product.id);
     await catalog.publishProduct(product.id);
