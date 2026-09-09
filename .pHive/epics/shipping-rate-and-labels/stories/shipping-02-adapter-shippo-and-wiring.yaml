@@ -1,0 +1,108 @@
+id: shipping-02-adapter-shippo-and-wiring
+epic: shipping-rate-and-labels
+title: "Real @mercatus-liber/adapter-shippo, env-var wiring"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [shipping-01-subsystem-and-manual-default]
+
+description: |
+  Read the prior story's committed changes in full first -- the ShippingAdapter contract it
+  built is what this story's Shippo adapter implements.
+
+  Research Shippo's real, current REST API documentation for: authentication (API token
+  header shape), the real rate-shopping endpoint (creating a Shipment object and reading back
+  real carrier rates), the real label-purchase endpoint (creating a Transaction from a rate),
+  and real tracking (either a dedicated tracking endpoint or webhook-based updates -- confirm
+  which). Prefer an authoritative source (Shippo's official docs/OpenAPI spec) -- same
+  discipline that worked well for epics 42-43's Printful/Printify research.
+
+  Then read packages/adapter-printify/src/index.ts (the freshest sibling third-party adapter
+  built this session) as a structural reference, and packages/shipping/src/types.ts (the real
+  contract this story implements).
+
+  Build packages/adapter-shippo/ (@mercatus-liber/adapter-shippo), depending only on
+  @mercatus-liber/shipping for the types it satisfies plus a real HTTP client matching this
+  repo's convention. Implement `createShippoShippingAdapter(config: { apiToken: string })`
+  satisfying all 3 ShippingAdapter methods against Shippo's real, confirmed API shapes. Write
+  real unit tests against realistically-shaped mocked Shippo API responses.
+
+  Then wire it into apps/reference-storefront/lib/services.ts via a real `SHIPPO_API_TOKEN`
+  env-var branch, additive alongside the manual default (mirroring epics 42-43's own additive
+  wiring pattern for fulfillment adapters). Add/extend a Shipping row in lib/adapter-info.ts.
+
+acceptance_criteria:
+  - "Given Shippo's real, current API research, then the confirmed auth/rate/label/tracking shapes are documented in code comments"
+  - "Given createShippoShippingAdapter, then it satisfies all 3 ShippingAdapter methods with real request shapes, verified by unit tests against realistic mocked responses"
+  - "Given a real type-compatibility check, then this adapter fully satisfies the ShippingAdapter contract"
+  - "Given SHIPPO_API_TOKEN set, then services.ts constructs the real Shippo adapter additively alongside the manual default; given it unset, only the manual default is available"
+  - "Given lib/adapter-info.ts, then a Shipping row accurately reports which adapter(s) are active"
+  - "Given the full monorepo test suite and typecheck, then both stay green"
+
+steps:
+  - id: research
+    description: Research Shippo's real, current API docs for auth/rate/label/tracking shapes before writing any adapter code.
+    agent: researcher
+  - id: implement
+    description: Build the adapter and wire it into services.ts per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write and run real unit tests against realistically-shaped mocked Shippo responses, verify every acceptance criterion.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the adapter's request shapes genuinely match real, current Shippo API documentation, confirm the env-var wiring is additive not a swap.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/shipping-rate-and-labels.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript }
+  key_files:
+    - path: packages/shipping/src/types.ts
+      purpose: The real ShippingAdapter contract this story implements.
+    - path: packages/adapter-printify/src/index.ts
+      purpose: Freshest sibling third-party adapter -- structural reference for shape.
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Central composition root -- where the Shippo adapter gets wired via env var.
+
+files_to_modify:
+  - file: packages/adapter-shippo/package.json
+    change: New file.
+  - file: packages/adapter-shippo/src/index.ts
+    change: New file -- createShippoShippingAdapter.
+  - file: apps/reference-storefront/lib/services.ts
+    change: "Wire adapter-shippo via SHIPPO_API_TOKEN env branch, additive"
+  - file: apps/reference-storefront/lib/adapter-info.ts
+    change: "Add a Shipping row"
+
+design_decisions: []
+risks:
+  - severity: low
+    description: "Shippo's exact API shapes are unconfirmed until this story's research."
+    mitigation: "Story explicitly requires real research against current docs, same discipline that worked for epics 42-43."
+
+references:
+  - path: .pHive/epics/shipping-rate-and-labels/docs/design-discussion.md
+    relevant_excerpt: "§1c: the resolved Shippo-adapter design question this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: adapter_shippo.shipping_contract_implemented
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "ShippingAdapter contract method coverage, verified by type-compatibility check and test"
+  verify_at: integrate
+  owner: tester

@@ -1,0 +1,82 @@
+id: shipping-03-verification-and-closeout
+epic: shipping-rate-and-labels
+title: "Verification, honest credential-gap disclosure, docs, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [shipping-02-adapter-shippo-and-wiring]
+
+description: |
+  Read both prior stories' committed changes in full first.
+
+  1. Verify what's genuinely testable without a live credential: the env-var branch (both
+     states), the manual adapter's honest not-available behavior, the Shippo adapter's own unit
+     test suite, admin visibility of which adapter is active. Check honestly whether a real
+     Shippo API token exists anywhere in this environment -- state the finding plainly, do not
+     fabricate a live call.
+  2. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  3. Write docs/subsystems/23-shipping.md, matching the format/detail of recent subsystem docs
+     (e.g. docs/subsystems/22-fulfillment.md), covering the contract, the manual/PirateShip
+     default's honest limitation, the Shippo adapter, and the credential-gap disclosure.
+  4. Update .pHive/planning/epic-backlog.md: change epic 44's row to an accurate,
+     honestly-scoped "done" status naming the credential gap explicitly -- match the surrounding
+     rows' style/detail (34-39, 41-43, 45-47). This is very likely the LAST epic in this
+     session's entire fulfillment-and-shipping thread and possibly the whole backlog sweep the
+     user asked for across design/demo-depth/docs/SEO/backup/analytics/fulfillment/shipping --
+     if `.pHive/planning/epic-backlog.md` shows every epic from 34 through 47 (except any
+     explicitly deferred ones) as done at the time this story runs, say so plainly and clearly
+     in the final report.
+  5. Commit and merge feat/shipping-rate-and-labels into master with --no-ff, mirroring the
+     "Merge epic: <name> (epic NN)" convention from prior epic merges.
+
+acceptance_criteria:
+  - "Given the credential-availability check, then the final report and epic-backlog.md both honestly state whether a real Shippo token exists in this environment"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given docs/subsystems/23-shipping.md, then it exists and matches this repo's established subsystem-doc format/detail level"
+  - "Given .pHive/planning/epic-backlog.md, then epic 44's row accurately and honestly reflects done-with-a-disclosed-gap status"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Run all verification steps, write the subsystem doc, and make the backlog update per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence and honest disclosure.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and honestly scoped, confirm the merge is clean, confirm whether this really is the last epic of the full sweep.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/shipping-rate-and-labels, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 44's row updated to done-with-disclosed-gap, and is the source of truth for whether this closes the whole sweep.
+    - path: docs/subsystems/22-fulfillment.md
+      purpose: Format/detail template for the new shipping subsystem doc.
+
+files_to_modify:
+  - file: docs/subsystems/23-shipping.md
+    change: New file.
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 44 done with an honest, specific description.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/shipping-rate-and-labels/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."
