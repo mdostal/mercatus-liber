@@ -19,7 +19,7 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
     return (
       <main>
         <h1>Cart</h1>
-        <p>Your cart is empty. Browse the catalog and add something.</p>
+        <p>Your cart is empty. Take a look around and find something you like.</p>
       </main>
     );
   }

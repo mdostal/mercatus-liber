@@ -27,7 +27,7 @@ export default async function DemoHomePage({ params }: { params: Promise<{ demoS
       <main>
         <InteractionTracker eventName="page_viewed" properties={{ slug: "home" }} />
         <h1>Home</h1>
-        <p>No home page configured yet.</p>
+        <p>We're still setting up the shop -- check back soon.</p>
       </main>
     );
   }

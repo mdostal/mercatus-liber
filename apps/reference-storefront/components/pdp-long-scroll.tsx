@@ -17,7 +17,6 @@ export function PdpLongScroll({
   return (
     <main>
       <h1>{product.title}</h1>
-      <p style={{ fontSize: 12, color: "var(--color-accent)" }}>Layout: long-scroll</p>
 
       <p>{product.description}</p>
 

@@ -25,7 +25,6 @@ export function PdpTabbedDetail({
   return (
     <main>
       <h1>{product.title}</h1>
-      <p style={{ fontSize: 12, color: "var(--color-accent)" }}>Layout: tabbed-detail</p>
 
       <details open>
         <summary>Description</summary>

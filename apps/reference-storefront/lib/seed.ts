@@ -23,7 +23,8 @@ const DEMO_PRODUCTS: DemoProduct[] = [
   {
     slug: "dragon-cable-organizer",
     title: "Dragon Cable Organizer",
-    description: "A dragon-branded, multi-color 3D-printed cable organizer.",
+    description:
+      "A coiled dragon curls around your cables and keeps them off the desk for good. Multi-color 3D print, snap-fit base, no adhesive required.",
     color: "red",
     size: "large",
     priceCents: 1999,
@@ -34,7 +35,8 @@ const DEMO_PRODUCTS: DemoProduct[] = [
   {
     slug: "dragon-desk-mat",
     title: "Dragon Desk Mat",
-    description: "A dragon-branded desk mat.",
+    description:
+      "An extra-large stitched-edge desk mat with a subtle dragon-scale texture. Smooth glide for your mouse, soft landing for your wrists.",
     color: "black",
     size: "medium",
     priceCents: 2999,
@@ -138,19 +140,19 @@ async function seedCategories(marketingCatalog: MarketingCatalogService): Promis
   const merch = await marketingCatalog.createCategory({
     slug: "merch",
     title: "Merch",
-    description: "Dragon-branded merch.",
+    description: "Everything wearing our dragon, from desk gear to the pieces we're still dreaming up.",
     parentId: null,
   });
   const deskAccessories = await marketingCatalog.createCategory({
     slug: "desk-accessories",
     title: "Desk Accessories",
-    description: "Things for your desk.",
+    description: "Cable organizers, mats, and the small stuff that makes a desk feel like yours.",
     parentId: merch.id,
   });
   const printed3d = await marketingCatalog.createCategory({
     slug: "3d-printed",
     title: "3D Printed",
-    description: "Anything that came off a printer.",
+    description: "Designed in-house and printed layer by layer -- our own line of 3D-printed originals.",
     parentId: null,
   });
 
@@ -171,8 +173,8 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
       {
         componentType: "hero-banner",
         config: {
-          headline: "Mercatus Liber",
-          subheadline: "The 100% free, open-source, headless, AI-agent-accessible e-commerce kit.",
+          headline: "Dragon Merch",
+          subheadline: "Desk gear and 3D-printed originals, all wearing our dragon. New drops every season.",
         },
       },
       {

@@ -7,8 +7,8 @@ import { DEMO_REGISTRY, DEMO_SLUGS, isDemoSlug } from "../../../lib/demos";
 import { readActiveThemeBundle } from "../../../lib/theme-cookie";
 
 export const metadata = {
-  title: "Mercatus Liber -- Reference Storefront",
-  description: "Minimal integration proof for Mercatus Liber's core-foundation packages.",
+  title: "Shop",
+  description: "Browse the catalog, add to cart, and check out.",
 };
 
 /**
