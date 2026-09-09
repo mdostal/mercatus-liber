@@ -4,7 +4,13 @@ import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { hasPermission, type AdminAction, type AdminRole } from "@mercatus-liber/admin-auth";
+import {
+  ADMIN_DEV_SESSION_COOKIE,
+  hasPermission,
+  verifyDevPassword,
+  type AdminAction,
+  type AdminRole,
+} from "@mercatus-liber/admin-auth";
 import type { BundleTier, CreateBundleInput } from "@mercatus-liber/bundles";
 import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising";
 import type { ComponentInstance, PageType } from "@mercatus-liber/cms";
@@ -206,6 +212,40 @@ export async function startCheckoutAction(formData: FormData): Promise<void> {
   });
 
   redirect(result.redirectUrl);
+}
+
+/**
+ * The dev-default admin sign-in flow -- the piece that was missing entirely
+ * before this fix. app/demo/[demoSlug]/admin/layout.tsx redirects an
+ * unauthenticated visit to /sign-in, but until now nothing ever SET the
+ * ADMIN_DEV_SESSION_COOKIE that packages/admin-auth's default adapter reads
+ * -- every prior epic's live-verification that "authenticated as dev-owner"
+ * did so by crafting the cookie directly in test code, never through a real
+ * page. Only meaningful when CLERK_SECRET_KEY is unset (the dev-default
+ * path); when Clerk is configured, middleware.ts's auth.protect() redirects
+ * to Clerk's own hosted sign-in before this page is ever reached at all.
+ * Per default-adapter.ts's own documented design, the cookie's value IS the
+ * password itself, verified via verifyDevPassword() on every read -- this
+ * action doesn't change that model, only supplies the missing UI to set it.
+ */
+export async function signInDevAction(formData: FormData): Promise<void> {
+  const password = String(formData.get("password") ?? "");
+  const redirectUrl = String(formData.get("redirect_url") ?? "/");
+
+  if (!verifyDevPassword(password)) {
+    redirect(`/sign-in?error=1&redirect_url=${encodeURIComponent(redirectUrl)}`);
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(ADMIN_DEV_SESSION_COOKIE, password, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 8, // 8 hours -- a real session-length default, not indefinite.
+  });
+
+  redirect(redirectUrl);
 }
 
 export async function setThemeAction(formData: FormData): Promise<void> {

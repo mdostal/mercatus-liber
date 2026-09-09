@@ -44,7 +44,7 @@ export default async function AdminLayout({
   const session = await adminAuth.getCurrentSession();
 
   if (!session) {
-    redirect("/sign-in");
+    redirect(`/sign-in?redirect_url=${encodeURIComponent(`/demo/${demoSlug}/admin`)}`);
   }
 
   return (
