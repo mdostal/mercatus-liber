@@ -17,6 +17,10 @@ export default function AdminSettingsPage() {
         subsystem, computed fresh from the current environment on every load.
       </p>
 
+      <p>
+        <Link href="/admin/settings/users">Manage admin users</Link>
+      </p>
+
       <table style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
           <tr>

@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { hasPermission, type AdminAction } from "@mercatus-liber/admin-auth";
+import { hasPermission, type AdminAction, type AdminRole } from "@mercatus-liber/admin-auth";
 import type { BundleTier, CreateBundleInput } from "@mercatus-liber/bundles";
 import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
@@ -356,4 +356,31 @@ export async function deactivateCampaignAction(formData: FormData): Promise<void
   const { advertising } = await getServices();
   await advertising.deactivateCampaign(id);
   revalidatePath("/admin/advertising");
+}
+
+/** The three AdminRole values a role-change form is allowed to submit. Kept local, mirroring adapter-clerk's own VALID_ROLES convention. */
+const VALID_ADMIN_ROLES: readonly AdminRole[] = ["owner", "admin", "viewer"];
+
+/**
+ * admin-auth-04: the one admin UI in this epic gated to "owner" only, not
+ * "admin or owner" like every other mutation action above -- this is the
+ * SECOND of two independent owner-only gates (see app/admin/settings/
+ * users/page.tsx's own render-time getCurrentSession() check), so a
+ * non-owner session is refused here even if the page-level check were
+ * somehow bypassed. Calls requireAdminPermission with action="manage_users"
+ * (not "mutate"), which hasPermission only ever grants to "owner" -- see
+ * packages/admin-auth/src/permissions.ts.
+ */
+export async function updateAdminUserRoleAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("manage_users");
+
+  const userId = String(formData.get("userId") ?? "").trim();
+  const role = formData.get("role");
+  if (!(typeof role === "string" && (VALID_ADMIN_ROLES as readonly string[]).includes(role))) {
+    throw new Error(`Invalid role: ${String(role)}`);
+  }
+
+  const { adminAuth } = await getServices();
+  await adminAuth.setAdminUserRole(userId, role as AdminRole);
+  revalidatePath("/admin/settings/users");
 }
