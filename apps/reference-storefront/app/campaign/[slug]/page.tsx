@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CmsSection } from "../../../components/cms-sections";
+import { InteractionTracker } from "../../../components/interaction-tracker";
 import { getServices } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
 
   return (
     <main>
+      <InteractionTracker eventName="page_viewed" properties={{ slug }} />
       <h1>{page.title}</h1>
       {meta && (
         <p style={{ color: "#666" }}>

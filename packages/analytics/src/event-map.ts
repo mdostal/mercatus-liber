@@ -17,6 +17,7 @@ export const ANALYTICS_EVENT_MAP: Readonly<Record<string, string>> = Object.free
   "checkout.order.paid": "order_paid",
   "payments.payment.succeeded": "payment_succeeded",
   "payments.payment.failed": "payment_failed",
+  "promotions.redeemed": "promotion_redeemed",
 });
 
 export function resolveAnalyticsEventName(busTopic: string): string | undefined {

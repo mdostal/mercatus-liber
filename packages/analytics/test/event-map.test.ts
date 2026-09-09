@@ -34,4 +34,8 @@ describe("ANALYTICS_EVENT_MAP", () => {
     expect(resolveAnalyticsEventName("checkout.order.placed")).toBe("order_placed");
     expect(resolveAnalyticsEventName("catalog.product.created")).toBeUndefined();
   });
+
+  it("maps promotions.redeemed -- a real business event internal-bi already treats as first-class", () => {
+    expect(resolveAnalyticsEventName("promotions.redeemed")).toBe("promotion_redeemed");
+  });
 });
