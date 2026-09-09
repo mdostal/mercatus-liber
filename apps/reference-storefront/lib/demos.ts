@@ -30,16 +30,19 @@ export function isDemoSlug(value: string): value is DemoSlug {
 }
 
 /**
- * demo-routing-04: a fixed fallback demo slug for the handful of call sites
- * that render OUTSIDE any `/demo/[demoSlug]/...` route and so have no real
- * demoSlug to thread -- today that's just app/layout.tsx and app/page.tsx,
- * the pre-story-05 root landing page stub (design-discussion.md §3 says
- * these become a demo-agnostic framework landing page in demo-routing-05;
- * until that lands they still render one demo's theme/CMS content, same as
- * before this story, just via an explicit named constant instead of a
- * "TEMPORARY: hardcoded until routes move" shim comment that's now false --
- * routes have already moved). Every route actually under `/demo/[demoSlug]/`
- * must keep using its own real `params.demoSlug`, never this constant.
+ * demo-routing-04: a fixed fallback demo slug, originally for the handful
+ * of call sites that rendered OUTSIDE any `/demo/[demoSlug]/...` route and
+ * so had no real demoSlug to thread -- that was app/layout.tsx and
+ * app/page.tsx, the pre-story-05 root landing page stub. demo-routing-05
+ * moved that content to app/demo/[demoSlug]/page.tsx (using its own real
+ * `params.demoSlug`) and gave the actual root ("/") a demo-agnostic
+ * framework landing page (app/(landing)/page.tsx) that needs no demo
+ * context at all -- so as of demo-routing-05 there is no remaining call
+ * site for this constant. Left in place (not removed) as a documented,
+ * explicit default for any future call site that genuinely needs one,
+ * rather than a bare string literal repeated ad hoc. Every route actually
+ * under `/demo/[demoSlug]/` must keep using its own real
+ * `params.demoSlug`, never this constant.
  */
 export const DEFAULT_DEMO_SLUG: DemoSlug = "dragon-merch";
 

@@ -108,12 +108,10 @@ async function AdSlot({
  * the original `{ section }`-only signature) threaded in by call sites that
  * have that context, used only by the ad-slot case today.
  *
- * demo-routing-04: `demoSlug` is required (not optional) -- every real call
- * site (campaign/[slug]/page.tsx, locations/[slug]/page.tsx) already has a
- * real one from its own route params, and the one call site that doesn't
- * (app/page.tsx, the pre-story-05 landing page stub) passes
- * DEFAULT_DEMO_SLUG explicitly rather than this component silently
- * defaulting to one demo on its own.
+ * demo-routing-04/05: `demoSlug` is required (not optional) -- every call
+ * site (campaign/[slug]/page.tsx, locations/[slug]/page.tsx,
+ * app/demo/[demoSlug]/page.tsx) has a real one from its own route params,
+ * so this component never has to guess/default one on its own.
  */
 export async function CmsSection({
   demoSlug,

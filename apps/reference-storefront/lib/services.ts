@@ -170,9 +170,10 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // two-branch "env var truthy picks the real adapter, else a harmless
   // local fallback" shape as the analytics branch above (see
   // admin-auth-03-route-and-mutation-gating.yaml). CLERK_SECRET_KEY is also
-  // the single signal apps/reference-storefront/app/layout.tsx and
-  // app/admin/layout.tsx use to decide whether to render any Clerk UI at
-  // all -- clerkMiddleware()/<ClerkProvider> both throw immediately when
+  // the single signal apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+  // uses to decide whether to render <ClerkProvider/> at all (the
+  // demo-agnostic app/(landing)/layout.tsx needs no Clerk UI at all, since
+  // no admin route lives outside a demo) -- clerkMiddleware()/<ClerkProvider> both throw immediately when
   // Clerk isn't actually configured (confirmed by reading @clerk/nextjs's
   // own source), so every one of those call sites must agree on the same
   // "is Clerk configured" check.

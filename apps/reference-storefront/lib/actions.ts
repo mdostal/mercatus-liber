@@ -162,12 +162,12 @@ export async function setThemeAction(formData: FormData): Promise<void> {
   const theme = String(formData.get("theme"));
   const cookieStore = await cookies();
   cookieStore.set(themeCookieName(demoSlug), theme, { sameSite: "lax", path: "/" });
-  // No app/demo/[demoSlug]/layout.tsx exists yet (that lands in
-  // demo-routing-05) -- until then, `/demo/${demoSlug}` and `/` resolve to
-  // the exact same physical layout file (app/layout.tsx), so this scopes to
-  // that demo's own layout path today with zero behavior change, and will
-  // correctly narrow to just that demo's own layout once story 05's
-  // demo-scoped layout lands.
+  // demo-routing-05: app/demo/[demoSlug]/layout.tsx (the layout that
+  // actually renders <ThemeSwitcher/> and reads the theme cookie) now
+  // exists and is scoped to exactly this path, so this revalidates that
+  // demo's own layout only -- it never touches the other demo's layout or
+  // the demo-agnostic landing page's layout (app/(landing)/layout.tsx),
+  // which don't read this cookie at all.
   revalidatePath(`/demo/${demoSlug}`, "layout");
 }
 
