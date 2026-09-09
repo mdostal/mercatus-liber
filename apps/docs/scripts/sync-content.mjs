@@ -25,7 +25,7 @@
  * `.mdx` is required.
  */
 
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -36,6 +36,8 @@ const repoRoot = join(__dirname, '..', '..', '..')
 const appRoot = join(__dirname, '..')
 const contentDir = join(appRoot, 'content')
 const handAuthoredDir = join(appRoot, 'content-src')
+const epicsDir = join(repoRoot, '.pHive', 'epics')
+const planningDir = join(contentDir, 'planning')
 
 const sources = [
   {
@@ -67,6 +69,41 @@ for (const { from, to } of sources) {
   cpSync(from, to, { recursive: true })
   console.log(`[sync-content] synced ${from} -> ${to}`)
 }
+
+// Planning corpus: every epic's real `.pHive/epics/<name>/docs/design-discussion.md` is synced
+// into content/planning/<epic-name>.md so the public docs site can render the actual design
+// reasoning behind this project's own work, not just conclusions. Mirrors the docs/subsystems
+// sync above (same wipe-and-regenerate discipline), extended here rather than split into a
+// sibling script since it's the same "walk a source tree, copy markdown into content/" shape as
+// the `sources` loop above -- a separate script would just duplicate the existsSync/mkdirSync/
+// cpSync boilerplate for no real separation of concerns. Only the actual design-reasoning content
+// is preserved unmodified; a light front-matter-style heading is prepended noting the source epic
+// so a reader landing on the synced page knows where it came from.
+mkdirSync(planningDir, { recursive: true })
+
+let planningCount = 0
+if (existsSync(epicsDir)) {
+  const epicNames = readdirSync(epicsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+
+  for (const epicName of epicNames) {
+    const source = join(epicsDir, epicName, 'docs', 'design-discussion.md')
+    if (!existsSync(source)) continue
+
+    const body = readFileSync(source, 'utf8')
+    const dest = join(planningDir, `${epicName}.md`)
+    const banner =
+      `<!-- Synced from .pHive/epics/${epicName}/docs/design-discussion.md -- ` +
+      `content below is unmodified. -->\n\n` +
+      `> Planning corpus: this is the real design-discussion doc for epic **${epicName}**, ` +
+      `synced verbatim from this repo's own internal planning process.\n\n`
+    writeFileSync(dest, banner + body)
+    planningCount++
+  }
+}
+console.log(`[sync-content] synced ${planningCount} planning doc(s) -> ${planningDir}`)
 
 // Hand-authored, docs-site-only pages (landing page, getting-started, ...) copied in last so
 // they land in content/ alongside the synced repo docs above. This directory is real, committed

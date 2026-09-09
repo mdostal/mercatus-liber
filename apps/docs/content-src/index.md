@@ -16,6 +16,9 @@ Mercatus Liber," but "how Mercatus Liber actually works, and how to run one."
   each covering purpose, dependencies, responsibilities, explicit non-responsibilities, and
   open questions. Browse the sidebar for the full list, from `00-core-schema` through
   `21-admin-auth`.
+- **[Planning corpus](/planning-index)** — the real design-discussion behind every epic this
+  project has shipped: the actual reasoning, rejected alternatives, and evidence, not just
+  conclusions. Browse the sidebar's "planning" section for the full list.
 
 ## What's covered here vs. elsewhere
 
