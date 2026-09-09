@@ -7,6 +7,7 @@ import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog"
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 import { seedCatalog } from "./seed";
+import { seedBroadleafDemo } from "./seed-broadleaf";
 // seedNorthlineDemo actually lives in its own module (lib/seed-northline.ts),
 // not lib/seed.ts -- imported from its real location rather than re-exported
 // through lib/seed.ts to avoid introducing an indirection lib/seed.ts itself
@@ -20,7 +21,7 @@ import { seedNorthlineDemo } from "./seed-northline";
  * (`app/demo/[demoSlug]/...`, landing in a later story of this same epic)
  * picks the demo instead of a build-time environment variable.
  */
-export const DEMO_SLUGS = ["print-shop", "northline"] as const;
+export const DEMO_SLUGS = ["print-shop", "northline", "broadleaf"] as const;
 
 export type DemoSlug = (typeof DEMO_SLUGS)[number];
 
@@ -112,5 +113,15 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
     // discussion.md §1c).
     defaultThemeKey: "northline",
     seed: (deps) => seedNorthlineDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.serviceAreas),
+  },
+  broadleaf: {
+    slug: "broadleaf",
+    displayName: "Broadleaf & Co.",
+    // The warm orange/pink playful bundle -- not yet any demo's default
+    // (print-shop -> "editorial", northline -> "northline") and a genuine
+    // fit for a colorful, eclectic craft-market identity (design-
+    // discussion.md §1d).
+    defaultThemeKey: "vibrant",
+    seed: (deps) => seedBroadleafDemo(deps.catalog, deps.marketingCatalog, deps.cms),
   },
 };
