@@ -13,7 +13,7 @@ category record, and re-curate a category without touching layout code at all.
 ## CMS: five page types, one shared component vocabulary
 
 The CMS subsystem owns page *content* — not layout, which belongs to
-[theming](/theming-and-design-system) — for five page types the framework's founder named
+[theming](/deep-dive/theming-and-design-system) — for five page types the framework's founder named
 explicitly: home, category, marketing, search, and PDP, plus a sixth (`location`) added later
 for service-area pages. Every page type shares the same underlying shape: a page is a title, a
 status (`draft` or `published`), and an ordered list of **sections** — content-authored
