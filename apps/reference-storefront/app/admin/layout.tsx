@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { getServices } from "../../lib/services";
+import { getServicesForDemo } from "../../lib/services";
 
 /**
  * Same signal lib/services.ts uses to choose the real Clerk adminAuth
@@ -31,7 +31,7 @@ const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
  * local-development mode, which has no Clerk middleware running at all).
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const { adminAuth } = await getServices();
+  const { adminAuth } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const session = await adminAuth.getCurrentSession();
 
   if (!session) {

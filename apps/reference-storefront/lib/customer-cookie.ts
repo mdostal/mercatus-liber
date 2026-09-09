@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getServices } from "./services";
+import { getServicesForDemo } from "./services";
 
 const CUSTOMER_COOKIE = "ml_customer_id";
 
@@ -19,7 +19,7 @@ export async function getOrCreateCustomerId(): Promise<string> {
   const existing = await readCustomerId();
   if (existing) return existing;
 
-  const { account } = await getServices();
+  const { account } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const profile = await account.createProfile({
     email: `demo-${Date.now()}@example.com`,
     name: "Demo Shopper",

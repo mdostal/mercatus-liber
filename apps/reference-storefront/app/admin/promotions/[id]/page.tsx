@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deactivatePromotionAction, updatePromotionAction } from "../../../../lib/actions";
-import { getServices } from "../../../../lib/services";
+import { getServicesForDemo } from "../../../../lib/services";
 import { PromotionFormFields } from "../PromotionFormFields";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditPromotionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { promotions } = await getServices();
+  const { promotions } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const promotion = await promotions.getPromotion(id);
   if (!promotion) notFound();
 

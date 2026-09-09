@@ -12,7 +12,7 @@
  * general "no real Next.js request machinery in a vitest run" posture as
  * every other test in this suite.
  *
- * lib/services.ts's getServices() is mocked wholesale so each test can swap
+ * lib/services.ts's getServicesForDemo() is mocked wholesale so each test can swap
  * in whatever AdminSession (or null) it wants without needing a real Clerk
  * account or the dev-default adapter's cookie machinery -- the promotions/
  * bundles/advertising services underneath are the real, in-memory-backed
@@ -60,7 +60,7 @@ const mockAdminAuth: AdminAuthAdapter = {
 };
 
 vi.mock("../lib/services.js", () => ({
-  getServices: vi.fn(async () => ({ adminAuth: mockAdminAuth, promotions, bundles, advertising, cms })),
+  getServicesForDemo: vi.fn(async () => ({ adminAuth: mockAdminAuth, promotions, bundles, advertising, cms })),
 }));
 
 const { createCmsPageAction, deactivateBundleAction, deactivateCampaignAction, deactivatePromotionAction } = await import(

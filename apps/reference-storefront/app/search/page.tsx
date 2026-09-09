@@ -1,5 +1,5 @@
 import { InteractionTracker } from "../../components/interaction-tracker";
-import { getServices } from "../../lib/services";
+import { getServicesForDemo } from "../../lib/services";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const { search } = await getServices();
+  const { search } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const results = q ? await search.query({ text: q }) : [];
 
   return (

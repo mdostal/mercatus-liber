@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { deactivateCampaignAction } from "../../../lib/actions";
-import { getServices } from "../../../lib/services";
+import { getServicesForDemo } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ function formatTargeting(serviceAreaId: string | null, pageSlug: string | null):
 }
 
 export default async function AdminAdvertisingPage() {
-  const { advertising } = await getServices();
+  const { advertising } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const campaigns = await advertising.listCampaigns();
 
   return (

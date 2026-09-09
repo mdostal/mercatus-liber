@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { InteractionTracker } from "../../../components/interaction-tracker";
-import { getServices } from "../../../lib/services";
+import { getServicesForDemo } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { marketingCatalog, catalog } = await getServices();
+  const { marketingCatalog, catalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const category = await marketingCatalog.getCategoryBySlug(slug);
   if (!category) notFound();
 

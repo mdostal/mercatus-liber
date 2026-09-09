@@ -5,7 +5,7 @@ import { PdpTabbedDetail } from "../../../components/pdp-tabbed-detail";
 import { BundleTierSelector } from "../../../components/bundle-tier-selector";
 import { InteractionTracker } from "../../../components/interaction-tracker";
 import { RecommendationShelf, resolvePdpRecommendations } from "../../../components/recommendation-shelf";
-import { getServices } from "../../../lib/services";
+import { getServicesForDemo } from "../../../lib/services";
 import { readActiveThemeBundle } from "../../../lib/theme-cookie";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ export default async function ProductPage({
 }) {
   const { slug } = await params;
   const { template } = await searchParams;
-  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog } = await getServices();
+  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
 
   // Explicit ?template= always wins; otherwise fall back to the active
   // theme's PDP choice (a per-request, per-call override -- never mutates

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getServices } from "./services";
+import { getServicesForDemo } from "./services";
 
 const CART_COOKIE = "ml_cart_id";
 
@@ -18,7 +18,7 @@ export async function getOrCreateCartId(): Promise<string> {
   const existing = await readCartId();
   if (existing) return existing;
 
-  const { cart } = await getServices();
+  const { cart } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const created = await cart.createCart();
   const cookieStore = await cookies();
   cookieStore.set(CART_COOKIE, created.id, { httpOnly: true, sameSite: "lax", path: "/" });

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createMarketingPageAction } from "../../../../../lib/actions";
-import { getServices } from "../../../../../lib/services";
+import { getServicesForDemo } from "../../../../../lib/services";
 import { CmsSectionFields } from "../../CmsSectionFields";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  * there's no pageType field at all.
  */
 export default async function NewMarketingCmsPagePage() {
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const componentTypes = cms.components.list();
 
   return (

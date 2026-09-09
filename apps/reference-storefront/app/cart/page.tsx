@@ -2,13 +2,13 @@ import { applyCouponAction, startCheckoutAction } from "../../lib/actions";
 import { RecommendationShelf, resolveCartRecommendations } from "../../components/recommendation-shelf";
 import { readCartId } from "../../lib/cart-cookie";
 import { readCouponCode } from "../../lib/coupon-cookie";
-import { getServices } from "../../lib/services";
+import { getServicesForDemo } from "../../lib/services";
 
 export const dynamic = "force-dynamic";
 
 export default async function CartPage() {
   const cartId = await readCartId();
-  const { cart, catalog, checkout, recommendations, marketingCatalog } = await getServices();
+  const { cart, catalog, checkout, recommendations, marketingCatalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const currentCart = cartId ? await cart.getCart(cartId) : null;
 
   if (!cartId || !currentCart || currentCart.items.length === 0) {

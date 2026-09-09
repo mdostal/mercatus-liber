@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { deactivateRecommendationRuleAction } from "../../../lib/actions";
-import { getServices } from "../../../lib/services";
+import { getServicesForDemo } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminRecommendationsPage() {
-  const { recommendations, catalog } = await getServices();
+  const { recommendations, catalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const allRules = await recommendations.listRules();
 
   return (

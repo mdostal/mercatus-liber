@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { AdminRole } from "@mercatus-liber/admin-auth";
 import { updateAdminUserRoleAction } from "../../../../lib/actions";
-import { getServices } from "../../../../lib/services";
+import { getServicesForDemo } from "../../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ const ADMIN_ROLES: readonly AdminRole[] = ["owner", "admin", "viewer"];
  * must be refused here too, not just at the server action.
  */
 export default async function AdminUsersPage() {
-  const { adminAuth } = await getServices();
+  const { adminAuth } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const session = await adminAuth.getCurrentSession();
 
   if (!session || session.role !== "owner") {

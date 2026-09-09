@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deactivateBundleAction, updateBundleAction } from "../../../../lib/actions";
-import { getServices } from "../../../../lib/services";
+import { getServicesForDemo } from "../../../../lib/services";
 import { BundleFormFields } from "../BundleFormFields";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditBundlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { bundles } = await getServices();
+  const { bundles } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const bundle = await bundles.getBundle(id);
   if (!bundle) notFound();
 

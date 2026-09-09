@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import { CmsSection } from "../../../components/cms-sections";
 import { InteractionTracker } from "../../../components/interaction-tracker";
-import { getServices } from "../../../lib/services";
+import { getServicesForDemo } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
 export default async function CampaignPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const page = await cms.getPageBySlug(slug);
   if (!page || page.pageType !== "marketing") notFound();
 

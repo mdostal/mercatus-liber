@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { getServices } from "../../../lib/services";
+import { getServicesForDemo } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCatalogPage() {
-  const { catalog } = await getServices();
+  const { catalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const products = await catalog.listProducts();
 
   return (

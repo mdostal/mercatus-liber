@@ -4,14 +4,14 @@ import {
   deactivateRecommendationRuleAction,
   updateRecommendationRuleAction,
 } from "../../../../lib/actions";
-import { getServices } from "../../../../lib/services";
+import { getServicesForDemo } from "../../../../lib/services";
 import { RecommendationFormFields } from "../RecommendationFormFields";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditRecommendationRulePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { recommendations } = await getServices();
+  const { recommendations } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const rule = await recommendations.getRule(id);
   if (!rule) notFound();
 

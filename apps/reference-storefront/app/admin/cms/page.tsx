@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { publishCmsPageAction } from "../../../lib/actions";
-import { getServices } from "../../../lib/services";
+import { getServicesForDemo } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCmsPage() {
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const pages = await cms.listPages();
 
   return (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Money } from "@mercatus-liber/core";
-import { getServices } from "../../../lib/services";
+import { getServicesForDemo } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ function formatMoney(money: Money): string {
 }
 
 export default async function AdminMetricsPage() {
-  const { bi } = await getServices();
+  const { bi } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
 
   // This is a low-volume demo app with no meaningful history, so a wide
   // 365-day window is simplest -- effectively "all-time" for a reference

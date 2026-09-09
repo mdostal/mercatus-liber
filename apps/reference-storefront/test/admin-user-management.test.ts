@@ -32,7 +32,7 @@ const mockAdminAuth: AdminAuthAdapter = {
 };
 
 vi.mock("../lib/services.js", () => ({
-  getServices: vi.fn(async () => ({ adminAuth: mockAdminAuth })),
+  getServicesForDemo: vi.fn(async () => ({ adminAuth: mockAdminAuth })),
 }));
 
 const { updateAdminUserRoleAction } = await import("../lib/actions.js");

@@ -13,7 +13,7 @@ import type { CreateRuleInput } from "@mercatus-liber/recommendations";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
 import { readCouponCode, setCouponCode } from "./coupon-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
-import { getServices } from "./services";
+import { getServicesForDemo } from "./services";
 import { THEME_COOKIE } from "./theme-cookie";
 
 /**
@@ -28,7 +28,7 @@ import { THEME_COOKIE } from "./theme-cookie";
  * will call it with action="manage_users" instead.
  */
 async function requireAdminPermission(action: AdminAction): Promise<void> {
-  const { adminAuth } = await getServices();
+  const { adminAuth } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const session = await adminAuth.getCurrentSession();
   if (!session || !hasPermission(session.role, action)) {
     throw new Error(`Not authorized: this action requires "${action}" permission.`);
@@ -39,7 +39,7 @@ export async function addToCartAction(formData: FormData): Promise<void> {
   const skuId = String(formData.get("skuId"));
   const quantity = Number(formData.get("quantity") ?? 1);
   const cartId = await getOrCreateCartId();
-  const { cart } = await getServices();
+  const { cart } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await cart.addItem(cartId, skuId, quantity);
   revalidatePath("/cart");
 }
@@ -58,7 +58,7 @@ export async function addBundleTierToCartAction(formData: FormData): Promise<voi
   const bundleId = String(formData.get("bundleId"));
   const tierId = String(formData.get("tierId"));
   const cartId = await getOrCreateCartId();
-  const { bundles, cart } = await getServices();
+  const { bundles, cart } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
 
   const bundle = await bundles.getBundle(bundleId);
   const tier = bundle?.tiers.find((t) => t.id === tierId);
@@ -82,7 +82,7 @@ export async function startCheckoutAction(): Promise<void> {
 
   const customerId = await getOrCreateCustomerId();
   const couponCode = await readCouponCode();
-  const { checkout } = await getServices();
+  const { checkout } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const result = await checkout.startCheckout({
     cartId,
     // A real deployment derives this from the authenticated shopper's session;
@@ -142,7 +142,7 @@ function parsePromotionFormData(formData: FormData): CreatePromotionInput {
 
 export async function createPromotionAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
-  const { promotions } = await getServices();
+  const { promotions } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await promotions.createPromotion(parsePromotionFormData(formData));
   revalidatePath("/admin/promotions");
   redirect("/admin/promotions");
@@ -151,7 +151,7 @@ export async function createPromotionAction(formData: FormData): Promise<void> {
 export async function updatePromotionAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
-  const { promotions } = await getServices();
+  const { promotions } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const updated = await promotions.updatePromotion(id, parsePromotionFormData(formData));
   if (!updated) throw new Error(`No such promotion: ${id}`);
   revalidatePath("/admin/promotions");
@@ -161,7 +161,7 @@ export async function updatePromotionAction(formData: FormData): Promise<void> {
 export async function deactivatePromotionAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
-  const { promotions } = await getServices();
+  const { promotions } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await promotions.deactivatePromotion(id);
   revalidatePath("/admin/promotions");
 }
@@ -203,7 +203,7 @@ function parseBundleFormData(formData: FormData): CreateBundleInput {
 
 export async function createBundleAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
-  const { bundles } = await getServices();
+  const { bundles } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await bundles.createBundle(parseBundleFormData(formData));
   revalidatePath("/admin/bundles");
   redirect("/admin/bundles");
@@ -212,7 +212,7 @@ export async function createBundleAction(formData: FormData): Promise<void> {
 export async function updateBundleAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
-  const { bundles } = await getServices();
+  const { bundles } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const updated = await bundles.updateBundle(id, parseBundleFormData(formData));
   if (!updated) throw new Error(`No such bundle: ${id}`);
   revalidatePath("/admin/bundles");
@@ -222,7 +222,7 @@ export async function updateBundleAction(formData: FormData): Promise<void> {
 export async function deactivateBundleAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
-  const { bundles } = await getServices();
+  const { bundles } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await bundles.deactivateBundle(id);
   revalidatePath("/admin/bundles");
 }
@@ -253,7 +253,7 @@ function parseRecommendationRuleFormData(formData: FormData): CreateRuleInput {
 
 export async function createRecommendationRuleAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
-  const { recommendations } = await getServices();
+  const { recommendations } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await recommendations.createRule(parseRecommendationRuleFormData(formData));
   revalidatePath("/admin/recommendations");
   redirect("/admin/recommendations");
@@ -262,7 +262,7 @@ export async function createRecommendationRuleAction(formData: FormData): Promis
 export async function updateRecommendationRuleAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
-  const { recommendations } = await getServices();
+  const { recommendations } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const updated = await recommendations.updateRule(id, parseRecommendationRuleFormData(formData));
   if (!updated) throw new Error(`No such recommendation rule: ${id}`);
   revalidatePath("/admin/recommendations");
@@ -272,7 +272,7 @@ export async function updateRecommendationRuleAction(formData: FormData): Promis
 export async function deactivateRecommendationRuleAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
-  const { recommendations } = await getServices();
+  const { recommendations } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await recommendations.deactivateRule(id);
   revalidatePath("/admin/recommendations");
 }
@@ -335,7 +335,7 @@ function parseCampaignFormData(formData: FormData): CreateCampaignInput {
 
 export async function createCampaignAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
-  const { advertising } = await getServices();
+  const { advertising } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await advertising.createCampaign(parseCampaignFormData(formData));
   revalidatePath("/admin/advertising");
   redirect("/admin/advertising");
@@ -344,7 +344,7 @@ export async function createCampaignAction(formData: FormData): Promise<void> {
 export async function updateCampaignAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
-  const { advertising } = await getServices();
+  const { advertising } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const updated = await advertising.updateCampaign(id, parseCampaignFormData(formData));
   if (!updated) throw new Error(`No such campaign: ${id}`);
   revalidatePath("/admin/advertising");
@@ -354,7 +354,7 @@ export async function updateCampaignAction(formData: FormData): Promise<void> {
 export async function deactivateCampaignAction(formData: FormData): Promise<void> {
   await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
-  const { advertising } = await getServices();
+  const { advertising } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await advertising.deactivateCampaign(id);
   revalidatePath("/admin/advertising");
 }
@@ -381,7 +381,7 @@ export async function updateAdminUserRoleAction(formData: FormData): Promise<voi
     throw new Error(`Invalid role: ${String(role)}`);
   }
 
-  const { adminAuth } = await getServices();
+  const { adminAuth } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await adminAuth.setAdminUserRole(userId, role as AdminRole);
   revalidatePath("/admin/settings/users");
 }
@@ -444,7 +444,7 @@ export async function createCmsPageAction(formData: FormData): Promise<void> {
   const title = String(formData.get("title") ?? "").trim();
   const sections = parseCmsSectionFormData(formData);
 
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await cms.createPage({ pageType, slug, title, sections });
   revalidatePath("/admin/cms");
   redirect("/admin/cms");
@@ -464,7 +464,7 @@ export async function createMarketingPageAction(formData: FormData): Promise<voi
     .filter((productId) => productId.length > 0);
   const sections = parseCmsSectionFormData(formData);
 
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await cms.createMarketingPage({
     slug,
     title,
@@ -486,7 +486,7 @@ export async function updateCmsPageAction(formData: FormData): Promise<void> {
   const title = String(formData.get("title") ?? "").trim();
   const sections = parseCmsSectionFormData(formData);
 
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await cms.updatePage(id, { title, sections });
   revalidatePath("/admin/cms");
   redirect("/admin/cms");
@@ -497,7 +497,7 @@ export async function publishCmsPageAction(formData: FormData): Promise<void> {
 
   const id = String(formData.get("id") ?? "").trim();
 
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   await cms.publishPage(id);
   revalidatePath("/admin/cms");
 }

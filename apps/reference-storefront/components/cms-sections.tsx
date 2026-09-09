@@ -1,5 +1,5 @@
 import type { ComponentInstance } from "@mercatus-liber/cms";
-import { getServices } from "../lib/services";
+import { getServicesForDemo } from "../lib/services";
 
 async function HeroBanner({ config }: { config: Record<string, unknown> }) {
   return (
@@ -11,7 +11,7 @@ async function HeroBanner({ config }: { config: Record<string, unknown> }) {
 }
 
 async function CategorySpot({ config }: { config: Record<string, unknown> }) {
-  const { marketingCatalog } = await getServices();
+  const { marketingCatalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const slugs = Array.isArray(config.categorySlugs) ? (config.categorySlugs as string[]) : [];
   const categories = (await Promise.all(slugs.map((slug) => marketingCatalog.getCategoryBySlug(slug)))).filter(
     (c): c is NonNullable<typeof c> => c !== null,
@@ -32,7 +32,7 @@ async function CategorySpot({ config }: { config: Record<string, unknown> }) {
 }
 
 async function ProductGrid({ config }: { config: Record<string, unknown> }) {
-  const { catalog } = await getServices();
+  const { catalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const productIds = Array.isArray(config.productIds) ? (config.productIds as string[]) : [];
   const products = (await Promise.all(productIds.map((id) => catalog.getProduct(id)))).filter(
     (p): p is NonNullable<typeof p> => p !== null,
@@ -72,7 +72,7 @@ async function ServiceAreaInfo({ config }: { config: Record<string, unknown> }) 
  * block; when nothing is eligible, renders nothing (not an error state).
  */
 async function AdSlot({ pageSlug, serviceAreaId }: { pageSlug?: string; serviceAreaId?: string }) {
-  const { advertising } = await getServices();
+  const { advertising } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const result = await advertising.getActiveCreativeForSlot({ pageSlug, serviceAreaId });
   if (!result) return null;
 

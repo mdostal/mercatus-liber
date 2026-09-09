@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deactivateCampaignAction, updateCampaignAction } from "../../../../lib/actions";
-import { getServices } from "../../../../lib/services";
+import { getServicesForDemo } from "../../../../lib/services";
 import { CampaignFormFields } from "../CampaignFormFields";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditCampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { advertising } = await getServices();
+  const { advertising } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const campaign = await advertising.getCampaign(id);
   if (!campaign) notFound();
 

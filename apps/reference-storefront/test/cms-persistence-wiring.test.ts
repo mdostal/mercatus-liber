@@ -9,9 +9,9 @@
  * createInMemoryCmsAdapter() under the hood so the rest of buildServices()
  * (which seeds real CMS pages during construction) never makes a network
  * call. vi.resetModules() before each dynamic import of lib/services.ts is
- * required because getServices() memoizes its result in a module-scoped
- * variable -- without a fresh module instance per test, the second test
- * would just observe the first test's cached Services object.
+ * required because getServicesForDemo() memoizes its result in a
+ * module-scoped Map -- without a fresh module instance per test, the second
+ * test would just observe the first test's cached Services object.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -38,8 +38,8 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("SANITY_PROJECT_ID", "");
     vi.resetModules();
 
-    const { getServices } = await import("../lib/services.js");
-    const services = await getServices();
+    const { getServicesForDemo } = await import("../lib/services.js");
+    const services = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
 
     expect(createSanityAdapterMock).not.toHaveBeenCalled();
     // The CMS service itself is still fully functional off the in-memory
@@ -54,8 +54,8 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("SANITY_TOKEN", "tok_abc");
     vi.resetModules();
 
-    const { getServices } = await import("../lib/services.js");
-    await getServices();
+    const { getServicesForDemo } = await import("../lib/services.js");
+    await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
 
     expect(createSanityAdapterMock).toHaveBeenCalledTimes(1);
     expect(createSanityAdapterMock).toHaveBeenCalledWith({
@@ -69,8 +69,8 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("SANITY_PROJECT_ID", "proj123");
     vi.resetModules();
 
-    const { getServices } = await import("../lib/services.js");
-    await getServices();
+    const { getServicesForDemo } = await import("../lib/services.js");
+    await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
 
     expect(createSanityAdapterMock).toHaveBeenCalledWith({
       projectId: "proj123",

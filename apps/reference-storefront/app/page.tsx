@@ -1,11 +1,11 @@
 import { CmsSection } from "../components/cms-sections";
 import { InteractionTracker } from "../components/interaction-tracker";
-import { getServices } from "../lib/services";
+import { getServicesForDemo } from "../lib/services";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const home = await cms.getPageBySlug("home");
 
   if (!home) {

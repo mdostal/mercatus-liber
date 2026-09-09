@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { deactivateBundleAction } from "../../../lib/actions";
-import { getServices } from "../../../lib/services";
+import { getServicesForDemo } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminBundlesPage() {
-  const { bundles, catalog } = await getServices();
+  const { bundles, catalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const allBundles = await bundles.listBundles();
 
   return (

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createCmsPageAction } from "../../../../lib/actions";
-import { getServices } from "../../../../lib/services";
+import { getServicesForDemo } from "../../../../lib/services";
 import { CmsSectionFields } from "../CmsSectionFields";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const PAGE_TYPES = ["home", "category", "search", "pdp", "location"] as const;
 
 export default async function NewCmsPagePage() {
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
   const componentTypes = cms.components.list();
 
   return (
