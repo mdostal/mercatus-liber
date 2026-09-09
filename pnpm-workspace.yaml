@@ -11,3 +11,11 @@ minimumReleaseAgeExclude:
   - posthog-node@5.51.7
   - '@posthog/browser-common@0.8.2'
   - posthog-js@1.428.3
+overrides:
+  # Pins zod below the 4.4.0 regression that breaks nextra-theme-docs@4.6.1's Layout component
+  # ("Invalid input: expected nonoptional, received undefined -> at children"), a confirmed
+  # upstream bug (github.com/shuding/nextra issues #5034/#5008/#4989, fixed on main via #4990
+  # but not yet released as of nextra-theme-docs@4.6.1 on npm). Scoped to only zod pulled in by
+  # nextra/nextra-theme-docs (apps/docs) -- no other package in this repo depends on zod.
+  nextra>zod: 4.3.6
+  nextra-theme-docs>zod: 4.3.6

@@ -1,0 +1,46 @@
+name: docs-site
+title: Documentation Site (Nextra)
+description: >
+  No docs/wiki infrastructure exists today -- a from-scratch build. New apps/docs (Nextra +
+  Next.js App Router), auto-picked up by the existing apps/* workspace glob. Resolved design
+  question: docs/ (README.md, ARCHITECTURE.md, 22 subsystem docs) stays the single source of
+  truth, synced into apps/docs/content/ by a build-time copy script scoped entirely to
+  apps/docs's own package.json -- no root workspace config change, no duplicated/driftable
+  content. Nextra 4.6.1's peer range has no upper bound on Next.js, confirmed compatible in
+  principle with this repo's Next 16; a same-major fallback to 15.x is documented if it
+  misbehaves in practice, independent per-app. Updates the commerce.mdostal.com landing page's
+  placeholder /docs link (added in epic 31, explicitly deferred to this epic) to a real,
+  configurable value. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [docs, app-layer, new-app]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    docs: "The whole point of this epic -- a from-scratch docs/wiki build, grounded by a dedicated compatibility/setup research pass"
+    app-layer: "A new, self-contained app in apps/* -- zero changes to any existing app's code beyond one landing-page link"
+    new-app: "Central design question: how to surface existing docs/ content without duplicating it, resolved via a build-time sync script scoped to the new app only"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session; user directly confirmed the Nextra choice via an explicit clarifying-question exchange before planning began.
+
+stories:
+  - id: docs-site-01-scaffold-and-content-sync
+    title: "apps/docs: Nextra + Next.js App Router scaffold, build-time content sync from docs/"
+    complexity: medium
+    depends_on: []
+  - id: docs-site-02-narrative-content-and-landing-link
+    title: "Docs-site landing/getting-started pages; fix commerce.mdostal.com's placeholder /docs link"
+    complexity: medium
+    depends_on: [docs-site-01-scaffold-and-content-sync]
+  - id: docs-site-03-closeout
+    title: "Live verification, epic-backlog closeout"
+    complexity: low
+    depends_on: [docs-site-02-narrative-content-and-landing-link]

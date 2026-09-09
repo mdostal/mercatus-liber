@@ -1,0 +1,28 @@
+{
+  "name": "@mercatus-liber/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mercatus Liber documentation site (Nextra + Next.js App Router), built from the repo's real docs/ tree via a predev/prebuild content-sync script.",
+  "license": "MIT",
+  "scripts": {
+    "predev": "node scripts/sync-content.mjs",
+    "dev": "next",
+    "prebuild": "node scripts/sync-content.mjs",
+    "build": "next build",
+    "start": "next start",
+    "sync-content": "node scripts/sync-content.mjs"
+  },
+  "dependencies": {
+    "next": "^16.3.4",
+    "nextra": "^4.6.1",
+    "nextra-theme-docs": "^4.6.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.9.3"
+  }
+}

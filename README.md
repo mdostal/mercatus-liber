@@ -100,5 +100,13 @@ and payment keys to get real behavior instead of a local stand-in.
   demo content instead of the default dragon-merch seed. Any other value (including unset)
   keeps the default seed; not required for normal operation.
 
+**Docs site link**:
+- `NEXT_PUBLIC_DOCS_URL` — the public URL of the deployed `apps/docs` documentation site,
+  read client-side by the framework landing page's "Docs" link
+  (`app/(landing)/layout.tsx`). Unset falls back to a clearly-labeled placeholder URL rather
+  than a broken bare `/docs` link — the docs site's real, deployed public domain is an
+  operational decision (DNS/domain binding, Vercel project creation) outside this repo's
+  scope, not something to hardcode as a guess.
+
 ## License
 MIT — see [`LICENSE`](LICENSE). Give it away.

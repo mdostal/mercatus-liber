@@ -1,0 +1,104 @@
+id: docs-site-02-narrative-content-and-landing-link
+epic: docs-site
+title: "Docs-site landing/getting-started pages; fix commerce.mdostal.com's placeholder /docs link"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [docs-site-01-scaffold-and-content-sync]
+
+description: |
+  Read the committed apps/docs scaffold from the prior piece of work in full first (its
+  package.json, layout, and sync script) -- confirm the actual current state, don't assume
+  the plan matches exactly what landed.
+
+  Read apps/reference-storefront/app/(landing)/layout.tsx in full -- it has a placeholder
+  `<a href="/docs">Docs</a>` link with a comment explicitly marking it as pending this epic.
+
+  Deliverables:
+  1. A real index/landing page for the docs site itself (NOT a duplicate of
+     commerce.mdostal.com's own framework landing page -- this is a docs-specific "start here"
+     page): what's in this documentation (architecture, subsystem reference, getting started),
+     with real links into the synced content.
+  2. A getting-started page: how to actually get a store running, pointing at the
+     `create-store` skill (built in an earlier, already-merged epic --
+     .claude/skills/create-store/SKILL.md and packages/create-store/README.md are the real
+     source material, read them for accurate content, don't invent new instructions) as the
+     concrete path to provisioning a new store, plus links to the two live demo storefronts
+     (dragon-merch and Northline, both built in an already-merged epic) as "see it running"
+     proof -- read apps/reference-storefront/lib/demos.ts for their real display names/slugs.
+  3. Fix apps/reference-storefront/app/(landing)/layout.tsx's placeholder /docs link: replace
+     the hardcoded "/docs" href with a value read from an environment variable (e.g.
+     NEXT_PUBLIC_DOCS_URL) that defaults to a clearly-labeled placeholder value when unset
+     (since the real docs site's actual public domain/URL is an operational deployment
+     decision outside this piece of work's scope -- document this in a code comment, the same
+     disclosed-gap posture used throughout this whole session for anything needing a live
+     deployment/credential the user hasn't provided yet). Remove the "epic 33 hasn't landed
+     yet" comment since it now has.
+  4. Document the new environment variable (its name and purpose) in the root README.md's
+     existing Configuration section (added by an earlier, already-merged piece of work).
+
+acceptance_criteria:
+  - "Given the docs site's own index page, when visited, then it reads as a real 'start here' page for documentation, distinct from commerce.mdostal.com's own framework-pitch landing page"
+  - "Given the getting-started page, then its content about create-store is accurate to the real, current SKILL.md/README.md content, not invented or stale"
+  - "Given apps/reference-storefront/app/(landing)/layout.tsx, when NEXT_PUBLIC_DOCS_URL is unset, then the Docs link points at a clearly-labeled placeholder (not a broken bare '/docs' with no explanation); when the env var IS set, then the link uses that real value"
+  - "Given README.md's Configuration section, then the new environment variable is documented there accurately"
+
+steps:
+  - id: research
+    description: Re-read the committed apps/docs scaffold, the create-store skill/README, and the landing layout's current placeholder link before writing anything.
+    agent: researcher
+  - id: implement
+    description: Build the docs-site landing/getting-started content and fix the placeholder link per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify on a dev server that both new docs pages render correctly, and that the reference-storefront's landing page's Docs link behaves correctly both with and without the new env var set.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the getting-started content is genuinely accurate to the real create-store skill/README content, not paraphrased inaccurately.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/docs-site.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router + Nextra, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .claude/skills/create-store/SKILL.md
+      purpose: Real source material for the getting-started page's store-provisioning content.
+    - path: apps/reference-storefront/app/(landing)/layout.tsx
+      purpose: The placeholder /docs link this story fixes.
+    - path: apps/reference-storefront/lib/demos.ts
+      purpose: The real demo registry (display names/slugs) for linking to both live demos from the getting-started page.
+
+files_to_modify:
+  - file: apps/docs/content/index.mdx
+    change: New file, docs-site landing/index page (or wherever the sync script + Nextra convention expects the root content page -- confirm the exact path from the prior piece of work's committed structure).
+  - file: apps/docs/content/getting-started.mdx
+    change: New file, getting-started content.
+  - file: apps/reference-storefront/app/(landing)/layout.tsx
+    change: Placeholder /docs link replaced with an env-var-driven value.
+  - file: README.md
+    change: New environment variable documented in the Configuration section.
+
+design_decisions:
+  - decision: "The docs site's own landing page is distinct from commerce.mdostal.com's framework-pitch landing page, not a duplicate."
+    rationale: "They serve different audiences at different moments -- one sells the framework, the other orients a reader already inside the documentation."
+
+risks: []
+
+references:
+  - path: .pHive/epics/docs-site/docs/design-discussion.md
+    relevant_excerpt: |
+      §5: "The commerce.mdostal.com landing page's /docs link... gets updated to a
+      configurable, documented value rather than a hardcoded guess."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Narrative-content story verified via the acceptance criteria's manual accuracy/rendering check; not a numeric trend."
