@@ -5,7 +5,16 @@
  * `docs/` (and the repo-root README.md) at the repository root remain the single source of
  * truth for Mercatus Liber's documentation -- this script copies them into apps/docs/content/
  * (Nextra's content directory) so the docs site always renders the current, real docs instead
- * of a hand-maintained, driftable duplicate.
+ * of a hand-maintained, driftable duplicate. The repo-root README is synced to content/readme.md
+ * (not content/index.md) -- the docs site's own landing page is hand-authored content specific
+ * to this site (see below), not a copy of the repo README or commerce.mdostal.com's separate
+ * framework-pitch landing page.
+ *
+ * A second source, apps/docs/content-src/ (committed, unlike content/ itself -- see
+ * apps/docs/.gitignore), holds hand-authored pages that belong to this docs site specifically
+ * and have no equivalent anywhere else in the repo: today that's index.md (the landing page)
+ * and getting-started.md. It's copied in after the synced repo docs below, so its files land in
+ * content/ alongside them on every run.
  *
  * Run automatically as the `predev`/`prebuild` step in apps/docs/package.json. Safe to re-run
  * any number of times: it always wipes and regenerates apps/docs/content/ from scratch.
@@ -26,11 +35,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(__dirname, '..', '..', '..')
 const appRoot = join(__dirname, '..')
 const contentDir = join(appRoot, 'content')
+const handAuthoredDir = join(appRoot, 'content-src')
 
 const sources = [
   {
     from: join(repoRoot, 'README.md'),
-    to: join(contentDir, 'index.md')
+    to: join(contentDir, 'readme.md')
   },
   {
     from: join(repoRoot, 'docs', 'ARCHITECTURE.md'),
@@ -57,5 +67,15 @@ for (const { from, to } of sources) {
   cpSync(from, to, { recursive: true })
   console.log(`[sync-content] synced ${from} -> ${to}`)
 }
+
+// Hand-authored, docs-site-only pages (landing page, getting-started, ...) copied in last so
+// they land in content/ alongside the synced repo docs above. This directory is real, committed
+// source (unlike content/ itself), so these pages survive every predev/prebuild wipe-and-
+// regenerate cycle instead of needing to be written directly into the gitignored content/ dir.
+if (!existsSync(handAuthoredDir)) {
+  throw new Error(`[sync-content] expected hand-authored content dir does not exist: ${handAuthoredDir}`)
+}
+cpSync(handAuthoredDir, contentDir, { recursive: true })
+console.log(`[sync-content] synced ${handAuthoredDir} -> ${contentDir}`)
 
 console.log('[sync-content] done.')

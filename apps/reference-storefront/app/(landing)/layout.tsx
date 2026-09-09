@@ -25,7 +25,16 @@ export const metadata = {
  * (verified on a real dev server, not assumed) rather than a soft
  * client-side transition sharing one common ancestor layout.
  */
+// The docs site's real, deployed public URL is an operational decision (DNS/domain binding,
+// Vercel project creation) outside this app's scope -- see
+// .pHive/epics/docs-site/docs/design-discussion.md §5. NEXT_PUBLIC_DOCS_URL lets a real
+// deployment wire in the actual URL; unset, this falls back to a clearly-labeled placeholder
+// so the link is never silently broken or silently wrong.
+const DOCS_URL_PLACEHOLDER = "https://docs.example.com/PLACEHOLDER-set-NEXT_PUBLIC_DOCS_URL";
+
 export default function LandingRootLayout({ children }: { children: ReactNode }) {
+  const docsUrl = process.env.NEXT_PUBLIC_DOCS_URL ?? DOCS_URL_PLACEHOLDER;
+
   return (
     <html lang="en">
       <body
@@ -42,11 +51,7 @@ export default function LandingRootLayout({ children }: { children: ReactNode })
             Mercatus Liber
           </a>
           {" · "}
-          {/* Placeholder: epic 33 (the docs/wiki site) hasn't landed yet, so
-              nothing lives at /docs today -- this link is a deliberate
-              placeholder for that later piece of work, not a broken link
-              left by accident. */}
-          <a href="/docs" style={{ color: "#111" }}>
+          <a href={docsUrl} style={{ color: "#111" }}>
             Docs
           </a>
         </header>
