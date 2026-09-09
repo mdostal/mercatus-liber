@@ -1,0 +1,52 @@
+# Mercatus Liber
+
+> "Free market" (Latin). A legitimate, 100% free/open-source alternative to Shopify/Medusa/
+> Saleor/etc. -- headless, AI-agent-accessible, and built to be stood up with a single tool.
+> (README.md, lines 1-4.)
+
+A free, MIT-licensed, headless commerce framework: a schema-first product/SKU catalog with
+pluggable database adapters, a marketing catalog genuinely separate from the sales catalog (the
+gap no existing free/OSS commerce platform actually fills), a per-page CMS instead of forced
+whole-site theming, a long-lived cart, adapter-based payments (Stripe first), analytics on by
+default (PostHog, config-swappable), and a plugin system for everything else (OMS, fulfillment,
+notifications). (README.md, "A free, MIT-licensed..." paragraph.)
+
+Built as an AI *and* human commerce tool from the ground up -- every capability exposed to a
+human storefront/admin UI is equally exposed to AI agents via a documented skills/tool catalog
+and an MCP server, calling the exact same subsystem interfaces. No shadow API, no reduced
+agent-only surface. (README.md, "AI and human commerce tool" paragraph.)
+
+Not a hosted SaaS platform: the goal is something a small business, an agency, or an individual
+developer can pick up, self-host or deploy anywhere, and own outright -- no per-transaction cut,
+no forced app-store tax, no vendor lock-in. Status: pre-alpha, under active development.
+License: MIT. Give it away. (VISION.md, opening paragraph; README.md "Status"/"License" lines.)
+
+## Site
+
+- [Framework landing page](https://commerce.mdostal.com/): what Mercatus Liber is, why it exists,
+  and links out to the live demos below -- the human-facing equivalent of this file.
+
+## Docs
+
+- [Documentation site](https://docs.example.com/PLACEHOLDER-set-NEXT_PUBLIC_DOCS_URL): narrative,
+  example-driven docs (architecture, every subsystem, feature deep-dives), built from this repo's
+  own docs/ with Nextra. This project's docs site is not yet bound to a real public domain --
+  the deployed URL is an operational decision (DNS/domain binding) outside this repo's scope; the
+  app itself resolves it from the `NEXT_PUBLIC_DOCS_URL` environment variable at deploy time (see
+  `app/(landing)/layout.tsx`), so this link is the same honest placeholder that variable's own
+  fallback uses rather than an invented domain.
+
+## Demos
+
+Three genuinely separate, simultaneously-live storefronts built on this framework, all under one
+deployment via path-based routing (`/demo/<slug>`):
+
+- [The Print Shop](https://commerce.mdostal.com/demo/print-shop): embroidery, custom prints, and
+  coasters, opens on the `editorial` theme by default. (VISION.md, "Three demo stores with real
+  depth" section.)
+- [Northline Home Tech](https://commerce.mdostal.com/demo/northline): a smart-home installer, 4
+  categories, 8 real service-area location pages, tiered service SKUs, opens on the `northline`
+  theme by default. (VISION.md, same section.)
+- [Broadleaf & Co.](https://commerce.mdostal.com/demo/broadleaf): an eclectic artisan/handmade-
+  goods shop across Plants, Ceramics & Planters, Textiles & Fiber Arts, and Paper & Ephemera,
+  opens on the `vibrant` theme by default. (VISION.md, same section.)

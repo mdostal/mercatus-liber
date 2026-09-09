@@ -72,6 +72,15 @@ export interface DemoDefinition {
   slug: DemoSlug;
   /** Human-readable name for navigation links etc. (landing/demo-layout work uses this). */
   displayName: string;
+  /**
+   * seo-01: a real, one-sentence description of what this demo actually
+   * sells (not generic cart copy) -- the demo layout's root generateMetadata
+   * uses this as the fallback `<meta name="description">` for every route
+   * under this demo that doesn't define its own more specific one. Sourced
+   * from each demo's own real seed data (lib/seed.ts / lib/seed-northline.ts
+   * / lib/seed-broadleaf.ts's actual category/product titles), not invented.
+   */
+  description: string;
   seed: DemoSeedFn;
   /**
    * The @mercatus-liber/theming ThemeBundle key this demo opens with on a
@@ -89,6 +98,8 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
   "print-shop": {
     slug: "print-shop",
     displayName: "The Print Shop",
+    description:
+      "Custom embroidery, coasters, apparel, and drinkware -- small-batch print and stitch goods made to order.",
     // The warm artisan-market bundle -- the closest fit for a hand-crafted
     // embroidery/coasters shop (design-discussion.md §1c).
     defaultThemeKey: "editorial",
@@ -107,6 +118,8 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
   northline: {
     slug: "northline",
     displayName: "Northline Home Tech",
+    description:
+      "TV mounting, home theater, security cameras, networking, and smart home automation -- installed by Northline Home Tech.",
     // Northline never had a real default either (it always silently fell
     // back to THEME_BUNDLES[0], "classic") -- this retroactively fixes that,
     // finally actually applying its own existing bundle by default (design-
@@ -117,6 +130,8 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
   broadleaf: {
     slug: "broadleaf",
     displayName: "Broadleaf & Co.",
+    description:
+      "An eclectic artisan marketplace for houseplants, ceramics & planters, hand-woven textiles, and letterpress paper goods.",
     // The warm orange/pink playful bundle -- not yet any demo's default
     // (print-shop -> "editorial", northline -> "northline") and a genuine
     // fit for a colorful, eclectic craft-market identity (design-

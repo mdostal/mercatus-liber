@@ -1,9 +1,46 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { InteractionTracker } from "../../../../components/interaction-tracker";
 import { isDemoSlug } from "../../../../lib/demos";
 import { getServicesForDemo } from "../../../../lib/services";
+import { canonicalUrl } from "../../../../lib/site-url";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * seo-01: query-aware metadata -- title reflects the real query string when
+ * present (e.g. "Search: camera | Northline Home Tech", via the demo
+ * layout's title.template), a sane demo-name default when absent (falls
+ * through to the layout's own `title.default`, so no title is set here at
+ * all in the no-query case). Canonical intentionally omits the `q` search
+ * param -- `/demo/<slug>/search` is the one real canonical URL for the
+ * search feature itself; a specific query string is a filtered view of it,
+ * not a distinct indexable page (standard SEO practice for faceted/search
+ * result URLs, avoids splitting ranking signal across infinite query-string
+ * variants of the same page).
+ */
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ demoSlug: string }>;
+  searchParams: Promise<{ q?: string }>;
+}): Promise<Metadata> {
+  const { demoSlug } = await params;
+  if (!isDemoSlug(demoSlug)) return {};
+  const { q } = await searchParams;
+  const path = `/demo/${demoSlug}/search`;
+  const canonical = canonicalUrl(path);
+
+  if (!q) {
+    return { alternates: { canonical } };
+  }
+
+  return {
+    title: `Search: ${q}`,
+    alternates: { canonical },
+  };
+}
 
 export default async function SearchPage({
   params,

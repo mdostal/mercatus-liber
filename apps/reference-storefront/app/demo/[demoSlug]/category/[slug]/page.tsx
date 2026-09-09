@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { Product } from "@mercatus-liber/core";
 import { CategoryMagazineGrid } from "../../../../../components/category-magazine-grid";
@@ -6,10 +7,33 @@ import { CategorySpecGrid } from "../../../../../components/category-spec-grid";
 import { CategoryStandardGrid } from "../../../../../components/category-standard-grid";
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { isDemoSlug, type DemoSlug } from "../../../../../lib/demos";
+import { breadcrumbList, JsonLd, type BreadcrumbItem } from "../../../../../lib/json-ld";
 import { getServicesForDemo } from "../../../../../lib/services";
+import { canonicalUrl } from "../../../../../lib/site-url";
 import { readActiveThemeBundle } from "../../../../../lib/theme-cookie";
 
 export const dynamic = "force-dynamic";
+
+/** seo-01: real per-category metadata -- title is the exact real category title, description the real category description, canonical the real absolute URL for this category. */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ demoSlug: string; slug: string }>;
+}): Promise<Metadata> {
+  const { demoSlug, slug } = await params;
+  if (!isDemoSlug(demoSlug)) return {};
+  const { marketingCatalog } = await getServicesForDemo(demoSlug);
+  const category = await marketingCatalog.getCategoryBySlug(slug);
+  if (!category) return {};
+
+  const path = `/demo/${demoSlug}/category/${category.slug}`;
+
+  return {
+    title: category.title,
+    description: category.description,
+    alternates: { canonical: canonicalUrl(path) },
+  };
+}
 
 /**
  * Template-key -> component map, the app-layer half of the theming
@@ -44,8 +68,16 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
   const Template: ComponentType<{ demoSlug: DemoSlug; products: Product[] }> =
     (templateKey && CATEGORY_TEMPLATES[templateKey as keyof typeof CATEGORY_TEMPLATES]) || CategoryStandardGrid;
 
+  // seo-02: real BreadcrumbList JSON-LD (Home -> Category), matching the
+  // real nav hierarchy -- design-discussion.md §2c.
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { name: "Home", url: canonicalUrl(`/demo/${demoSlug}`) },
+    { name: category.title, url: canonicalUrl(`/demo/${demoSlug}/category/${category.slug}`) },
+  ];
+
   return (
     <main style={{ padding: "var(--space-sm, 16px)" }}>
+      <JsonLd data={breadcrumbList(breadcrumbItems)} />
       <InteractionTracker eventName="category_viewed" properties={{ categoryId: category.id, slug: category.slug }} />
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{category.title}</h1>
       <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>{category.description}</p>

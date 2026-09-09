@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ClerkProvider } from "@clerk/nextjs";
 import { THEME_BUNDLES } from "@mercatus-liber/theming";
@@ -29,10 +30,35 @@ type NavChromeProps = {
   children: ReactNode;
 };
 
-export const metadata = {
-  title: "Shop",
-  description: "Browse the catalog, add to cart, and check out.",
-};
+/**
+ * seo-01: replaces the old static `export const metadata = { title: "Shop",
+ * ... }` -- a confirmed defect (design-discussion.md §0): every route across
+ * all 3 demos shared this one literal "Shop" tab title, with zero per-page
+ * distinction. This is now a real root-template FALLBACK, not a page's own
+ * title: `title.default` is what a leaf route gets if it doesn't define its
+ * own `title` (the demo home page, which has none today -- confirmed by
+ * reading app/demo/[demoSlug]/page.tsx), and `title.template` is what wraps
+ * any leaf route's own title (PDP/category/search below all set one), per
+ * generate-metadata.md's own "title.template applies to child route
+ * segments" documented behavior.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ demoSlug: string }>;
+}): Promise<Metadata> {
+  const { demoSlug } = await params;
+  if (!isDemoSlug(demoSlug)) return {};
+  const demo = DEMO_REGISTRY[demoSlug];
+
+  return {
+    title: {
+      template: `%s | ${demo.displayName}`,
+      default: demo.displayName,
+    },
+    description: demo.description,
+  };
+}
 
 /**
  * Same signal lib/services.ts uses to choose the real Clerk adminAuth

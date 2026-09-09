@@ -1,0 +1,86 @@
+id: seo-03-aeo-and-verification
+epic: seo-aeo-infrastructure
+title: "llms.txt, FAQPage schema, full live verification, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [seo-02-sitemap-robots-structured-data]
+
+description: |
+  Read both prior stories' committed changes in full first. Read
+  .pHive/epics/seo-aeo-infrastructure/docs/design-discussion.md §2d in full.
+
+  1. Create apps/reference-storefront/public/llms.txt (the emerging plain-text convention for
+     AI crawlers/agents -- research its real current format expectations before writing, don't
+     invent a shape) summarizing what Mercatus Liber is, that it's free/open-source, and real
+     links to the framework landing page, the docs site, and the 3 live demo stores. Source the
+     actual descriptive text from README.md/VISION.md's real content, not invented copy.
+  2. Add a real `FAQPage` JSON-LD block to the framework landing page answering genuinely common
+     questions a prospective adopter would ask (what is it, is it free, can I self-host it, what
+     payment/CMS/auth providers does it support) -- source every answer from real content already
+     in README.md/VISION.md/the docs deep-dive pages, not invented claims.
+  3. Full live verification against a real dev server: fetch and validate /sitemap.xml,
+     /robots.txt, /llms.txt; fetch at least 3 real PDPs across different demos and confirm each
+     has a distinct real title, canonical URL, and valid Product JSON-LD; fetch the landing page
+     and confirm real Organization/WebSite/FAQPage JSON-LD; confirm zero pages still show the
+     old generic "Shop" title anywhere.
+  4. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  5. Update .pHive/planning/epic-backlog.md: change epic 45's row to "done (3/3 stories
+     complete)", with a description naming the confirmed pre-epic defect (every page sharing one
+     static "Shop" title), the generateMetadata/sitemap/robots/JSON-LD/llms.txt/FAQPage work,
+     matching the style/detail of surrounding rows.
+  6. Commit and merge feat/seo-aeo-infrastructure into master with --no-ff, mirroring the "Merge
+     epic: <name> (epic NN)" convention from prior epic merges.
+
+acceptance_criteria:
+  - "Given /llms.txt, then it's real, fetchable, and accurately describes the framework with real links"
+  - "Given the landing page, then valid FAQPage JSON-LD is present with real, accurate answers sourced from this repo's own real content"
+  - "Given a repo-wide check, then zero pages still render the old generic 'Shop' title"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given .pHive/planning/epic-backlog.md, then epic 45's row reads done (3/3 stories complete) with an accurate, specific description"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Make the llms.txt/FAQPage changes and run all verification steps per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and the merge is clean.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/seo-aeo-infrastructure, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 45's row updated to done.
+
+files_to_modify:
+  - file: apps/reference-storefront/public/llms.txt
+    change: New file.
+  - file: "apps/reference-storefront/app/(landing)/page.tsx"
+    change: Add FAQPage JSON-LD.
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 45 done with an accurate description.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/seo-aeo-infrastructure/docs/design-discussion.md
+    relevant_excerpt: "§2d: the resolved AEO scope this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."

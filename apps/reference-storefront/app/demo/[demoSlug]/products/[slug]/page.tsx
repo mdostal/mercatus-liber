@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { TierPricing } from "@mercatus-liber/bundles";
 import { PdpLongScroll } from "../../../../../components/pdp-long-scroll";
@@ -6,11 +7,100 @@ import { BundleTierSelector } from "../../../../../components/bundle-tier-select
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { RecommendationShelf, resolvePdpRecommendations } from "../../../../../components/recommendation-shelf";
 import { isDemoSlug } from "../../../../../lib/demos";
+import { breadcrumbList, JsonLd, type BreadcrumbItem } from "../../../../../lib/json-ld";
 import { isCustomizableProduct } from "../../../../../lib/seed";
 import { getServicesForDemo } from "../../../../../lib/services";
+import { canonicalUrl } from "../../../../../lib/site-url";
 import { readActiveThemeBundle } from "../../../../../lib/theme-cookie";
 
 export const dynamic = "force-dynamic";
+
+/** A description longer than this gets truncated at a word boundary for the <meta name="description"> tag -- Google's own snippet length guidance is ~155-160 chars; 160 gives a little headroom before the ellipsis. */
+const DESCRIPTION_MAX_LENGTH = 160;
+
+function truncateDescription(text: string): string {
+  if (text.length <= DESCRIPTION_MAX_LENGTH) return text;
+  const truncated = text.slice(0, DESCRIPTION_MAX_LENGTH);
+  const lastSpace = truncated.lastIndexOf(" ");
+  return `${truncated.slice(0, lastSpace > 0 ? lastSpace : DESCRIPTION_MAX_LENGTH)}...`;
+}
+
+/**
+ * seo-02: builds the real schema.org `offers` value for a PDP's Product
+ * JSON-LD, reusing the exact `viewModel.skus`/`stockBySkuId` data already
+ * computed by ProductPage below (no redundant fetch) -- a single real
+ * `Offer` for a single-SKU product (the common case), a real `AggregateOffer`
+ * (low/high price across the product's own real SKUs) when it has more than
+ * one, matching schema.org's own guidance for a variant product. Returns
+ * undefined for the (unexpected) zero-SKU case rather than emitting a
+ * fabricated price.
+ */
+function buildProductOffers(
+  skus: { id: string; price: { amount: number; currency: string } }[],
+  stockBySkuId: Record<string, number>,
+  url: string,
+): Record<string, unknown> | undefined {
+  if (skus.length === 0) return undefined;
+
+  const currency = skus[0]!.price.currency;
+  const amounts = skus.map((sku) => sku.price.amount);
+  const anyInStock = skus.some((sku) => (stockBySkuId[sku.id] ?? 0) > 0);
+  const availability = anyInStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
+
+  if (skus.length === 1) {
+    return {
+      "@type": "Offer",
+      priceCurrency: currency,
+      price: (amounts[0]! / 100).toFixed(2),
+      availability,
+      url,
+    };
+  }
+
+  return {
+    "@type": "AggregateOffer",
+    priceCurrency: currency,
+    lowPrice: (Math.min(...amounts) / 100).toFixed(2),
+    highPrice: (Math.max(...amounts) / 100).toFixed(2),
+    offerCount: skus.length,
+    availability,
+  };
+}
+
+/**
+ * seo-01: real per-product metadata -- title is the exact real product
+ * title (rendered through the demo layout's `%s | <demo displayName>`
+ * template, so the tab reads e.g. "Embroidered Dad Cap | The Print Shop"),
+ * description is the real product description (truncated sensibly per the
+ * acceptance criteria, since some seeded product descriptions run long).
+ * Calls pdp.getViewModel(slug) directly (no templateOverride -- metadata
+ * never needs a rendering template, only the real product/skus) rather than
+ * threading the page's own already-resolved viewModel through, since
+ * generateMetadata and the page component run as two separate entry points
+ * with no shared closure; Next.js memoizes identical `fetch` calls across
+ * them, and the underlying catalog reads here are cheap in-memory/SQLite
+ * lookups, not a duplicate network round trip.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ demoSlug: string; slug: string }>;
+}): Promise<Metadata> {
+  const { demoSlug, slug } = await params;
+  if (!isDemoSlug(demoSlug)) return {};
+  const { pdp } = await getServicesForDemo(demoSlug);
+  const viewModel = await pdp.getViewModel(slug);
+  if (!viewModel) return {};
+
+  const { product } = viewModel;
+  const path = `/demo/${demoSlug}/products/${product.slug}`;
+
+  return {
+    title: product.title,
+    description: truncateDescription(product.description),
+    alternates: { canonical: canonicalUrl(path) },
+  };
+}
 
 /**
  * Template-key -> component map, the app-layer half of the theming contract
@@ -85,8 +175,37 @@ export default async function ProductPage({
     viewModel.product.id,
   );
 
+  // seo-02: real Product + BreadcrumbList JSON-LD, built from data already
+  // resolved above (viewModel, stockBySkuId) plus one real new lookup this
+  // page didn't previously make (the product's real assigned category, for
+  // the breadcrumb's middle hop) -- never invented labels/prices.
+  const productPath = `/demo/${demoSlug}/products/${viewModel.product.slug}`;
+  const productUrl = canonicalUrl(productPath);
+  const offers = buildProductOffers(viewModel.skus, stockBySkuId, productUrl);
+  const productJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: viewModel.product.title,
+    description: viewModel.product.description,
+    url: productUrl,
+    ...(offers ? { offers } : {}),
+  };
+
+  const productCategories = await marketingCatalog.listCategoriesForProduct(viewModel.product.id);
+  const breadcrumbItems: BreadcrumbItem[] = [{ name: "Home", url: canonicalUrl(`/demo/${demoSlug}`) }];
+  const primaryCategory = productCategories[0];
+  if (primaryCategory) {
+    breadcrumbItems.push({
+      name: primaryCategory.title,
+      url: canonicalUrl(`/demo/${demoSlug}/category/${primaryCategory.slug}`),
+    });
+  }
+  breadcrumbItems.push({ name: viewModel.product.title, url: productUrl });
+
   return (
     <>
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={breadcrumbList(breadcrumbItems)} />
       <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug }} />
       {bundle ? <BundleTierSelector demoSlug={demoSlug} bundle={bundle} pricingByTierId={pricingByTierId} /> : null}
       <Component

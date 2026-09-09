@@ -1,0 +1,42 @@
+name: seo-aeo-infrastructure
+title: "Real SEO (dynamic metadata, sitemap, structured data) + AEO (llms.txt, FAQ schema)"
+description: >
+  Flagged as the single highest-priority gap by epic 40's research squad. Confirmed by direct
+  inspection: every route across all 3 demos shares one static "Shop" title, zero sitemap/
+  robots.txt/structured data exist anywhere. Resolved via Next.js App Router's native
+  generateMetadata/app/sitemap.ts/app/robots.ts mechanisms (zero new dependencies), scoped to
+  apps/reference-storefront (apps/docs's Nextra already ships reasonable default metadata).
+  See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [seo, storefront, app-layer]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    seo: "The whole point of this epic"
+    storefront: "Touches PDP/category/search/home pages across all demos"
+    app-layer: "Framework-native Next.js conventions, no new subsystem"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: seo-01-dynamic-metadata-and-canonical
+    title: "generateMetadata on PDP/category/search/home + landing, canonical URLs"
+    complexity: medium
+    depends_on: []
+  - id: seo-02-sitemap-robots-structured-data
+    title: "app/sitemap.ts, app/robots.ts, Product/Organization/BreadcrumbList JSON-LD"
+    complexity: medium
+    depends_on: [seo-01-dynamic-metadata-and-canonical]
+  - id: seo-03-aeo-and-verification
+    title: "llms.txt, FAQPage schema, full live verification, closeout, merge"
+    complexity: low
+    depends_on: [seo-02-sitemap-robots-structured-data]
