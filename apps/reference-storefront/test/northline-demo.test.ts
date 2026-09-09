@@ -34,8 +34,8 @@ const ALL_SERVICE_AREA_SLUGS = [
 
 describe("Northline demo seed (epic 15b public demo)", () => {
   it("seeds 7 active services, 8 service areas, and per-area subset assignment (not every service everywhere)", async () => {
-    const { catalog, marketingCatalog, cms, serviceAreas } = buildTestCatalogServices();
-    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
+    const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
+    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
     const products = await catalog.listProducts({ status: "active" });
     expect(products.map((p) => p.slug).sort()).toEqual([
@@ -63,8 +63,8 @@ describe("Northline demo seed (epic 15b public demo)", () => {
   });
 
   it("has exactly 4 real categories, each with at least 1 real product assigned, none empty", async () => {
-    const { catalog, marketingCatalog, cms, serviceAreas } = buildTestCatalogServices();
-    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
+    const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
+    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
     const categories = await marketingCatalog.listCategories();
     expect(categories.map((c) => c.slug).sort()).toEqual(["networking-fiber", "security-cameras", "smart-home-automation", "tv-home-theater"]);
@@ -84,8 +84,8 @@ describe("Northline demo seed (epic 15b public demo)", () => {
   });
 
   it("gives security-camera-install 3 real SKUs at 3 distinct prices, and home-theater-setup >=2 real SKUs at distinct prices", async () => {
-    const { catalog, marketingCatalog, cms, serviceAreas } = buildTestCatalogServices();
-    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
+    const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
+    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
     const cameraProduct = (await catalog.listProducts({ status: "active" })).find((p) => p.slug === "security-camera-install")!;
     const cameraSkus = await catalog.listSkusByProduct(cameraProduct.id);
@@ -102,8 +102,8 @@ describe("Northline demo seed (epic 15b public demo)", () => {
   });
 
   it("publishes a real, distinct, published CMS location page for all 8 service areas", async () => {
-    const { catalog, marketingCatalog, cms, serviceAreas } = buildTestCatalogServices();
-    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
+    const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
+    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
     const home = await cms.getPageBySlug("home");
     expect(home?.status).toBe("published");
@@ -125,8 +125,8 @@ describe("Northline demo seed (epic 15b public demo)", () => {
   });
 
   it("never claims a service is available in an area it isn't actually assigned to (cross-checked against real areaIndices membership)", async () => {
-    const { catalog, marketingCatalog, cms, serviceAreas } = buildTestCatalogServices();
-    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
+    const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
+    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
     const areas = await serviceAreas.listServiceAreas();
     const products = await catalog.listProducts({ status: "active" });
@@ -164,8 +164,8 @@ describe("Northline demo seed (epic 15b public demo)", () => {
   });
 
   it("admin/catalog read path (catalog.listProducts) works against the Northline seed with zero admin-specific code", async () => {
-    const { catalog, marketingCatalog, cms, serviceAreas } = buildTestCatalogServices();
-    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
+    const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
+    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
     const products = await catalog.listProducts();
     expect(products.length).toBeGreaterThan(0);
@@ -177,8 +177,8 @@ describe("Northline demo seed (epic 15b public demo)", () => {
   });
 
   it("the AI/MCP interface's search_products and get_product tools work against the Northline seed with zero seed-specific code", async () => {
-    const { events, catalog, marketingCatalog, cms, serviceAreas } = buildTestCatalogServices();
-    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
+    const { events, catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
+    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
     const search = createInMemoryIndex();
     registerCatalogSearchSync({ events, index: search, products: catalog });
