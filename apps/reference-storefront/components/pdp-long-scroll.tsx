@@ -1,21 +1,43 @@
 import type { PdpViewModel } from "@mercatus-liber/pdp";
 import { addToCartAction } from "../lib/actions";
 import type { DemoSlug } from "../lib/demos";
+import { readActiveThemeBundle } from "../lib/theme-cookie";
 
-/** The "pdp.long-scroll" template component -- same view-model data as pdp-tabbed-detail, different presentation (everything inline, eBay-style, no collapsing). */
-export function PdpLongScroll({
-  demoSlug,
-  viewModel,
-  stockBySkuId = {},
-  customizable = false,
-}: {
+type PdpLongScrollProps = {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
   /** `null` means not inventory-tracked (always available, e.g. a bookable service) -- distinct from a real tracked 0. */
   stockBySkuId?: Record<string, number | null>;
   /** print-shop-02: same additive/optional personalization-input flag as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   customizable?: boolean;
-}) {
+};
+
+/**
+ * The "pdp.long-scroll" template component -- same view-model data as
+ * pdp-tabbed-detail, different presentation (everything inline, eBay-style,
+ * no collapsing).
+ *
+ * This template is a SHARED fallback: "editorial", "minimal", "vibrant",
+ * and "high-contrast" all set `defaultTemplatesByPageType.pdp:
+ * "pdp.long-scroll"` (see packages/theming/src/theme-bundles.ts), so this
+ * one component renders for 4 different bundles today. The rich "The Slow
+ * Catalog" visual treatment (drop-cap body copy, Fraunces pricing, the
+ * mockup's option/stock chrome) only belongs to "editorial" -- the other 3
+ * bundles must keep rendering the exact original plain markup, byte-for-
+ * byte. Since this component only receives `demoSlug`/`viewModel`/
+ * `stockBySkuId`/`customizable` (no theme key prop -- adding one would mean
+ * editing products/[slug]/page.tsx, outside this epic's file scope), it
+ * resolves the active theme itself via the same `readActiveThemeBundle`
+ * every page/layout already uses, and branches on `.key === "editorial"`.
+ */
+export async function PdpLongScroll({ demoSlug, viewModel, stockBySkuId = {}, customizable = false }: PdpLongScrollProps) {
+  const activeTheme = await readActiveThemeBundle(demoSlug);
+  if (activeTheme.key === "editorial") {
+    return (
+      <EditorialPdpLongScroll demoSlug={demoSlug} viewModel={viewModel} stockBySkuId={stockBySkuId} customizable={customizable} />
+    );
+  }
+
   const { product, skus, optionValues } = viewModel;
 
   return (
@@ -87,6 +109,133 @@ export function PdpLongScroll({
           </button>
         </form>
       ))}
+    </main>
+  );
+}
+
+/**
+ * "The Slow Catalog"'s real PDP treatment -- ported from the approved
+ * mockup's `.pdp-layout`/`.pdp-info`/`.pdp-options`/`.pdp-desc`/`.dropcap`/
+ * `.btn-add` CSS: a two-column layout (decorative placeholder image +
+ * info column), Libre Franklin option chips (the mockup's swatch/size-tag
+ * treatment, adapted -- this view model carries option VALUES, e.g.
+ * `color: "walnut"`, not per-value hex swatches, so a real color swatch
+ * dot isn't available data and isn't fabricated here), a live stock
+ * indicator dot, and the mockup's serif drop-cap on the first paragraph of
+ * real product description copy. Same real per-SKU add-to-cart forms/
+ * server action as the shared branch above -- only presentation differs.
+ */
+function EditorialPdpLongScroll({
+  demoSlug,
+  viewModel,
+  stockBySkuId,
+  customizable,
+}: Required<Omit<PdpLongScrollProps, "viewModel">> & { viewModel: PdpViewModel }) {
+  const { product, skus, optionValues } = viewModel;
+  const firstWord = product.description.trim().slice(0, 1);
+  const restOfDescription = product.description.trim().slice(1);
+
+  return (
+    <main className="ed-pdp">
+      <style>{`
+        .ed-pdp { padding: 2rem 0 3rem; }
+        .ed-pdp-layout { display: grid; grid-template-columns: 1.05fr 1fr; gap: 3rem; align-items: start; }
+        .ed-pdp-image { aspect-ratio: 1/1; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: linear-gradient(160deg, hsl(20 15% 18%), hsl(15 45% 30%)); }
+        .ed-pdp-title { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: clamp(1.9rem, 3.2vw, 2.7rem); line-height: 1.05; margin-top: .4rem; }
+        .ed-pdp-options { display: flex; gap: 1.75rem; flex-wrap: wrap; margin-top: 1.75rem; padding: 1.25rem 0; border-top: 1px solid var(--color-border, #DACFAF); border-bottom: 1px solid var(--color-border, #DACFAF); }
+        .ed-opt { display: flex; flex-direction: column; gap: .4rem; font-family: var(--font-family); }
+        .ed-opt-label { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-muted, #7A6C58); }
+        .ed-opt-value { display: flex; flex-wrap: wrap; gap: .4rem; }
+        .ed-opt-tag { border: 1px solid var(--color-text); border-radius: var(--radius); padding: .18rem .6rem; font-size: .82rem; font-weight: 600; }
+        .ed-pdp-desc { font-family: var(--font-family); font-size: 1.05rem; line-height: 1.7; color: var(--color-muted, #55493A); margin-top: 1.5rem; max-width: 54ch; }
+        .ed-dropcap { float: left; font-family: var(--font-family-display, var(--font-family)); font-weight: 700; font-size: 3.2rem; line-height: .8; padding: .1em .12em 0 0; color: var(--color-primary); }
+        .ed-sku-block { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px dashed var(--color-border, #DACFAF); }
+        .ed-sku-block:first-of-type { border-top: none; margin-top: 1.5rem; padding-top: 0; }
+        .ed-sku-attrs { font-family: var(--font-family); color: var(--color-muted, #7A6C58); font-size: .9rem; }
+        .ed-sku-price { font-family: var(--font-family); font-weight: 800; font-size: 1.35rem; margin-top: .25rem; }
+        .ed-sku-stock { margin-top: .5rem; font-family: var(--font-family); font-weight: 700; font-size: .84rem; display: flex; align-items: center; gap: .4rem; color: var(--color-accent, #5E6E45); }
+        .ed-sku-stock::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--color-accent, #5E6E45); }
+        .ed-sku-stock.ed-low::before { background: var(--color-primary); }
+        .ed-sku-stock.ed-low { color: var(--color-primary); }
+        .ed-qty-input { margin-top: .75rem; width: 3.5rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .3rem .4rem; font-family: var(--font-family); }
+        .ed-personalize-label { display: block; margin-top: .75rem; font-family: var(--font-family); font-size: .85rem; color: var(--color-muted, #7A6C58); }
+        .ed-personalize-input { width: 100%; max-width: 360px; margin-top: .3rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .5rem .65rem; font-family: var(--font-family); }
+        .ed-btn-add { margin-top: 1.25rem; display: inline-flex; align-self: flex-start; background: var(--color-primary); color: var(--color-background); border: 1px solid var(--color-primary); border-radius: var(--radius); font-family: var(--font-family); font-weight: 700; font-size: .92rem; letter-spacing: .02em; padding: .85rem 1.75rem; cursor: pointer; }
+        .ed-btn-add:hover { filter: brightness(0.9); }
+        @media (max-width: 900px) {
+          .ed-pdp-layout { grid-template-columns: 1fr; }
+        }
+      `}</style>
+
+      <div className="ed-pdp-layout">
+        <div className="ed-pdp-image" aria-hidden="true" />
+
+        <div>
+          <h1 className="ed-pdp-title">{product.title}</h1>
+
+          {optionValues.length > 0 && (
+            <div className="ed-pdp-options">
+              {optionValues.map((option) => (
+                <div className="ed-opt" key={option.key}>
+                  <span className="ed-opt-label">{option.key}</span>
+                  <span className="ed-opt-value">
+                    {option.values.map((value) => (
+                      <span className="ed-opt-tag" key={String(value)}>
+                        {String(value)}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="ed-pdp-desc">
+            <span className="ed-dropcap">{firstWord}</span>
+            {restOfDescription}
+          </p>
+
+          {skus.map((sku) => {
+            const stock = stockBySkuId[sku.id];
+            const isLow = typeof stock === "number" && stock > 0 && stock <= 3;
+            return (
+              <form action={addToCartAction} key={sku.id} className="ed-sku-block">
+                <input type="hidden" name="demoSlug" value={demoSlug} />
+                <input type="hidden" name="skuId" value={sku.id} />
+                {sku.identifyingAttributes.length > 0 && (
+                  <div className="ed-sku-attrs">{sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}</div>
+                )}
+                <div className="ed-sku-price">
+                  {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
+                </div>
+                <div className={`ed-sku-stock${isLow ? " ed-low" : ""}`}>
+                  {stock == null ? "Available" : stock > 0 ? `In stock: ${stock}` : "Out of stock"}
+                </div>
+                <input type="number" name="quantity" defaultValue={1} min={1} className="ed-qty-input" />
+                {customizable && (
+                  <div>
+                    <label className="ed-personalize-label" htmlFor={`customizationNote-${sku.id}`}>
+                      Personalize this item (e.g. embroidery text, thread color)
+                    </label>
+                    <input
+                      id={`customizationNote-${sku.id}`}
+                      type="text"
+                      name="customizationNote"
+                      placeholder="e.g. Text: Sarah -- thread color: navy"
+                      className="ed-personalize-input"
+                    />
+                  </div>
+                )}
+                <div>
+                  <button type="submit" className="ed-btn-add">
+                    Add to cart
+                  </button>
+                </div>
+              </form>
+            );
+          })}
+        </div>
+      </div>
     </main>
   );
 }

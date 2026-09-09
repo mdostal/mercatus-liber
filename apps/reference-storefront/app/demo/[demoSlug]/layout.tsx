@@ -172,6 +172,15 @@ export default async function DemoLayout({
   const NavChrome: ComponentType<NavChromeProps> =
     (navTemplateKey && NAV_TEMPLATES[navTemplateKey as keyof typeof NAV_TEMPLATES]) || NavTopBar;
   const isRailNav = navTemplateKey === "nav.rail";
+  // "The Slow Catalog"'s asymmetric magazine-grid layouts (home/category)
+  // need real room to show the mockup's 3-column feature+b/c/d/e grid --
+  // additive, editorial-only widening, same pattern isRailNav already
+  // established for nav.rail. Every other bundle keeps today's exact 720px
+  // reading-width layout, byte-for-byte.
+  const isEditorial = activeTheme.key === "editorial";
+  // visual-fidelity-maximalist: gates the real "Blaze Theme" Google Fonts
+  // load below -- same additive, bundle-scoped pattern as isEditorial.
+  const isMaximalist = activeTheme.key === "maximalist";
   const navLinks = await buildNavLinks(demoSlug);
 
   const page = (
@@ -179,6 +188,38 @@ export default async function DemoLayout({
       <head>
         {/* Real CSS custom properties from the active theme's tokens -- not just internal ThemingService state. */}
         <style>{`:root { ${rootCssVars} }`}</style>
+        {/*
+          Real Google Fonts for "The Slow Catalog" (Fraunces/Newsreader/
+          Libre Franklin), ported verbatim from the approved design
+          mockup's own <link> tag -- additive, only rendered when
+          "editorial" is the active bundle, so every other theme's
+          font-loading (today, none) is unaffected.
+        */}
+        {isEditorial && (
+          <>
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link
+              rel="stylesheet"
+              href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;0,900;1,400;1,600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Libre+Franklin:wght@400;500;600;700;800&display=swap"
+            />
+          </>
+        )}
+        {/*
+          Real Google Fonts for "Blaze Theme" (Anton/Archivo/Space Mono),
+          ported verbatim from the approved design mockup's own <link> tag --
+          additive, only rendered when "maximalist" is the active bundle,
+          same isEditorial pattern above, so every other theme's
+          font-loading is unaffected.
+        */}
+        {isMaximalist && (
+          <>
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link
+              rel="stylesheet"
+              href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700&family=Space+Mono:wght@400;700&display=swap"
+            />
+          </>
+        )}
       </head>
       <body
         style={{
@@ -188,8 +229,9 @@ export default async function DemoLayout({
           // nav.rail needs more horizontal room than the single-column
           // top-bar layout ever did -- widened only for that template, so
           // every other (nav.top-bar) bundle keeps today's exact 720px
-          // reading-width layout.
-          maxWidth: isRailNav ? 1100 : 720,
+          // reading-width layout. editorial's magazine-grid layouts need
+          // the same real room (see isEditorial above).
+          maxWidth: isRailNav ? 1100 : isEditorial ? 1180 : 720,
           margin: "0 auto",
           padding: 24,
           minHeight: "100vh",
