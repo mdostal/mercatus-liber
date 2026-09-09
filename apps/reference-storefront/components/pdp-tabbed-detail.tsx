@@ -17,6 +17,8 @@ export function PdpTabbedDetail({
   stockBySkuId = {},
   customizable = false,
   themeKey,
+  imageUrl,
+  imageAlt,
 }: {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
@@ -34,6 +36,16 @@ export function PdpTabbedDetail({
    * template rendered before this field existed.
    */
   themeKey?: string;
+  /**
+   * image-cdn epic: additive/optional -- the product's primary photo,
+   * already resolved through @mercatus-liber/media's ImageAdapter by the
+   * page (see lib/product-image.ts). `null`/undefined (a product with no
+   * `images` yet) renders nothing extra -- no placeholder box, no
+   * broken-image icon -- byte-for-byte what this template rendered before
+   * this field existed.
+   */
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 }) {
   const { product, skus } = viewModel;
   const isMaximalist = themeKey === "maximalist";
@@ -41,6 +53,19 @@ export function PdpTabbedDetail({
   return (
     <main className={isMaximalist ? "mx-pdp" : undefined}>
       {isMaximalist && <style>{MX_PDP_CSS}</style>}
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={imageAlt ?? ""}
+          style={{
+            width: "100%",
+            maxHeight: 480,
+            objectFit: "cover",
+            borderRadius: "var(--radius)",
+            marginBottom: "var(--space-sm, 16px)",
+          }}
+        />
+      )}
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{product.title}</h1>
 
       <details open>

@@ -33,12 +33,17 @@ export function PdpSpecSheet({
   viewModel,
   stockBySkuId = {},
   customizable = false,
+  imageUrl,
+  imageAlt,
 }: {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
   /** `null` means not inventory-tracked (always available, e.g. a bookable service) -- distinct from a real tracked 0. */
   stockBySkuId?: Record<string, number | null>;
   customizable?: boolean;
+  /** image-cdn epic: same additive/optional resolved-photo props as pdp-tabbed-detail.tsx -- see that component's doc comment. */
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 }) {
   const { product, skus } = viewModel;
 
@@ -94,6 +99,8 @@ export function PdpSpecSheet({
           letter-spacing: 0.06em;
           text-transform: uppercase;
         }
+        .ds-pdp-art.ds-pdp-art-photo { padding: 0; background-image: none; overflow: hidden; }
+        .ds-pdp-art-photo img { width: 100%; height: 100%; min-height: 260px; object-fit: cover; display: block; }
         .ds-pdp-info { background: #FFFFFF; padding: clamp(24px, 4vw, 44px); display: flex; flex-direction: column; gap: 16px; }
         .ds-pdp-info h1 {
           font-family: 'Archivo', system-ui, sans-serif;
@@ -167,10 +174,10 @@ export function PdpSpecSheet({
       </div>
 
       <div className="ds-pdp-grid">
-        <div className="ds-pdp-art">
+        <div className={imageUrl ? "ds-pdp-art ds-pdp-art-photo" : "ds-pdp-art"}>
           <span className="ds-tick tl" aria-hidden="true" />
           <span className="ds-tick tr" aria-hidden="true" />
-          <div>{product.title}</div>
+          {imageUrl ? <img src={imageUrl} alt={imageAlt ?? ""} /> : <div>{product.title}</div>}
         </div>
 
         <div className="ds-pdp-info">

@@ -7,6 +7,7 @@ import { RecommendationShelf, resolveCartRecommendations } from "../../../../com
 import { readCartId } from "../../../../lib/cart-cookie";
 import { readCouponCode } from "../../../../lib/coupon-cookie";
 import { isDemoSlug } from "../../../../lib/demos";
+import { resolveProductImageAlt, resolveProductImageUrl } from "../../../../lib/product-image";
 import { getServicesForDemo } from "../../../../lib/services";
 import { readActiveThemeBundle } from "../../../../lib/theme-cookie";
 
@@ -27,7 +28,7 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const cartId = await readCartId(demoSlug);
-  const { cart, catalog, checkout, recommendations, marketingCatalog, theming, confirmSandboxPayment } =
+  const { cart, catalog, checkout, recommendations, marketingCatalog, theming, confirmSandboxPayment, media } =
     await getServicesForDemo(demoSlug);
   const currentCart = cartId ? await cart.getCart(cartId) : null;
 
@@ -55,6 +56,12 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
         // print-shop-02: additive/optional (design-discussion.md §1b) --
         // absent for every non-customized line, same as before this field existed.
         customizationNote: item.customizationNote,
+        // image-cdn epic: a small real thumbnail per line, resolved through
+        // the same shared helper as the PDP -- null for a product with no
+        // `images` yet (or no resolvable product at all), never a
+        // fabricated placeholder URL.
+        imageUrl: product ? resolveProductImageUrl(media, product, { width: 120, height: 120, fit: "cover" }) : null,
+        imageAlt: product ? resolveProductImageAlt(product) : null,
       };
     }),
   );
@@ -66,7 +73,10 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
   // and excluding anything already in the cart. packages/cart itself stays
   // untouched -- recommendations never becomes a cart-owned concept.
   const cartProductIds = Array.from(new Set(lines.map((line) => line.productId).filter((id): id is string => id !== null)));
-  const recommendationShelf = await resolveCartRecommendations({ recommendations, catalog, marketingCatalog }, cartProductIds);
+  const recommendationShelf = await resolveCartRecommendations(
+    { recommendations, catalog, marketingCatalog, media },
+    cartProductIds,
+  );
 
   const couponCode = await readCouponCode(demoSlug);
   const adjustment = await checkout.previewCheckout({ cartId, couponCode });
@@ -90,12 +100,14 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
     <>
       <Template
         demoSlug={demoSlug}
-        lines={lines.map(({ skuId, title, quantity, priceSnapshot, customizationNote }) => ({
+        lines={lines.map(({ skuId, title, quantity, priceSnapshot, customizationNote, imageUrl, imageAlt }) => ({
           skuId,
           title,
           quantity,
           priceSnapshot,
           customizationNote,
+          imageUrl,
+          imageAlt,
         }))}
         couponCode={couponCode}
         couponEnteredButInvalid={couponEnteredButInvalid}

@@ -10,6 +10,9 @@ export interface CartTemplateLine {
   priceSnapshot: Money;
   /** print-shop-02: the personalization text captured on the PDP at add-to-cart time, if any (design-discussion.md §1b). Additive/optional -- absent for every non-customized line, same as before this field existed. */
   customizationNote?: string;
+  /** image-cdn epic: a small real thumbnail for this line's product, resolved through @mercatus-liber/media's ImageAdapter by cart/page.tsx -- see lib/product-image.ts. `null`/undefined (no `images` yet, or no resolvable product) renders nothing extra, byte-for-byte what each cart template rendered before this field existed. */
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 }
 
 export interface CartTemplateProps {
@@ -103,19 +106,28 @@ export function CartStandard({
               fontSize: "var(--font-size-body, 1rem)",
             }}
           >
-            <span>
-              {line.title}
-              {line.customizationNote && (
-                <span
-                  style={{
-                    display: "block",
-                    color: "var(--color-muted, #666)",
-                    fontSize: "var(--font-size-body, 1rem)",
-                  }}
-                >
-                  Personalization: {line.customizationNote}
-                </span>
+            <span style={{ display: "flex", alignItems: "center", gap: "var(--space-xs, 8px)" }}>
+              {line.imageUrl && (
+                <img
+                  src={line.imageUrl}
+                  alt={line.imageAlt ?? ""}
+                  style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius)", flexShrink: 0 }}
+                />
               )}
+              <span>
+                {line.title}
+                {line.customizationNote && (
+                  <span
+                    style={{
+                      display: "block",
+                      color: "var(--color-muted, #666)",
+                      fontSize: "var(--font-size-body, 1rem)",
+                    }}
+                  >
+                    Personalization: {line.customizationNote}
+                  </span>
+                )}
+              </span>
             </span>
             <form
               action={updateCartItemQuantityAction}

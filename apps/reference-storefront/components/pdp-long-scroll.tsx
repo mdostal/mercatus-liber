@@ -10,6 +10,9 @@ type PdpLongScrollProps = {
   stockBySkuId?: Record<string, number | null>;
   /** print-shop-02: same additive/optional personalization-input flag as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   customizable?: boolean;
+  /** image-cdn epic: same additive/optional resolved-photo props as pdp-tabbed-detail.tsx -- see that component's doc comment. */
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 };
 
 /**
@@ -30,11 +33,25 @@ type PdpLongScrollProps = {
  * resolves the active theme itself via the same `readActiveThemeBundle`
  * every page/layout already uses, and branches on `.key === "editorial"`.
  */
-export async function PdpLongScroll({ demoSlug, viewModel, stockBySkuId = {}, customizable = false }: PdpLongScrollProps) {
+export async function PdpLongScroll({
+  demoSlug,
+  viewModel,
+  stockBySkuId = {},
+  customizable = false,
+  imageUrl = null,
+  imageAlt = null,
+}: PdpLongScrollProps) {
   const activeTheme = await readActiveThemeBundle(demoSlug);
   if (activeTheme.key === "editorial") {
     return (
-      <EditorialPdpLongScroll demoSlug={demoSlug} viewModel={viewModel} stockBySkuId={stockBySkuId} customizable={customizable} />
+      <EditorialPdpLongScroll
+        demoSlug={demoSlug}
+        viewModel={viewModel}
+        stockBySkuId={stockBySkuId}
+        customizable={customizable}
+        imageUrl={imageUrl}
+        imageAlt={imageAlt}
+      />
     );
   }
 
@@ -42,6 +59,19 @@ export async function PdpLongScroll({ demoSlug, viewModel, stockBySkuId = {}, cu
 
   return (
     <main>
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={imageAlt ?? ""}
+          style={{
+            width: "100%",
+            maxHeight: 480,
+            objectFit: "cover",
+            borderRadius: "var(--radius)",
+            marginBottom: "var(--space-sm, 16px)",
+          }}
+        />
+      )}
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{product.title}</h1>
 
       <p style={{ fontSize: "var(--font-size-body, 1rem)" }}>{product.description}</p>
@@ -130,6 +160,8 @@ function EditorialPdpLongScroll({
   viewModel,
   stockBySkuId,
   customizable,
+  imageUrl,
+  imageAlt,
 }: Required<Omit<PdpLongScrollProps, "viewModel">> & { viewModel: PdpViewModel }) {
   const { product, skus, optionValues } = viewModel;
   const firstWord = product.description.trim().slice(0, 1);
@@ -140,7 +172,8 @@ function EditorialPdpLongScroll({
       <style>{`
         .ed-pdp { padding: 2rem 0 3rem; }
         .ed-pdp-layout { display: grid; grid-template-columns: 1.05fr 1fr; gap: 3rem; align-items: start; }
-        .ed-pdp-image { aspect-ratio: 1/1; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: linear-gradient(160deg, hsl(20 15% 18%), hsl(15 45% 30%)); }
+        .ed-pdp-image { aspect-ratio: 1/1; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: linear-gradient(160deg, hsl(20 15% 18%), hsl(15 45% 30%)); overflow: hidden; }
+        .ed-pdp-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .ed-pdp-title { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: clamp(1.9rem, 3.2vw, 2.7rem); line-height: 1.05; margin-top: .4rem; }
         .ed-pdp-options { display: flex; gap: 1.75rem; flex-wrap: wrap; margin-top: 1.75rem; padding: 1.25rem 0; border-top: 1px solid var(--color-border, #DACFAF); border-bottom: 1px solid var(--color-border, #DACFAF); }
         .ed-opt { display: flex; flex-direction: column; gap: .4rem; font-family: var(--font-family); }
@@ -168,7 +201,13 @@ function EditorialPdpLongScroll({
       `}</style>
 
       <div className="ed-pdp-layout">
-        <div className="ed-pdp-image" aria-hidden="true" />
+        {imageUrl ? (
+          <div className="ed-pdp-image">
+            <img src={imageUrl} alt={imageAlt ?? ""} />
+          </div>
+        ) : (
+          <div className="ed-pdp-image" aria-hidden="true" />
+        )}
 
         <div>
           <h1 className="ed-pdp-title">{product.title}</h1>

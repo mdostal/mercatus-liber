@@ -1,8 +1,10 @@
 import type { Money } from "@mercatus-liber/core";
 import type { CatalogService } from "@mercatus-liber/catalog";
+import type { ImageAdapter } from "@mercatus-liber/media";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import { InteractionTracker } from "./interaction-tracker";
+import { resolveProductImageUrl } from "../lib/product-image";
 
 /**
  * The reference-storefront's own display shape for a recommended product --
@@ -17,6 +19,8 @@ export interface RecommendedProduct {
   slug: string;
   title: string;
   price: Money | null;
+  /** image-cdn epic: the product's primary photo, resolved through @mercatus-liber/media's ImageAdapter -- see lib/product-image.ts. `null` when the product has no `images` yet, never a fabricated placeholder URL. */
+  imageUrl: string | null;
 }
 
 export interface RecommendationShelfData {
@@ -60,13 +64,22 @@ const MAX_SHELF_PRODUCTS = 8;
  * packages/recommendations/src/types.ts's doc comment on targetProductIds:
  * this package deliberately never validates ids against catalog itself).
  */
-async function resolveRecommendedProducts(catalog: CatalogService, productIds: string[]): Promise<RecommendedProduct[]> {
+async function resolveRecommendedProducts(
+  catalog: CatalogService,
+  media: ImageAdapter,
+  productIds: string[],
+): Promise<RecommendedProduct[]> {
   const resolved = await Promise.all(
     productIds.map(async (id): Promise<RecommendedProduct | null> => {
       const product = await catalog.getProduct(id);
       if (!product) return null;
       const skus = await catalog.listSkusByProduct(product.id);
-      return { slug: product.slug, title: product.title, price: skus[0]?.price ?? null };
+      return {
+        slug: product.slug,
+        title: product.title,
+        price: skus[0]?.price ?? null,
+        imageUrl: resolveProductImageUrl(media, product, { width: 300, height: 300, fit: "cover" }),
+      };
     }),
   );
   return resolved.filter((product): product is RecommendedProduct => product !== null).slice(0, MAX_SHELF_PRODUCTS);
@@ -81,10 +94,15 @@ async function resolveRecommendedProducts(catalog: CatalogService, productIds: s
  * criterion).
  */
 export async function resolvePdpRecommendations(
-  services: { recommendations: RecommendationsService; catalog: CatalogService; marketingCatalog: MarketingCatalogService },
+  services: {
+    recommendations: RecommendationsService;
+    catalog: CatalogService;
+    marketingCatalog: MarketingCatalogService;
+    media: ImageAdapter;
+  },
   productId: string,
 ): Promise<RecommendationShelfData | null> {
-  const { recommendations, catalog, marketingCatalog } = services;
+  const { recommendations, catalog, marketingCatalog, media } = services;
   const rules = await recommendations.getRecommendationsForProduct(productId, "pdp");
 
   let targetIds: string[];
@@ -102,7 +120,7 @@ export async function resolvePdpRecommendations(
     label = "Customers also bought";
   }
 
-  const products = await resolveRecommendedProducts(catalog, targetIds);
+  const products = await resolveRecommendedProducts(catalog, media, targetIds);
   if (products.length === 0) return null;
   return { label, products };
 }
@@ -116,10 +134,15 @@ export async function resolvePdpRecommendations(
  * potentially many source products/rules, so no single rule's label applies.
  */
 export async function resolveCartRecommendations(
-  services: { recommendations: RecommendationsService; catalog: CatalogService; marketingCatalog: MarketingCatalogService },
+  services: {
+    recommendations: RecommendationsService;
+    catalog: CatalogService;
+    marketingCatalog: MarketingCatalogService;
+    media: ImageAdapter;
+  },
   cartProductIds: string[],
 ): Promise<RecommendationShelfData | null> {
-  const { recommendations, catalog, marketingCatalog } = services;
+  const { recommendations, catalog, marketingCatalog, media } = services;
   const targetIds = new Set<string>();
 
   for (const productId of cartProductIds) {
@@ -136,7 +159,7 @@ export async function resolveCartRecommendations(
 
   for (const productId of cartProductIds) targetIds.delete(productId);
 
-  const products = await resolveRecommendedProducts(catalog, Array.from(targetIds));
+  const products = await resolveRecommendedProducts(catalog, media, Array.from(targetIds));
   if (products.length === 0) return null;
   return { label: "Customers also bought", products };
 }
@@ -176,6 +199,20 @@ export function RecommendationShelf({ label, products }: RecommendationShelfData
               href={`/products/${product.slug}`}
               style={{ textDecoration: "none", color: "inherit", fontSize: "var(--font-size-body, 1rem)" }}
             >
+              {product.imageUrl && (
+                <img
+                  src={product.imageUrl}
+                  alt=""
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                    borderRadius: "var(--radius)",
+                    marginBottom: "var(--space-xs, 8px)",
+                  }}
+                />
+              )}
               {product.title}
             </a>
             {product.price ? (

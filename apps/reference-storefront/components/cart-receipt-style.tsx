@@ -38,6 +38,8 @@ export function CartReceiptStyle({
         .ed-cart-table thead th { text-align: left; font-family: var(--font-family); font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-muted, #7A6C58); padding-bottom: .5rem; border-bottom: 1px solid var(--color-border, #C7B586); }
         .ed-cart-table th.ed-num, .ed-cart-table td.ed-num { text-align: right; }
         .ed-cart-table td { padding: 1rem 0; border-bottom: 1px dashed var(--color-border, #DACFAF); vertical-align: top; }
+        .ed-item-row { display: flex; align-items: center; gap: .75rem; }
+        .ed-item-thumb { width: 3.5rem; height: 3.5rem; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; }
         .ed-item-title { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: 1.05rem; }
         .ed-item-variant { font-family: var(--font-family); font-style: italic; color: var(--color-muted, #7A6C58); font-size: .88rem; margin-top: .2rem; }
         .ed-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -77,8 +79,13 @@ export function CartReceiptStyle({
               {lines.map((line) => (
                 <tr key={line.skuId}>
                   <td>
-                    <div className="ed-item-title">{line.title}</div>
-                    {line.customizationNote && <div className="ed-item-variant">Personalization: {line.customizationNote}</div>}
+                    <div className="ed-item-row">
+                      {line.imageUrl && <img className="ed-item-thumb" src={line.imageUrl} alt={line.imageAlt ?? ""} />}
+                      <div>
+                        <div className="ed-item-title">{line.title}</div>
+                        {line.customizationNote && <div className="ed-item-variant">Personalization: {line.customizationNote}</div>}
+                      </div>
+                    </div>
                     <div className="ed-line-controls">
                       <form action={updateCartItemQuantityAction} style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
                         <input type="hidden" name="demoSlug" value={demoSlug} />

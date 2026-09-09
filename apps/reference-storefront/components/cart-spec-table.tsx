@@ -63,6 +63,8 @@ export function CartSpecTable({
           color: var(--color-muted, #8891A0);
         }
         .ds-cart-row { padding: 16px 20px; border-bottom: 1px solid var(--color-border, #D2D7E0); }
+        .ds-cart-prod { display: flex; align-items: center; gap: 10px; }
+        .ds-cart-prod-thumb { width: 44px; height: 44px; object-fit: cover; border: 1px solid var(--color-border, #D2D7E0); flex-shrink: 0; }
         .ds-cart-prod-text .ds-t { font-weight: 700; font-size: 13.5px; display: block; }
         .ds-cart-prod-text .ds-note {
           font-family: ${DS_FONT_MONO};
@@ -164,9 +166,12 @@ export function CartSpecTable({
             </div>
             {lines.map((line) => (
               <div className="ds-cart-row" key={line.skuId}>
-                <div className="ds-cart-prod-text">
-                  <span className="ds-t">{line.title}</span>
-                  {line.customizationNote && <span className="ds-note">Custom: {line.customizationNote}</span>}
+                <div className="ds-cart-prod">
+                  {line.imageUrl && <img className="ds-cart-prod-thumb" src={line.imageUrl} alt={line.imageAlt ?? ""} />}
+                  <div className="ds-cart-prod-text">
+                    <span className="ds-t">{line.title}</span>
+                    {line.customizationNote && <span className="ds-note">Custom: {line.customizationNote}</span>}
+                  </div>
                 </div>
                 <form action={updateCartItemQuantityAction} className="ds-qty">
                   <input type="hidden" name="demoSlug" value={demoSlug} />

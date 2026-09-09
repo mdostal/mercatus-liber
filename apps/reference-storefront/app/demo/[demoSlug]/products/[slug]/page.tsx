@@ -13,6 +13,7 @@ import { isCustomizableProduct } from "../../../../../lib/seed";
 import { getServicesForDemo } from "../../../../../lib/services";
 import { canonicalUrl } from "../../../../../lib/site-url";
 import { readActiveThemeBundle } from "../../../../../lib/theme-cookie";
+import { resolveProductImageAlt, resolveProductImageUrl } from "../../../../../lib/product-image";
 
 export const dynamic = "force-dynamic";
 
@@ -132,7 +133,7 @@ export default async function ProductPage({
   const { demoSlug, slug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { template } = await searchParams;
-  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog } = await getServicesForDemo(demoSlug);
+  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog, media } = await getServicesForDemo(demoSlug);
 
   // Explicit ?template= always wins; otherwise fall back to the active
   // theme's PDP choice (a per-request, per-call override -- never mutates
@@ -179,6 +180,14 @@ export default async function ProductPage({
     (viewModel.templateKey && TEMPLATE_COMPONENTS[viewModel.templateKey as keyof typeof TEMPLATE_COMPONENTS]) ||
     PdpTabbedDetail;
 
+  // image-cdn epic: resolves to null (never a fabricated placeholder URL)
+  // when this product has no `images` yet -- see lib/product-image.ts's own
+  // doc comment. Every PDP template below treats a null imageUrl as
+  // "render nothing extra," so this is a safe no-op ahead of seed data
+  // actually carrying real photos.
+  const imageUrl = resolveProductImageUrl(media, viewModel.product, { width: 1000, height: 1000, fit: "cover" });
+  const imageAlt = resolveProductImageAlt(viewModel.product);
+
   // Recommendations is deliberately NOT part of pdp's view model, same
   // "app composes multiple services" pattern as stock/bundles above -- see
   // design-discussion.md §3 (upsell-cross-sell). Curated rule first, falling
@@ -186,7 +195,7 @@ export default async function ProductPage({
   // yields a product -- this call is a no-op for a product with no attached
   // recommendation data, matching this story's zero-regression requirement.
   const recommendationShelf = await resolvePdpRecommendations(
-    { recommendations, catalog, marketingCatalog },
+    { recommendations, catalog, marketingCatalog, media },
     viewModel.product.id,
   );
 
@@ -197,6 +206,15 @@ export default async function ProductPage({
   const productPath = `/demo/${demoSlug}/products/${viewModel.product.slug}`;
   const productUrl = canonicalUrl(productPath);
   const offers = buildProductOffers(viewModel.skus, stockBySkuId, productUrl);
+  // image-cdn epic: schema.org's real convention for a Product's photos is
+  // an `image` field holding an array of URLs -- every real photo this
+  // product has (not just the primary one), each resolved through the same
+  // media adapter as the on-page <img>. Omitted entirely (not an empty
+  // array) when the product has no `images` at all, same "never fabricate"
+  // discipline as buildProductOffers above.
+  const productImages = viewModel.product.images
+    ?.map((image) => resolveProductImageUrl(media, { images: [image] }))
+    .filter((url): url is string => url !== null);
   const productJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -204,6 +222,7 @@ export default async function ProductPage({
     description: viewModel.product.description,
     url: productUrl,
     ...(offers ? { offers } : {}),
+    ...(productImages && productImages.length > 0 ? { image: productImages } : {}),
   };
 
   const productCategories = await marketingCatalog.listCategoriesForProduct(viewModel.product.id);
@@ -238,6 +257,12 @@ export default async function ProductPage({
         // literals, not for a value passed through a union-typed
         // ComponentType, so this is safe for both branches).
         themeKey={activeTheme.key}
+        // image-cdn epic: additive/optional, see pdp-tabbed-detail.tsx's
+        // imageUrl doc comment -- null for any product without `images`,
+        // rendering byte-for-byte what each template rendered before this
+        // field existed.
+        imageUrl={imageUrl}
+        imageAlt={imageAlt}
       />
       {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </>
