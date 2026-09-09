@@ -106,6 +106,9 @@ importers:
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@mercatus-liber/fulfillment':
+        specifier: workspace:*
+        version: link:../../packages/fulfillment
       '@mercatus-liber/internal-bi':
         specifier: workspace:*
         version: link:../../packages/internal-bi

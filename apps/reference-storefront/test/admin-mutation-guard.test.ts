@@ -28,6 +28,27 @@
  * does not mock, so a real create isn't asserted here; the create/update/
  * publish golden paths are instead verified via the dev-server manual check
  * this story's acceptance criteria call for.
+ *
+ * fulfillment-02: also covers markFulfillmentLineShippedAction's own
+ * requireAdminPermission guard, same "real, in-memory-backed
+ * FulfillmentService, mocked adminAuth only" shape as every domain above.
+ * This is also this story's live-verification vehicle for the viewer-role
+ * rejection acceptance criterion specifically: @mercatus-liber/admin-auth's
+ * createDefaultAdminAuthAdapter (packages/admin-auth/src/default-adapter.ts)
+ * is hardcoded to always resolve a valid dev session to role "owner"
+ * (`DEV_OWNER_ROLE`) -- confirmed by reading that file directly, not
+ * assumed -- so there is no real cookie/session a live dev server run could
+ * ever present as role "viewer" through that adapter's actual, unmodified
+ * code. Injecting a real AdminSession with role "viewer" directly (exactly
+ * this suite's own established mechanism for every other action above) is
+ * this repo's real, precedented way to prove the guard rejects that role --
+ * the same mechanism admin-auth-03-route-and-mutation-gating.yaml's own
+ * acceptance criteria used ("invoked directly") for the original 12
+ * mutation actions. markLineShipped is invoked against a real order that
+ * was actually routed and submitted first (via the real, unmocked
+ * FulfillmentService.submitOrder), so the "succeeds normally" cases below
+ * prove a genuine status transition happened, not just that no error was
+ * thrown.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminAuthAdapter, AdminRole, AdminSession } from "@mercatus-liber/admin-auth";
@@ -35,6 +56,12 @@ import { createAdvertisingService, createInMemoryCampaignRepository } from "@mer
 import { createBundlesService, createInMemoryBundleRepository } from "@mercatus-liber/bundles";
 import { createComponentRegistry, createCmsService, createInMemoryCmsAdapter } from "@mercatus-liber/cms";
 import { createInMemoryEventBus } from "@mercatus-liber/core";
+import {
+  createFulfillmentService,
+  createInMemoryFulfillmentRoutingRepository,
+  createManualFulfillmentAdapter,
+  MANUAL_FULFILLMENT_PROVIDER,
+} from "@mercatus-liber/fulfillment";
 import { createInMemoryPromotionRepository, createPromotionsService } from "@mercatus-liber/promotions";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -49,6 +76,18 @@ const bundles = createBundlesService({
 const advertising = createAdvertisingService({ repository: createInMemoryCampaignRepository() });
 const cms = createCmsService({ persistence: createInMemoryCmsAdapter(), components: createComponentRegistry() });
 
+/** A minimal, real OrderLookup -- fulfillment reads orders structurally, never imports checkout-orders (see docs/subsystems/22-fulfillment.md). */
+const fakeOrders = {
+  async getOrder(id: string) {
+    return id === "guard-test-order" ? { id, items: [{ skuId: "guard-test-sku", quantity: 1 }] } : null;
+  },
+};
+const fulfillment = createFulfillmentService({
+  orders: fakeOrders,
+  routing: createInMemoryFulfillmentRoutingRepository(),
+  adapters: { [MANUAL_FULFILLMENT_PROVIDER]: createManualFulfillmentAdapter() },
+});
+
 const mockAdminAuth: AdminAuthAdapter = {
   async getCurrentSession() {
     return currentSession;
@@ -60,12 +99,16 @@ const mockAdminAuth: AdminAuthAdapter = {
 };
 
 vi.mock("../lib/services.js", () => ({
-  getServicesForDemo: vi.fn(async () => ({ adminAuth: mockAdminAuth, promotions, bundles, advertising, cms })),
+  getServicesForDemo: vi.fn(async () => ({ adminAuth: mockAdminAuth, promotions, bundles, advertising, cms, fulfillment })),
 }));
 
-const { createCmsPageAction, deactivateBundleAction, deactivateCampaignAction, deactivatePromotionAction } = await import(
-  "../lib/actions.js"
-);
+const {
+  createCmsPageAction,
+  deactivateBundleAction,
+  deactivateCampaignAction,
+  deactivatePromotionAction,
+  markFulfillmentLineShippedAction,
+} = await import("../lib/actions.js");
 
 function sessionFor(role: AdminRole): AdminSession {
   return { userId: `test-${role}`, email: `${role}@example.com`, role };
@@ -289,6 +332,65 @@ describe("admin mutation guard (admin-auth-03)", () => {
       await expect(createCmsPageAction(formData)).rejects.toThrow(/not authorized/i);
 
       expect(await cms.getPageBySlug("guard-test-page-null")).toBeNull();
+    });
+  });
+
+  describe("markFulfillmentLineShippedAction (fulfillment)", () => {
+    it("rejects a viewer-role session before mutating", async () => {
+      await fulfillment.submitOrder("guard-test-order");
+      currentSession = sessionFor("viewer");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("orderId", "guard-test-order");
+      formData.set("skuId", "guard-test-sku");
+      await expect(markFulfillmentLineShippedAction(formData)).rejects.toThrow(/not authorized/i);
+
+      const [record] = await fulfillment.listForOrder("guard-test-order");
+      expect(record?.status).toBe("submitted");
+    });
+
+    it("rejects when there is no session at all", async () => {
+      currentSession = null;
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("orderId", "guard-test-order");
+      formData.set("skuId", "guard-test-sku");
+      await expect(markFulfillmentLineShippedAction(formData)).rejects.toThrow(/not authorized/i);
+
+      const [record] = await fulfillment.listForOrder("guard-test-order");
+      expect(record?.status).toBe("submitted");
+    });
+
+    it("succeeds for an admin-role session, with real tracking info persisted", async () => {
+      currentSession = sessionFor("admin");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("orderId", "guard-test-order");
+      formData.set("skuId", "guard-test-sku");
+      formData.set("trackingNumber", "1Z999AA10123456784");
+      formData.set("trackingUrl", "https://example.com/track/1Z999AA10123456784");
+      await markFulfillmentLineShippedAction(formData);
+
+      const [record] = await fulfillment.listForOrder("guard-test-order");
+      expect(record?.status).toBe("shipped");
+      expect(record?.trackingNumber).toBe("1Z999AA10123456784");
+      expect(record?.trackingUrl).toBe("https://example.com/track/1Z999AA10123456784");
+    });
+
+    it("succeeds for an owner-role session", async () => {
+      currentSession = sessionFor("owner");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("orderId", "guard-test-order");
+      formData.set("skuId", "guard-test-sku");
+      await markFulfillmentLineShippedAction(formData);
+
+      const [record] = await fulfillment.listForOrder("guard-test-order");
+      expect(record?.status).toBe("shipped");
     });
   });
 });
