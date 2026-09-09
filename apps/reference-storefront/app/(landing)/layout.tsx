@@ -54,6 +54,16 @@ export default function LandingRootLayout({ children }: { children: ReactNode })
           <a href={docsUrl} style={{ color: "#111" }}>
             Docs
           </a>
+          {" · "}
+          {/* vision-02: real, visible Vision & Roadmap link, reusing the exact same
+              NEXT_PUBLIC_DOCS_URL-based docsUrl computed above for the Docs link --
+              points at the docs site's real /vision route (apps/docs/content/vision.md,
+              synced from repo-root VISION.md by sync-content.mjs). Same dual-state
+              behavior as Docs: a real URL when NEXT_PUBLIC_DOCS_URL is set, the same
+              clearly-labeled placeholder base (with /vision appended) when unset. */}
+          <a href={`${docsUrl}/vision`} style={{ color: "#111" }}>
+            Vision &amp; Roadmap
+          </a>
         </header>
         {children}
       </body>
