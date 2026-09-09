@@ -2,6 +2,7 @@ import type { Money } from "@mercatus-liber/core";
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
+import { InteractionTracker } from "./interaction-tracker";
 
 /**
  * The reference-storefront's own display shape for a recommended product --
@@ -149,6 +150,10 @@ export async function resolveCartRecommendations(
 export function RecommendationShelf({ label, products }: RecommendationShelfData) {
   return (
     <section style={{ marginTop: 24, borderTop: "1px solid var(--color-accent)", paddingTop: 12 }}>
+      <InteractionTracker
+        eventName="recommendation_shelf_viewed"
+        properties={{ label, productSlugs: products.map((product) => product.slug) }}
+      />
       <h2>{label}</h2>
       <ul style={{ display: "flex", flexWrap: "wrap", gap: 16, listStyle: "none", padding: 0 }}>
         {products.map((product) => (

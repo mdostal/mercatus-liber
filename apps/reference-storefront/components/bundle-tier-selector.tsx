@@ -1,5 +1,6 @@
 import type { Bundle, TierPricing } from "@mercatus-liber/bundles";
 import { addBundleTierToCartAction } from "../lib/actions";
+import { InteractionTracker } from "./interaction-tracker";
 
 /**
  * Renders one <form> per Bundle tier -- the multi-SKU sibling of the
@@ -19,6 +20,7 @@ export function BundleTierSelector({
 }) {
   return (
     <section style={{ marginBottom: 16 }}>
+      <InteractionTracker eventName="bundle_viewed" properties={{ bundleId: bundle.id, title: bundle.title }} />
       <h2>{bundle.title}</h2>
       {bundle.tiers.map((tier) => {
         const pricing = pricingByTierId[tier.id];
