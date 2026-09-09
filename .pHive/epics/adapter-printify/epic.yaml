@@ -1,0 +1,38 @@
+name: adapter-printify
+title: "@mercatus-liber/adapter-printify: real Printify print-on-demand fulfillment adapter"
+description: >
+  Depends on epic 41 (fulfillment-routing, done). A deliberate second, optional POD provider
+  (epic 42's Printful is the first, already done). Real marketplace-routing complexity Printful
+  doesn't have (Printify: many providers per product) resolved as out-of-scope for this adapter
+  -- provider selection is Printify's own platform responsibility once an order targets a
+  specific Printify product, same boundary as Printful's mockup/template setup. Real credential
+  gate, same disclosed pattern as epics 27, 42, 46. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [adapters, fulfillment, third-party-integration]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    adapters: "Real third-party FulfillmentAdapter implementation, same pattern as adapter-printful"
+    fulfillment: "Second implementation of epic 41's contract"
+    third-party-integration: "Grounded in real Printify API research"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: adapter-printify-01-research-and-adapter
+    title: "Confirm real Printify API details, build the FulfillmentAdapter implementation"
+    complexity: high
+    depends_on: []
+  - id: adapter-printify-02-wiring-verification-closeout
+    title: "Env-var wiring, honest credential-gap disclosure, docs, closeout, merge"
+    complexity: low
+    depends_on: [adapter-printify-01-research-and-adapter]
