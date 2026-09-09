@@ -2,12 +2,15 @@
 
 Two packages both have "analytics" somewhere in their description, and it's easy to conflate
 them — but `@mercatus-liber/internal-bi` and `@mercatus-liber/analytics` do opposite jobs.
-**Analytics is write-only**: it forwards events out to an external tool like PostHog and has no
-read side. **Internal BI is read-only from this repo's own data**: it computes real dashboard
-metrics (revenue, funnel, top products) from the persistence this store already owns, and
-forwards nothing anywhere. Understanding that split is the whole point of this page.
+**Analytics forwards events out** to an external tool like PostHog, and — as of epic 46 — can
+also **import read-side traffic/referrer data back in** from that same class of external
+provider (PostHog, GA4), but never touches this repo's own persistence in either direction.
+**Internal BI is read-only from this repo's own data**: it computes real dashboard metrics
+(revenue, funnel, top products) from the persistence this store already owns, and forwards
+nothing anywhere. Understanding that split — external-provider event/insights traffic on one
+side, this store's own owned data on the other — is the whole point of this page.
 
-## Analytics: a write-only forwarding pipe
+## Analytics: forwarding events out, and importing insights back in
 
 Every subsystem in this repo already publishes semantic events to the event bus for its own
 reasons — inventory reacting to orders, account reacting to order status changes, and so on.
@@ -125,25 +128,74 @@ have genuinely different trust boundaries:
 
 | | `@mercatus-liber/analytics` (13) | `@mercatus-liber/internal-bi` (20) |
 |---|---|---|
-| Direction | Write-only, forwards out | Read-only, computed from owned data |
+| Direction | Forwards events out; imports insights back in (both to/from the *external* provider) | Read-only, computed from owned data |
 | Destination | External tool (PostHog today) | This store's own `/admin/metrics` |
-| Backing data | None owned — pure event forwarding | This repo's own persistence + a small funnel log |
-| Swappable via | `AnalyticsAdapter` (noop / PostHog) | `BiMetricsAdapter` (default reference impl) |
+| Backing data | None owned — pure event forwarding + external-provider insights | This repo's own persistence + a small funnel log |
+| Swappable via | `AnalyticsAdapter` (noop / PostHog); `AnalyticsInsightsAdapter` (noop / PostHog / GA4) | `BiMetricsAdapter` (default reference impl) |
 | Deleting it | Every other subsystem keeps working | Every other subsystem keeps working |
 
-## What's next: closing the loop with external data
+## Closing the loop: importing read-side data from external providers
 
-Today, neither package can answer "what does PostHog (or GA4) know about this store that our
-own database doesn't" — page-view traffic, referrer/search-visibility data, and anything
-computed client-side never flows back in. That's explicitly future work, tracked as backlog
-epic **46, `analytics-insights-and-import-adapters`** (not yet planned as of this writing): a
-new `AnalyticsInsightsAdapter`-shaped contract for *importing* read-side data from an external
-provider's own API — real reference implementations for both Google Analytics 4's Data API and
-PostHog's Query/Insights API side by side, plus this repo's own internal-bi adapter as a third,
-always-available source, merged (or shown side by side, to avoid silently reconciling
-conflicting numbers) into an extended `/admin/metrics` surface. If you're looking at this
-capability area wondering where GA4 or PostHog *read-side* data fits, epic 46 is where that's
-headed — it isn't built yet.
+`internal-bi` still only ever reads this store's own owned data — that half of the split hasn't
+changed. What's new, shipped by epic 46 (`analytics-insights-and-import-adapters`), is that
+`@mercatus-liber/analytics` is no longer purely one-directional: alongside the write-only
+`AnalyticsAdapter` above, it now also declares `AnalyticsInsightsAdapter`, a sibling contract for
+**importing** read-side traffic/referrer data back in from an external provider's own API (not
+an extension of `AnalyticsAdapter` — traffic/referrer data lives only in the external provider's
+own system, never in this app's persistence, so it's a separate contract rather than a bolt-on):
+
+```ts
+// packages/analytics/src/types.ts
+export interface AnalyticsInsightsAdapter {
+  getTrafficSources(range: AnalyticsInsightsRange): Promise<TrafficSourceRow[]>;
+  getPageViews(range: AnalyticsInsightsRange): Promise<PageViewRow[]>;
+  getTopReferrers(range: AnalyticsInsightsRange): Promise<TopReferrerRow[]>;
+}
+```
+
+Every row carries a `provider` field (not `source`, to avoid colliding with
+`getTrafficSources`' own domain-meaningful `source` field), because different tools count
+traffic differently — bot filtering, session definitions, and attribution windows all vary — so
+multiple configured providers are always shown side by side on `/admin/metrics`' new
+**Traffic & Sources** section, never silently merged or summed into one blended number.
+
+Two real implementations exist:
+
+- **`createPostHogInsightsAdapter`** (`packages/analytics/src/posthog-insights-adapter.ts`) wraps
+  three real HogQL queries against PostHog's Query API (`POST
+  /api/projects/:project_id/query`), grouping the `events`/`$pageview` schema by
+  `$referring_domain`, `$pathname`, and `$referrer` respectively. It requires a **personal** API
+  key with "Query Read" scope (`POSTHOG_PERSONAL_API_KEY` + `POSTHOG_PROJECT_ID`) — deliberately
+  distinct from the write-side `POSTHOG_API_KEY` above, which is a project key valid only for
+  event ingestion and not accepted by the Query API.
+- **`createGa4InsightsAdapter`** (`packages/analytics/src/ga4-insights-adapter.ts`) wraps Google
+  Analytics 4's Data API `runReport` endpoint, mapping `sessionSource` → traffic sources,
+  `pagePath` → page views, and the `sessionSource`+`sessionMedium` pair → referrers (GA4 has no
+  single referrer-URL dimension the way PostHog does). It authenticates via a service-account
+  self-signed JWT exchanged for an OAuth2 bearer token, and is gated on `GA4_PROPERTY_ID` +
+  `GA4_SERVICE_ACCOUNT_EMAIL` + `GA4_PRIVATE_KEY`.
+
+`apps/reference-storefront/lib/services.ts` wires both in behind the same
+env-var-truthy-picks-the-real-adapter-else-noop-fallback pattern as every other adapter in this
+repo, each independently gated on its own env vars and carrying an explicit `configured` flag —
+so `/admin/metrics`' Traffic & Sources section can render an honest "not configured" state per
+provider instead of an empty-looking table when a source's env vars are unset.
+
+**Honest disclosure on live verification:** the PostHog adapter is built and unit-tested against
+PostHog's real, current Query API request/response shapes, but no real PostHog personal API key
+with query scope is available in this development environment, so no live call against a real
+PostHog project has been made. The GA4 adapter is likewise built and unit-tested (including
+against a real RSA keypair, to verify its signed JWT assertion is genuinely valid, not just
+JWT-shaped) against Google's real, current Data API docs, but no real GA4 credential is
+available either — the only Google credential present in this environment is a personal
+`authorized_user` OAuth token (`gcloud`'s application default credentials), not a
+service-account key with a private key this adapter's JWT-signing flow could use. In both
+cases, the adapter's own unit-test coverage stands in for live end-to-end verification; what
+*was* live-verified against a real dev server is the honest not-configured state itself —
+`/admin/metrics` correctly rendering "Traffic & Sources is not configured for this demo" with
+neither provider's env vars set, alongside the always-present internal-bi sections (revenue,
+order volume, top products, conversion funnel, promotion redemption) rendering unaffected.
+Same disclosed-gap posture as epic 27's admin-auth-clerk (Clerk itself).
 
 ## Further reading
 
