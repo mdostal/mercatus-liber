@@ -1,0 +1,107 @@
+id: design-system-v2-03-switcher-and-verification
+epic: storefront-design-system-v2
+title: "Theme-switcher UI, live verification across all page types/bundles, closeout"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [design-system-v2-02-component-template-wiring]
+
+description: |
+  Read both prior stories' committed changes in full first.
+
+  1. Extend apps/reference-storefront/components/theme-switcher.tsx (and its
+     lib/theme-cookie.ts / lib/actions.ts setThemeAction wiring) so the 3 new bundles
+     (editorial, maximalist, datasheet) are real, selectable options alongside the existing 7 --
+     same mechanism (writes themeCookieName(demoSlug) cookie, read by readActiveThemeBundle()),
+     no new mechanism. Labels should be the real design names ("The Slow Catalog"/"Blaze
+     Theme"/"Datasheet Storefront") alongside the bundle key, not just the raw key.
+
+  2. Live verification against a real running dev server, at least one demo store (dragon-merch
+     or northline, whichever is running -- both are equally valid since this is
+     bundle/template-level, not demo-specific):
+     - Switch to each of the 3 new bundles in turn; for each, visit nav (via the layout), home,
+       a category page, a PDP, and the cart page (with real items added first) -- confirm each
+       renders its bundle's real distinct template (not the default), with no error markers, no
+       raw unresolved `var(--x)` visibly broken (every fallback should render something sane).
+     - Switch to at least 2 of the 7 pre-existing bundles (e.g. classic and northline) and
+       re-visit all 5 surfaces -- confirm byte-for-byte-equivalent rendering to before this
+       epic (this is the fallback-preservation proof the design-discussion's risk section
+       calls for).
+     - Confirm cart quantity-update/remove-line/checkout server actions still function under
+       all 3 new cart templates (not just visual inspection -- drive a real form submission).
+
+  3. Update docs/subsystems/06-theming-layout.md: document the 4 newly-covered page types, the
+     template keys registered for each, the 3 new bundles, and the --font-family-display
+     additive token, following this doc's existing structure/level of detail.
+
+  4. Update .pHive/planning/epic-backlog.md: change epic 34's row from "backlog (not yet
+     planned)" to "done (3/3 stories complete)", with a description covering what was actually
+     built (mirroring the style/detail level of every other epic-34-and-earlier row in that
+     file) -- name the 3 bundles, the 5 page types now carrying real template variation
+     (pdp + the 4 new ones), and explicitly note this closes the "is this a joke?" gap epic 32
+     left open.
+
+  5. This is very likely the epic that makes real on the specific methodology the user asked to
+     be treated as a reusable pattern (3 blind parallel design agents -> personal verification
+     -> unfiltered publish -> user reaction -> spec -> real switchable implementation) -- say so
+     plainly in the final report if all 3 stories are genuinely done and verified.
+
+acceptance_criteria:
+  - "Given the theme-switcher UI, then all 3 new bundles are selectable with real, human-readable labels, using the existing cookie mechanism (no new persistence path)"
+  - "Given each of the 3 new bundles selected in turn, then nav/home/category/PDP/cart all render that bundle's distinct template with no error markers"
+  - "Given at least 2 pre-existing bundles re-verified across the same 5 surfaces, then rendering is confirmed unchanged from before this epic"
+  - "Given real cart quantity-update/remove-line/checkout server-action submissions under all 3 new cart templates, then all succeed exactly as before this epic"
+  - "Given `pnpm test`, `pnpm typecheck`, and `pnpm build` run via turbo at the repo root, then all tasks are green including apps/docs and apps/reference-storefront"
+  - "Given docs/subsystems/06-theming-layout.md, then it accurately documents the new page types/templates/bundles"
+  - "Given .pHive/planning/epic-backlog.md, then epic 34's row reads done (3/3 stories complete) with an honest, specific description"
+
+steps:
+  - id: implement
+    description: Extend the theme-switcher UI and update docs/subsystems/06-theming-layout.md per the description above.
+    agent: developer
+  - id: test
+    description: Run every live-verification check in the description above against a real dev server, plus the full monorepo test/typecheck/build.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the epic-backlog.md update is accurate and specific, confirm the fallback-preservation verification is genuinely evidenced (not asserted), confirm this really does close the epic-32 gap.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/storefront-design-system-v2; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/components/theme-switcher.tsx
+      purpose: Existing switcher UI to extend with the 3 new bundles.
+    - path: apps/reference-storefront/lib/theme-cookie.ts
+      purpose: Existing cookie read/write mechanism, unchanged, just needs the 3 new keys to be valid selections.
+    - path: docs/subsystems/06-theming-layout.md
+      purpose: Existing subsystem doc needing an update for the new page-type/template/bundle coverage.
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 34's row updated to done.
+
+files_to_modify:
+  - file: apps/reference-storefront/components/theme-switcher.tsx
+    change: Add the 3 new bundles as real selectable options with human-readable labels.
+  - file: docs/subsystems/06-theming-layout.md
+    change: Document the new page types/templates/bundles/additive token.
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 34 done with an accurate description.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/storefront-design-system-v2/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's live verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check across bundles/page-types; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."

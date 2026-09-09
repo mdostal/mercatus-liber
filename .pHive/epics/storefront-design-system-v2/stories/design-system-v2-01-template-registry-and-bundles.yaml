@@ -1,0 +1,182 @@
+id: design-system-v2-01-template-registry-and-bundles
+epic: storefront-design-system-v2
+title: "Extend theming's template registry to nav/home/category/cart; add 3 new ThemeBundles"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/storefront-design-system-v2/docs/design-discussion.md in full first --
+  §2 resolves the central design question this story implements, don't re-derive it.
+
+  Part 1 -- extend the template registry (packages/theming/src/service.ts's
+  DEFAULT_TEMPLATES + createThemingService, mirroring the exact shape already used for
+  pageType: "pdp"). Register real competing LayoutTemplates for 4 more page types that today
+  effectively have exactly one hardcoded layout each:
+    - pageType: "nav" -- register "nav.top-bar" (today's only current chrome layout -- MUST be
+      registered first so it stays the deterministic fallback default for the 7 existing
+      bundles) and "nav.rail" (a fixed side-rail nav, per "Blaze Theme"'s left-rail jump-nav
+      pattern).
+    - pageType: "home" -- register "home.standard-grid" (first/default, today's current layout)
+      plus "home.magazine-grid" (asymmetric feature-card layout, per "The Slow Catalog") and
+      "home.spec-grid" (dense datasheet-style grid, per "Datasheet Storefront").
+    - pageType: "category" -- register "category.standard-grid" (first/default) plus
+      "category.magazine-grid" and "category.spec-grid", same 3-way split as home.
+    - pageType: "cart" -- register "cart.standard" (first/default) plus "cart.receipt-style"
+      (per "The Slow Catalog"'s receipt-styled cart) and "cart.spec-table" (per "Datasheet
+      Storefront"'s spec-table treatment).
+  Registration ORDER matters: for each page type, the template matching TODAY's current
+  behavior must be registered first, since resolveTemplate() falls back to the
+  first-registered template when a bundle sets no explicit default for that page type. This is
+  what keeps all 7 existing bundles' rendering byte-for-byte unchanged without any bundle
+  edits -- verify this is genuinely true by reading resolveTemplate()'s existing fallback logic
+  in service.ts yourself, don't assume.
+
+  Part 2 -- add 3 new ThemeBundles to packages/theming/src/theme-bundles.ts's THEME_BUNDLES
+  array, each with defaultTemplatesByPageType covering pdp + all 4 newly-registered page types
+  above. Source designs were published as Artifacts this session -- if you need to re-view
+  exact pixel/spacing values beyond what's given below, ask the human for the 3 Artifact URLs
+  (they were shown in chat, not in this repo). Real token values extracted directly from each
+  design's own CSS custom properties (not approximated):
+
+  bundle key "editorial" (source: "The Slow Catalog", warm editorial/artisan-market):
+    --color-background: "#F2E9D8"        (design's --paper)
+    --color-text: "#241C14"              (--ink)
+    --color-primary: "#B14B2A"           (--terracotta)
+    --color-accent: "#5E6E45"            (--sage)
+    --color-muted: "#7A6C58"             (--ink-faint)
+    --color-border: "#C7B586"            (--line)
+    --font-family: "'Newsreader', 'Iowan Old Style', Georgia, serif"   (design's --font-body)
+    --radius: "3px"
+    --space-xs: "0.5rem"
+    --space-sm: "1.25rem"
+    --space-md: "2rem"
+    --space-lg: "4.5rem"
+    --font-size-heading-lg: "2.5rem"
+    --font-size-heading-md: "1.5rem"
+    --font-size-body: "1rem"
+    --shadow-card: "0 1px 2px rgba(36,28,20,0.08), 0 4px 12px rgba(36,28,20,0.10)"
+    defaultTemplatesByPageType: { pdp: "pdp.long-scroll", nav: "nav.top-bar", home: "home.magazine-grid", category: "category.magazine-grid", cart: "cart.receipt-style" }
+
+  bundle key "maximalist" (source: "Blaze Theme", bold modern maximalist):
+    --color-background: "#EEF0E6"        (--bg)
+    --color-text: "#17130F"              (--text, also used as the hard-shadow/border color)
+    --color-primary: "#FF4515"           (--accent, "blaze-orange")
+    --color-accent: "#263B8C"            (--accent-2, cobalt secondary)
+    --color-muted: "#55503f"             (--text-dim)
+    --color-border: "#17130F"            (thick 3px ink border -- same value as text, by design)
+    --font-family: "'Archivo', system-ui, sans-serif"
+    --radius: "16px"                     (--radius-card, sticker-style cards)
+    --space-xs: "0.5rem"
+    --space-sm: "1rem"
+    --space-md: "2rem"
+    --space-lg: "4rem"
+    --font-size-heading-lg: "3rem"
+    --font-size-heading-md: "1.75rem"
+    --font-size-body: "1rem"
+    --shadow-card: "6px 6px 0 #17130F"   (hard offset shadow, not a soft blur -- deliberate)
+    defaultTemplatesByPageType: { pdp: "pdp.tabbed-detail", nav: "nav.rail", home: "home.standard-grid", category: "category.standard-grid", cart: "cart.standard" }
+
+  bundle key "datasheet" (source: "Datasheet Storefront", precision technical/minimal-grid):
+    --color-background: "#F1F3F6"        (--bg)
+    --color-text: "#12151B"              (--text)
+    --color-primary: "#C8460A"           (--accent, "calibration-orange")
+    --color-accent: "#5A6170"            (--text-muted, used as a cool secondary accent here)
+    --color-muted: "#8891A0"             (--text-faint)
+    --color-border: "#D2D7E0"            (--border, hairline -- the grid IS the border)
+    --font-family: "'IBM Plex Sans', system-ui, sans-serif"
+    --radius: "2px"                      (sharp edges by design, not 0 -- avoids clipped-text artifacts at 0px)
+    --space-xs: "8px"
+    --space-sm: "16px"
+    --space-md: "32px"
+    --space-lg: "64px"
+    --font-size-heading-lg: "2.25rem"
+    --font-size-heading-md: "1.375rem"
+    --font-size-body: "1rem"
+    --shadow-card: "none"                (deliberate -- hairline borders instead of elevation, per source design)
+    defaultTemplatesByPageType: { pdp: "pdp.tabbed-detail", nav: "nav.top-bar", home: "home.spec-grid", category: "category.spec-grid", cart: "cart.spec-table" }
+
+  Additive, backward-compatible token (design decision, not guessed -- see below): add one new
+  optional token, `--font-family-display`, used only by heading-level markup in story 2, always
+  referenced as `var(--font-family-display, var(--font-family))` so bundles that don't define
+  it (all 7 existing bundles, plus maximalist/datasheet above which intentionally use one
+  font family throughout) fall back to the existing --font-family with zero behavior change.
+  Set --font-family-display: "'Fraunces', 'Iowan Old Style', Georgia, serif" only on the
+  "editorial" bundle (its real display/body font pairing).
+
+acceptance_criteria:
+  - "Given packages/theming/src/service.ts's DEFAULT_TEMPLATES, then nav/home/category/cart each have >=2 registered LayoutTemplates, with the template matching today's current (single) layout registered FIRST for each page type"
+  - "Given THEME_BUNDLES after this story, then it contains exactly 3 new bundles (editorial, maximalist, datasheet) with the exact token values specified above, plus the 7 pre-existing bundles completely unchanged (diff the file to confirm no unrelated edits)"
+  - "Given resolveTemplate('nav'), resolveTemplate('home'), resolveTemplate('category'), resolveTemplate('cart') called with no bundle override, then each returns the template key matching today's CURRENT behavior (proving the fallback preserves existing rendering)"
+  - "Given a unit test constructing a ThemingService and calling applyTheme() with each of the 3 new bundles, then getTokens() and resolveTemplate() for every page type return exactly the values specified above"
+  - "Given `pnpm --filter @mercatus-liber/theming build` and its test suite, then both succeed with no errors"
+
+steps:
+  - id: research
+    description: Read service.ts and theme-bundles.ts in full, confirm resolveTemplate()'s exact fallback semantics before registering anything.
+    agent: researcher
+  - id: implement
+    description: Register the new LayoutTemplates and add the 3 new ThemeBundles per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write/run unit tests covering every acceptance criterion above, including the fallback-preservation checks for all 4 newly-covered page types.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Diff theme-bundles.ts to confirm the 7 existing bundles are byte-for-byte unchanged; confirm registration order is correct for every page type.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/storefront-design-system-v2.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, package: "@mercatus-liber/theming" }
+  key_files:
+    - path: packages/theming/src/service.ts
+      purpose: "createThemingService + DEFAULT_TEMPLATES -- resolveTemplate()'s fallback logic this story depends on"
+    - path: packages/theming/src/theme-bundles.ts
+      purpose: "THEME_BUNDLES array + ThemeBundle type -- where the 3 new bundles are added"
+    - path: docs/subsystems/06-theming-layout.md
+      purpose: "Existing subsystem doc, needs updating in story 3 once component wiring (story 2) is real"
+
+files_to_modify:
+  - file: packages/theming/src/service.ts
+    change: "Register nav/home/category/cart LayoutTemplates, current-layout-first per page type"
+  - file: packages/theming/src/theme-bundles.ts
+    change: "Add editorial/maximalist/datasheet ThemeBundles with the exact token values above"
+
+design_decisions:
+  - decision: "Extend LayoutTemplate/resolveTemplate coverage to 4 more page types instead of a new component-variant mechanism."
+    rationale: "See design-discussion.md §2 -- reuses the one existing, proven precedent (PDP) rather than duplicating a mechanism the package already has."
+  - decision: "Add one new optional token, --font-family-display, always with a var()-fallback to --font-family."
+    rationale: "editorial's real design pairs a serif display face with a different serif body face -- additive and fallback-safe, doesn't touch any of the 7 existing single-font-family bundles."
+
+risks:
+  - severity: low
+    description: "Registration-order mistake could silently change existing bundles' rendering."
+    mitigation: "Acceptance criteria explicitly requires testing resolveTemplate()'s no-override return value for every newly-covered page type."
+
+references:
+  - path: .pHive/epics/storefront-design-system-v2/docs/design-discussion.md
+    relevant_excerpt: "§2: the resolved central design question this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: theming.new_bundle_template_coverage
+  direction: up
+  unit: count
+  baseline: 0
+  target: 3
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "THEME_BUNDLES entry count for editorial/maximalist/datasheet, verified by test"
+  verify_at: integrate
+  owner: tester
