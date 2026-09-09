@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createAccountService, createInMemoryCustomerProfileRepository, type AccountService } from "@mercatus-liber/account";
 import { createClerkAdminAuthAdapter } from "@mercatus-liber/adapter-clerk";
+import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { ADMIN_DEV_SESSION_COOKIE, createDefaultAdminAuthAdapter, type AdminAuthAdapter } from "@mercatus-liber/admin-auth";
 import {
@@ -285,8 +286,22 @@ async function buildServices(): Promise<Services> {
   const theming = createThemingService();
   const pdp = createPdpService({ catalog, theming });
 
+  // Real Sanity adapter when a real Sanity project is configured; the
+  // zero-infra in-memory adapter otherwise -- same two-branch "env var
+  // truthy picks the real adapter, else a harmless local fallback" shape as
+  // the analytics/admin-auth branches above (see
+  // cms-disc-01-wire-and-document.yaml). SANITY_DATASET defaults to
+  // Sanity's own conventional "production" dataset name when unset.
+  const cmsPersistence = process.env.SANITY_PROJECT_ID
+    ? createSanityAdapter({
+        projectId: process.env.SANITY_PROJECT_ID,
+        dataset: process.env.SANITY_DATASET ?? "production",
+        token: process.env.SANITY_TOKEN ?? "",
+      })
+    : createInMemoryCmsAdapter();
+
   const cms = createCmsService({
-    persistence: createInMemoryCmsAdapter(),
+    persistence: cmsPersistence,
     components: createComponentRegistry(),
   });
 

@@ -84,6 +84,17 @@ and payment keys to get real behavior instead of a local stand-in.
 - `NEXT_PUBLIC_POSTHOG_HOST` — optional client-side PostHog host override; falls back to
   `https://us.i.posthog.com` when unset.
 
+**Content (CMS)** (`@mercatus-liber/cms` + `@mercatus-liber/adapter-sanity`):
+- `SANITY_PROJECT_ID` — Sanity project ID. This is the single signal `lib/services.ts` uses to
+  decide whether Sanity is configured at all: when set, the real `createSanityAdapter()` is
+  wired in as the CMS's persistence; when unset, the app falls back to the zero-infra
+  `createInMemoryCmsAdapter()` -- no external CMS required to run this app locally.
+- `SANITY_DATASET` — optional, defaults to `"production"` (Sanity's own conventional dataset
+  name) when unset. Only meaningful alongside `SANITY_PROJECT_ID`.
+- `SANITY_TOKEN` — Sanity API token used to authenticate reads/writes against the configured
+  project and dataset. Falls back to an empty string when unset, same posture as the Stripe
+  keys above; only meaningful alongside `SANITY_PROJECT_ID`.
+
 **Demo content**:
 - `DEMO_BRAND` — when set to `northline`, seeds the app with the "Northline Home Tech" public
   demo content instead of the default dragon-merch seed. Any other value (including unset)
