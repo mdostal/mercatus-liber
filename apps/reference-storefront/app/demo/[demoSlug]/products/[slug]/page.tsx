@@ -7,6 +7,7 @@ import { BundleTierSelector } from "../../../../../components/bundle-tier-select
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { RecommendationShelf, resolvePdpRecommendations } from "../../../../../components/recommendation-shelf";
 import { isDemoSlug } from "../../../../../lib/demos";
+import { breadcrumbList, JsonLd, type BreadcrumbItem } from "../../../../../lib/json-ld";
 import { isCustomizableProduct } from "../../../../../lib/seed";
 import { getServicesForDemo } from "../../../../../lib/services";
 import { canonicalUrl } from "../../../../../lib/site-url";
@@ -22,6 +23,48 @@ function truncateDescription(text: string): string {
   const truncated = text.slice(0, DESCRIPTION_MAX_LENGTH);
   const lastSpace = truncated.lastIndexOf(" ");
   return `${truncated.slice(0, lastSpace > 0 ? lastSpace : DESCRIPTION_MAX_LENGTH)}...`;
+}
+
+/**
+ * seo-02: builds the real schema.org `offers` value for a PDP's Product
+ * JSON-LD, reusing the exact `viewModel.skus`/`stockBySkuId` data already
+ * computed by ProductPage below (no redundant fetch) -- a single real
+ * `Offer` for a single-SKU product (the common case), a real `AggregateOffer`
+ * (low/high price across the product's own real SKUs) when it has more than
+ * one, matching schema.org's own guidance for a variant product. Returns
+ * undefined for the (unexpected) zero-SKU case rather than emitting a
+ * fabricated price.
+ */
+function buildProductOffers(
+  skus: { id: string; price: { amount: number; currency: string } }[],
+  stockBySkuId: Record<string, number>,
+  url: string,
+): Record<string, unknown> | undefined {
+  if (skus.length === 0) return undefined;
+
+  const currency = skus[0]!.price.currency;
+  const amounts = skus.map((sku) => sku.price.amount);
+  const anyInStock = skus.some((sku) => (stockBySkuId[sku.id] ?? 0) > 0);
+  const availability = anyInStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
+
+  if (skus.length === 1) {
+    return {
+      "@type": "Offer",
+      priceCurrency: currency,
+      price: (amounts[0]! / 100).toFixed(2),
+      availability,
+      url,
+    };
+  }
+
+  return {
+    "@type": "AggregateOffer",
+    priceCurrency: currency,
+    lowPrice: (Math.min(...amounts) / 100).toFixed(2),
+    highPrice: (Math.max(...amounts) / 100).toFixed(2),
+    offerCount: skus.length,
+    availability,
+  };
 }
 
 /**
@@ -132,8 +175,37 @@ export default async function ProductPage({
     viewModel.product.id,
   );
 
+  // seo-02: real Product + BreadcrumbList JSON-LD, built from data already
+  // resolved above (viewModel, stockBySkuId) plus one real new lookup this
+  // page didn't previously make (the product's real assigned category, for
+  // the breadcrumb's middle hop) -- never invented labels/prices.
+  const productPath = `/demo/${demoSlug}/products/${viewModel.product.slug}`;
+  const productUrl = canonicalUrl(productPath);
+  const offers = buildProductOffers(viewModel.skus, stockBySkuId, productUrl);
+  const productJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: viewModel.product.title,
+    description: viewModel.product.description,
+    url: productUrl,
+    ...(offers ? { offers } : {}),
+  };
+
+  const productCategories = await marketingCatalog.listCategoriesForProduct(viewModel.product.id);
+  const breadcrumbItems: BreadcrumbItem[] = [{ name: "Home", url: canonicalUrl(`/demo/${demoSlug}`) }];
+  const primaryCategory = productCategories[0];
+  if (primaryCategory) {
+    breadcrumbItems.push({
+      name: primaryCategory.title,
+      url: canonicalUrl(`/demo/${demoSlug}/category/${primaryCategory.slug}`),
+    });
+  }
+  breadcrumbItems.push({ name: viewModel.product.title, url: productUrl });
+
   return (
     <>
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={breadcrumbList(breadcrumbItems)} />
       <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug }} />
       {bundle ? <BundleTierSelector demoSlug={demoSlug} bundle={bundle} pricingByTierId={pricingByTierId} /> : null}
       <Component

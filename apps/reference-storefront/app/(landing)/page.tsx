@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DEMO_REGISTRY, DEMO_SLUGS } from "../../lib/demos";
+import { JsonLd } from "../../lib/json-ld";
 import { canonicalUrl } from "../../lib/site-url";
 
 /**
@@ -19,6 +20,32 @@ export const metadata: Metadata = {
 };
 
 /**
+ * seo-02: real Organization + WebSite JSON-LD for the framework landing
+ * page (design-discussion.md §2c) -- name/description/url reuse the exact
+ * same real values as `metadata` above (itself sourced from README.md's own
+ * opening lines, per seo-01), rather than re-deriving or inventing separate
+ * copy. Combined under one `@graph` so both schema types ship in a single
+ * `<script>` tag.
+ */
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      name: "Mercatus Liber",
+      description: metadata.description,
+      url: canonicalUrl("/"),
+    },
+    {
+      "@type": "WebSite",
+      name: "Mercatus Liber",
+      description: metadata.description,
+      url: canonicalUrl("/"),
+    },
+  ],
+};
+
+/**
  * demo-routing-05: the framework landing page (design-discussion.md §3) --
  * replaces the old app/page.tsx, which rendered one demo's CMS "home" page
  * content (that content now lives at app/demo/[demoSlug]/page.tsx, the
@@ -33,6 +60,7 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <main>
+      <JsonLd data={organizationJsonLd} />
       {/* README.md line 1-4: name + tagline. */}
       <h1>Mercatus Liber</h1>
       <p>

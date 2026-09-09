@@ -7,6 +7,7 @@ import { CategorySpecGrid } from "../../../../../components/category-spec-grid";
 import { CategoryStandardGrid } from "../../../../../components/category-standard-grid";
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { isDemoSlug, type DemoSlug } from "../../../../../lib/demos";
+import { breadcrumbList, JsonLd, type BreadcrumbItem } from "../../../../../lib/json-ld";
 import { getServicesForDemo } from "../../../../../lib/services";
 import { canonicalUrl } from "../../../../../lib/site-url";
 import { readActiveThemeBundle } from "../../../../../lib/theme-cookie";
@@ -67,8 +68,16 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
   const Template: ComponentType<{ demoSlug: DemoSlug; products: Product[] }> =
     (templateKey && CATEGORY_TEMPLATES[templateKey as keyof typeof CATEGORY_TEMPLATES]) || CategoryStandardGrid;
 
+  // seo-02: real BreadcrumbList JSON-LD (Home -> Category), matching the
+  // real nav hierarchy -- design-discussion.md §2c.
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { name: "Home", url: canonicalUrl(`/demo/${demoSlug}`) },
+    { name: category.title, url: canonicalUrl(`/demo/${demoSlug}/category/${category.slug}`) },
+  ];
+
   return (
     <main style={{ padding: "var(--space-sm, 16px)" }}>
+      <JsonLd data={breadcrumbList(breadcrumbItems)} />
       <InteractionTracker eventName="category_viewed" properties={{ categoryId: category.id, slug: category.slug }} />
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{category.title}</h1>
       <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>{category.description}</p>
