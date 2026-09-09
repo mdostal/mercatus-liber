@@ -1,0 +1,113 @@
+id: northline-depth-02-real-nav-and-actions
+epic: demo-store-northline-depth
+title: "Demo-built navLinks (categories + service areas), delete hardcoded Fall Sale link, verify search"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [northline-depth-01-catalog-and-location-depth]
+
+description: |
+  Read the prior story's committed changes in full first -- the 4 real categories and 8
+  published location pages it created are what this story's nav must actually link to.
+
+  Read apps/reference-storefront/components/nav-top-bar.tsx and nav-rail.tsx in full, plus
+  apps/reference-storefront/app/demo/[demoSlug]/layout.tsx (which constructs and passes their
+  props today). Confirm for yourself the exact current bug: the nav hardcodes a link to
+  `campaign/fall-sale`, which only exists for dragon-merch's seed data.
+
+  1. Add a `navLinks: Array<{ href: string; label: string }>` prop to both NavTopBar and
+     NavRail, rendered as additional nav entries between the brand link and Cart. Remove the
+     hardcoded "Fall Sale" `<a>` entirely from both components.
+  2. In app/demo/[demoSlug]/layout.tsx, build navLinks server-side per demo from real data:
+     query the active demo's MarketingCatalogService for its top-level categories (or the
+     4 Northline ones + whatever dragon-merch already has -- read what's available on the
+     Services bundle for this) and map each to `{ href: /demo/${demoSlug}/category/${slug},
+     label: category.title }`. Also include a link to a service-area/location index if one
+     exists (create a minimal one if it doesn't -- check whether app/demo/[demoSlug]/locations/
+     already has an index route from subsystem 15's existing work, or only [slug] pages; if
+     only [slug] pages exist, this story adds a minimal locations index page listing all
+     published location pages for that demo, since routing users to a specific area page
+     requires somewhere to pick which one). If the demo has a real, currently-published
+     marketing/campaign page (dragon-merch's real "fall-sale" is one example, resolved
+     dynamically -- do not hardcode "fall-sale" as a fallback string anywhere), include it as
+     one more navLinks entry; if it has none, that entry is simply absent, not a broken link.
+  3. Confirm search actually works: submit at least 2 real Northline queries through the search
+     page/action (e.g. "camera", "fiber") and confirm real, relevant results are returned, not
+     just that the search page itself loads without erroring.
+  4. Confirm every resulting nav link on both demos resolves to a real page (no 404s) -- this
+     includes the previously-broken case (Northline's nav, before this story, technically
+     rendered a Fall Sale link that pointed at a route that either 404s or shows dragon-merch's
+     campaign under Northline's own theme/branding, depending on how demo-scoping resolved it --
+     confirm which, and confirm it's gone after this story).
+
+acceptance_criteria:
+  - "Given Northline's nav, then it lists real links to all 4 real categories from the prior story, and no hardcoded 'Fall Sale' text/link appears anywhere"
+  - "Given dragon-merch's nav, then it lists real links to its own real categories, and its own real fall-sale campaign link is now built dynamically (present because the campaign is genuinely live for that demo), not hardcoded into the shared component"
+  - "Given every navLinks entry on both demos, then following it returns a real, non-404 page"
+  - "Given a real search query for 'camera' and 'fiber' submitted against Northline, then results include real Northline services matching those terms"
+  - "Given the full reference-storefront test suite and typecheck, then both stay green"
+
+steps:
+  - id: implement
+    description: Make the nav-component and layout.tsx changes per the description above.
+    agent: developer
+  - id: test
+    description: Verify every acceptance criterion against a real running dev server for both demos.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the nav-component changes are genuinely demo-agnostic (no per-demo branching baked into NavTopBar/NavRail themselves), confirm no dragon-merch regression.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/demo-store-northline-depth.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router }
+  key_files:
+    - path: apps/reference-storefront/components/nav-top-bar.tsx
+      purpose: "Shared nav component with the hardcoded Fall Sale link to remove"
+    - path: apps/reference-storefront/components/nav-rail.tsx
+      purpose: "The other shared nav template, same fix needed"
+    - path: apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+      purpose: "Where navLinks gets built server-side per demo and passed down"
+
+files_to_modify:
+  - file: apps/reference-storefront/components/nav-top-bar.tsx
+    change: "Accept navLinks prop, render it, delete hardcoded Fall Sale link"
+  - file: apps/reference-storefront/components/nav-rail.tsx
+    change: "Same change as nav-top-bar.tsx"
+  - file: apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+    change: "Build navLinks server-side per demo from real category/campaign/location data"
+
+design_decisions:
+  - decision: "navLinks is built server-side in the shared layout, not inside the nav components themselves."
+    rationale: "Keeps NavTopBar/NavRail genuinely demo-agnostic and reusable, per design-discussion.md §2a."
+
+risks:
+  - severity: medium
+    description: "Removing the hardcoded Fall Sale link could silently drop dragon-merch's real campaign visibility if the dynamic replacement isn't wired correctly."
+    mitigation: "Acceptance criteria explicitly requires dragon-merch's own real campaign link to still appear, built dynamically."
+
+references:
+  - path: .pHive/epics/demo-store-northline-depth/docs/design-discussion.md
+    relevant_excerpt: "§2a: the resolved nav-contract design question this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: northline_demo.real_nav_links
+  direction: up
+  unit: count
+  baseline: 0
+  target: 5
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Count of real, non-404, non-hardcoded nav links present for Northline, verified by test"
+  verify_at: integrate
+  owner: tester

@@ -1,0 +1,105 @@
+id: northline-depth-01-catalog-and-location-depth
+epic: demo-store-northline-depth
+title: "4 real categories, tiered SKUs, all 8 service-area location pages published"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/demo-store-northline-depth/docs/design-discussion.md in full first.
+
+  Work entirely in apps/reference-storefront/lib/seed-northline.ts (read it in full before
+  editing -- it's short, ~146 lines today).
+
+  1. Replace the single "installation-services" category with 4 real categories via
+     MarketingCatalogService.createCategory: "tv-home-theater", "security-cameras",
+     "networking-fiber", "smart-home-automation". Reassign the 5 existing services to their
+     correct category (tv-wall-mounting + home-theater-setup -> tv-home-theater;
+     security-camera-install + video-doorbell-install -> security-cameras;
+     fiber-internet-install -> networking-fiber) and add at least 2 new real services to give
+     smart-home-automation a real category instead of an empty one (e.g. "Smart Thermostat
+     Installation", "Smart Lock Installation" -- keep them consistent in tone/pricing with the
+     existing 5).
+
+  2. Give at least 2 services real tiered variants using catalog.generateSkus (not one flat
+     SKU each, per the existing single-variant pattern every current service uses).
+     security-camera-install is the clearest fit: package tiers "1-camera"/"4-camera"/
+     "8-camera" at realistic escalating prices (e.g. $299/$899/$1,599 -- installation
+     cost doesn't scale linearly with camera count, reflect that in the pricing). Pick one more
+     service for a second tiered example (e.g. home-theater-setup: "essentials"/"premium").
+     Use identifyingAttributeKeys the same way the existing bundle/service-demo pattern in
+     lib/seed.ts's SERVICE_DEMO_SKUS already does -- read that for the established convention.
+
+  3. Publish real CMS location pages (pageType: "location") for all 8 DEMO_SERVICE_AREAS
+     entries -- today only Cedarbrook (index 0) has one. Each page needs genuinely distinct
+     content, not templated filler: real hours (vary them slightly across areas, not identical
+     for all 8), a one-paragraph area-specific blurb (can reference the area's real region and
+     which services are actually offered there per its existing areaIndices membership -- e.g.
+     Harborview, ME (index 7) only ever appears in tv-wall-mounting/security-camera-install/
+     video-doorbell-install's areaIndices, so its page shouldn't claim fiber or home-theater
+     service is available there).
+
+acceptance_criteria:
+  - "Given MarketingCatalogService after seeding, then Northline has exactly 4 categories (tv-home-theater, security-cameras, networking-fiber, smart-home-automation), each with >=1 real product assigned, none empty"
+  - "Given catalog.listSkusByProduct for security-camera-install, then it returns 3 real SKUs at 3 distinct prices, and for the second chosen service, then it returns >=2 real SKUs at distinct prices"
+  - "Given cms.getPage for all 8 DEMO_SERVICE_AREAS slugs, then every one returns a real, published location page with area-specific content (not byte-identical copy across areas)"
+  - "Given a location page for an area that does NOT offer fiber (per its real areaIndices), then its content does not claim fiber service is available there"
+  - "Given the full reference-storefront test suite, then it stays green after these seed-data changes"
+
+steps:
+  - id: research
+    description: Read seed-northline.ts and lib/seed.ts's SERVICE_DEMO_SKUS tiering convention in full before making any change.
+    agent: researcher
+  - id: implement
+    description: Make the seed-data changes per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion, including the area-specific-content and no-false-service-claims checks.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm no other demo's seed data was touched, confirm pricing is internally consistent (tiered SKUs escalate sensibly).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/demo-store-northline-depth.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/seed-northline.ts
+      purpose: The entire file this story edits.
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: "SERVICE_DEMO_SKUS -- the established convention for tiered single-variant service SKUs to follow"
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/seed-northline.ts
+    change: 4 real categories, tiered SKUs for 2 services, all 8 location pages published with real distinct content.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/demo-store-northline-depth/docs/design-discussion.md
+    relevant_excerpt: "§4.1: this story's exact scope."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: northline_demo.location_pages_published
+  direction: up
+  unit: count
+  baseline: 1
+  target: 8
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "cms.getPage count for the 8 DEMO_SERVICE_AREAS slugs, verified by test"
+  verify_at: integrate
+  owner: tester

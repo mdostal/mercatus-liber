@@ -19,6 +19,7 @@ const RAIL_WIDTH_PX = 220;
 export function NavRail({
   demoSlug,
   displayName,
+  navLinks,
   otherDemos,
   bundles,
   activeThemeKey,
@@ -26,6 +27,7 @@ export function NavRail({
 }: {
   demoSlug: DemoSlug;
   displayName: string;
+  navLinks: Array<{ href: string; label: string }>;
   otherDemos: Array<{ slug: DemoSlug; displayName: string }>;
   bundles: ThemeBundle[];
   activeThemeKey: string;
@@ -76,6 +78,13 @@ export function NavRail({
           {displayName}
         </a>
         <ul className="ml-nav-rail-links">
+          {navLinks.map((link) => (
+            <li key={link.href}>
+              <a href={link.href} style={{ color: "var(--color-primary)" }}>
+                {link.label}
+              </a>
+            </li>
+          ))}
           <li>
             <a href={`/demo/${demoSlug}/cart`} style={{ color: "var(--color-primary)" }}>
               Cart
@@ -84,11 +93,6 @@ export function NavRail({
           <li>
             <a href={`/demo/${demoSlug}/search`} style={{ color: "var(--color-primary)" }}>
               Search
-            </a>
-          </li>
-          <li>
-            <a href={`/demo/${demoSlug}/campaign/fall-sale`} style={{ color: "var(--color-primary)" }}>
-              Fall Sale
             </a>
           </li>
           <li>

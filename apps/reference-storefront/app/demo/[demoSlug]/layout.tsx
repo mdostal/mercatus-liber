@@ -22,6 +22,7 @@ const NAV_TEMPLATES = {
 type NavChromeProps = {
   demoSlug: DemoSlug;
   displayName: string;
+  navLinks: Array<{ href: string; label: string }>;
   otherDemos: Array<{ slug: DemoSlug; displayName: string }>;
   bundles: typeof THEME_BUNDLES;
   activeThemeKey: string;
@@ -48,6 +49,49 @@ export const metadata = {
  * case) is the real /demo/[demoSlug]/admin gate.
  */
 const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
+
+/**
+ * northline-depth-02: builds the shared nav components' `navLinks` prop
+ * server-side, per demo, from real data -- replaces the hardcoded
+ * `campaign/fall-sale` link nav-top-bar.tsx/nav-rail.tsx used to carry
+ * (design-discussion.md §2a). Three real sources, in nav order:
+ *   1. Every top-level category the demo's own MarketingCatalogService
+ *      actually has (listChildCategories(null) -- parentId: null is exactly
+ *      "top-level" per that service's own doc comment). Northline's 4
+ *      categories are all top-level; dragon-merch's "Desk Accessories" is
+ *      NOT (it's a child of "Merch"), so it correctly doesn't get its own
+ *      top-level nav entry here -- browsing it happens via "Merch".
+ *   2. A link to the service-area/location index (app/demo/[demoSlug]/
+ *      locations/page.tsx, which already exists), included only when the
+ *      demo actually has at least one ServiceArea -- never a link to an
+ *      empty index.
+ *   3. One entry per real, currently-published CMS marketing/campaign page
+ *      (dragon-merch's real "fall-sale" campaign is resolved here dynamically
+ *      via cms.listPages -- never hardcoded as a fallback string). Northline
+ *      has no marketing page seeded today, so this list is empty for it,
+ *      which is the correct "absent, not broken" behavior per the spec.
+ */
+async function buildNavLinks(demoSlug: DemoSlug): Promise<Array<{ href: string; label: string }>> {
+  const { marketingCatalog, serviceAreas, cms } = await getServicesForDemo(demoSlug);
+  const links: Array<{ href: string; label: string }> = [];
+
+  const topLevelCategories = await marketingCatalog.listChildCategories(null);
+  for (const category of topLevelCategories) {
+    links.push({ href: `/demo/${demoSlug}/category/${category.slug}`, label: category.title });
+  }
+
+  const areas = await serviceAreas.listServiceAreas();
+  if (areas.length > 0) {
+    links.push({ href: `/demo/${demoSlug}/locations`, label: "Service Areas" });
+  }
+
+  const marketingPages = await cms.listPages({ pageType: "marketing", status: "published" });
+  for (const page of marketingPages) {
+    links.push({ href: `/demo/${demoSlug}/campaign/${page.slug}`, label: page.title });
+  }
+
+  return links;
+}
 
 /**
  * demo-routing-05: this is now the app's SECOND root layout (design-
@@ -100,6 +144,7 @@ export default async function DemoLayout({
   const NavChrome: ComponentType<NavChromeProps> =
     (navTemplateKey && NAV_TEMPLATES[navTemplateKey as keyof typeof NAV_TEMPLATES]) || NavTopBar;
   const isRailNav = navTemplateKey === "nav.rail";
+  const navLinks = await buildNavLinks(demoSlug);
 
   const page = (
     <html lang="en">
@@ -125,6 +170,7 @@ export default async function DemoLayout({
         <NavChrome
           demoSlug={demoSlug}
           displayName={DEMO_REGISTRY[demoSlug].displayName}
+          navLinks={navLinks}
           otherDemos={otherDemos}
           bundles={THEME_BUNDLES}
           activeThemeKey={activeTheme.key}

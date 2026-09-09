@@ -18,8 +18,12 @@ this package — same one-directional dependency rule as marketing-catalog (02).
 - CRUD for `ServiceArea`: `id`, `slug`, `name` (e.g. "Royse City, TX"), `region`, `description`,
   `phone` (nullable).
 - Many-to-many product<->service-area assignment (a join owned entirely by this package, mirrors
-  marketing-catalog's `ProductCategoryRepository` exactly) — e.g. "fiber installs" might only be
-  assigned to 3 of 8 cities while "TV mounting" is assigned to all 8.
+  marketing-catalog's `ProductCategoryRepository` exactly) — real now, not just illustrative: the
+  Northline reference demo's `lib/seed-northline.ts` assigns "Fiber Internet Installation" to only
+  5 of its 8 service areas (the ones with fiber infrastructure) while "TV Wall Mounting" is
+  assigned to all 8, and each of those 8 areas now has a real, distinct, published CMS location
+  page (epic `demo-store-northline-depth`) whose `servicesOffered` list is computed directly from
+  this join, not hand-typed.
 - Nothing about page layout/rendering — that's CMS's job via a new `location` page type (05),
   the exact same split marketing-catalog already has with CMS's `category` page type.
 
