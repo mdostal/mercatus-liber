@@ -1,0 +1,124 @@
+id: cms-crud-01-admin-pages
+epic: cms-admin-crud
+title: "/admin/cms: create/edit/publish forms for pages and marketing pages"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/cms-admin-crud/docs/design-discussion.md section 3 for the exact
+  fixed-slot, raw-JSON-config form design and why marketing pages get a separate form.
+
+  Read packages/cms/src/service.ts's CmsService interface in full (createPage, updatePage,
+  publishPage, createMarketingPage, getPage, getMarketingPageMeta, components:
+  ComponentRegistry) and packages/cms/src/types.ts (Page, PageType, ComponentInstance,
+  MarketingPageMeta).
+
+  Read apps/reference-storefront/app/admin/cms/page.tsx (existing read-only list, to extend)
+  and apps/reference-storefront/app/admin/bundles/BundleFormFields.tsx (the closest existing
+  fixed-indexed-slot form convention in this app to mirror for the sections editor).
+
+  Read apps/reference-storefront/lib/actions.ts's existing requireAdminPermission usage (added
+  by the admin-auth-clerk epic, already merged to master) -- every new mutation action in this
+  story must call it with action "mutate" as its first line, exactly like the 12 existing
+  admin mutation actions already do.
+
+  Deliverables:
+  - apps/reference-storefront/app/admin/cms/page.tsx: extend the existing read-only list with
+    a "+ New page" link and a "+ New marketing page" link, and an Edit link per row (linking to
+    a new [id] page) plus a Publish button per draft row (a small inline form).
+  - apps/reference-storefront/app/admin/cms/new/page.tsx: a plain create form for a
+    non-marketing page: pageType (<select> of the non-"marketing" PageType values --
+    home/category/search/pdp/location), slug, title, and a fixed number of section slots
+    (e.g. 6), each with a componentType <select> (populated by calling
+    `(await getServices()).cms.components.list()` server-side) and a raw JSON <textarea> for
+    that section's config -- empty slots (blank componentType) are omitted when parsed.
+  - apps/reference-storefront/app/admin/cms/marketing/new/page.tsx: a separate create form for
+    a marketing page: slug, title, campaignName, startDate, endDate (optional), a
+    comma-separated productIds field, and the same fixed section-slot editor as above.
+  - apps/reference-storefront/app/admin/cms/[id]/page.tsx: edit form pre-filled with the
+    page's current title/sections (pageType and slug are NOT editable after creation --
+    CmsService.updatePage only accepts title/sections per its own type signature, don't try to
+    change that), plus a Publish button when status is "draft".
+  - New server actions in apps/reference-storefront/lib/actions.ts: createCmsPageAction,
+    createMarketingPageAction, updateCmsPageAction, publishCmsPageAction. Each parses its
+    form's indexed section-slot fields into a ComponentInstance[] (parsing each slot's JSON
+    textarea with a try/catch, surfacing a clear per-slot error on invalid JSON rather than a
+    generic crash), calls requireAdminPermission("mutate") first, then the corresponding
+    CmsService method, then revalidatePath("/admin/cms").
+
+acceptance_criteria:
+  - "Given the new-page form is submitted with pageType 'category', a slug, a title, and 2 filled section slots with valid JSON configs, when createCmsPageAction runs, then a new Page exists (visible on GET /admin/cms) with status 'draft' and exactly those 2 sections parsed correctly"
+  - "Given a section slot's JSON textarea contains invalid JSON, when the create form is submitted, then the action rejects clearly (no crash, no partially-created page) naming which slot failed to parse"
+  - "Given the new-marketing-page form is submitted with campaignName/startDate/productIds, when createMarketingPageAction runs, then both a Page (pageType 'marketing') and a MarketingPageMeta exist with the submitted campaign fields"
+  - "Given an existing draft page, when its edit form's title is changed and submitted, then updateCmsPageAction persists the new title while preserving pageType/slug/status"
+  - "Given an existing draft page, when its Publish button is submitted, then publishCmsPageAction transitions its status to 'published'"
+  - "Given a session with role 'viewer', when any of the 4 new actions is invoked directly, then it rejects before performing any mutation (mirroring the existing 12 admin mutation actions' own guard)"
+
+steps:
+  - id: research
+    description: Re-read CmsService's exact method signatures and the bundles admin form's fixed-slot convention before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the admin CMS create/edit/publish UI per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the golden path (create a page, create a marketing page, edit, publish, invalid-JSON rejection) via a dev server, and confirm the viewer-role rejection for at least one of the 4 new actions via a test using an injected mock adminAuth adapter, mirroring the existing admin-mutation-guard.test.ts pattern.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check every new mutation action calls requireAdminPermission first, and that the invalid-JSON handling is genuinely clear, not a generic 500.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/cms-admin-crud.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/cms/src/service.ts
+      purpose: The exact CmsService methods this story's admin actions call -- createPage, updatePage (title/sections only), publishPage, createMarketingPage.
+    - path: apps/reference-storefront/app/admin/bundles/BundleFormFields.tsx
+      purpose: Fixed-indexed-slot form convention to mirror for the section editor.
+    - path: apps/reference-storefront/test/admin-mutation-guard.test.ts
+      purpose: Existing pattern for testing a mutation action's role-gating with an injected mock adminAuth adapter.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/admin/cms/page.tsx
+    change: Add create links, edit links, publish forms.
+  - file: apps/reference-storefront/app/admin/cms/new/page.tsx
+    change: New file, page create form.
+  - file: apps/reference-storefront/app/admin/cms/marketing/new/page.tsx
+    change: New file, marketing-page create form.
+  - file: apps/reference-storefront/app/admin/cms/[id]/page.tsx
+    change: New file, edit + publish form.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: Add createCmsPageAction, createMarketingPageAction, updateCmsPageAction, publishCmsPageAction, each requireAdminPermission-guarded.
+
+design_decisions:
+  - decision: "Section config is edited as raw JSON text, not per-component-type typed fields."
+    rationale: "ComponentInstance.config is deliberately opaque/type-varying (docs/subsystems/05-cms-pages.md) -- a single generic editor is the honest simplification, matching design-discussion.md §3."
+  - decision: "pageType and slug are not editable after creation."
+    rationale: "CmsService.updatePage's own type signature only accepts title/sections -- this story doesn't change that contract, it just calls what already exists."
+
+risks:
+  - severity: low
+    description: "A raw-JSON textarea is not the friendliest admin UX."
+    mitigation: "Acceptable for a reference implementation matching this app's zero-client-JS posture everywhere else; documented as a deliberate tradeoff, not an oversight."
+
+references:
+  - path: .pHive/epics/cms-admin-crud/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: full reasoning for the fixed-slot raw-JSON section editor and the separate
+      marketing-page form.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Admin CRUD UI story verified via the acceptance criteria's manual golden-path check; underlying CmsService logic is already tested by CMS's own existing test suite."
