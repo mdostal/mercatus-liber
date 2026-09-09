@@ -1,0 +1,132 @@
+id: print-shop-02-catalog-and-personalization
+epic: demo-store-print-shop-rebrand
+title: "Real embroidery/custom-print catalog, customizationNote cart-line field, per-demo default themes"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [print-shop-01-slug-rename-and-registry]
+
+description: |
+  Read the prior story's committed changes in full first -- the demo is now genuinely called
+  print-shop everywhere; this story replaces its product content and adds the personalization
+  field. Read .pHive/epics/demo-store-print-shop-rebrand/docs/design-discussion.md §1b/§1c in
+  full for the exact scope resolution.
+
+  Part 1 -- new catalog. In apps/reference-storefront/lib/seed.ts, replace DEMO_PRODUCTS'
+  dragon-themed desk-accessory products with a real embroidery/custom-print catalog across
+  (at minimum) 4 real categories: "Embroidery" (e.g. custom-embroidered tote bag, cap),
+  "Custom Coasters" (e.g. a stoneware or cork coaster set with a custom monogram/design),
+  "Apparel" (e.g. a custom-embroidered t-shirt or hoodie), "Drinkware" (e.g. a custom-printed
+  mug or tumbler). Real product names/descriptions/prices in cents, no lorem ipsum -- at least
+  6 real products total, spread across the 4 categories, following the same
+  MarketingCatalogService.createCategory + CatalogService.createProduct/generateSkus pattern
+  already used throughout seed.ts. Mark which products are "customizable" (a simple boolean or
+  tag on the seed data -- your call on the exact mechanism, but it needs to be readable by the
+  PDP to decide whether to show the customization input).
+
+  Part 2 -- customizationNote cart-line field (design-discussion.md §1b's scoped-down
+  personalization). Add an optional `customizationNote?: string` to the cart line-item shape in
+  @mercatus-liber/cart (read that package's types/service first -- this needs to be additive,
+  not a breaking change to the existing add-to-cart contract). On the PDP, for products flagged
+  customizable, show a real text input ("Personalize this item (e.g. embroidery text, thread
+  color)") that gets submitted alongside the existing add-to-cart server action and stored on
+  the resulting cart line. Display it on the cart page, and confirm it flows through to the
+  order record at checkout (read checkout-orders' order-line shape -- if it doesn't already
+  carry arbitrary line metadata, this needs the same additive-field treatment there too).
+
+  Part 3 -- per-demo default theme (design-discussion.md §1c). Add an optional
+  `defaultThemeKey?: string` field to `DemoDefinition` in lib/demos.ts. Set print-shop's to
+  "editorial" and northline's to "northline". In lib/theme-cookie.ts's readActiveThemeBundle(),
+  when no cookie is set, fall back to the demo's defaultThemeKey (via getThemeBundle) before
+  falling back to THEME_BUNDLES[0] -- the cookie, when present, always still wins (a visitor who
+  manually switched themes keeps their choice).
+
+  Part 4 -- confirm nav "just works". Once real categories exist for print-shop, epic 35's
+  demo-built navLinks mechanism (in app/demo/[demoSlug]/layout.tsx) should automatically surface
+  them with zero new nav code. Verify this against a real dev server -- do not assume it without
+  checking.
+
+acceptance_criteria:
+  - "Given print-shop's catalog after this story, then it has >=4 real categories (Embroidery, Custom Coasters, Apparel, Drinkware or equivalent real names) and >=6 real products with real names/descriptions/prices, zero lorem ipsum"
+  - "Given a customizable product's PDP, then a real personalization text input is present, and submitting add-to-cart with real input text results in a cart line carrying that exact text"
+  - "Given a cart with a customized line, then the customization text is visible on the cart page and flows through to the resulting order record at checkout"
+  - "Given a fresh browser session (no theme cookie) visiting print-shop, then the editorial bundle is active by default; same for northline visiting with the northline bundle; a session with an existing theme cookie is unaffected (its choice still wins)"
+  - "Given print-shop's real nav (rendered via a real dev server, not code inspection alone), then it lists the new real categories with zero additional nav code changes needed beyond what epic 35 already built"
+  - "Given the full reference-storefront test suite and typecheck, then both stay green"
+
+steps:
+  - id: research
+    description: Read the cart package's line-item types/service, checkout-orders' order-line shape, and lib/theme-cookie.ts before making any change.
+    agent: researcher
+  - id: implement
+    description: Make the catalog, personalization-field, and default-theme changes per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion against a real running dev server, including the fresh-session default-theme check and the nav auto-population check.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm customizationNote is genuinely additive/optional everywhere it's threaded, confirm no regression to non-customizable products' add-to-cart flow.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/demo-store-print-shop-rebrand.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: Where the new catalog content is authored.
+    - path: packages/cart/src
+      purpose: Cart line-item shape needing the additive customizationNote field.
+    - path: packages/checkout-orders/src
+      purpose: Order-line shape that may need the same additive treatment.
+    - path: apps/reference-storefront/lib/theme-cookie.ts
+      purpose: readActiveThemeBundle()'s fallback chain, extended with the per-demo default.
+    - path: apps/reference-storefront/lib/demos.ts
+      purpose: DemoDefinition gets the new defaultThemeKey field.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/seed.ts
+    change: "New embroidery/custom-print catalog, customizable-product flags"
+  - file: packages/cart/src
+    change: "Additive customizationNote field on cart line items"
+  - file: packages/checkout-orders/src
+    change: "Additive equivalent field/passthrough on order lines, if needed"
+  - file: apps/reference-storefront/lib/demos.ts
+    change: "Add defaultThemeKey to DemoDefinition, set for print-shop and northline"
+  - file: apps/reference-storefront/lib/theme-cookie.ts
+    change: "readActiveThemeBundle() falls back to the demo's defaultThemeKey before THEME_BUNDLES[0]"
+
+design_decisions:
+  - decision: "customizationNote is one free-text field, not a structured design-asset/upload system."
+    rationale: "Scoped-down per design-discussion.md §1b -- the full personalization subsystem is explicitly a VISION.md community-plugin item, not built here."
+
+risks:
+  - severity: low
+    description: "Threading a new field through cart -> checkout-orders touches 2 packages."
+    mitigation: "Additive/optional everywhere, same pattern as prior additive fields in this project (e.g. Order.createdAt)."
+
+references:
+  - path: .pHive/epics/demo-store-print-shop-rebrand/docs/design-discussion.md
+    relevant_excerpt: "§1b-c: the resolved personalization scope and default-theme mechanism this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: print_shop_demo.real_categories_and_customizable_products
+  direction: up
+  unit: count
+  baseline: 0
+  target: 4
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Category count for print-shop's catalog, verified by test"
+  verify_at: integrate
+  owner: tester
