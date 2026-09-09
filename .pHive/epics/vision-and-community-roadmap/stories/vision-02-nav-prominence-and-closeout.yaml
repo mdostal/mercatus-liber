@@ -1,0 +1,86 @@
+id: vision-02-nav-prominence-and-closeout
+epic: vision-and-community-roadmap
+title: "Link /vision from docs nav + landing page, live verification, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [vision-01-content-refresh-and-sync]
+
+description: |
+  Read the prior story's committed changes in full first.
+
+  1. Confirm whether Nextra's file-system-based routing/sidebar auto-discovery already surfaces
+     the new /vision page in the docs site's nav (the established pattern from every other
+     synced page this session -- check apps/docs/app/layout.tsx and how the existing
+     README/architecture pages appear in nav). If it doesn't need an explicit addition, confirm
+     that and move on; if it does, add one, mirroring how other top-level pages are linked.
+  2. Add a real, visible "Vision & Roadmap" link to the framework landing page's own nav/footer
+     (apps/reference-storefront/app/(landing)/), pointing at the docs site's real /vision URL
+     (reuse whatever NEXT_PUBLIC_DOCS_URL-based mechanism the existing Docs link already uses,
+     per epic 33's pattern -- don't invent a new one).
+  3. Live verification against real dev servers (both apps/docs and apps/reference-storefront):
+     confirm /vision renders the real refreshed content on the docs site, confirm the framework
+     landing page's new Vision & Roadmap link resolves to it correctly (both with and without
+     NEXT_PUBLIC_DOCS_URL set, matching the existing Docs link's dual-state behavior).
+  4. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  5. Update .pHive/planning/epic-backlog.md: change epic 47's row to "done (2/2 stories
+     complete)", with an accurate description naming the sync mechanism, the content refresh,
+     and the new nav links -- match the style/detail of surrounding rows.
+  6. Commit and merge feat/vision-and-community-roadmap into master with --no-ff, mirroring the
+     "Merge epic: <name> (epic NN)" convention from prior epic merges. Since this closes the
+     entire epics-34-through-47-minus-fulfillment/shipping/analytics sweep this session has been
+     driving, note plainly in the final report which numbered epics (34-39, 45, 47) are now
+     genuinely done and merged, and which remain (41-44, 46) if that's still accurate at the
+     time this story runs.
+
+acceptance_criteria:
+  - "Given the docs site, then /vision is genuinely reachable via real nav, not just direct URL"
+  - "Given the framework landing page, then a real Vision & Roadmap link is present and resolves correctly, tested both with and without NEXT_PUBLIC_DOCS_URL set"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given .pHive/planning/epic-backlog.md, then epic 47's row reads done (2/2 stories complete) with an accurate, specific description"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Make the nav-link changes and run all verification steps per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and the merge is clean.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/vision-and-community-roadmap, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: "apps/reference-storefront/app/(landing)/layout.tsx"
+      purpose: The existing NEXT_PUBLIC_DOCS_URL-based Docs link pattern this story's new link reuses.
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 47's row updated to done.
+
+files_to_modify:
+  - file: "apps/reference-storefront/app/(landing)/layout.tsx"
+    change: Add a real Vision & Roadmap link.
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 47 done with an accurate description.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/vision-and-community-roadmap/docs/design-discussion.md
+    relevant_excerpt: "§1b: the resolved nav-placement design question this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."

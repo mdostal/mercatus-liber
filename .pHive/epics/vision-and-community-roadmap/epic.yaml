@@ -1,0 +1,39 @@
+name: vision-and-community-roadmap
+title: "Publish VISION.md live on the docs site, refresh its now-stale progress sections"
+description: >
+  VISION.md already exists with real "done / in progress / wanted, not started" content, but
+  was never actually synced/published anywhere -- confirmed by reading sync-content.mjs, which
+  syncs README.md/ARCHITECTURE.md but not VISION.md. Also stale: 7 more epics (34-39, 45)
+  completed since it was written and are still listed as "in progress." Resolved: sync the
+  existing file (mirroring the established README/ARCHITECTURE pattern) rather than authoring
+  a second, driftable roadmap page; refresh its content against real current epic-backlog.md
+  state; link it prominently from both the docs site nav and the framework landing page. See
+  docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: patch
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [docs, content]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    docs: "Publishing an existing doc live, refreshing its content"
+    content: "Mostly a content-freshness pass, no new architecture"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: vision-01-content-refresh-and-sync
+    title: "Refresh VISION.md against real current backlog state, sync it into apps/docs"
+    complexity: low
+    depends_on: []
+  - id: vision-02-nav-prominence-and-closeout
+    title: "Link /vision from docs nav + landing page, live verification, closeout, merge"
+    complexity: low
+    depends_on: [vision-01-content-refresh-and-sync]

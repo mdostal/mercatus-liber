@@ -1,0 +1,91 @@
+id: vision-01-content-refresh-and-sync
+epic: vision-and-community-roadmap
+title: "Refresh VISION.md against real current backlog state, sync it into apps/docs"
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/vision-and-community-roadmap/docs/design-discussion.md in full first.
+
+  1. Read .pHive/planning/epic-backlog.md in full (fresh, don't rely on any prior summary) to
+     get the real, current status of every epic. Read VISION.md's current "Done"/"In progress"
+     sections and update them accurately: move genuinely completed epics (34
+     storefront-design-system-v2, 35-37 the demo-depth trilogy, 38 docs-feature-deep-dive, 39
+     data-backup-restore-and-adapter-portability, 45 seo-aeo-infrastructure -- confirm each is
+     really marked done in epic-backlog.md before moving it) from "In progress" into "Done,"
+     with real specifics (not just epic names -- what was actually built, mirroring this
+     document's own existing level of detail for the items already under "Done"). Leave
+     genuinely not-yet-built work (epics 41-44 fulfillment/shipping, epic 46 analytics) under
+     "In progress" or move it to "Wanted, not started" if it hasn't been planned yet -- check
+     each one's real current status, don't guess. Also fold in epic 39's real finding (the
+     demo-seed-idempotency gap, now backlog epic 48) as a new "Wanted, not started" line if it
+     isn't already the kind of thing covered by the existing table shape, or a brief mention in
+     the appropriate section -- your call on the cleanest fit after reading VISION.md's current
+     structure.
+  2. Read apps/docs/scripts/sync-content.mjs in full. Add VISION.md to its existing `sources`
+     list, mirroring the exact pattern already used for README.md/ARCHITECTURE.md (same object
+     shape, sensible `to` path -- content/vision.md is the obvious choice, matching
+     content/readme.md's naming convention).
+
+acceptance_criteria:
+  - "Given VISION.md's Done section after this story, then it accurately lists every epic epic-backlog.md marks done as of this story, with real specifics matching that section's existing level of detail"
+  - "Given VISION.md's In progress / Wanted sections, then they accurately reflect only genuinely not-yet-done work per the real current epic-backlog.md, with epic 48's finding folded in somewhere sensible"
+  - "Given sync-content.mjs's sources list, then it includes VISION.md mirroring the exact README.md/ARCHITECTURE.md entry shape"
+  - "Given `pnpm --filter @mercatus-liber/docs build`, then it succeeds and apps/docs/content/vision.md exists with the real, current, refreshed VISION.md content"
+  - "Given a real dev server, then /vision (or whatever route Nextra's file-system routing resolves content/vision.md to) renders the real refreshed content with no build/runtime errors"
+
+steps:
+  - id: research
+    description: Read epic-backlog.md fresh in full, and sync-content.mjs's exact current sources-list shape, before making any change.
+    agent: researcher
+  - id: implement
+    description: Make the VISION.md content refresh and sync-content.mjs addition per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion against a real docs build/dev server.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Spot-check the Done/In-progress moves against the real epic-backlog.md status for accuracy -- no epic claimed done that isn't, none left stale that is.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/vision-and-community-roadmap.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: Markdown }
+  key_files:
+    - path: VISION.md
+      purpose: The file this story refreshes and gets synced.
+    - path: .pHive/planning/epic-backlog.md
+      purpose: The real, current source of truth for what's actually done.
+    - path: apps/docs/scripts/sync-content.mjs
+      purpose: The existing sync mechanism VISION.md gets added to.
+
+files_to_modify:
+  - file: VISION.md
+    change: "Refresh Done/In-progress/Wanted sections against real current backlog state."
+  - file: apps/docs/scripts/sync-content.mjs
+    change: "Add VISION.md to the sources list."
+
+design_decisions:
+  - decision: "Sync the existing VISION.md rather than authoring a second roadmap page."
+    rationale: "Avoids the same drift risk the docs-deep-dive epic just resolved for the mkdocs duplication -- one real source, per design-discussion.md §1a."
+
+risks: []
+
+references:
+  - path: .pHive/epics/vision-and-community-roadmap/docs/design-discussion.md
+    relevant_excerpt: "§1a, §1c: the resolved sync and content-refresh design questions this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Content-accuracy story; correctness is verified by the acceptance criteria's real-backlog-cross-check, not a numeric trend."
