@@ -1,0 +1,75 @@
+id: cms-disc-02-closeout
+epic: cms-adapter-discoverability
+title: "Live verification, epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [cms-disc-01-wire-and-document]
+
+description: |
+  Read the committed changes from the prior piece of work in full first.
+
+  Verification (no live Sanity project exists in this environment -- do not fabricate a live
+  connection):
+  1. Run this app's full test suite and typecheck, confirm both branches of the CMS wiring
+     test pass and nothing else regressed.
+  2. Manually confirm on a dev server, with no SANITY_PROJECT_ID set, that /admin/cms and the
+     public CMS-backed pages (home, campaign) all still render exactly as before -- the
+     in-memory fallback path must be provably unaffected.
+  3. Confirm the README's new CMS Configuration subsection reads correctly and matches the
+     actual env var names used in code (fresh grep, not memory).
+
+  Update .pHive/planning/epic-backlog.md: add a new row at the next available number (grep for
+  the highest existing number first), status "done (2/2 stories complete)", with a
+  description noting Sanity is now a real, documented, env-var-selectable option and that
+  create-store's scaffolder was explicitly left unchanged (disclosed, separate future work).
+  Add a short bullet to the "Definition of vision fully done" section noting this closed a
+  discoverability gap, not a capability gap (adapter-sanity itself was already real and
+  tested).
+
+acceptance_criteria:
+  - "Given the full monorepo test suite and typecheck, then both are green with the new wiring in place"
+  - "Given no SANITY_PROJECT_ID set, when the app is visited, then every CMS-backed page renders identically to before this epic"
+  - ".pHive/planning/epic-backlog.md's new row reads 'done (2/2 stories complete)' matching sibling completed rows' style, and is honest that create-store's scaffolder was not extended"
+
+steps:
+  - id: implement
+    description: Run the verification steps and update epic-backlog.md per the description above.
+    agent: developer
+  - id: test
+    description: Confirm the full test suite/typecheck are green and the in-memory fallback path is genuinely unaffected.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and honestly scoped.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/cms-adapter-discoverability; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs a new row for this epic and a vision-summary addendum.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: New epic row; vision-summary addendum.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/cms-adapter-discoverability/docs/design-discussion.md
+    relevant_excerpt: |
+      Full design rationale this epic's verification demonstrates end-to-end.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative."

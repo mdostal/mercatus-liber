@@ -1,0 +1,40 @@
+name: cms-adapter-discoverability
+title: CMS Adapter Discoverability (Sanity)
+description: >
+  adapter-sanity is real, tested code but was never wired into apps/reference-storefront's
+  services.ts (hardcoded in-memory CMS, zero env-var branch) and is documented nowhere --
+  functionally present, practically invisible. Wires it in with the same env-var-branched
+  two-option pattern every other swappable service in that file already uses (analytics,
+  admin-auth), and documents the required env vars in README's Configuration section.
+  Explicitly does NOT extend create-store's scaffolder, which doesn't generate CMS wiring for
+  any adapter today -- that's disclosed, separate, future scaffolder work, not a
+  discoverability fix. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: patch
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [adapter-wiring, docs, app-layer]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    adapter-wiring: "Wires an already-built, already-tested adapter into the composition root, the same env-branch pattern already established there"
+    docs: "The actual gap is discoverability, not capability -- documentation is half the fix"
+    app-layer: "No new package/subsystem needed, resolved design question matches epic 25/28's own precedent"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, small well-understood scope.
+
+stories:
+  - id: cms-disc-01-wire-and-document
+    title: "Wire Sanity into services.ts with an env-var branch; document env vars in README"
+    complexity: low
+    depends_on: []
+  - id: cms-disc-02-closeout
+    title: "Live verification, epic-backlog closeout"
+    complexity: low
+    depends_on: [cms-disc-01-wire-and-document]
