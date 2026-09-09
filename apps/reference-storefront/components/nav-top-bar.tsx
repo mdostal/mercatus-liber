@@ -16,6 +16,7 @@ import type { DemoSlug } from "../lib/demos";
 export function NavTopBar({
   demoSlug,
   displayName,
+  navLinks,
   otherDemos,
   bundles,
   activeThemeKey,
@@ -23,6 +24,7 @@ export function NavTopBar({
 }: {
   demoSlug: DemoSlug;
   displayName: string;
+  navLinks: Array<{ href: string; label: string }>;
   otherDemos: Array<{ slug: DemoSlug; displayName: string }>;
   bundles: ThemeBundle[];
   activeThemeKey: string;
@@ -34,6 +36,14 @@ export function NavTopBar({
         <a href={`/demo/${demoSlug}`} style={{ fontWeight: 700, textDecoration: "none", color: "var(--color-primary)" }}>
           {displayName}
         </a>
+        {navLinks.map((link) => (
+          <span key={link.href}>
+            {" · "}
+            <a href={link.href} style={{ color: "var(--color-primary)" }}>
+              {link.label}
+            </a>
+          </span>
+        ))}
         {" · "}
         <a href={`/demo/${demoSlug}/cart`} style={{ color: "var(--color-primary)" }}>
           Cart
@@ -41,10 +51,6 @@ export function NavTopBar({
         {" · "}
         <a href={`/demo/${demoSlug}/search`} style={{ color: "var(--color-primary)" }}>
           Search
-        </a>
-        {" · "}
-        <a href={`/demo/${demoSlug}/campaign/fall-sale`} style={{ color: "var(--color-primary)" }}>
-          Fall Sale
         </a>
         {" · "}
         <a href={`/demo/${demoSlug}/account`} style={{ color: "var(--color-primary)" }}>
