@@ -24,6 +24,45 @@ export interface AdapterInfo {
   status: AdapterStatus;
 }
 
+/**
+ * Mirrors services.ts's own `persistence` branch exactly (see its doc
+ * comment there): `DATABASE_URL` set -> Postgres; else `SQLITE_FILE_PATH`
+ * set -> file-backed SQLite at that exact path; else the original
+ * in-memory SQLite default, explicitly labeled "ephemeral -- data resets
+ * on every restart" so an operator sees this clearly here rather than
+ * discovering it the hard way after a restart (see
+ * .pHive/epics/data-backup-restore-and-adapter-portability/docs/design-discussion.md
+ * §1a). Before that story this row was hardcoded to always report the
+ * in-memory default -- there was no env branch to report on.
+ */
+function persistenceInfo(): AdapterInfo {
+  if (process.env.DATABASE_URL) {
+    return {
+      subsystem: "Persistence (catalog)",
+      adapter: "Postgres",
+      detail: "DATABASE_URL is set -- createPostgresAdapter() (packages/adapter-postgres)",
+      status: "active",
+    };
+  }
+
+  if (process.env.SQLITE_FILE_PATH) {
+    return {
+      subsystem: "Persistence (catalog)",
+      adapter: "SQLite (file-backed)",
+      detail: `SQLITE_FILE_PATH is set -- createSqliteAdapter(${JSON.stringify(process.env.SQLITE_FILE_PATH)}) (packages/adapter-sqlite), durable across restarts`,
+      status: "active",
+    };
+  }
+
+  return {
+    subsystem: "Persistence (catalog)",
+    adapter: "SQLite (in-memory)",
+    detail:
+      "Neither DATABASE_URL nor SQLITE_FILE_PATH is set -- createSqliteAdapter(':memory:') (packages/adapter-sqlite) -- ephemeral, data resets on every restart",
+    status: "active",
+  };
+}
+
 function paymentsInfo(): AdapterInfo {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) {
@@ -96,12 +135,7 @@ function cmsInfo(): AdapterInfo {
  */
 export function getAdapterInfo(): AdapterInfo[] {
   return [
-    {
-      subsystem: "Persistence (catalog)",
-      adapter: "SQLite (in-memory)",
-      detail: "createSqliteAdapter(':memory:') -- packages/adapter-sqlite, no external database configured, no env branch exists for this today",
-      status: "active",
-    },
+    persistenceInfo(),
     cmsInfo(),
     paymentsInfo(),
     analyticsInfo(),

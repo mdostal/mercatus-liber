@@ -18,6 +18,8 @@ describe("getAdapterInfo", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
     vi.stubEnv("POSTHOG_API_KEY", "");
     vi.stubEnv("SANITY_PROJECT_ID", "");
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("SQLITE_FILE_PATH", "");
 
     const info = getAdapterInfo();
     expect(info).toHaveLength(4);
@@ -25,6 +27,7 @@ describe("getAdapterInfo", () => {
     const persistence = info.find((e) => e.subsystem === "Persistence (catalog)")!;
     expect(persistence.status).toBe("active");
     expect(persistence.adapter).toBe("SQLite (in-memory)");
+    expect(persistence.detail).toMatch(/ephemeral/i);
 
     const cms = info.find((e) => e.subsystem === "CMS")!;
     expect(cms.adapter).toBe("In-memory (reference default)");
@@ -36,6 +39,27 @@ describe("getAdapterInfo", () => {
     const analytics = info.find((e) => e.subsystem === "Analytics")!;
     expect(analytics.adapter).toBe("No-op (disabled)");
     expect(analytics.status).toBe("active");
+  });
+
+  it("reports file-backed SQLite as active, naming the exact path, when SQLITE_FILE_PATH is truthy and DATABASE_URL is unset", () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("SQLITE_FILE_PATH", "/data/catalog.db");
+
+    const persistence = getAdapterInfo().find((e) => e.subsystem === "Persistence (catalog)")!;
+    expect(persistence.status).toBe("active");
+    expect(persistence.adapter).toBe("SQLite (file-backed)");
+    expect(persistence.detail).toContain("/data/catalog.db");
+    expect(persistence.detail).not.toMatch(/ephemeral/i);
+  });
+
+  it("reports Postgres as active when DATABASE_URL is truthy, taking priority over SQLITE_FILE_PATH", () => {
+    vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
+    vi.stubEnv("SQLITE_FILE_PATH", "/data/should-not-be-used.db");
+
+    const persistence = getAdapterInfo().find((e) => e.subsystem === "Persistence (catalog)")!;
+    expect(persistence.status).toBe("active");
+    expect(persistence.adapter).toBe("Postgres");
+    expect(persistence.detail).not.toContain("should-not-be-used");
   });
 
   it("reports Sanity as active when SANITY_PROJECT_ID is truthy", () => {
@@ -89,13 +113,17 @@ describe("getAdapterInfo", () => {
     expect(after.detail).toMatch(/test/i);
   });
 
-  it("always returns exactly four entries with persistence and CMS never varying with env", () => {
+  it("always returns exactly four entries in the same subsystem order, persistence and CMS always active regardless of env", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_xyz");
     vi.stubEnv("POSTHOG_API_KEY", "phc_xyz");
+    vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
 
     const info = getAdapterInfo();
     expect(info).toHaveLength(4);
     expect(info.map((e) => e.subsystem)).toEqual(["Persistence (catalog)", "CMS", "Payments", "Analytics"]);
+    // Persistence and CMS are always "active" (every one of their 2-3
+    // states is a valid, functional configuration -- there's no
+    // "unconfigured" state for either, unlike payments).
     expect(info[0]!.status).toBe("active");
     expect(info[1]!.status).toBe("active");
   });

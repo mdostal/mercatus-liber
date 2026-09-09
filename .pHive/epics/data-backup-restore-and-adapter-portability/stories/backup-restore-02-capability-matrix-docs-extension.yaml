@@ -1,0 +1,85 @@
+id: backup-restore-02-capability-matrix-docs-extension
+epic: data-backup-restore-and-adapter-portability
+title: "Extend epic-38's adapters-and-portability.md, README Configuration section"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [backup-restore-01-persistence-wiring-and-backup-restore]
+
+description: |
+  Read the prior story's committed changes in full first -- the real env vars and backup/
+  restore commands it built are exactly what this story documents.
+
+  Read apps/docs/content-src/deep-dive/adapters-and-portability.md in full (built by epic 38) --
+  this is the existing, already-accurate adapter capability matrix. Do NOT create a new,
+  duplicate page. Extend this one:
+  - Update its persistence row/section to reflect the new real 3-state wiring (in-memory /
+    file-backed SQLite / Postgres via DATABASE_URL) -- it previously documented persistence as
+    having no env-branch at all; that finding is now resolved and the page must say so
+    accurately.
+  - Add a new section: "Backup and restore," documenting the real SQLite backup/restore commands
+    from the prior story with real usage examples, and explicitly noting that Postgres/Shopify-
+    backed deployments should use their own native tooling (pg_dump/pg_restore; Shopify's own
+    data export) rather than this framework's SQLite-specific tooling.
+  - Add a new section: "Bring your own database," a real, concrete walkthrough of pointing a
+    deployment at a separately-hosted Postgres instance via DATABASE_URL, referencing the real
+    env var and real adapter-postgres package.
+
+  Also update README.md's Configuration section with the new `DATABASE_URL`/`SQLITE_FILE_PATH`
+  env vars, matching the existing format used there for the other adapter env vars (Sanity,
+  Clerk, PostHog, Stripe).
+
+acceptance_criteria:
+  - "Given apps/docs/content-src/deep-dive/adapters-and-portability.md, then its persistence section accurately reflects the new 3-state wiring, not the old 'no env-branch exists' finding"
+  - "Given the same page, then it has a real Backup and restore section with real, accurate command usage and the Postgres/Shopify native-tooling disclosure"
+  - "Given the same page, then it has a real Bring your own database walkthrough referencing DATABASE_URL"
+  - "Given README.md, then its Configuration section documents DATABASE_URL/SQLITE_FILE_PATH in the same format as the other adapter env vars"
+  - "Given `pnpm --filter @mercatus-liber/docs build`, then it succeeds with the updated page rendering correctly"
+
+steps:
+  - id: implement
+    description: Make the documentation changes per the description above.
+    agent: developer
+  - id: test
+    description: Verify every acceptance criterion, including a real docs build and render check.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm no duplicate adapters-table page was created, confirm the new sections are accurate against the actual commands/env vars built in the prior story.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/data-backup-restore-and-adapter-portability.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: Markdown/MDX }
+  key_files:
+    - path: apps/docs/content-src/deep-dive/adapters-and-portability.md
+      purpose: The existing, epic-38-built page this story extends.
+    - path: README.md
+      purpose: Configuration section gets the new env vars.
+
+files_to_modify:
+  - file: apps/docs/content-src/deep-dive/adapters-and-portability.md
+    change: "Update persistence section, add Backup/restore and Bring-your-own-database sections"
+  - file: README.md
+    change: "Document DATABASE_URL/SQLITE_FILE_PATH"
+
+design_decisions:
+  - decision: "Extend the existing epic-38 adapters page rather than authoring a new capability-matrix page."
+    rationale: "Avoids duplicate/conflicting documentation, per design-discussion.md §1c."
+
+risks: []
+
+references:
+  - path: .pHive/epics/data-backup-restore-and-adapter-portability/docs/design-discussion.md
+    relevant_excerpt: "§1c: the resolved extend-not-duplicate design question this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Documentation-only story; correctness is verified by the acceptance criteria's accuracy and real-render checks, not a numeric trend."

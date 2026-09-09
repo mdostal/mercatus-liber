@@ -95,6 +95,20 @@ and payment keys to get real behavior instead of a local stand-in.
   project and dataset. Falls back to an empty string when unset, same posture as the Stripe
   keys above; only meaningful alongside `SANITY_PROJECT_ID`.
 
+**Persistence (catalog)** (`@mercatus-liber/adapter-sqlite` + `@mercatus-liber/adapter-postgres`):
+- `DATABASE_URL` — a Postgres connection string. This is the highest-priority signal
+  `lib/services.ts` uses to decide catalog persistence: when set, a real `createPostgresAdapter()`
+  is wired in, backed by a `pg` `Pool` connected to this string; when unset, the app falls back to
+  checking `SQLITE_FILE_PATH` next.
+- `SQLITE_FILE_PATH` — a filesystem path for a durable, file-backed SQLite database. Only
+  consulted when `DATABASE_URL` is unset. When set, `lib/services.ts` wires in
+  `createSqliteAdapter(path)` against that real file (`journal_mode = WAL`, durable across
+  restarts) instead of the zero-infra default; when both this and `DATABASE_URL` are unset, the
+  app falls back to `createSqliteAdapter(":memory:")` — no setup required to run locally, but
+  catalog data resets on every restart. A file-backed database at this path can be backed up and
+  restored with `packages/adapter-sqlite`'s own CLI — see that package's README and
+  [`apps/docs/content-src/deep-dive/adapters-and-portability.md`](apps/docs/content-src/deep-dive/adapters-and-portability.md#backup-and-restore).
+
 **Demo content**:
 - Demo selection is routed, not env-var-driven — `apps/reference-storefront/lib/demos.ts`'s
   `DEMO_REGISTRY` holds three real public demo stores, each picked live via the

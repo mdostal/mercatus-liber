@@ -1,0 +1,120 @@
+id: backup-restore-01-persistence-wiring-and-backup-restore
+epic: data-backup-restore-and-adapter-portability
+title: "DATABASE_URL/SQLITE_FILE_PATH env wiring, admin/settings row, real SQLite backup/restore"
+status: pending
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/data-backup-restore-and-adapter-portability/docs/design-discussion.md in
+  full first -- section 1a-b resolve this story's exact scope, don't re-derive it.
+
+  Confirm the finding yourself first: read apps/reference-storefront/lib/services.ts's exact
+  current persistence construction (`createSqliteAdapter(":memory:")`, no env branch) and
+  packages/adapter-sqlite/src/index.ts (confirm it already supports a real file path, not just
+  ":memory:" -- it almost certainly does, SQLite's own API takes any path, but verify).
+
+  Part 1 -- env-var wiring. In lib/services.ts, add a real 3-state branch mirroring the exact
+  pattern already used for CMS/admin-auth/analytics in this same file (read those branches for
+  the convention to follow): `DATABASE_URL` set and truthy -> `createPostgresAdapter` (read
+  packages/adapter-postgres/src/index.ts for its real constructor signature); else
+  `SQLITE_FILE_PATH` set and truthy -> `createSqliteAdapter(process.env.SQLITE_FILE_PATH)`; else
+  today's exact unchanged `createSqliteAdapter(":memory:")` default. Add a `Persistence` row to
+  apps/reference-storefront/lib/adapter-info.ts (mirroring paymentsInfo()'s exact shape/pattern)
+  reporting which of the 3 states is active, with the in-memory case explicitly labeled
+  "ephemeral -- data resets on every restart" so an operator sees this clearly in
+  /admin/settings, which today has no persistence row at all.
+
+  Part 2 -- real SQLite backup/restore. Read packages/adapter-sqlite/src/index.ts and
+  schema.ts in full to understand exactly how the SQLite connection/file is managed before
+  building this. Add a real, working CLI script (your call on the exact location after reading
+  the package -- packages/adapter-sqlite/scripts/ or bin/ is a reasonable default) that:
+  - `backup <db-file-path> [backup-dir]`: produces a real, valid, restorable copy of the live
+    SQLite database file at a timestamped path (use SQLite's own safe-copy mechanism -- e.g. the
+    `VACUUM INTO` SQL command or an equivalent safe-checkpoint-then-copy approach; a raw
+    filesystem `cp` on a live, open SQLite file is NOT safe and must not be used -- research and
+    confirm the actually-safe approach before implementing).
+  - `restore <backup-file-path> <target-db-file-path>`: restores a named backup into place.
+  Document both commands' real usage in a short README section for the script (in the package's
+  own README.md, not a separate doc).
+
+acceptance_criteria:
+  - "Given DATABASE_URL set to a real reachable Postgres connection string, then services.ts constructs a real Postgres-backed persistence adapter, verified by a real query against it"
+  - "Given SQLITE_FILE_PATH set to a real file path (Postgres unset), then services.ts constructs a file-backed SQLite adapter at that exact path, and the file genuinely exists on disk after the server starts and seeds data"
+  - "Given neither env var set, then behavior is byte-for-byte identical to before this story (in-memory, ephemeral)"
+  - "Given /admin/settings after this story, then a real Persistence row is present reporting the correct one of the 3 states, matching adapter-info.ts's other rows' shape"
+  - "Given a real backup command run against a real seeded file-backed SQLite database, then the resulting backup file is a genuinely valid, independently-openable SQLite database containing the real seeded data (not a corrupted or partial copy)"
+  - "Given a real restore command run against that backup file into a fresh target path, then the restored database contains the exact same real data as the original"
+  - "Given the full monorepo test suite and typecheck, then both stay green"
+
+steps:
+  - id: research
+    description: Read services.ts's existing adapter-selection branches, adapter-postgres's constructor, and adapter-sqlite's connection/file handling, and confirm the actually-safe SQLite backup approach (VACUUM INTO or equivalent) before writing anything.
+    agent: researcher
+  - id: implement
+    description: Make the env-wiring and backup/restore changes per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion, including a real backup/restore round-trip against real seeded data, and a real Postgres connection test if a reachable instance is available (document clearly if one is not available in this environment and what was verified instead).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the in-memory default is genuinely unchanged, confirm the backup mechanism is actually safe for a live/open database file, not a naive copy.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/data-backup-restore-and-adapter-portability.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, database: SQLite/Postgres }
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: "Central composition root -- where the new env-var branch is added"
+    - path: apps/reference-storefront/lib/adapter-info.ts
+      purpose: "Where the new Persistence row is added, mirroring paymentsInfo()'s shape"
+    - path: packages/adapter-sqlite/src/index.ts
+      purpose: "The SQLite adapter this story adds file-path support and backup/restore tooling around"
+    - path: packages/adapter-postgres/src/index.ts
+      purpose: "The real constructor this story wires in via DATABASE_URL"
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: "Add DATABASE_URL/SQLITE_FILE_PATH env-var branches, 3-state, in-memory default unchanged"
+  - file: apps/reference-storefront/lib/adapter-info.ts
+    change: "Add a Persistence row"
+  - file: packages/adapter-sqlite
+    change: "New backup/restore CLI script + README section"
+
+design_decisions:
+  - decision: "SQLite backup/restore uses a real safe-copy mechanism (e.g. VACUUM INTO), never a raw filesystem copy of a live database file."
+    rationale: "A raw copy of an open SQLite file can be corrupted mid-write -- this must be genuinely safe, not just apparently working in a quick test."
+
+risks:
+  - severity: medium
+    description: "An unsafe backup mechanism could silently produce corrupted backups that only fail on restore, long after the fact."
+    mitigation: "Acceptance criteria explicitly requires a real round-trip proof, not just 'the backup command ran successfully.'"
+
+references:
+  - path: .pHive/epics/data-backup-restore-and-adapter-portability/docs/design-discussion.md
+    relevant_excerpt: "§1a-b: the resolved persistence-wiring and backup-scope design questions this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: persistence.real_durable_options_wired
+  direction: up
+  unit: count
+  baseline: 1
+  target: 3
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Count of real, env-var-selectable persistence options (in-memory/file-sqlite/postgres), verified by test"
+  verify_at: integrate
+  owner: tester
