@@ -32,6 +32,9 @@ importers:
       '@mercatus-liber/adapter-clerk':
         specifier: workspace:*
         version: link:../../packages/adapter-clerk
+      '@mercatus-liber/adapter-sanity':
+        specifier: workspace:*
+        version: link:../../packages/adapter-sanity
       '@mercatus-liber/adapter-sqlite':
         specifier: workspace:*
         version: link:../../packages/adapter-sqlite

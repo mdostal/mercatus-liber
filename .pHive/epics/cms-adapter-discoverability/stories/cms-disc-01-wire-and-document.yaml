@@ -1,0 +1,105 @@
+id: cms-disc-01-wire-and-document
+epic: cms-adapter-discoverability
+title: "Wire Sanity into services.ts with an env-var branch; document env vars in README"
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+
+description: |
+  Read packages/adapter-sanity/src/index.ts's createSanityAdapter function and
+  packages/adapter-sanity/src/sanity-client.ts's SanityAdapterConfig interface (projectId,
+  dataset, token, apiVersion?) in full.
+
+  Read the WHOLE current apps/reference-storefront/lib/services.ts fresh -- find the existing
+  two-branch pattern already used for analytics (POSTHOG_API_KEY truthy picks PostHog, else a
+  no-op) and admin-auth (CLERK_SECRET_KEY truthy picks Clerk, else the dev default) -- mirror
+  that exact shape for CMS persistence.
+
+  Deliverables:
+  - In lib/services.ts, change the CMS persistence construction from the current unconditional
+    `createInMemoryCmsAdapter()` to: when `process.env.SANITY_PROJECT_ID` is truthy, construct
+    `createSanityAdapter({ projectId: process.env.SANITY_PROJECT_ID, dataset:
+    process.env.SANITY_DATASET ?? "production", token: process.env.SANITY_TOKEN ?? "" })`;
+    otherwise, keep the existing `createInMemoryCmsAdapter()` call as the fallback branch.
+  - Add `@mercatus-liber/adapter-sanity` as a regular dependency of
+    apps/reference-storefront/package.json (it's a workspace package already built and tested,
+    just never depended on by this app).
+  - Add a "Content (CMS)" subsection to README.md's Configuration section (added by a
+    previously-merged piece of work -- read its current exact heading structure first) listing
+    SANITY_PROJECT_ID, SANITY_DATASET (optional, defaults to "production"), and SANITY_TOKEN,
+    noting that without SANITY_PROJECT_ID set, the app falls back to the zero-infra in-memory
+    CMS adapter -- same posture already used for the Stripe/Clerk/PostHog entries in that same
+    section.
+
+acceptance_criteria:
+  - "Given process.env.SANITY_PROJECT_ID is unset, when buildServices() runs, then CMS is still backed by the in-memory adapter -- zero regression for every existing deployment/test that has no Sanity configured"
+  - "Given process.env.SANITY_PROJECT_ID is set (verified via a unit test injecting env vars, not a live Sanity project), when buildServices() runs, then createSanityAdapter is constructed with the correct config values read from the corresponding env vars"
+  - "Given the README's new Content (CMS) subsection, when read, then it accurately lists all three Sanity-related env vars with correct names and correct optional/required/default status"
+
+steps:
+  - id: research
+    description: Re-read adapter-sanity's exact config shape and the existing analytics/admin-auth env-branch pattern in services.ts.
+    agent: researcher
+  - id: implement
+    description: Wire the branch and write the README docs per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write or extend a test confirming both branches of the CMS wiring construct the correct adapter given the presence/absence of SANITY_PROJECT_ID.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the fallback-when-unset case is genuinely unchanged from today's behavior, and the README env var list is accurate.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/cms-adapter-discoverability.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Exact CMS wiring line to change, and the existing analytics/admin-auth env-branch pattern to mirror.
+    - path: packages/adapter-sanity/src/index.ts
+      purpose: createSanityAdapter's exact signature.
+    - path: README.md
+      purpose: Existing Configuration section to extend with a new CMS subsection.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: Env-var branch for CMS persistence (Sanity vs. in-memory).
+  - file: apps/reference-storefront/package.json
+    change: Add @mercatus-liber/adapter-sanity dependency.
+  - file: README.md
+    change: New Content (CMS) Configuration subsection.
+
+design_decisions:
+  - decision: "SANITY_DATASET defaults to 'production' when unset, matching Sanity's own own conventional default dataset name."
+    rationale: "Reduces required configuration to just two variables (project id + token) for the common case."
+
+risks: []
+
+references:
+  - path: .pHive/epics/cms-adapter-discoverability/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: the exact env-var branch shape this story implements.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: reference_storefront.cms_adapter_wiring_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: unit test covering both branches of the CMS wiring
+  verify_at: integrate
+  owner: tester
