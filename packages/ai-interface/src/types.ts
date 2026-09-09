@@ -46,6 +46,12 @@ export interface CatalogAdminOps {
 }
 
 export interface CmsAdminOps {
+  createPage(input: {
+    pageType: string;
+    slug: string;
+    title: string;
+    sections: { componentType: string; config: Record<string, unknown> }[];
+  }): Promise<{ id: string; title: string; status: string }>;
   updatePage(id: string, patch: { title?: string; sections?: { componentType: string; config: Record<string, unknown> }[] }): Promise<{ id: string; title: string; status: string }>;
   publishPage(id: string): Promise<{ id: string; title: string; status: string }>;
 }
