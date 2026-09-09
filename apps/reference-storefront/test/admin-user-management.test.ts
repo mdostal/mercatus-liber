@@ -1,6 +1,7 @@
 /**
- * admin-auth-04: proves the two-layer owner-only gate on /admin/settings/users
- * -- a page-level render check (app/admin/settings/users/page.tsx) AND a
+ * admin-auth-04: proves the two-layer owner-only gate on
+ * /demo/[demoSlug]/admin/settings/users -- a page-level render check
+ * (app/demo/[demoSlug]/admin/settings/users/page.tsx) AND a
  * server-action-level check (updateAdminUserRoleAction, lib/actions.ts), each
  * independently refusing a non-owner session -- using an injectable mock
  * AdminAuthAdapter (never a live Clerk account or the dev-default adapter's
@@ -36,7 +37,9 @@ vi.mock("../lib/services.js", () => ({
 }));
 
 const { updateAdminUserRoleAction } = await import("../lib/actions.js");
-const { default: AdminUsersPage } = await import("../app/admin/settings/users/page.js");
+const { default: AdminUsersPage } = await import("../app/demo/[demoSlug]/admin/settings/users/page.js");
+
+const testParams = Promise.resolve({ demoSlug: "dragon-merch" });
 
 function sessionFor(role: AdminRole): AdminSession {
   return { userId: `test-${role}`, email: `${role}@example.com`, role };
@@ -70,7 +73,7 @@ describe("AdminUsersPage (admin-auth-04, page-level owner-only gate)", () => {
     currentSession = sessionFor("admin");
     users = [{ userId: "u1", email: "u1@example.com", role: "admin" }];
 
-    const element = await AdminUsersPage();
+    const element = await AdminUsersPage({ params: testParams });
 
     expect(renderedText(element)).toMatch(/owner access required/i);
     expect(containsElementType(element, "table")).toBe(false);
@@ -80,7 +83,7 @@ describe("AdminUsersPage (admin-auth-04, page-level owner-only gate)", () => {
     currentSession = null;
     users = [];
 
-    const element = await AdminUsersPage();
+    const element = await AdminUsersPage({ params: testParams });
 
     expect(renderedText(element)).toMatch(/owner access required/i);
     expect(containsElementType(element, "table")).toBe(false);
@@ -93,7 +96,7 @@ describe("AdminUsersPage (admin-auth-04, page-level owner-only gate)", () => {
       { userId: "u2", email: "u2@example.com", role: "viewer" },
     ];
 
-    const element = await AdminUsersPage();
+    const element = await AdminUsersPage({ params: testParams });
 
     expect(containsElementType(element, "table")).toBe(true);
     const text = renderedText(element);

@@ -1,0 +1,44 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { isDemoSlug } from "../../../../../lib/demos";
+import { getServicesForDemo } from "../../../../../lib/services";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminOrdersPage({ params }: { params: Promise<{ demoSlug: string }> }) {
+  const { demoSlug } = await params;
+  if (!isDemoSlug(demoSlug)) notFound();
+  const { checkout } = await getServicesForDemo(demoSlug);
+  const orders = await checkout.listOrders();
+
+  return (
+    <main>
+      <p>
+        <Link href={`/demo/${demoSlug}/admin`}>← Admin</Link>
+      </p>
+      <h1>Admin: Orders</h1>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Customer</th>
+            <th>Items</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <tr key={order.id}>
+              <td>
+                <Link href={`/order/${order.id}`}>{order.id}</Link>
+              </td>
+              <td>{order.status}</td>
+              <td>{order.customerId ?? "guest"}</td>
+              <td>{order.items.reduce((sum, item) => sum + item.quantity, 0)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </main>
+  );
+}
