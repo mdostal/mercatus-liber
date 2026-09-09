@@ -1,0 +1,82 @@
+id: analytics-insights-03-verification-and-closeout
+epic: analytics-insights-and-import-adapters
+title: "Verification (what's testable), honest credential-gap disclosure, docs, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [analytics-insights-02-ga4-adapter-and-admin-surface]
+
+description: |
+  Read both prior stories' committed changes in full first.
+
+  1. Live verification against a real dev server: confirm /admin/metrics's new Traffic &
+     Sources section renders correctly with zero external sources configured (honest
+     not-configured state), and with the noop/internal-bi source always present. If a real
+     PostHog API key with query scope is genuinely available in this environment, verify a real
+     live call; if not, clearly state that and confirm the adapter's unit-test coverage stands
+     in for live verification. Same disclosure discipline for GA4 -- almost certainly no real
+     credential is available in this environment; state that plainly, don't claim otherwise.
+  2. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  3. Update apps/docs/content-src/deep-dive/business-intelligence-and-analytics.md (built by
+     epic 38) to reflect the new AnalyticsInsightsAdapter/GA4/PostHog-read-side reality --
+     that page previously forward-referenced this epic as future work; update it to describe
+     what's now actually real.
+  4. Update .pHive/planning/epic-backlog.md: change epic 46's row to "done (3/3 stories
+     complete, GA4 live-verification pending a real credential)" -- be precise and honest about
+     the credential-gated portion, matching this repo's established disclosure style (e.g. epic
+     27's admin-auth-clerk row). Match the surrounding rows' style/detail otherwise.
+  5. Commit and merge feat/analytics-insights-and-import-adapters into master with --no-ff,
+     mirroring the "Merge epic: <name> (epic NN)" convention from prior epic merges.
+
+acceptance_criteria:
+  - "Given /admin/metrics, then the Traffic & Sources section renders correctly in its not-configured state and shows internal-bi data always"
+  - "Given the PostHog/GA4 live-verification question, then the final report and epic-backlog.md both honestly state what was/wasn't live-verified, with no unverified success claim"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given the epic-38 BI deep-dive page, then it's updated to reflect the new real capability, not still forward-referencing it as future work"
+  - "Given .pHive/planning/epic-backlog.md, then epic 46's row accurately and honestly reflects done-with-a-disclosed-gap status"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Run all verification steps and make the docs/backlog updates per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence, and honest disclosure where credentials are genuinely unavailable.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and honestly scoped, confirm the merge is clean.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/analytics-insights-and-import-adapters, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 46's row updated to done-with-disclosed-gap.
+    - path: apps/docs/content-src/deep-dive/business-intelligence-and-analytics.md
+      purpose: Needs updating to reflect the new real capability.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 46 done with an honest, specific description including the credential-gap disclosure.
+  - file: apps/docs/content-src/deep-dive/business-intelligence-and-analytics.md
+    change: Update to reflect the new real AnalyticsInsightsAdapter capability.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/analytics-insights-and-import-adapters/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."
