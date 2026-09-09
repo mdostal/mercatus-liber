@@ -1,18 +1,33 @@
+import type { ComponentType } from "react";
 import { notFound } from "next/navigation";
-import { applyCouponAction, startCheckoutAction } from "../../../../lib/actions";
+import { CartReceiptStyle } from "../../../../components/cart-receipt-style";
+import { CartSpecTable } from "../../../../components/cart-spec-table";
+import { CartStandard, type CartTemplateProps } from "../../../../components/cart-standard";
 import { RecommendationShelf, resolveCartRecommendations } from "../../../../components/recommendation-shelf";
 import { readCartId } from "../../../../lib/cart-cookie";
 import { readCouponCode } from "../../../../lib/coupon-cookie";
 import { isDemoSlug } from "../../../../lib/demos";
 import { getServicesForDemo } from "../../../../lib/services";
+import { readActiveThemeBundle } from "../../../../lib/theme-cookie";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Template-key -> component map, the app-layer half of the theming
+ * contract (mirrors products/[slug]/page.tsx's PDP_TEMPLATES map exactly).
+ * Adding a new registered "cart" template requires one more entry here.
+ */
+const CART_TEMPLATES = {
+  "cart.standard": CartStandard,
+  "cart.receipt-style": CartReceiptStyle,
+  "cart.spec-table": CartSpecTable,
+} as const;
 
 export default async function CartPage({ params }: { params: Promise<{ demoSlug: string }> }) {
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const cartId = await readCartId(demoSlug);
-  const { cart, catalog, checkout, recommendations, marketingCatalog } = await getServicesForDemo(demoSlug);
+  const { cart, catalog, checkout, recommendations, marketingCatalog, theming } = await getServicesForDemo(demoSlug);
   const currentCart = cartId ? await cart.getCart(cartId) : null;
 
   if (!cartId || !currentCart || currentCart.items.length === 0) {
@@ -57,78 +72,29 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
   const subtotalAmount = adjustment.total.amount + adjustment.discountTotal.amount;
   const couponEnteredButInvalid = couponCode !== null && adjustment.appliedCode === null;
 
+  // Same override-from-active-bundle pattern PDP already uses: the active
+  // theme bundle's own defaultTemplatesByPageType.cart is passed as the
+  // explicit override (undefined for the 7 pre-existing bundles, which
+  // don't define one, so resolveTemplate falls back to its own
+  // first-registered-template default, "cart.standard").
+  const activeTheme = await readActiveThemeBundle(demoSlug);
+  const templateKey = theming.resolveTemplate("cart", activeTheme.defaultTemplatesByPageType.cart);
+  const Template: ComponentType<CartTemplateProps> =
+    (templateKey && CART_TEMPLATES[templateKey as keyof typeof CART_TEMPLATES]) || CartStandard;
+
   return (
-    <main style={{ padding: "var(--space-sm, 16px)" }}>
-      <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>Cart</h1>
-      <ul
-        style={{
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--space-sm, 16px)",
-        }}
-      >
-        {lines.map((line) => (
-          <li
-            key={line.skuId}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              borderBottom: "1px solid var(--color-border, #e5e5e5)",
-              paddingBottom: "var(--space-xs, 8px)",
-              fontSize: "var(--font-size-body, 1rem)",
-            }}
-          >
-            <span>
-              {line.title} x{line.quantity}
-            </span>
-            <span style={{ color: "var(--color-muted, #666)" }}>
-              {((line.priceSnapshot.amount * line.quantity) / 100).toFixed(2)} {line.priceSnapshot.currency}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <form action={applyCouponAction} style={{ marginTop: "var(--space-md, 32px)" }}>
-        <input type="hidden" name="demoSlug" value={demoSlug} />
-        <input type="text" name="code" placeholder="Coupon code" defaultValue={couponCode ?? ""} />
-        <button type="submit">Apply coupon</button>
-      </form>
-      {couponEnteredButInvalid && (
-        <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>Coupon code not valid</p>
-      )}
-
-      <section
-        style={{
-          marginTop: "var(--space-md, 32px)",
-          padding: "var(--space-sm, 16px)",
-          border: "1px solid var(--color-border, #e5e5e5)",
-          borderRadius: "var(--radius)",
-          boxShadow: "var(--shadow-card, none)",
-        }}
-      >
-        <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)", margin: 0 }}>
-          Subtotal: {(subtotalAmount / 100).toFixed(2)} {adjustment.total.currency}
-        </p>
-        {adjustment.discountTotal.amount > 0 && (
-          <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)", margin: "var(--space-xs, 8px) 0 0" }}>
-            Discount{adjustment.appliedCode ? ` (${adjustment.appliedCode})` : ""}: -
-            {(adjustment.discountTotal.amount / 100).toFixed(2)} {adjustment.discountTotal.currency}
-          </p>
-        )}
-        <p style={{ fontSize: "var(--font-size-heading-md, 1.5rem)", fontWeight: "bold", margin: "var(--space-xs, 8px) 0 0" }}>
-          Total: {(adjustment.total.amount / 100).toFixed(2)} {adjustment.total.currency}
-        </p>
-      </section>
-
-      <form action={startCheckoutAction} style={{ marginTop: "var(--space-sm, 16px)" }}>
-        <input type="hidden" name="demoSlug" value={demoSlug} />
-        <button type="submit">Check out with Stripe</button>
-      </form>
-
+    <>
+      <Template
+        demoSlug={demoSlug}
+        lines={lines.map(({ skuId, title, quantity, priceSnapshot }) => ({ skuId, title, quantity, priceSnapshot }))}
+        couponCode={couponCode}
+        couponEnteredButInvalid={couponEnteredButInvalid}
+        subtotalAmount={subtotalAmount}
+        discountTotal={adjustment.discountTotal}
+        total={adjustment.total}
+        appliedCode={adjustment.appliedCode}
+      />
       {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
-    </main>
+    </>
   );
 }

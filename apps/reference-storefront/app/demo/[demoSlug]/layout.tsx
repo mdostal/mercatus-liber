@@ -1,10 +1,32 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { ClerkProvider } from "@clerk/nextjs";
 import { THEME_BUNDLES } from "@mercatus-liber/theming";
-import { ThemeSwitcher } from "../../../components/theme-switcher";
-import { DEMO_REGISTRY, DEMO_SLUGS, isDemoSlug } from "../../../lib/demos";
+import { NavRail } from "../../../components/nav-rail";
+import { NavTopBar } from "../../../components/nav-top-bar";
+import { DEMO_REGISTRY, DEMO_SLUGS, isDemoSlug, type DemoSlug } from "../../../lib/demos";
+import { getServicesForDemo } from "../../../lib/services";
 import { readActiveThemeBundle } from "../../../lib/theme-cookie";
+
+/**
+ * Template-key -> component map, the app-layer half of the theming
+ * contract for the "nav" page type -- same shape as products/[slug]/
+ * page.tsx's PDP_TEMPLATES map. Adding a new registered nav template
+ * requires one more entry here.
+ */
+const NAV_TEMPLATES = {
+  "nav.top-bar": NavTopBar,
+  "nav.rail": NavRail,
+} as const;
+
+type NavChromeProps = {
+  demoSlug: DemoSlug;
+  displayName: string;
+  otherDemos: Array<{ slug: DemoSlug; displayName: string }>;
+  bundles: typeof THEME_BUNDLES;
+  activeThemeKey: string;
+  children: ReactNode;
+};
 
 export const metadata = {
   title: "Shop",
@@ -62,7 +84,22 @@ export default async function DemoLayout({
   // Both demos are meant to be discoverable from each other (design-
   // discussion.md §3) -- list every OTHER known demo slug as a switch link.
   // Written to not assume exactly 2 demos even though DEMO_SLUGS is 2 today.
-  const otherDemos = DEMO_SLUGS.filter((slug) => slug !== demoSlug);
+  const otherDemos = DEMO_SLUGS.filter((slug) => slug !== demoSlug).map((slug) => ({
+    slug,
+    displayName: DEMO_REGISTRY[slug].displayName,
+  }));
+
+  // design-system-v2-02: resolve the "nav" page type's template the exact
+  // same way products/[slug]/page.tsx resolves "pdp" -- the active theme
+  // bundle's own defaultTemplatesByPageType.nav is passed as the explicit
+  // override (undefined for the 7 pre-existing bundles, which don't define
+  // one, so resolveTemplate falls back to its own first-registered-template
+  // default, "nav.top-bar" -- see packages/theming/src/service.ts).
+  const { theming } = await getServicesForDemo(demoSlug);
+  const navTemplateKey = theming.resolveTemplate("nav", activeTheme.defaultTemplatesByPageType.nav);
+  const NavChrome: ComponentType<NavChromeProps> =
+    (navTemplateKey && NAV_TEMPLATES[navTemplateKey as keyof typeof NAV_TEMPLATES]) || NavTopBar;
+  const isRailNav = navTemplateKey === "nav.rail";
 
   const page = (
     <html lang="en">
@@ -75,55 +112,25 @@ export default async function DemoLayout({
           fontFamily: "var(--font-family)",
           background: "var(--color-background)",
           color: "var(--color-text)",
-          maxWidth: 720,
+          // nav.rail needs more horizontal room than the single-column
+          // top-bar layout ever did -- widened only for that template, so
+          // every other (nav.top-bar) bundle keeps today's exact 720px
+          // reading-width layout.
+          maxWidth: isRailNav ? 1100 : 720,
           margin: "0 auto",
           padding: 24,
           minHeight: "100vh",
         }}
       >
-        <header style={{ marginBottom: 24, borderBottom: "1px solid var(--color-accent)", paddingBottom: 12 }}>
-          <a
-            href={`/demo/${demoSlug}`}
-            style={{ fontWeight: 700, textDecoration: "none", color: "var(--color-primary)" }}
-          >
-            {DEMO_REGISTRY[demoSlug].displayName}
-          </a>
-          {" · "}
-          <a href={`/demo/${demoSlug}/cart`} style={{ color: "var(--color-primary)" }}>
-            Cart
-          </a>
-          {" · "}
-          <a href={`/demo/${demoSlug}/search`} style={{ color: "var(--color-primary)" }}>
-            Search
-          </a>
-          {" · "}
-          <a href={`/demo/${demoSlug}/campaign/fall-sale`} style={{ color: "var(--color-primary)" }}>
-            Fall Sale
-          </a>
-          {" · "}
-          <a href={`/demo/${demoSlug}/account`} style={{ color: "var(--color-primary)" }}>
-            Account
-          </a>
-          {" · "}
-          <a href={`/demo/${demoSlug}/admin/plugins`} style={{ color: "var(--color-primary)" }}>
-            Admin: Plugins
-          </a>
-          {" · "}
-          <a href="/" style={{ color: "var(--color-primary)" }}>
-            &larr; Mercatus Liber home
-          </a>
-          {otherDemos.map((otherSlug) => (
-            <span key={otherSlug}>
-              {" · "}
-              <a href={`/demo/${otherSlug}`} style={{ color: "var(--color-primary)" }}>
-                Switch to {DEMO_REGISTRY[otherSlug].displayName}
-              </a>
-            </span>
-          ))}
-
-          <ThemeSwitcher demoSlug={demoSlug} bundles={THEME_BUNDLES} activeKey={activeTheme.key} />
-        </header>
-        {children}
+        <NavChrome
+          demoSlug={demoSlug}
+          displayName={DEMO_REGISTRY[demoSlug].displayName}
+          otherDemos={otherDemos}
+          bundles={THEME_BUNDLES}
+          activeThemeKey={activeTheme.key}
+        >
+          {children}
+        </NavChrome>
       </body>
     </html>
   );
