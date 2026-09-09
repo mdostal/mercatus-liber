@@ -24,13 +24,13 @@ import { getServicesForDemo } from "./lib/services";
  * access would need its own launch-time selection (e.g. an argv flag or env
  * var picking which demo this process's tools operate against) -- out of
  * scope for this story, which is about web routing/actions/cookies. The
- * fixed "dragon-merch" default preserves this script's exact pre-story
+ * fixed "print-shop" default preserves this script's exact pre-story
  * behavior; the old comment ("TEMPORARY: hardcoded until routes move") is
  * simply removed since it's now false -- routes have moved, this hardcoding
  * is an intentional, considered choice, not a leftover.
  */
 async function main(): Promise<void> {
-  const services = await getServicesForDemo("dragon-merch");
+  const services = await getServicesForDemo("print-shop");
 
   const server = createCommerceMcpServer({
     catalog: services.catalog,

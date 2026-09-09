@@ -67,9 +67,9 @@ function resolveAppOrigin(): string {
  *
  * demo-routing-04: now takes the caller's already-parsed demoSlug (each
  * admin action below calls requireDemoSlug(formData) first, then passes the
- * result here) rather than a hardcoded "dragon-merch" -- a dragon-merch
+ * result here) rather than a hardcoded "print-shop" -- a print-shop
  * admin session has no business gating a northline mutation against
- * dragon-merch's adminAuth adapter, or vice versa.
+ * print-shop's adminAuth adapter, or vice versa.
  */
 async function requireAdminPermission(demoSlug: DemoSlug, action: AdminAction): Promise<void> {
   const { adminAuth } = await getServicesForDemo(demoSlug);

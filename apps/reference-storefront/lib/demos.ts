@@ -20,7 +20,7 @@ import { seedNorthlineDemo } from "./seed-northline";
  * (`app/demo/[demoSlug]/...`, landing in a later story of this same epic)
  * picks the demo instead of a build-time environment variable.
  */
-export const DEMO_SLUGS = ["dragon-merch", "northline"] as const;
+export const DEMO_SLUGS = ["print-shop", "northline"] as const;
 
 export type DemoSlug = (typeof DEMO_SLUGS)[number];
 
@@ -44,7 +44,7 @@ export function isDemoSlug(value: string): value is DemoSlug {
  * under `/demo/[demoSlug]/` must keep using its own real
  * `params.demoSlug`, never this constant.
  */
-export const DEFAULT_DEMO_SLUG: DemoSlug = "dragon-merch";
+export const DEFAULT_DEMO_SLUG: DemoSlug = "print-shop";
 
 /**
  * The full set of already-constructed services a demo's seed function might
@@ -75,9 +75,9 @@ export interface DemoDefinition {
 }
 
 export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
-  "dragon-merch": {
-    slug: "dragon-merch",
-    displayName: "Dragon Merch",
+  "print-shop": {
+    slug: "print-shop",
+    displayName: "The Print Shop",
     seed: (deps) =>
       seedCatalog(
         deps.catalog,

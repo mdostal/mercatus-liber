@@ -3,7 +3,7 @@
  * works end to end -- including that the admin UI's read path and the
  * AI/MCP interface's tool handlers require ZERO seed-specific code to
  * work with it, the same wiring apps/reference-storefront already uses
- * for the default dragon-merch seed.
+ * for the default print-shop seed.
  *
  * demo-store-northline-depth / northline-depth-01: verifies the 4 real
  * categories (not 1 catch-all), tiered SKU variants for 2 services (not one
@@ -215,7 +215,7 @@ describe("Northline demo seed (epic 15b public demo)", () => {
     expect(productResult.product.title).toBe("Fiber Internet Installation");
   });
 
-  it("DEMO_BRAND unset (default) still seeds the original dragon-merch catalog -- zero regression", async () => {
+  it("DEMO_BRAND unset (default) still seeds the original print-shop catalog -- zero regression", async () => {
     const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
     await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas);
 

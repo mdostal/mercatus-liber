@@ -26,8 +26,8 @@ describe("getServicesForDemo (demo-routing-01 services registry)", () => {
   it("memoizes: calling twice with the same demo slug returns the identical cached instance", async () => {
     const { getServicesForDemo } = await import("../lib/services.js");
 
-    const first = await getServicesForDemo("dragon-merch");
-    const second = await getServicesForDemo("dragon-merch");
+    const first = await getServicesForDemo("print-shop");
+    const second = await getServicesForDemo("print-shop");
 
     expect(second).toBe(first);
   });
@@ -35,28 +35,28 @@ describe("getServicesForDemo (demo-routing-01 services registry)", () => {
   it("isolates: two different demo slugs build two distinct instances, each starting with independently empty cart/order state", async () => {
     const { getServicesForDemo } = await import("../lib/services.js");
 
-    const dragonMerch = await getServicesForDemo("dragon-merch");
+    const printShop = await getServicesForDemo("print-shop");
     const northline = await getServicesForDemo("northline");
 
     // Distinct Services objects, and distinct subsystem instances within them
     // -- not just a different seed applied to a shared graph (see
     // design-discussion.md §2: sharing one graph would let a northline
-    // shopper apply a dragon-merch coupon, or an order leak across demos).
-    expect(northline).not.toBe(dragonMerch);
-    expect(northline.cart).not.toBe(dragonMerch.cart);
-    expect(northline.checkout).not.toBe(dragonMerch.checkout);
-    expect(northline.promotions).not.toBe(dragonMerch.promotions);
+    // shopper apply a print-shop coupon, or an order leak across demos).
+    expect(northline).not.toBe(printShop);
+    expect(northline.cart).not.toBe(printShop.cart);
+    expect(northline.checkout).not.toBe(printShop.checkout);
+    expect(northline.promotions).not.toBe(printShop.promotions);
 
     // Both start with genuinely empty order state.
-    expect(await dragonMerch.checkout.listOrders()).toEqual([]);
+    expect(await printShop.checkout.listOrders()).toEqual([]);
     expect(await northline.checkout.listOrders()).toEqual([]);
 
     // A cart created in one demo's cart service is invisible to the other's
     // -- proves the repositories are actually separate instances, not a
     // shared in-memory store keyed the same way.
-    const dragonCart = await dragonMerch.cart.createCart();
-    expect(await dragonMerch.cart.getCart(dragonCart.id)).not.toBeNull();
-    expect(await northline.cart.getCart(dragonCart.id)).toBeNull();
+    const printShopCart = await printShop.cart.createCart();
+    expect(await printShop.cart.getCart(printShopCart.id)).not.toBeNull();
+    expect(await northline.cart.getCart(printShopCart.id)).toBeNull();
   });
 
   it("throws a clear error for a demo slug outside the known list, rather than silently building an empty/wrong service graph", async () => {

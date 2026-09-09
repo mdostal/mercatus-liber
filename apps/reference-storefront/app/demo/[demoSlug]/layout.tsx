@@ -58,7 +58,7 @@ const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
  *   1. Every top-level category the demo's own MarketingCatalogService
  *      actually has (listChildCategories(null) -- parentId: null is exactly
  *      "top-level" per that service's own doc comment). Northline's 4
- *      categories are all top-level; dragon-merch's "Desk Accessories" is
+ *      categories are all top-level; print-shop's "Desk Accessories" is
  *      NOT (it's a child of "Merch"), so it correctly doesn't get its own
  *      top-level nav entry here -- browsing it happens via "Merch".
  *   2. A link to the service-area/location index (app/demo/[demoSlug]/
@@ -66,7 +66,7 @@ const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
  *      demo actually has at least one ServiceArea -- never a link to an
  *      empty index.
  *   3. One entry per real, currently-published CMS marketing/campaign page
- *      (dragon-merch's real "fall-sale" campaign is resolved here dynamically
+ *      (print-shop's real "fall-sale" campaign is resolved here dynamically
  *      via cms.listPages -- never hardcoded as a fallback string). Northline
  *      has no marketing page seeded today, so this list is empty for it,
  *      which is the correct "absent, not broken" behavior per the spec.

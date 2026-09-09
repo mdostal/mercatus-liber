@@ -93,7 +93,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("viewer");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", promotion.id);
       await expect(deactivatePromotionAction(formData)).rejects.toThrow(/not authorized/i);
 
@@ -116,7 +116,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("admin");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", promotion.id);
       await deactivatePromotionAction(formData);
 
@@ -139,7 +139,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("owner");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", promotion.id);
       await deactivatePromotionAction(formData);
 
@@ -162,7 +162,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = null;
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", promotion.id);
       await expect(deactivatePromotionAction(formData)).rejects.toThrow(/not authorized/i);
 
@@ -176,7 +176,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("viewer");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", bundle.id);
       await expect(deactivateBundleAction(formData)).rejects.toThrow(/not authorized/i);
 
@@ -188,7 +188,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("admin");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", bundle.id);
       await deactivateBundleAction(formData);
 
@@ -200,7 +200,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("owner");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", bundle.id);
       await deactivateBundleAction(formData);
 
@@ -220,7 +220,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("viewer");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", campaign.id);
       await expect(deactivateCampaignAction(formData)).rejects.toThrow(/not authorized/i);
 
@@ -238,7 +238,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("admin");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", campaign.id);
       await deactivateCampaignAction(formData);
 
@@ -256,7 +256,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("owner");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("id", campaign.id);
       await deactivateCampaignAction(formData);
 
@@ -269,7 +269,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = sessionFor("viewer");
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("pageType", "category");
       formData.set("slug", "guard-test-page");
       formData.set("title", "Guard Test Page");
@@ -282,7 +282,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       currentSession = null;
 
       const formData = new FormData();
-      formData.set("demoSlug", "dragon-merch");
+      formData.set("demoSlug", "print-shop");
       formData.set("pageType", "category");
       formData.set("slug", "guard-test-page-null");
       formData.set("title", "Guard Test Page Null");

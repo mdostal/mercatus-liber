@@ -39,7 +39,7 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
     vi.resetModules();
 
     const { getServicesForDemo } = await import("../lib/services.js");
-    const services = await getServicesForDemo("dragon-merch");
+    const services = await getServicesForDemo("print-shop");
 
     expect(createSanityAdapterMock).not.toHaveBeenCalled();
     // The CMS service itself is still fully functional off the in-memory
@@ -55,7 +55,7 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
     vi.resetModules();
 
     const { getServicesForDemo } = await import("../lib/services.js");
-    await getServicesForDemo("dragon-merch");
+    await getServicesForDemo("print-shop");
 
     expect(createSanityAdapterMock).toHaveBeenCalledTimes(1);
     expect(createSanityAdapterMock).toHaveBeenCalledWith({
@@ -70,7 +70,7 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
     vi.resetModules();
 
     const { getServicesForDemo } = await import("../lib/services.js");
-    await getServicesForDemo("dragon-merch");
+    await getServicesForDemo("print-shop");
 
     expect(createSanityAdapterMock).toHaveBeenCalledWith({
       projectId: "proj123",

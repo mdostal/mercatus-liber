@@ -10,13 +10,13 @@ The `reference-storefront` app (`apps/reference-storefront` in this monorepo) se
 demo storefronts, each a real, browsable route under `/demo/<slug>` — catalog, cart, checkout,
 theming, CMS pages, and admin views all included:
 
-- **Dragon Merch** (slug `dragon-merch`) — the default seed, a 3D-print-shop-style catalog.
+- **The Print Shop** (slug `print-shop`) — the default seed, a 3D-print-shop-style catalog.
 - **Northline Home Tech** (slug `northline`) — a second, differently themed catalog proving the
   framework isn't hardwired to one look or one kind of product.
 
 Run the reference storefront locally (`pnpm --filter @mercatus-liber/reference-storefront dev`
 from the repo root, or `pnpm dev` from inside `apps/reference-storefront`) and visit
-`/demo/dragon-merch` or `/demo/northline`. A real, public deployment domain for these demos is
+`/demo/print-shop` or `/demo/northline`. A real, public deployment domain for these demos is
 an operational decision outside this documentation site's scope — the same disclosed-gap
 posture used for `NEXT_PUBLIC_DOCS_URL` (see the root `README.md`'s Configuration section) — so
 no live domain is asserted here.

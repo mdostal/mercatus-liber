@@ -39,7 +39,7 @@ vi.mock("../lib/services.js", () => ({
 const { updateAdminUserRoleAction } = await import("../lib/actions.js");
 const { default: AdminUsersPage } = await import("../app/demo/[demoSlug]/admin/settings/users/page.js");
 
-const testParams = Promise.resolve({ demoSlug: "dragon-merch" });
+const testParams = Promise.resolve({ demoSlug: "print-shop" });
 
 function sessionFor(role: AdminRole): AdminSession {
   return { userId: `test-${role}`, email: `${role}@example.com`, role };
@@ -113,7 +113,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
-    formData.set("demoSlug", "dragon-merch");
+    formData.set("demoSlug", "print-shop");
     formData.set("userId", "u1");
     formData.set("role", "owner");
 
@@ -126,7 +126,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
-    formData.set("demoSlug", "dragon-merch");
+    formData.set("demoSlug", "print-shop");
     formData.set("userId", "u1");
     formData.set("role", "admin");
 
@@ -139,7 +139,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
-    formData.set("demoSlug", "dragon-merch");
+    formData.set("demoSlug", "print-shop");
     formData.set("userId", "u1");
     formData.set("role", "admin");
 
@@ -152,7 +152,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
-    formData.set("demoSlug", "dragon-merch");
+    formData.set("demoSlug", "print-shop");
     formData.set("userId", "u2");
     formData.set("role", "admin");
 
@@ -167,7 +167,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
-    formData.set("demoSlug", "dragon-merch");
+    formData.set("demoSlug", "print-shop");
     formData.set("userId", "u2");
     formData.set("role", "superadmin");
 

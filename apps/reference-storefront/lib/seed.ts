@@ -209,7 +209,7 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
 
 /**
  * Seeds a handful of demo service areas (generic local pickup/delivery
- * regions for this dragon-merch demo shop -- see epic 15a/15b for the real
+ * regions for this print-shop demo shop -- see epic 15a/15b for the real
  * ATT-style business seed data). The desk mat is deliberately assigned to
  * only 2 of the 3 areas, proving a product can be available in a subset of
  * areas, not all-or-nothing. Also publishes one CMS "location" page,
@@ -326,7 +326,7 @@ async function seedAdvertising(advertising: AdvertisingService, targetedServiceA
         headline: "Dragon Merch Sale -- 20% Off Everything",
         body: "Cable organizers, desk mats, and more -- all dragon-branded, all on sale this week only.",
         imageUrl: null,
-        linkHref: "/demo/dragon-merch/category/merch",
+        linkHref: "/demo/print-shop/category/merch",
         weight: 1,
       },
       {
@@ -334,7 +334,7 @@ async function seedAdvertising(advertising: AdvertisingService, targetedServiceA
         headline: "New: Dragon Desk Mat Restock",
         body: "Our best-selling dragon desk mat is back in stock. Grab yours before it's gone again.",
         imageUrl: null,
-        linkHref: "/demo/dragon-merch/products/dragon-desk-mat",
+        linkHref: "/demo/print-shop/products/dragon-desk-mat",
         weight: 1,
       },
     ],
@@ -353,7 +353,7 @@ async function seedAdvertising(advertising: AdvertisingService, targetedServiceA
         headline: "Portland Dragon Pop-Up This Saturday",
         body: "Meet the dragon merch team in person at our Portland pop-up -- local pickup discounts all day.",
         imageUrl: null,
-        linkHref: "/demo/dragon-merch/locations/portland-or",
+        linkHref: "/demo/print-shop/locations/portland-or",
         weight: 1,
       },
     ],
