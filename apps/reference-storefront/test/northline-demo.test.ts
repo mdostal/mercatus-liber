@@ -33,20 +33,51 @@ const ALL_SERVICE_AREA_SLUGS = [
 ];
 
 describe("Northline demo seed (epic 15b public demo)", () => {
-  it("seeds 7 active services, 8 service areas, and per-area subset assignment (not every service everywhere)", async () => {
+  it("seeds 31 active services (demo-store-northline-depth, northline-depth-02's ~4x catalog-depth pass), 8 service areas, and per-area subset assignment (not every service everywhere)", async () => {
     const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
     await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
     const products = await catalog.listProducts({ status: "active" });
-    expect(products.map((p) => p.slug).sort()).toEqual([
-      "fiber-internet-install",
-      "home-theater-setup",
-      "security-camera-install",
-      "smart-lock-install",
-      "smart-thermostat-install",
-      "tv-wall-mounting",
-      "video-doorbell-install",
-    ]);
+    expect(products.map((p) => p.slug).sort()).toEqual(
+      [
+        // Original 7 (northline-depth-01) -- unchanged.
+        "fiber-internet-install",
+        "home-theater-setup",
+        "security-camera-install",
+        "smart-lock-install",
+        "smart-thermostat-install",
+        "tv-wall-mounting",
+        "video-doorbell-install",
+        // TV & Home Theater additions.
+        "av-rack-equipment-setup",
+        "in-wall-speaker-installation",
+        "outdoor-tv-installation",
+        "projector-screen-installation",
+        "soundbar-subwoofer-installation",
+        "tv-cable-concealment",
+        "tv-mount-relocation",
+        "universal-remote-control-programming",
+        // Security & Cameras additions.
+        "floodlight-camera-install",
+        "long-range-perimeter-camera-install",
+        "nvr-dvr-setup",
+        "security-system-monitoring-install",
+        "smart-access-control-keypad-install",
+        // Networking & Fiber additions.
+        "ethernet-over-powerline-setup",
+        "network-rack-cabinet-setup",
+        "structured-ethernet-wiring-install",
+        "whole-home-wifi-mesh-install",
+        "wifi-signal-site-survey-optimization",
+        // Smart Home & Automation additions.
+        "smart-blinds-shades-install",
+        "smart-garage-door-opener-install",
+        "smart-hub-automation-setup",
+        "smart-lighting-install",
+        "smart-smoke-co-detector-install",
+        "whole-home-audio-install",
+      ].sort(),
+    );
 
     const areas = await serviceAreas.listServiceAreas();
     expect(areas).toHaveLength(8);

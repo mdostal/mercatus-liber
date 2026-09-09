@@ -29,6 +29,18 @@ import type { ServiceAreaService } from "@mercatus-liber/service-areas";
  * categories (not 1 catch-all), real tiered SKU variants for 2 services
  * (not one flat SKU each), and a real, distinct, published CMS location
  * page for every one of the 8 DEMO_SERVICE_AREAS entries (not 1 of 8).
+ *
+ * Epic demo-store-northline-depth, story northline-depth-02: grew the
+ * catalog roughly 4x within those same 4 categories (7 -> 31 services, 10 ->
+ * 46 priced SKUs) so the public demo has real breadth to browse, filter, and
+ * run practice checkouts against -- not just one example per install type.
+ * Every new service follows the exact same shape as the original 7: real,
+ * specific installer copy (no lorem ipsum), the same flat-vs-tiered pricing
+ * conventions, an explicit `inventory.setStock(sku.id, 999)` per SKU (see
+ * the correction above -- still required, still not automatic), and a
+ * deliberate area-subset pattern (not every new service in every area)
+ * matching the original's "premium services in fewer markets, safety/core
+ * services everywhere" logic.
  */
 
 /** One priced SKU variant of a service (the "package" identifying attribute value). Mirrors lib/seed.ts's SERVICE_DEMO_SKUS single-variant convention (identifyingAttributeKeys: ["package"]), just applied once per tier instead of once per product -- each tier is its own catalog.generateSkus call with its own price, so a "flat" service is simply a service with exactly one tier. */
@@ -152,6 +164,246 @@ const DEMO_SERVICES: DemoService[] = [
     tiers: [{ package: "standard", label: "Standard", priceCents: 12900 }],
     // Not yet offered in Ashford, GA (index 4) or Harborview, ME (index 7).
     areaIndices: [0, 1, 2, 3, 5, 6],
+  },
+
+  // -- demo-store-northline-depth, northline-depth-02: significantly deepen
+  // the catalog within the 4 existing categories (roughly 3-5x the original
+  // 7-service lineup) so the demo has real breadth to browse and check out
+  // against, not just one example per install type. Same DemoService shape,
+  // same tiering conventions (flat single-tier vs. count/complexity-tiered),
+  // same "not every service in every area" pattern as the original 7.
+
+  // -- TV & Home Theater --
+  {
+    slug: "outdoor-tv-installation",
+    title: "Outdoor & Patio TV Installation",
+    description: "Weather-rated outdoor TV mount for a covered patio or porch, or a full weatherproof enclosure for a fully exposed install -- sealed cable entry and a grounded power run included either way.",
+    categorySlug: "tv-home-theater",
+    tiers: [
+      { package: "covered-patio", label: "Covered Patio", priceCents: 19900 },
+      { package: "full-weatherproof-enclosure", label: "Full Weatherproof Enclosure", priceCents: 34900 },
+    ],
+    areaIndices: [0, 2, 3, 4, 5],
+  },
+  {
+    slug: "projector-screen-installation",
+    title: "Projector & Screen Installation",
+    description: "Ceiling-mounted projector paired with a fixed-frame or motorized drop-down screen, aligned and focused for true 16:9 or 2.35:1 viewing.",
+    categorySlug: "tv-home-theater",
+    tiers: [
+      { package: "fixed-screen", label: "Fixed Screen", priceCents: 24900 },
+      { package: "motorized-premium", label: "Motorized Premium", priceCents: 44900 },
+    ],
+    areaIndices: [0, 1, 2, 3, 4, 5],
+  },
+  {
+    slug: "soundbar-subwoofer-installation",
+    title: "Soundbar & Wireless Subwoofer Setup",
+    description: "Soundbar mounted below or above the TV, wireless subwoofer paired and placed for even bass, and HDMI-ARC/eARC configured so the TV remote controls volume.",
+    categorySlug: "tv-home-theater",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 9900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "in-wall-speaker-installation",
+    title: "In-Wall & In-Ceiling Speaker Installation",
+    description: "Flush in-wall or in-ceiling speakers cut in and wired back to an amp or receiver, dialed in for even coverage across the room -- priced by speaker count.",
+    categorySlug: "tv-home-theater",
+    tiers: [
+      { package: "2-speaker", label: "2-Speaker", priceCents: 29900 },
+      { package: "4-speaker", label: "4-Speaker", priceCents: 49900 },
+      { package: "whole-home-8-speaker", label: "Whole-Home 8-Speaker", priceCents: 89900 },
+    ],
+    areaIndices: [0, 1, 2, 3, 4, 5],
+  },
+  {
+    slug: "tv-cable-concealment",
+    title: "TV Cable Concealment",
+    description: "In-wall cable concealment kit installed behind an already-mounted TV -- power and AV cables routed inside the wall, no visible cord raceway.",
+    categorySlug: "tv-home-theater",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 7900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "av-rack-equipment-setup",
+    title: "AV Rack & Equipment Closet Setup",
+    description: "Equipment rack assembled and populated -- receiver, streaming boxes, network gear -- with labeled cable management and proper ventilation for a clean, serviceable setup.",
+    categorySlug: "tv-home-theater",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 24900 }],
+    areaIndices: [0, 2, 4],
+  },
+  {
+    slug: "universal-remote-control-programming",
+    title: "Universal Remote & Control System Programming",
+    description: "One remote (or app) programmed to control every device in the room -- TV, receiver, streaming box, lighting -- with custom activity buttons for movie night, music, and off.",
+    categorySlug: "tv-home-theater",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 9900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "tv-mount-relocation",
+    title: "TV Mount Relocation",
+    description: "Existing wall-mounted TV safely relocated to a new wall -- old mount patched and hole-repaired, new mount installed, leveled, and cable-run to match.",
+    categorySlug: "tv-home-theater",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 9900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+
+  // -- Security & Cameras --
+  {
+    slug: "security-system-monitoring-install",
+    title: "Security System & Monitoring Installation",
+    description: "Door and window sensors wired into a central panel with app and monitoring-service pairing. The advanced tier adds motion sensors and glass-break detection for full-perimeter coverage.",
+    categorySlug: "security-cameras",
+    tiers: [
+      { package: "basic-sensors", label: "Basic Sensors", priceCents: 24900 },
+      { package: "advanced-motion-glassbreak", label: "Advanced Motion & Glass-Break", priceCents: 44900 },
+    ],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "floodlight-camera-install",
+    title: "Floodlight Camera Installation",
+    description: "Motion-activated floodlight camera wired to an existing exterior junction box, aimed and app-paired for full-coverage night lighting and recording.",
+    categorySlug: "security-cameras",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 17900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "smart-access-control-keypad-install",
+    title: "Smart Gate & Garage Access Control Installation",
+    description: "Weatherproof keypad or app-based access control wired to a gate or garage entry, with rotating guest codes and full entry-log history.",
+    categorySlug: "security-cameras",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 19900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5],
+  },
+  {
+    slug: "nvr-dvr-setup",
+    title: "NVR / DVR Setup for Existing Cameras",
+    description: "Network video recorder or DVR installed and configured for an existing wired camera system -- storage sized to your camera count and retention needs.",
+    categorySlug: "security-cameras",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 14900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "long-range-perimeter-camera-install",
+    title: "Long-Range Perimeter Camera Installation",
+    description: "Long-throw camera aimed down a driveway or property line, with motion-zone tuning to cut down on false alerts from passing traffic and wildlife.",
+    categorySlug: "security-cameras",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 24900 }],
+    areaIndices: [0, 1, 2, 4],
+  },
+
+  // -- Networking & Fiber --
+  {
+    slug: "whole-home-wifi-mesh-install",
+    title: "Whole-Home WiFi Mesh Installation",
+    description: "Mesh WiFi nodes placed and wired (or wirelessly backhauled) for full-home coverage, priced by node count to match your square footage.",
+    categorySlug: "networking-fiber",
+    tiers: [
+      { package: "2-node", label: "2-Node", priceCents: 19900 },
+      { package: "4-node", label: "4-Node", priceCents: 32900 },
+      { package: "6-node", label: "6-Node", priceCents: 46900 },
+    ],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "structured-ethernet-wiring-install",
+    title: "Structured Ethernet Wiring Installation",
+    description: "In-wall Cat6 runs pulled to a central patch panel -- reliable wired drops for TVs, offices, and access points, priced by drop count.",
+    categorySlug: "networking-fiber",
+    tiers: [
+      { package: "4-drop", label: "4-Drop", priceCents: 39900 },
+      { package: "8-drop", label: "8-Drop", priceCents: 69900 },
+    ],
+    areaIndices: [0, 1, 2, 3, 4, 5],
+  },
+  {
+    slug: "network-rack-cabinet-setup",
+    title: "Network Rack & Cabinet Setup",
+    description: "Switch, patch panel, and router mounted in a wall or floor rack with labeled, dressed cabling for a clean, serviceable network closet.",
+    categorySlug: "networking-fiber",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 34900 }],
+    areaIndices: [0, 2, 4],
+  },
+  {
+    slug: "wifi-signal-site-survey-optimization",
+    title: "WiFi Signal Site Survey & Optimization",
+    description: "On-site signal mapping to find dead zones, followed by channel, placement, and band-steering adjustments to your existing equipment.",
+    categorySlug: "networking-fiber",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 14900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "ethernet-over-powerline-setup",
+    title: "Ethernet-Over-Powerline Setup",
+    description: "Powerline adapters installed to extend wired network access through existing electrical wiring where running new cable isn't practical.",
+    categorySlug: "networking-fiber",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 12900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+
+  // -- Smart Home & Automation --
+  {
+    slug: "smart-lighting-install",
+    title: "Smart Lighting & Switch Installation",
+    description: "In-wall smart switches or dimmers wired in to replace standard switches, grouped into rooms and scenes in your smart-home app.",
+    categorySlug: "smart-home-automation",
+    tiers: [
+      { package: "starter-3-switch", label: "Starter 3-Switch", priceCents: 19900 },
+      { package: "whole-home-10-switch", label: "Whole-Home 10-Switch", priceCents: 54900 },
+    ],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "smart-hub-automation-setup",
+    title: "Smart Hub & Automation Scene Setup",
+    description: "Smart home hub installed and paired with your existing devices, with custom automations and scenes -- \"Good Night,\" \"Away,\" \"Movie Time\" -- programmed in.",
+    categorySlug: "smart-home-automation",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 14900 }],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+  },
+  {
+    slug: "smart-garage-door-opener-install",
+    title: "Smart Garage Door Opener Installation",
+    description: "Smart garage door opener installed or retrofitted onto your existing motor, with app control, open/close alerts, and scheduled guest access.",
+    categorySlug: "smart-home-automation",
+    tiers: [{ package: "standard", label: "Standard", priceCents: 17900 }],
+    // Not yet offered in Harborview, ME (index 7).
+    areaIndices: [0, 1, 2, 3, 4, 5, 6],
+  },
+  {
+    slug: "smart-blinds-shades-install",
+    title: "Motorized Smart Blinds & Shades Installation",
+    description: "Motorized shades mounted and paired to a smart-home app for scheduled and remote control, priced by window count.",
+    categorySlug: "smart-home-automation",
+    tiers: [
+      { package: "up-to-4-windows", label: "Up to 4 Windows", priceCents: 29900 },
+      { package: "5-to-10-windows", label: "5 to 10 Windows", priceCents: 54900 },
+    ],
+    areaIndices: [0, 1, 2, 3, 4, 5],
+  },
+  {
+    slug: "whole-home-audio-install",
+    title: "Whole-Home Multi-Room Audio Installation",
+    description: "In-ceiling speakers and a multi-zone amp wired for independent, app-controlled audio in every room -- priced by zone count.",
+    categorySlug: "smart-home-automation",
+    tiers: [
+      { package: "2-zone", label: "2-Zone", priceCents: 39900 },
+      { package: "4-zone", label: "4-Zone", priceCents: 69900 },
+    ],
+    areaIndices: [0, 2, 4],
+  },
+  {
+    slug: "smart-smoke-co-detector-install",
+    title: "Smart Smoke & CO Detector Installation",
+    description: "Smart smoke and carbon monoxide detectors installed and paired to your phone for instant alerts even when you're away -- priced by detector count.",
+    categorySlug: "smart-home-automation",
+    tiers: [
+      { package: "3-detector", label: "3-Detector", priceCents: 19900 },
+      { package: "6-detector", label: "6-Detector", priceCents: 34900 },
+    ],
+    areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
   },
 ];
 
