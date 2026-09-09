@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { publishCmsPageAction } from "../../../lib/actions";
 import { getServices } from "../../../lib/services";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,11 @@ export default async function AdminCmsPage() {
         <Link href="/admin">← Admin</Link>
       </p>
       <h1>Admin: CMS Pages</h1>
+      <p>
+        <Link href="/admin/cms/new">+ New page</Link>
+        {" | "}
+        <Link href="/admin/cms/marketing/new">+ New marketing page</Link>
+      </p>
       <table>
         <thead>
           <tr>
@@ -20,6 +26,8 @@ export default async function AdminCmsPage() {
             <th>Title</th>
             <th>Type</th>
             <th>Status</th>
+            <th></th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -29,6 +37,17 @@ export default async function AdminCmsPage() {
               <td>{page.title}</td>
               <td>{page.pageType}</td>
               <td>{page.status}</td>
+              <td>
+                <Link href={`/admin/cms/${page.id}`}>Edit</Link>
+              </td>
+              <td>
+                {page.status === "draft" ? (
+                  <form action={publishCmsPageAction}>
+                    <input type="hidden" name="id" value={page.id} />
+                    <button type="submit">Publish</button>
+                  </form>
+                ) : null}
+              </td>
             </tr>
           ))}
         </tbody>

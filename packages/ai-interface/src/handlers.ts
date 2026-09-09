@@ -63,7 +63,19 @@ export function createCommerceToolHandlers(deps: CommerceToolDeps): Record<strin
 
     async manage_cms_page(input) {
       if (needsConfirmation(input)) return pendingConfirmation({ action: "manage_cms_page", ...input });
-      const { id, action, title, sections } = input;
+      const { id, action, pageType, slug, title, sections } = input;
+      if (action === "create") {
+        if (pageType === undefined) throw new Error("manage_cms_page: missing required field 'pageType' for action 'create'");
+        if (slug === undefined) throw new Error("manage_cms_page: missing required field 'slug' for action 'create'");
+        if (title === undefined) throw new Error("manage_cms_page: missing required field 'title' for action 'create'");
+        if (sections === undefined) throw new Error("manage_cms_page: missing required field 'sections' for action 'create'");
+        return cms.createPage({
+          pageType: pageType as string,
+          slug: slug as string,
+          title: title as string,
+          sections: sections as { componentType: string; config: Record<string, unknown> }[],
+        });
+      }
       if (action === "publish") return cms.publishPage(id as string);
       const patch: Parameters<CommerceToolDeps["cms"]["updatePage"]>[1] = {};
       if (title !== undefined) patch.title = title as string;

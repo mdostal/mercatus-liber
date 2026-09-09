@@ -1,0 +1,105 @@
+id: cms-crud-02-mcp-create-action
+epic: cms-admin-crud
+title: "manage_cms_page MCP tool: add create action"
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+
+description: |
+  Read packages/ai-interface/src/tool-definitions.ts's manage_cms_page tool definition (its
+  inputSchema currently has `action: { enum: ["update", "publish"] }`) and
+  packages/ai-interface/src/handlers.ts's manage_cms_page handler in full.
+
+  Also read the handler for an existing "create"-shaped tool elsewhere in the same file (grep
+  for "createProduct" or similar in handlers.ts) for this codebase's convention on how a
+  create-style MCP handler is structured relative to an update-style one, particularly around
+  confirm:true/needsConfirmation and what gets returned on success vs. as a preview.
+
+  Deliverables:
+  - Extend manage_cms_page's inputSchema in tool-definitions.ts: action enum becomes
+    ["create", "update", "publish"]; add pageType, slug, and sections as accepted top-level
+    input properties (sections already exists; pageType/slug are new, only meaningful when
+    action is "create"). Update the tool's description text to mention page creation, not just
+    update/publish.
+  - Extend the manage_cms_page handler in handlers.ts: when action === "create", require
+    pageType/slug/title/sections all be present (throw a clear error naming which required
+    field is missing otherwise), call cms.createPage(...) with them, and return the created
+    page -- respecting the existing needsConfirmation/confirm:true preview gate exactly the
+    same way the update/publish branches already do (this tool is already flagged
+    requiresConfirmation: true at the tool-definition level -- confirm the create branch
+    inherits that correctly, don't add a second, redundant confirmation mechanism).
+  - If this repo has a marketing-page-specific MCP need, note it as an explicit non-goal in
+    your report rather than building it -- this story only closes the "regular page create"
+    gap; a full createMarketingPage MCP path (with campaign metadata) is a reasonable future
+    extension, not required here.
+
+acceptance_criteria:
+  - "Given a manage_cms_page call with action:'create', pageType/slug/title/sections, and confirm:true, when the handler runs, then a new Page is created via cms.createPage and returned"
+  - "Given the same call WITHOUT confirm:true, then the handler returns a pending-confirmation preview, never actually creating a page (matching this tool's existing requiresConfirmation posture for update/publish)"
+  - "Given a manage_cms_page call with action:'create' missing one of pageType/slug/title/sections, when the handler runs, then it throws a clear error naming the missing field, and no page is created"
+  - "Given the existing update/publish action branches, when this story lands, then their behavior is byte-identical to before (zero regression for the two actions that already worked)"
+
+steps:
+  - id: research
+    description: Read the existing manage_cms_page tool definition/handler and one create-style handler elsewhere in the same file for the confirmation-gate convention to mirror.
+    agent: researcher
+  - id: implement
+    description: Extend the tool definition and handler per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend or add a test covering every acceptance criterion above -- check whether packages/ai-interface has an existing test suite to extend for this tool.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the update/publish branches are genuinely unchanged (no regression) and the confirm:true gate is respected consistently across all three actions.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/cms-admin-crud.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/ai-interface/src/tool-definitions.ts
+      purpose: manage_cms_page's inputSchema to extend with the create action + pageType/slug fields.
+    - path: packages/ai-interface/src/handlers.ts
+      purpose: manage_cms_page's handler function to extend with the create branch.
+
+files_to_modify:
+  - file: packages/ai-interface/src/tool-definitions.ts
+    change: Extend manage_cms_page's action enum and inputSchema properties.
+  - file: packages/ai-interface/src/handlers.ts
+    change: Add the create branch to the manage_cms_page handler.
+
+design_decisions:
+  - decision: "One tool, extended action enum -- not a new, separate MCP tool."
+    rationale: "Matches this repo's one-tool-per-capability-area convention already established across the other 7 tools in this interface."
+
+risks: []
+
+references:
+  - path: .pHive/epics/cms-admin-crud/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: "The MCP tool gains a 'create' action, matching the existing action enum pattern
+      already used for update/publish on the same tool."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: ai_interface.manage_cms_page_create_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite covering manage_cms_page's create action
+  verify_at: integrate
+  owner: tester

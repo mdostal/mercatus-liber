@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { hasPermission, type AdminAction, type AdminRole } from "@mercatus-liber/admin-auth";
 import type { BundleTier, CreateBundleInput } from "@mercatus-liber/bundles";
 import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising";
+import type { ComponentInstance, PageType } from "@mercatus-liber/cms";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
 import type { CreateRuleInput } from "@mercatus-liber/recommendations";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
@@ -383,4 +384,120 @@ export async function updateAdminUserRoleAction(formData: FormData): Promise<voi
   const { adminAuth } = await getServices();
   await adminAuth.setAdminUserRole(userId, role as AdminRole);
   revalidatePath("/admin/settings/users");
+}
+
+/** Matches CmsSectionFields' fixed number of section slots. */
+const CMS_SECTION_SLOTS = 6;
+
+/** The non-"marketing" PageType values -- marketing pages go through createMarketingPageAction instead (see design-discussion.md §3). */
+const CMS_PAGE_TYPES: readonly PageType[] = ["home", "category", "search", "pdp", "location"];
+
+/**
+ * Parses the CMS admin forms' fixed, indexed section slots
+ * (section_0_componentType/section_0_config, section_1_..., ...) shared by
+ * the new-page, new-marketing-page, and edit forms -- mirrors
+ * parseBundleFormData's tier-slot convention. A slot with a blank
+ * componentType is treated as unused and omitted from the result.
+ *
+ * ComponentInstance's config is Record<string, unknown> by design (opaque
+ * to CMS itself -- see docs/subsystems/05-cms-pages.md), so each slot's
+ * config textarea is raw JSON. A slot's JSON parse failure throws a clear,
+ * specific error naming that slot (1-indexed, matching the UI's "Section N"
+ * label) and its componentType, rather than a generic crash -- this is the
+ * one place in this parser where a caller-facing mistake must be
+ * distinguishable from every other slot's mistake.
+ */
+function parseCmsSectionFormData(formData: FormData): ComponentInstance[] {
+  const sections: ComponentInstance[] = [];
+  for (let i = 0; i < CMS_SECTION_SLOTS; i++) {
+    const componentType = String(formData.get(`section_${i}_componentType`) ?? "").trim();
+    if (componentType.length === 0) continue;
+
+    const configRaw = String(formData.get(`section_${i}_config`) ?? "").trim();
+    let config: Record<string, unknown> = {};
+    if (configRaw.length > 0) {
+      try {
+        config = JSON.parse(configRaw) as Record<string, unknown>;
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        throw new Error(`Section ${i + 1} (${componentType}): invalid JSON config -- ${reason}`);
+      }
+    }
+    sections.push({ componentType, config });
+  }
+  return sections;
+}
+
+function parseCmsPageType(formData: FormData): PageType {
+  const pageType = formData.get("pageType");
+  if (typeof pageType === "string" && (CMS_PAGE_TYPES as readonly string[]).includes(pageType)) {
+    return pageType as PageType;
+  }
+  throw new Error(`Invalid page type: ${String(pageType)}`);
+}
+
+export async function createCmsPageAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
+
+  const pageType = parseCmsPageType(formData);
+  const slug = String(formData.get("slug") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const sections = parseCmsSectionFormData(formData);
+
+  const { cms } = await getServices();
+  await cms.createPage({ pageType, slug, title, sections });
+  revalidatePath("/admin/cms");
+  redirect("/admin/cms");
+}
+
+export async function createMarketingPageAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const campaignName = String(formData.get("campaignName") ?? "").trim();
+  const startDate = String(formData.get("startDate") ?? "").trim();
+  const endDate = String(formData.get("endDate") ?? "").trim();
+  const productIds = String(formData.get("productIds") ?? "")
+    .split(",")
+    .map((productId) => productId.trim())
+    .filter((productId) => productId.length > 0);
+  const sections = parseCmsSectionFormData(formData);
+
+  const { cms } = await getServices();
+  await cms.createMarketingPage({
+    slug,
+    title,
+    sections,
+    campaignName,
+    startDate,
+    endDate: endDate.length > 0 ? endDate : null,
+    productIds,
+  });
+  revalidatePath("/admin/cms");
+  redirect("/admin/cms");
+}
+
+/** pageType and slug are intentionally not accepted here -- CmsService.updatePage's own type signature only accepts a title/sections patch (see packages/cms/src/service.ts). */
+export async function updateCmsPageAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
+
+  const id = String(formData.get("id") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const sections = parseCmsSectionFormData(formData);
+
+  const { cms } = await getServices();
+  await cms.updatePage(id, { title, sections });
+  revalidatePath("/admin/cms");
+  redirect("/admin/cms");
+}
+
+export async function publishCmsPageAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
+
+  const id = String(formData.get("id") ?? "").trim();
+
+  const { cms } = await getServices();
+  await cms.publishPage(id);
+  revalidatePath("/admin/cms");
 }

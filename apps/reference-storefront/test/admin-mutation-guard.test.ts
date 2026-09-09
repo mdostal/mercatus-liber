@@ -18,11 +18,22 @@
  * bundles/advertising services underneath are the real, in-memory-backed
  * service implementations, so a "succeeds normally" assertion here proves
  * the actual mutation happened, not just that no error was thrown.
+ *
+ * cms-crud-01: also covers createCmsPageAction's own requireAdminPermission
+ * guard (one of the 4 new CMS admin actions), same "real in-memory-backed
+ * CmsService, mocked adminAuth only" shape as the three domains above. Only
+ * the viewer-rejection path is exercised here (not a "succeeds normally"
+ * counterpart) because createCmsPageAction calls next/navigation's
+ * redirect() on success, which -- unlike revalidatePath() -- this suite
+ * does not mock, so a real create isn't asserted here; the create/update/
+ * publish golden paths are instead verified via the dev-server manual check
+ * this story's acceptance criteria call for.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminAuthAdapter, AdminRole, AdminSession } from "@mercatus-liber/admin-auth";
 import { createAdvertisingService, createInMemoryCampaignRepository } from "@mercatus-liber/advertising";
 import { createBundlesService, createInMemoryBundleRepository } from "@mercatus-liber/bundles";
+import { createComponentRegistry, createCmsService, createInMemoryCmsAdapter } from "@mercatus-liber/cms";
 import { createInMemoryEventBus } from "@mercatus-liber/core";
 import { createInMemoryPromotionRepository, createPromotionsService } from "@mercatus-liber/promotions";
 
@@ -36,6 +47,7 @@ const bundles = createBundlesService({
   skuLookup: { getSku: async (id) => ({ id, price: { amount: 100, currency: "USD" } }) },
 });
 const advertising = createAdvertisingService({ repository: createInMemoryCampaignRepository() });
+const cms = createCmsService({ persistence: createInMemoryCmsAdapter(), components: createComponentRegistry() });
 
 const mockAdminAuth: AdminAuthAdapter = {
   async getCurrentSession() {
@@ -48,10 +60,12 @@ const mockAdminAuth: AdminAuthAdapter = {
 };
 
 vi.mock("../lib/services.js", () => ({
-  getServices: vi.fn(async () => ({ adminAuth: mockAdminAuth, promotions, bundles, advertising })),
+  getServices: vi.fn(async () => ({ adminAuth: mockAdminAuth, promotions, bundles, advertising, cms })),
 }));
 
-const { deactivateBundleAction, deactivateCampaignAction, deactivatePromotionAction } = await import("../lib/actions.js");
+const { createCmsPageAction, deactivateBundleAction, deactivateCampaignAction, deactivatePromotionAction } = await import(
+  "../lib/actions.js"
+);
 
 function sessionFor(role: AdminRole): AdminSession {
   return { userId: `test-${role}`, email: `${role}@example.com`, role };
@@ -237,6 +251,32 @@ describe("admin mutation guard (admin-auth-03)", () => {
       await deactivateCampaignAction(formData);
 
       expect((await advertising.getCampaign(campaign.id))?.status).toBe("inactive");
+    });
+  });
+
+  describe("createCmsPageAction (cms)", () => {
+    it("rejects a viewer-role session before mutating", async () => {
+      currentSession = sessionFor("viewer");
+
+      const formData = new FormData();
+      formData.set("pageType", "category");
+      formData.set("slug", "guard-test-page");
+      formData.set("title", "Guard Test Page");
+      await expect(createCmsPageAction(formData)).rejects.toThrow(/not authorized/i);
+
+      expect(await cms.getPageBySlug("guard-test-page")).toBeNull();
+    });
+
+    it("rejects when there is no session at all", async () => {
+      currentSession = null;
+
+      const formData = new FormData();
+      formData.set("pageType", "category");
+      formData.set("slug", "guard-test-page-null");
+      formData.set("title", "Guard Test Page Null");
+      await expect(createCmsPageAction(formData)).rejects.toThrow(/not authorized/i);
+
+      expect(await cms.getPageBySlug("guard-test-page-null")).toBeNull();
     });
   });
 });

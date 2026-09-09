@@ -1,0 +1,84 @@
+id: cms-crud-03-closeout
+epic: cms-admin-crud
+title: "Live verification, epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [cms-crud-01-admin-pages, cms-crud-02-mcp-create-action]
+
+description: |
+  Read both prior pieces of work's committed changes in full first.
+
+  Steps, all against a real running dev server where applicable:
+  1. Via /admin/cms/new, create a real category page with at least one real section (e.g.
+     category-spot with a valid categorySlugs config referencing a real seeded category).
+     Confirm it appears in /admin/cms as draft, edit its title, then publish it. Confirm the
+     published page's content actually renders correctly if there's a public route for that
+     page type (category pages already have their own /category/[slug] route -- confirm the
+     new page's content is consistent with what that route would show, or note if this
+     specific page doesn't have a natural public route to check against).
+  2. Via /admin/cms/marketing/new, create a real marketing/campaign page with a couple of real
+     seeded product ids. Confirm it's visible at its own /campaign/[slug] route once published.
+  3. Confirm the manage_cms_page MCP tool's new create action works by invoking the handler
+     function directly in a small script or test (not necessarily through a live MCP client
+     connection) with confirm:true, and confirm it returns a pending-confirmation preview when
+     confirm is omitted.
+  4. Confirm a viewer-role session cannot perform any of the 4 new admin mutation actions
+     (reuse or extend the existing role-gating test pattern).
+  5. Update .pHive/planning/epic-backlog.md: add a new row at the next available number (grep
+     for the highest existing number first) with status "done (3/3 stories complete)",
+     description mentioning that no new subsystem was needed and both the admin UI and the
+     agent-facing MCP tool gap are now closed. Also note in the "Definition of vision fully
+     done" section (or wherever the most recent similar addendum lives) that "admins and
+     agents can both now author custom marketing pages, closing a real, previously
+     undiscovered gap" -- don't overclaim anything about a general-purpose CMS builder beyond
+     what was actually built (fixed-slot sections, raw JSON config).
+
+acceptance_criteria:
+  - "Given a real page created, edited, and published through /admin/cms/new and its edit page, then every step succeeds and the final published state is correct"
+  - "Given a real marketing page created through /admin/cms/marketing/new, then its /campaign/[slug] route renders correctly once published"
+  - "Given the manage_cms_page handler's create action invoked directly with and without confirm:true, then both the create-and-return and preview-only behaviors are confirmed"
+  - "Given a viewer-role session, then all 4 new mutation actions are confirmed rejected"
+  - ".pHive/planning/epic-backlog.md's new row reads 'done (3/3 stories complete)' matching sibling completed rows' style"
+
+steps:
+  - id: implement
+    description: Run the live verification steps above and update epic-backlog.md.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion above with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and doesn't overclaim beyond what was actually built.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/cms-admin-crud; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs a new row for this epic and a vision-summary addendum.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: New epic row; vision-summary addendum.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/cms-admin-crud/docs/design-discussion.md
+    relevant_excerpt: |
+      Full design rationale this epic's live verification demonstrates end-to-end.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative."

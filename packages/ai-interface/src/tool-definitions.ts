@@ -137,19 +137,22 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   },
   {
     name: "manage_cms_page",
-    description: "Update and/or publish a CMS page. Changes public-facing content -- requires confirm:true, otherwise returns a preview.",
+    description:
+      "Create, update, and/or publish a CMS page. Changes public-facing content -- requires confirm:true, otherwise returns a preview.",
     category: "admin",
     requiresConfirmation: true,
     inputSchema: {
       type: "object",
       properties: {
         id: { type: "string" },
-        action: { type: "string", enum: ["update", "publish"] },
+        action: { type: "string", enum: ["create", "update", "publish"] },
+        pageType: { type: "string", description: "Only meaningful when action is 'create'" },
+        slug: { type: "string", description: "Only meaningful when action is 'create'" },
         title: { type: "string" },
         sections: { type: "array", items: { type: "object" } },
         confirm: { type: "boolean" },
       },
-      required: ["id", "action"],
+      required: ["action"],
     },
   },
   {

@@ -1,0 +1,45 @@
+name: cms-admin-crud
+title: CMS Admin CRUD + Agent Create Tool
+description: >
+  CMS's own subsystem (packages/cms) can already create/update/publish pages, but /admin/cms
+  was read-only and the AI/MCP manage_cms_page tool only supported update/publish, not
+  create -- so neither a human admin nor an agent could ever author a new custom marketing
+  page. No new package or subsystem needed (resolved design question, matching epic 25's own
+  precedent): this is pure app-composition-layer work -- a fixed-slot admin form for pages
+  (raw-JSON config per section, since ComponentInstance's config is deliberately opaque/
+  per-type-varying) plus a separate marketing-page create form, and a new "create" action on
+  the existing manage_cms_page MCP tool. Every new mutation is gated by epic 27's
+  requireAdminPermission. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: patch
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [admin-ui, agent-tooling, app-layer]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    admin-ui: "First create/edit CRUD for CMS pages, matching epics 20-23's own admin-mutation pattern"
+    agent-tooling: "manage_cms_page MCP tool gains a create action, closing a real agent-capability gap"
+    app-layer: "No new subsystem needed -- CmsService already has everything, this is composition-layer work only"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, small well-understood scope grounded directly in existing CmsService/ai-interface code.
+
+stories:
+  - id: cms-crud-01-admin-pages
+    title: "/admin/cms: create/edit/publish forms for pages and marketing pages"
+    complexity: medium
+    depends_on: []
+  - id: cms-crud-02-mcp-create-action
+    title: "manage_cms_page MCP tool: add create action"
+    complexity: low
+    depends_on: []
+  - id: cms-crud-03-closeout
+    title: "Live verification, epic-backlog closeout"
+    complexity: low
+    depends_on: [cms-crud-01-admin-pages, cms-crud-02-mcp-create-action]

@@ -24,6 +24,7 @@ function buildFakeDeps() {
     updateProduct: vi.fn(async (id: string, patch: unknown) => ({ id, ...patch as object })),
   };
   const cms = {
+    createPage: vi.fn(async (input: unknown) => ({ id: "page-2", title: (input as { title: string }).title, status: "draft" })),
     updatePage: vi.fn(async (id: string, patch: unknown) => ({ id, title: (patch as { title?: string }).title ?? "Untitled", status: "draft" })),
     publishPage: vi.fn(async (id: string) => ({ id, title: "T", status: "published" })),
   };
@@ -141,6 +142,43 @@ describe("createCommerceToolHandlers", () => {
     it("manage_cms_page WITH confirm:true executes publish", async () => {
       await handlers.manage_cms_page!({ id: "page-1", action: "publish", confirm: true });
       expect(fakes.cms.publishPage).toHaveBeenCalledWith("page-1");
+    });
+
+    it("manage_cms_page WITHOUT confirm:true previews only, for the create action, and does not create a page", async () => {
+      const result = await handlers.manage_cms_page!({
+        action: "create",
+        pageType: "landing",
+        slug: "new-page",
+        title: "New Page",
+        sections: [],
+      });
+      expect(result).toMatchObject({ requiresConfirmation: true });
+      expect(fakes.cms.createPage).not.toHaveBeenCalled();
+    });
+
+    it("manage_cms_page WITH confirm:true creates a page via cms.createPage and returns it", async () => {
+      const result = await handlers.manage_cms_page!({
+        action: "create",
+        pageType: "landing",
+        slug: "new-page",
+        title: "New Page",
+        sections: [],
+        confirm: true,
+      });
+      expect(fakes.cms.createPage).toHaveBeenCalledWith({ pageType: "landing", slug: "new-page", title: "New Page", sections: [] });
+      expect(result).toMatchObject({ id: "page-2", title: "New Page", status: "draft" });
+    });
+
+    it.each([
+      ["pageType", { slug: "s", title: "T", sections: [] }],
+      ["slug", { pageType: "landing", title: "T", sections: [] }],
+      ["title", { pageType: "landing", slug: "s", sections: [] }],
+      ["sections", { pageType: "landing", slug: "s", title: "T" }],
+    ])("manage_cms_page create with confirm:true missing '%s' throws a clear error and does not create a page", async (missingField, rest) => {
+      await expect(
+        handlers.manage_cms_page!({ action: "create", ...rest, confirm: true }),
+      ).rejects.toThrow(new RegExp(missingField));
+      expect(fakes.cms.createPage).not.toHaveBeenCalled();
     });
 
     it("adjust_inventory WITHOUT confirm:true previews only", async () => {
