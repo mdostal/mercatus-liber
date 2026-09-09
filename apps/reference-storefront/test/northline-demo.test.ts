@@ -215,11 +215,20 @@ describe("Northline demo seed (epic 15b public demo)", () => {
     expect(productResult.product.title).toBe("Fiber Internet Installation");
   });
 
-  it("DEMO_BRAND unset (default) still seeds the original print-shop catalog -- zero regression", async () => {
+  it("DEMO_BRAND unset (default) still seeds the print-shop catalog -- zero regression", async () => {
     const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
     await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas);
 
     const products = await catalog.listProducts();
-    expect(products.map((p) => p.slug).sort()).toEqual(["dragon-cable-organizer", "dragon-desk-mat"]);
+    expect(products.map((p) => p.slug).sort()).toEqual([
+      "cork-back-print-coaster-set",
+      "custom-printed-ceramic-mug",
+      "custom-printed-travel-tumbler",
+      "embroidered-canvas-tote",
+      "embroidered-cotton-tee",
+      "embroidered-dad-cap",
+      "embroidered-fleece-hoodie",
+      "monogram-stoneware-coaster-set",
+    ]);
   });
 });

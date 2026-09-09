@@ -35,7 +35,14 @@ export function CartSpecTable({
         <tbody>
           {lines.map((line) => (
             <tr key={line.skuId} style={{ borderBottom: "1px solid var(--color-border, #e5e5e5)" }}>
-              <td style={{ padding: "var(--space-xs, 8px)" }}>{line.title}</td>
+              <td style={{ padding: "var(--space-xs, 8px)" }}>
+                {line.title}
+                {line.customizationNote && (
+                  <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+                    Personalization: {line.customizationNote}
+                  </div>
+                )}
+              </td>
               <td style={{ padding: "var(--space-xs, 8px)", textAlign: "right" }}>
                 <form
                   action={updateCartItemQuantityAction}

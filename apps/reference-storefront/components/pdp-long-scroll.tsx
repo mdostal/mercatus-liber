@@ -7,10 +7,13 @@ export function PdpLongScroll({
   demoSlug,
   viewModel,
   stockBySkuId = {},
+  customizable = false,
 }: {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
   stockBySkuId?: Record<string, number>;
+  /** print-shop-02: same additive/optional personalization-input flag as pdp-tabbed-detail.tsx -- see that component's doc comment. */
+  customizable?: boolean;
 }) {
   const { product, skus, optionValues } = viewModel;
 
@@ -52,6 +55,23 @@ export function PdpLongScroll({
             In stock: {stockBySkuId[sku.id] ?? 0}
           </div>
           <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
+          {customizable && (
+            <div style={{ marginTop: "var(--space-xs, 8px)" }}>
+              <label
+                htmlFor={`customizationNote-${sku.id}`}
+                style={{ display: "block", fontSize: "var(--font-size-body, 1rem)", color: "var(--color-muted, #666)" }}
+              >
+                Personalize this item (e.g. embroidery text, thread color)
+              </label>
+              <input
+                id={`customizationNote-${sku.id}`}
+                type="text"
+                name="customizationNote"
+                placeholder="e.g. Text: Sarah -- thread color: navy"
+                style={{ width: "100%", maxWidth: 360 }}
+              />
+            </div>
+          )}
           <button
             type="submit"
             style={{

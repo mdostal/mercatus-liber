@@ -79,13 +79,29 @@ async function requireAdminPermission(demoSlug: DemoSlug, action: AdminAction): 
   }
 }
 
+/**
+ * print-shop-02: reads the PDP's optional `customizationNote` text input
+ * (only rendered for a product flagged customizable -- see lib/seed.ts's
+ * isCustomizableProduct and components/pdp-tabbed-detail.tsx /
+ * components/pdp-long-scroll.tsx) and passes it straight through to
+ * cart.addItem's new optional 4th param (design-discussion.md §1b).
+ * Genuinely additive: a non-customizable product's PDP never renders that
+ * field at all, so `formData.get("customizationNote")` is simply null for
+ * it and this resolves to `undefined`, byte-identical to this action's
+ * pre-personalization behavior.
+ */
 export async function addToCartAction(formData: FormData): Promise<void> {
   const demoSlug = requireDemoSlug(formData);
   const skuId = String(formData.get("skuId"));
   const quantity = Number(formData.get("quantity") ?? 1);
+  const customizationNoteRaw = formData.get("customizationNote");
+  const customizationNote =
+    typeof customizationNoteRaw === "string" && customizationNoteRaw.trim().length > 0
+      ? customizationNoteRaw.trim()
+      : undefined;
   const cartId = await getOrCreateCartId(demoSlug);
   const { cart } = await getServicesForDemo(demoSlug);
-  await cart.addItem(cartId, skuId, quantity);
+  await cart.addItem(cartId, skuId, quantity, customizationNote);
   revalidatePath(`/demo/${demoSlug}/cart`);
 }
 

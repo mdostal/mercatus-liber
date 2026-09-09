@@ -233,6 +233,36 @@ describe("checkout-orders service", () => {
     expect((await checkout.listOrdersByCustomer("cust-3")).map((o) => o.id)).toEqual([order.id]);
   });
 
+  it("carries a cart line's customizationNote through to the resulting order line, and omits it entirely for a plain line", async () => {
+    await cartService.addItem(cartId, activeSkuId, 1, "Text: Sarah -- thread color: navy");
+
+    const { order } = await checkout.startCheckout({
+      cartId,
+      idempotencyKey: "idem-custom-1",
+      shippingInfo: { name: "A", email: "a@example.com", address: "1 Main St" },
+      successUrl: "https://shop.example/success",
+      cancelUrl: "https://shop.example/cancel",
+    });
+
+    expect(order.items).toEqual([
+      { skuId: activeSkuId, quantity: 1, priceAtPurchase: { amount: 1500, currency: "USD" }, customizationNote: "Text: Sarah -- thread color: navy" },
+    ]);
+
+    // A second, plain (non-customized) checkout on a fresh cart keeps
+    // byte-identical order.items shape -- no regression for non-customized products.
+    const plainCart = await cartService.createCart();
+    await cartService.addItem(plainCart.id, activeSkuId, 1);
+    const { order: plainOrder } = await checkout.startCheckout({
+      cartId: plainCart.id,
+      idempotencyKey: "idem-custom-2",
+      shippingInfo: { name: "A", email: "a@example.com", address: "1 Main St" },
+      successUrl: "https://shop.example/success",
+      cancelUrl: "https://shop.example/cancel",
+    });
+    expect(plainOrder.items).toEqual([{ skuId: activeSkuId, quantity: 1, priceAtPurchase: { amount: 1500, currency: "USD" } }]);
+    expect(Object.keys(plainOrder.items[0]!)).not.toContain("customizationNote");
+  });
+
   it("service.listOrders returns every order across guests and customers, and can filter by status", async () => {
     await cartService.addItem(cartId, activeSkuId, 1);
     const { order: guestOrder } = await checkout.startCheckout({

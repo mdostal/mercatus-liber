@@ -120,6 +120,10 @@ export function createCheckoutOrdersService(deps: {
           skuId: item.skuId,
           quantity: item.quantity,
           priceAtPurchase: unitAmountBySku.get(item.skuId) ?? item.priceSnapshot,
+          // Additive passthrough (see OrderLineItem's doc comment) -- pricing
+          // is keyed by skuId only and doesn't carry customizationNote, so
+          // it's read straight off the cart line here, not off `adjustment`.
+          ...(item.customizationNote ? { customizationNote: item.customizationNote } : {}),
         })),
         status: "pending_payment",
         shippingInfo: input.shippingInfo,

@@ -16,8 +16,8 @@ describe("seeded inventory", () => {
     const { catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
     await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
-    const organizer = await catalog.getProductBySlug("dragon-cable-organizer");
-    const skus = await catalog.listSkusByProduct(organizer!.id);
+    const tote = await catalog.getProductBySlug("embroidered-canvas-tote");
+    const skus = await catalog.listSkusByProduct(tote!.id);
     const level = await inventory.getStock(skus[0]!.id);
     expect(level).toEqual({ skuId: skus[0]!.id, onHand: 12, reserved: 0 });
   });
@@ -47,8 +47,8 @@ describe("seeded inventory", () => {
 
     await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
-    const organizer = await catalog.getProductBySlug("dragon-cable-organizer");
-    const skus = await catalog.listSkusByProduct(organizer!.id);
+    const tote = await catalog.getProductBySlug("embroidered-canvas-tote");
+    const skus = await catalog.listSkusByProduct(tote!.id);
     const skuId = skus[0]!.id;
 
     const shopperCart = await cart.createCart();

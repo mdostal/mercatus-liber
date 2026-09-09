@@ -56,6 +56,11 @@ export function CartReceiptStyle({
                 {((line.priceSnapshot.amount * line.quantity) / 100).toFixed(2)} {line.priceSnapshot.currency}
               </span>
             </div>
+            {line.customizationNote && (
+              <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+                Personalization: {line.customizationNote}
+              </div>
+            )}
             <div
               style={{
                 display: "flex",

@@ -4,6 +4,14 @@ export interface OrderLineItem {
   skuId: string;
   quantity: number;
   priceAtPurchase: Money;
+  /**
+   * Carried straight through from the cart line's own optional
+   * customizationNote (see @mercatus-liber/cart's CartItem doc comment) --
+   * additive/optional, same pattern as discountTotal/appliedPromotionCode
+   * above. Populated by startCheckout directly from CartLookup's cart-item
+   * data, never computed here.
+   */
+  customizationNote?: string;
 }
 
 export type OrderStatus = "pending_payment" | "paid" | "fulfilled" | "cancelled";
@@ -59,7 +67,9 @@ export interface OrderRepository {
  * CartService satisfies this shape already.
  */
 export interface CartLookup {
-  getCart(id: string): Promise<{ items: { skuId: string; quantity: number; priceSnapshot: Money }[] } | null>;
+  getCart(
+    id: string,
+  ): Promise<{ items: { skuId: string; quantity: number; priceSnapshot: Money; customizationNote?: string }[] } | null>;
 }
 
 /**
