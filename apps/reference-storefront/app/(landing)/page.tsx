@@ -46,21 +46,100 @@ const organizationJsonLd = {
 };
 
 /**
+ * seo-03: FAQPage JSON-LD (design-discussion.md §2d(iii)) -- the genuinely common questions a
+ * prospective adopter or AI agent researching this framework would ask, per the story spec's own
+ * list ("what is it, is it free, can I self-host it, does it support X payment/CMS/auth
+ * provider"). Every answer is sourced from real content already in this repo, not invented --
+ * see each entry's comment for the exact source. Rendered as its own `<script>` tag (a second
+ * JsonLd call, same pattern as PDP's Product + BreadcrumbList JSON-LD in
+ * app/demo/[demoSlug]/products/[slug]/page.tsx) rather than folded into organizationJsonLd's
+ * @graph, since FAQPage is conceptually a distinct page feature (the FAQ content actually
+ * rendered below), not another facet of the Organization/WebSite entities.
+ */
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      // README.md lines 1-11 ("A free, MIT-licensed, headless commerce framework...").
+      name: "What is Mercatus Liber?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text:
+          "A free, MIT-licensed, headless commerce framework: a schema-first product/SKU catalog " +
+          "with pluggable database adapters, a marketing catalog genuinely separate from the sales " +
+          "catalog, a per-page CMS instead of forced whole-site theming, a long-lived cart, " +
+          "adapter-based payments (Stripe first), analytics on by default (PostHog, " +
+          "config-swappable), and a plugin system for everything else (OMS, fulfillment, " +
+          "notifications). It's built as an AI and human commerce tool from the ground up, with " +
+          "every capability exposed to a human storefront/admin UI equally exposed to AI agents " +
+          "via a documented skills/tool catalog and an MCP server.",
+      },
+    },
+    {
+      "@type": "Question",
+      // README.md "Status"/"License" lines + VISION.md opening paragraph.
+      name: "Is Mercatus Liber free?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text:
+          "Yes. It's 100% free and open-source, MIT-licensed -- \"give it away.\" There's no " +
+          "per-transaction cut, no forced app-store tax, and no vendor lock-in. Status: pre-alpha, " +
+          "under active development.",
+      },
+    },
+    {
+      "@type": "Question",
+      // VISION.md opening paragraph ("self-host or deploy anywhere, and own outright").
+      name: "Can I self-host it?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text:
+          "Yes -- that's the explicit goal. Mercatus Liber isn't a hosted SaaS platform; it's " +
+          "meant to be something a small business, an agency, or an individual developer can pick " +
+          "up, self-host or deploy anywhere, and own outright.",
+      },
+    },
+    {
+      "@type": "Question",
+      // README.md "Configuration" section: Payments/Content(CMS)/Admin-authentication subsections.
+      name: "What payment, CMS, and admin-auth providers does it support?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text:
+          "Every subsystem that could plausibly have more than one implementation is adapter-based " +
+          "with a zero-infra reference default. Payments: Stripe, via STRIPE_SECRET_KEY (checkout " +
+          "still works without it in every other regard; only real charging requires it). CMS: " +
+          "Sanity, via SANITY_PROJECT_ID, falling back to a zero-infra in-memory CMS adapter when " +
+          "unset -- no external CMS required to run locally. Admin authentication: Clerk, via " +
+          "CLERK_SECRET_KEY, falling back to a local-development-only dev-password adapter when " +
+          "unset.",
+      },
+    },
+  ],
+};
+
+/**
  * demo-routing-05: the framework landing page (design-discussion.md §3) --
  * replaces the old app/page.tsx, which rendered one demo's CMS "home" page
  * content (that content now lives at app/demo/[demoSlug]/page.tsx, the
  * demo's own home page). This is deliberately NOT a docs page and NOT a
  * shop page -- just what Mercatus Liber is, why it exists, and links out to
- * the two live demos. Every claim below is pulled from the root README.md
+ * the three live demos. Every claim below is pulled from the root README.md
  * and docs/ARCHITECTURE.md, not invented -- see each section's comment for
  * where it comes from. This is a correct-structure-first pass (genuine but
  * unpolished content); the real visual/copy redesign is a separate, later
  * piece of work (epic 32).
+ *
+ * seo-03: also renders faqJsonLd (design-discussion.md §2d(iii)) plus its
+ * matching visible "Frequently asked questions" section below.
  */
 export default function LandingPage() {
   return (
     <main>
       <JsonLd data={organizationJsonLd} />
+      <JsonLd data={faqJsonLd} />
       {/* README.md line 1-4: name + tagline. */}
       <h1>Mercatus Liber</h1>
       <p>
@@ -114,7 +193,7 @@ export default function LandingPage() {
       {/* Live demos, read from lib/demos.ts's registry so this list can never
           drift from the actual known demo slugs. */}
       <h2>Live demos</h2>
-      <p>Two genuinely separate, simultaneously-live storefronts built on this framework:</p>
+      <p>Three genuinely separate, simultaneously-live storefronts built on this framework:</p>
       <ul>
         {DEMO_SLUGS.map((slug) => (
           <li key={slug}>
@@ -122,6 +201,46 @@ export default function LandingPage() {
           </li>
         ))}
       </ul>
+
+      {/*
+        seo-03: visible FAQ content matching faqJsonLd above exactly (Google's own structured-
+        data guidelines expect FAQPage JSON-LD to reflect content actually visible on the page,
+        not hidden markup) -- design-discussion.md §2d(iii)'s "genuinely common adoption
+        questions", every answer sourced from the same real README.md/VISION.md content already
+        cited elsewhere on this page.
+      */}
+      <h2>Frequently asked questions</h2>
+      <h3>What is Mercatus Liber?</h3>
+      <p>
+        A free, MIT-licensed, headless commerce framework: a schema-first product/SKU catalog with pluggable
+        database adapters, a marketing catalog genuinely separate from the sales catalog, a per-page CMS instead
+        of forced whole-site theming, a long-lived cart, adapter-based payments (Stripe first), analytics on by
+        default (PostHog, config-swappable), and a plugin system for everything else (OMS, fulfillment,
+        notifications). It&rsquo;s built as an AI and human commerce tool from the ground up, with every
+        capability exposed to a human storefront/admin UI equally exposed to AI agents via a documented
+        skills/tool catalog and an MCP server.
+      </p>
+      <h3>Is Mercatus Liber free?</h3>
+      <p>
+        Yes. It&rsquo;s 100% free and open-source, MIT-licensed -- &ldquo;give it away.&rdquo; There&rsquo;s no
+        per-transaction cut, no forced app-store tax, and no vendor lock-in. Status: pre-alpha, under active
+        development.
+      </p>
+      <h3>Can I self-host it?</h3>
+      <p>
+        Yes -- that&rsquo;s the explicit goal. Mercatus Liber isn&rsquo;t a hosted SaaS platform; it&rsquo;s
+        meant to be something a small business, an agency, or an individual developer can pick up, self-host or
+        deploy anywhere, and own outright.
+      </p>
+      <h3>What payment, CMS, and admin-auth providers does it support?</h3>
+      <p>
+        Every subsystem that could plausibly have more than one implementation is adapter-based with a
+        zero-infra reference default. Payments: Stripe, via <code>STRIPE_SECRET_KEY</code> (checkout still
+        works without it in every other regard; only real charging requires it). CMS: Sanity, via{" "}
+        <code>SANITY_PROJECT_ID</code>, falling back to a zero-infra in-memory CMS adapter when unset -- no
+        external CMS required to run locally. Admin authentication: Clerk, via <code>CLERK_SECRET_KEY</code>,
+        falling back to a local-development-only dev-password adapter when unset.
+      </p>
 
       {/*
         No GitHub/source repository URL is documented anywhere in the
