@@ -116,7 +116,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
       { size: "large-10in", label: "Large (10\" pot)", priceCents: 3200 },
     ],
     image: {
-      url: "https://loremflickr.com/800/600/pothos,plant",
+      url: "https://loremflickr.com/800/600/pothos,plant?lock=1",
       alt: "A trailing pothos plant with variegated heart-shaped leaves in a hanging pot",
     },
   },
@@ -128,7 +128,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "plants",
     tiers: [{ size: "medium-6in", label: "Medium (6\" pot)", priceCents: 2200 }],
     image: {
-      url: "https://loremflickr.com/800/600/snake-plant,succulent",
+      url: "https://loremflickr.com/800/600/snake-plant,succulent?lock=1",
       alt: "A snake plant with tall upright variegated leaves in a pot",
     },
   },
@@ -140,7 +140,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "plants",
     tiers: [{ size: "large-10in", label: "Large (10\" pot)", priceCents: 4800 }],
     image: {
-      url: "https://loremflickr.com/800/600/fiddle-leaf-fig,houseplant",
+      url: "https://loremflickr.com/800/600/fiddle-leaf-fig,houseplant?lock=1",
       alt: "A fiddle leaf fig plant with broad glossy leaves in a floor planter",
     },
   },
@@ -152,7 +152,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "ceramics-planters",
     tiers: [{ size: "6in", label: "6-inch", priceCents: 3400 }],
     image: {
-      url: "https://loremflickr.com/800/600/ceramic-planter,pottery",
+      url: "https://loremflickr.com/800/600/ceramic-planter,pottery?lock=1",
       alt: "A hand-thrown speckled ceramic planter with a matching saucer",
     },
   },
@@ -164,7 +164,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "ceramics-planters",
     tiers: [{ size: "set-of-2", label: "Set of 2", priceCents: 4200 }],
     image: {
-      url: "https://loremflickr.com/800/600/stoneware-mug,pottery",
+      url: "https://loremflickr.com/800/600/stoneware-mug,pottery?lock=1",
       alt: "A pair of hand-thrown stoneware mugs in a matte reactive glaze",
     },
   },
@@ -176,7 +176,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "textiles-fiber-arts",
     tiers: [{ size: "24x36in", label: "24 x 36 in", priceCents: 8800 }],
     image: {
-      url: "https://loremflickr.com/800/600/wall-hanging,weaving",
+      url: "https://loremflickr.com/800/600/wall-hanging,weaving?lock=1",
       alt: "A hand-woven wall hanging in cream and rust tones on a driftwood dowel",
     },
   },
@@ -188,7 +188,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "textiles-fiber-arts",
     tiers: [{ size: "50x60in", label: "50 x 60 in", priceCents: 12800 }],
     image: {
-      url: "https://loremflickr.com/800/600/knit-blanket,throw",
+      url: "https://loremflickr.com/800/600/knit-blanket,throw?lock=1",
       alt: "A chunky hand-knit throw blanket in a soft oversized-stitch texture",
     },
   },
@@ -200,7 +200,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "paper-ephemera",
     tiers: [{ size: "set-of-8", label: "Set of 8", priceCents: 2400 }],
     image: {
-      url: "https://loremflickr.com/800/600/letterpress,greeting-cards",
+      url: "https://loremflickr.com/800/600/letterpress,greeting-cards?lock=1",
       alt: "A set of letterpress-printed cards with kraft envelopes",
     },
   },
@@ -212,7 +212,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "paper-ephemera",
     tiers: [{ size: "11x14in", label: "11 x 14 in", priceCents: 2800 }],
     image: {
-      url: "https://loremflickr.com/800/600/botanical-print,illustration",
+      url: "https://loremflickr.com/800/600/botanical-print,illustration?lock=1",
       alt: "An archival giclee print of an ink botanical study",
     },
   },
@@ -230,7 +230,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
       { size: "large-10in", label: "Large (10\" pot)", priceCents: 6800, stockUnits: 8 },
     ],
     image: {
-      url: "https://loremflickr.com/800/600/monstera,houseplant",
+      url: "https://loremflickr.com/800/600/monstera,houseplant?lock=1",
       alt: "A Monstera deliciosa plant with dramatic split, fenestrated leaves",
     },
   },
@@ -242,7 +242,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "plants",
     tiers: [{ size: "medium-6in", label: "Medium (6\" pot)", priceCents: 2600 }],
     image: {
-      url: "https://loremflickr.com/800/600/zz-plant,houseplant",
+      url: "https://loremflickr.com/800/600/zz-plant,houseplant?lock=1",
       alt: "A ZZ plant with glossy dark-green leaves on thick upright stems",
     },
   },
@@ -254,7 +254,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "plants",
     tiers: [{ size: "small-4in", label: "Small (4\" pot)", priceCents: 1600 }],
     image: {
-      url: "https://loremflickr.com/800/600/pilea,houseplant",
+      url: "https://loremflickr.com/800/600/pilea,houseplant?lock=1",
       alt: "A Chinese money plant with round coin-shaped leaves on slender stems",
     },
   },
@@ -266,7 +266,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "plants",
     tiers: [{ size: "medium-6in", label: "Medium (6\" pot)", priceCents: 2800 }],
     image: {
-      url: "https://loremflickr.com/800/600/calathea,houseplant",
+      url: "https://loremflickr.com/800/600/calathea,houseplant?lock=1",
       alt: "A calathea plant with broad leaves striped in silver and deep green",
     },
   },
@@ -278,7 +278,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "plants",
     tiers: [{ size: "hanging-6in", label: "Hanging (6\" pot)", priceCents: 2200 }],
     image: {
-      url: "https://loremflickr.com/800/600/string-of-pearls,succulent",
+      url: "https://loremflickr.com/800/600/string-of-pearls,succulent?lock=1",
       alt: "A string of pearls succulent trailing from a hanging planter",
     },
   },
@@ -290,7 +290,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "plants",
     tiers: [{ size: "large-10in", label: "Large (10\" pot)", priceCents: 4400, stockUnits: 9 }],
     image: {
-      url: "https://loremflickr.com/800/600/rubber-plant,houseplant",
+      url: "https://loremflickr.com/800/600/rubber-plant,houseplant?lock=1",
       alt: "A burgundy rubber plant with broad glossy wine-red leaves",
     },
   },
@@ -304,7 +304,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "ceramics-planters",
     tiers: [{ size: "set-of-3", label: "Set of 3", priceCents: 2800 }],
     image: {
-      url: "https://loremflickr.com/800/600/bud-vase,ceramic",
+      url: "https://loremflickr.com/800/600/bud-vase,ceramic?lock=1",
       alt: "Three small hand-thrown ceramic bud vases in complementary glazes",
     },
   },
@@ -319,7 +319,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
       { size: "large-11in", label: "Large (11\")", priceCents: 4800, stockUnits: 10 },
     ],
     image: {
-      url: "https://loremflickr.com/800/600/ceramic-bowl,pottery",
+      url: "https://loremflickr.com/800/600/ceramic-bowl,pottery?lock=1",
       alt: "A hand-thrown stoneware serving bowl with a drippy reactive glaze",
     },
   },
@@ -331,7 +331,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "ceramics-planters",
     tiers: [{ size: "6in", label: "6-inch", priceCents: 2400 }],
     image: {
-      url: "https://loremflickr.com/800/600/terracotta,planter",
+      url: "https://loremflickr.com/800/600/terracotta,planter?lock=1",
       alt: "An unglazed terracotta hanging planter with a drainage hole",
     },
   },
@@ -343,7 +343,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "ceramics-planters",
     tiers: [{ size: "12in", label: "12-inch", priceCents: 5200, stockUnits: 7 }],
     image: {
-      url: "https://loremflickr.com/800/600/stoneware-vase,pottery",
+      url: "https://loremflickr.com/800/600/stoneware-vase,pottery?lock=1",
       alt: "A tall hand-carved stoneware vase with vertical fluting in a matte charcoal finish",
     },
   },
@@ -355,7 +355,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "ceramics-planters",
     tiers: [{ size: "set-of-2", label: "Set of 2", priceCents: 2200 }],
     image: {
-      url: "https://loremflickr.com/800/600/trinket-dish,ceramic",
+      url: "https://loremflickr.com/800/600/trinket-dish,ceramic?lock=1",
       alt: "Two small ceramic trinket dishes in a soft two-tone glaze",
     },
   },
@@ -369,7 +369,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "textiles-fiber-arts",
     tiers: [{ size: "14x72in", label: "14 x 72 in", priceCents: 3800 }],
     image: {
-      url: "https://loremflickr.com/800/600/table-runner,weaving",
+      url: "https://loremflickr.com/800/600/table-runner,weaving?lock=1",
       alt: "A hand-woven striped cotton table runner with a hand-twisted fringe",
     },
   },
@@ -381,7 +381,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "textiles-fiber-arts",
     tiers: [{ size: "medium", label: "Medium", priceCents: 4600 }],
     image: {
-      url: "https://loremflickr.com/800/600/woven-basket,basket",
+      url: "https://loremflickr.com/800/600/woven-basket,basket?lock=1",
       alt: "A hand-woven seagrass market basket with reinforced leather handles",
     },
   },
@@ -396,7 +396,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
       { size: "double-tier", label: "Double-tier", priceCents: 3800 },
     ],
     image: {
-      url: "https://loremflickr.com/800/600/macrame,plant-hanger",
+      url: "https://loremflickr.com/800/600/macrame,plant-hanger?lock=1",
       alt: "A hand-knotted macrame plant hanger in a classic diamond pattern",
     },
   },
@@ -408,7 +408,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "textiles-fiber-arts",
     tiers: [{ size: "set-of-4", label: "Set of 4", priceCents: 3400 }],
     image: {
-      url: "https://loremflickr.com/800/600/linen-napkin,block-print",
+      url: "https://loremflickr.com/800/600/linen-napkin,block-print?lock=1",
       alt: "A set of block-printed linen napkins with a repeating botanical motif",
     },
   },
@@ -422,7 +422,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "paper-ephemera",
     tiers: [{ size: "set-of-3", label: "Set of 3 rolls", priceCents: 1800, stockUnits: 24 }],
     image: {
-      url: "https://loremflickr.com/800/600/wrapping-paper,botanical-print",
+      url: "https://loremflickr.com/800/600/wrapping-paper,botanical-print?lock=1",
       alt: "Rolls of wrapping paper in coordinating hand-drawn botanical prints",
     },
   },
@@ -434,7 +434,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "paper-ephemera",
     tiers: [{ size: "set-of-5", label: "Set of 5", priceCents: 1600, stockUnits: 20 }],
     image: {
-      url: "https://loremflickr.com/800/600/pressed-flower,bookmark",
+      url: "https://loremflickr.com/800/600/pressed-flower,bookmark?lock=1",
       alt: "A set of bookmarks each laminated around a real pressed flower or leaf",
     },
   },
@@ -446,7 +446,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "paper-ephemera",
     tiers: [{ size: "set-of-12", label: "Set of 12", priceCents: 3200, stockUnits: 18 }],
     image: {
-      url: "https://loremflickr.com/800/600/letterpress,stationery",
+      url: "https://loremflickr.com/800/600/letterpress,stationery?lock=1",
       alt: "A boxed letterpress stationery set with lined notecards and kraft envelopes",
     },
   },
@@ -458,7 +458,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "paper-ephemera",
     tiers: [{ size: "set-of-12", label: "Set of 12", priceCents: 1400, stockUnits: 30 }],
     image: {
-      url: "https://loremflickr.com/800/600/gift-tag,paper",
+      url: "https://loremflickr.com/800/600/gift-tag,paper?lock=1",
       alt: "A set of gift tags made from real seed-embedded paper with kraft twine",
     },
   },
@@ -475,7 +475,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
       { size: "standard-jar", label: "Standard Jar", priceCents: 2800 },
     ],
     image: {
-      url: "https://loremflickr.com/800/600/candle,soy-candle",
+      url: "https://loremflickr.com/800/600/candle,soy-candle?lock=1",
       alt: "A small-batch soy candle hand-poured into a reusable jar with a cotton wick",
     },
   },
@@ -487,7 +487,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "candles-home-fragrance",
     tiers: [{ size: "4oz", label: "4 oz", priceCents: 1800 }],
     image: {
-      url: "https://loremflickr.com/800/600/room-spray,glass-bottle",
+      url: "https://loremflickr.com/800/600/room-spray,glass-bottle?lock=1",
       alt: "A linen and room spray bottled in a reusable amber glass mister",
     },
   },
@@ -499,7 +499,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "candles-home-fragrance",
     tiers: [{ size: "pair", label: "Pair", priceCents: 1600, stockUnits: 10 }],
     image: {
-      url: "https://loremflickr.com/800/600/taper-candle,beeswax",
+      url: "https://loremflickr.com/800/600/taper-candle,beeswax?lock=1",
       alt: "A pair of hand-dipped beeswax taper candles in natural honey-gold",
     },
   },
