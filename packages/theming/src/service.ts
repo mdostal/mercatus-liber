@@ -19,6 +19,77 @@ export const DEFAULT_TEMPLATES: LayoutTemplate[] = [
     label: "Long Scroll",
     description: "A single long-scrolling page with all product info inline (eBay-style).",
   },
+  // nav -- "nav.top-bar" is today's only current chrome layout and MUST stay first so it
+  // remains the deterministic fallback default for the 7 pre-existing bundles.
+  {
+    key: "nav.top-bar",
+    pageType: "nav",
+    label: "Top Bar",
+    description: "Standard horizontal top navigation bar (today's current chrome layout).",
+  },
+  {
+    key: "nav.rail",
+    pageType: "nav",
+    label: "Rail",
+    description: "Fixed left side-rail nav with jump links, per \"Blaze Theme\".",
+  },
+  // home -- "home.standard-grid" is today's current layout and MUST stay first.
+  {
+    key: "home.standard-grid",
+    pageType: "home",
+    label: "Standard Grid",
+    description: "Today's current uniform product grid layout for the home page.",
+  },
+  {
+    key: "home.magazine-grid",
+    pageType: "home",
+    label: "Magazine Grid",
+    description: "Asymmetric feature-card layout, per \"The Slow Catalog\".",
+  },
+  {
+    key: "home.spec-grid",
+    pageType: "home",
+    label: "Spec Grid",
+    description: "Dense datasheet-style grid, per \"Datasheet Storefront\".",
+  },
+  // category -- "category.standard-grid" is today's current layout and MUST stay first.
+  {
+    key: "category.standard-grid",
+    pageType: "category",
+    label: "Standard Grid",
+    description: "Today's current uniform product grid layout for category/PLP pages.",
+  },
+  {
+    key: "category.magazine-grid",
+    pageType: "category",
+    label: "Magazine Grid",
+    description: "Asymmetric feature-card layout, per \"The Slow Catalog\".",
+  },
+  {
+    key: "category.spec-grid",
+    pageType: "category",
+    label: "Spec Grid",
+    description: "Dense datasheet-style grid, per \"Datasheet Storefront\".",
+  },
+  // cart -- "cart.standard" is today's current layout and MUST stay first.
+  {
+    key: "cart.standard",
+    pageType: "cart",
+    label: "Standard",
+    description: "Today's current standard cart layout.",
+  },
+  {
+    key: "cart.receipt-style",
+    pageType: "cart",
+    label: "Receipt Style",
+    description: "Receipt-styled cart, per \"The Slow Catalog\".",
+  },
+  {
+    key: "cart.spec-table",
+    pageType: "cart",
+    label: "Spec Table",
+    description: "Spec-table treatment, per \"Datasheet Storefront\".",
+  },
 ];
 
 export function createThemingService(initial?: {

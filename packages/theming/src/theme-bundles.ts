@@ -180,6 +180,103 @@ export const THEME_BUNDLES: ThemeBundle[] = [
     },
     defaultTemplatesByPageType: { pdp: "pdp.tabbed-detail" },
   },
+  {
+    // "The Slow Catalog" -- warm editorial/artisan-market. Real token values extracted
+    // directly from the source design's own CSS custom properties (see
+    // .pHive/epics/storefront-design-system-v2/stories/design-system-v2-01-template-registry-and-bundles.yaml).
+    key: "editorial",
+    label: "Editorial",
+    tokens: {
+      "--color-background": "#F2E9D8",
+      "--color-text": "#241C14",
+      "--color-primary": "#B14B2A",
+      "--color-accent": "#5E6E45",
+      "--color-muted": "#7A6C58",
+      "--color-border": "#C7B586",
+      "--font-family": "'Newsreader', 'Iowan Old Style', Georgia, serif",
+      // Additive, backward-compatible token -- only "editorial" defines it. Always
+      // referenced as var(--font-family-display, var(--font-family)) so every other
+      // bundle (which doesn't define it) falls back to --font-family with zero behavior
+      // change.
+      "--font-family-display": "'Fraunces', 'Iowan Old Style', Georgia, serif",
+      "--radius": "3px",
+      "--space-xs": "0.5rem",
+      "--space-sm": "1.25rem",
+      "--space-md": "2rem",
+      "--space-lg": "4.5rem",
+      "--font-size-heading-lg": "2.5rem",
+      "--font-size-heading-md": "1.5rem",
+      "--font-size-body": "1rem",
+      "--shadow-card": "0 1px 2px rgba(36,28,20,0.08), 0 4px 12px rgba(36,28,20,0.10)",
+    },
+    defaultTemplatesByPageType: {
+      pdp: "pdp.long-scroll",
+      nav: "nav.top-bar",
+      home: "home.magazine-grid",
+      category: "category.magazine-grid",
+      cart: "cart.receipt-style",
+    },
+  },
+  {
+    // "Blaze Theme" -- bold modern maximalist.
+    key: "maximalist",
+    label: "Maximalist",
+    tokens: {
+      "--color-background": "#EEF0E6",
+      "--color-text": "#17130F",
+      "--color-primary": "#FF4515",
+      "--color-accent": "#263B8C",
+      "--color-muted": "#55503f",
+      "--color-border": "#17130F",
+      "--font-family": "'Archivo', system-ui, sans-serif",
+      "--radius": "16px",
+      "--space-xs": "0.5rem",
+      "--space-sm": "1rem",
+      "--space-md": "2rem",
+      "--space-lg": "4rem",
+      "--font-size-heading-lg": "3rem",
+      "--font-size-heading-md": "1.75rem",
+      "--font-size-body": "1rem",
+      "--shadow-card": "6px 6px 0 #17130F",
+    },
+    defaultTemplatesByPageType: {
+      pdp: "pdp.tabbed-detail",
+      nav: "nav.rail",
+      home: "home.standard-grid",
+      category: "category.standard-grid",
+      cart: "cart.standard",
+    },
+  },
+  {
+    // "Datasheet Storefront" -- precision technical/minimal-grid.
+    key: "datasheet",
+    label: "Datasheet",
+    tokens: {
+      "--color-background": "#F1F3F6",
+      "--color-text": "#12151B",
+      "--color-primary": "#C8460A",
+      "--color-accent": "#5A6170",
+      "--color-muted": "#8891A0",
+      "--color-border": "#D2D7E0",
+      "--font-family": "'IBM Plex Sans', system-ui, sans-serif",
+      "--radius": "2px",
+      "--space-xs": "8px",
+      "--space-sm": "16px",
+      "--space-md": "32px",
+      "--space-lg": "64px",
+      "--font-size-heading-lg": "2.25rem",
+      "--font-size-heading-md": "1.375rem",
+      "--font-size-body": "1rem",
+      "--shadow-card": "none",
+    },
+    defaultTemplatesByPageType: {
+      pdp: "pdp.tabbed-detail",
+      nav: "nav.top-bar",
+      home: "home.spec-grid",
+      category: "category.spec-grid",
+      cart: "cart.spec-table",
+    },
+  },
 ];
 
 export function getThemeBundle(key: string): ThemeBundle | undefined {
