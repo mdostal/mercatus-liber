@@ -11,10 +11,14 @@ import {
   type AdvertisingService,
 } from "@mercatus-liber/advertising";
 import {
+  createGa4InsightsAdapter,
   createNoopAdapter,
+  createNoopInsightsAdapter,
   createPostHogAdapter,
+  createPostHogInsightsAdapter,
   registerAnalyticsSync,
   type AnalyticsAdapter,
+  type AnalyticsInsightsAdapter,
 } from "@mercatus-liber/analytics";
 import { createBundlesService, createInMemoryBundleRepository, type BundlesService } from "@mercatus-liber/bundles";
 import { createCartService, createInMemoryCartRepository, type CartService } from "@mercatus-liber/cart";
@@ -83,9 +87,29 @@ import { DEMO_REGISTRY, isDemoSlug, type DemoSlug } from "./demos";
  * real demo/operator, per
  * .pHive/epics/data-backup-restore-and-adapter-portability/docs/design-discussion.md.
  */
+/**
+ * One configured (or configurable) read-side insights source for the admin
+ * "Traffic & Sources" surface (analytics-insights-02). `configured` is a
+ * distinct signal from whatever `adapter` actually returns -- the noop
+ * adapter also resolves every method with a real empty array, so without
+ * this flag the admin page couldn't tell "this provider isn't set up" apart
+ * from "this provider is set up and genuinely has zero traffic in range".
+ * See design-discussion.md §1c: every configured source is rendered
+ * side by side, explicitly labeled, never merged/summed.
+ */
+export interface InsightsSource {
+  /** Matches the `provider` value every row from this adapter carries (AnalyticsInsightsAdapter's ProviderAttributed). */
+  provider: string;
+  /** Human-readable label for the admin UI, e.g. "PostHog", "Google Analytics (GA4)". */
+  label: string;
+  configured: boolean;
+  adapter: AnalyticsInsightsAdapter;
+}
+
 export interface Services {
   events: EventBus;
   analytics: AnalyticsAdapter;
+  insightsSources: InsightsSource[];
   catalog: CatalogService;
   cart: CartService;
   checkout: CheckoutOrdersService;
@@ -172,6 +196,55 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     ? createPostHogAdapter({ apiKey: process.env.POSTHOG_API_KEY, host: process.env.POSTHOG_HOST })
     : createNoopAdapter();
   registerAnalyticsSync({ events, analytics });
+
+  // Read-side insights sources for /admin/metrics' "Traffic & Sources"
+  // section (analytics-insights-02) -- same env-var-truthy-picks-the-real-
+  // adapter-else-noop-fallback shape as every other branch in this function,
+  // but each of these two is independently configurable (a demo can have
+  // neither, either, or both switched on) and each `configured` flag is
+  // tracked explicitly so the admin page can render an honest "not
+  // configured" state instead of an empty-looking table -- see InsightsSource
+  // above.
+  //
+  // PostHog: per posthog-insights-adapter.ts's own doc comment (researched,
+  // not assumed, in story 1), the Query API requires a distinct **personal**
+  // API key with query:read scope -- POSTHOG_PERSONAL_API_KEY is deliberately
+  // a different env var from the write-side POSTHOG_API_KEY above, they are
+  // not interchangeable credentials. POSTHOG_APP_HOST is likewise distinct
+  // from the write-side POSTHOG_HOST (ingestion host): the Query API is
+  // served from PostHog's **app** host (e.g. https://us.posthog.com), not
+  // the ingestion host (e.g. https://us.i.posthog.com).
+  const postHogInsightsConfigured = Boolean(process.env.POSTHOG_PERSONAL_API_KEY && process.env.POSTHOG_PROJECT_ID);
+  const postHogInsights: AnalyticsInsightsAdapter = postHogInsightsConfigured
+    ? createPostHogInsightsAdapter({
+        personalApiKey: process.env.POSTHOG_PERSONAL_API_KEY!,
+        projectId: process.env.POSTHOG_PROJECT_ID!,
+        host: process.env.POSTHOG_APP_HOST,
+      })
+    : createNoopInsightsAdapter();
+
+  // GA4: a real credential gate (property ID + service-account key) per
+  // ga4-insights-adapter.ts's own doc comment and this story's disclosure
+  // requirement -- see this story's final report for whether a real
+  // credential was available in this environment. GA4_PRIVATE_KEY holds the
+  // service-account JSON key file's `private_key` field; env vars can't carry
+  // real newlines reliably, so the conventional (Firebase Admin SDK, etc.)
+  // escaped-`\n` encoding is unescaped here before use.
+  const ga4InsightsConfigured = Boolean(
+    process.env.GA4_PROPERTY_ID && process.env.GA4_SERVICE_ACCOUNT_EMAIL && process.env.GA4_PRIVATE_KEY,
+  );
+  const ga4Insights: AnalyticsInsightsAdapter = ga4InsightsConfigured
+    ? createGa4InsightsAdapter({
+        propertyId: process.env.GA4_PROPERTY_ID!,
+        serviceAccountEmail: process.env.GA4_SERVICE_ACCOUNT_EMAIL!,
+        privateKey: process.env.GA4_PRIVATE_KEY!.replace(/\\n/g, "\n"),
+      })
+    : createNoopInsightsAdapter();
+
+  const insightsSources: InsightsSource[] = [
+    { provider: "posthog", label: "PostHog", configured: postHogInsightsConfigured, adapter: postHogInsights },
+    { provider: "ga4", label: "Google Analytics (GA4)", configured: ga4InsightsConfigured, adapter: ga4Insights },
+  ];
 
   // Real Clerk adapter when a real Clerk account is configured; the
   // zero-infra, local-development-only dev default otherwise -- same
@@ -396,6 +469,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   return {
     events,
     analytics,
+    insightsSources,
     catalog,
     cart,
     checkout,

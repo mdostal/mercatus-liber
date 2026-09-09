@@ -1,8 +1,9 @@
 import Link from "next/link";
+import type { AnalyticsInsightsRange, PageViewRow, TopReferrerRow, TrafficSourceRow } from "@mercatus-liber/analytics";
 import type { Money } from "@mercatus-liber/core";
 import { notFound } from "next/navigation";
 import { isDemoSlug } from "../../../../../lib/demos";
-import { getServicesForDemo } from "../../../../../lib/services";
+import { getServicesForDemo, type InsightsSource } from "../../../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +11,40 @@ function formatMoney(money: Money): string {
   return `${(money.amount / 100).toFixed(2)} ${money.currency}`;
 }
 
+interface ConfiguredInsights {
+  source: InsightsSource;
+  trafficSources: TrafficSourceRow[];
+  pageViews: PageViewRow[];
+  topReferrers: TopReferrerRow[];
+}
+
+/**
+ * Loads all three AnalyticsInsightsAdapter methods for every CONFIGURED
+ * source only -- an unconfigured source's noop adapter would also resolve
+ * with real empty arrays, so calling it here would be indistinguishable from
+ * "configured but genuinely no traffic in range" once rendered. See
+ * `InsightsSource.configured` in lib/services.ts and design-discussion.md
+ * §1c: every configured source is shown side by side, explicitly labeled,
+ * never merged/summed into a blended number.
+ */
+async function loadConfiguredInsights(sources: InsightsSource[], range: AnalyticsInsightsRange): Promise<ConfiguredInsights[]> {
+  const configured = sources.filter((source) => source.configured);
+  return Promise.all(
+    configured.map(async (source) => {
+      const [trafficSources, pageViews, topReferrers] = await Promise.all([
+        source.adapter.getTrafficSources(range),
+        source.adapter.getPageViews(range),
+        source.adapter.getTopReferrers(range),
+      ]);
+      return { source, trafficSources, pageViews, topReferrers };
+    }),
+  );
+}
+
 export default async function AdminMetricsPage({ params }: { params: Promise<{ demoSlug: string }> }) {
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const { bi } = await getServicesForDemo(demoSlug);
+  const { bi, insightsSources } = await getServicesForDemo(demoSlug);
 
   // This is a low-volume demo app with no meaningful history, so a wide
   // 365-day window is simplest -- effectively "all-time" for a reference
@@ -24,7 +55,7 @@ export default async function AdminMetricsPage({ params }: { params: Promise<{ d
     to: now.toISOString(),
   };
 
-  const [revenueOverTime, orderVolume, topProducts, conversionFunnel, promotionRedemptionRates, inventoryTurns] =
+  const [revenueOverTime, orderVolume, topProducts, conversionFunnel, promotionRedemptionRates, inventoryTurns, configuredInsights] =
     await Promise.all([
       bi.getRevenueOverTime(range, "day"),
       bi.getOrderVolume(range),
@@ -32,6 +63,7 @@ export default async function AdminMetricsPage({ params }: { params: Promise<{ d
       bi.getConversionFunnel(range),
       bi.getPromotionRedemptionRates(),
       bi.getInventoryTurns(range),
+      loadConfiguredInsights(insightsSources, range),
     ]);
 
   return (
@@ -172,6 +204,104 @@ export default async function AdminMetricsPage({ params }: { params: Promise<{ d
             ? "Inventory turns: not available in this reference implementation -- no inventory movement history is tracked"
             : inventoryTurns}
         </p>
+      </section>
+
+      <section>
+        <h2>Traffic & Sources</h2>
+        {/* Every configured source (PostHog, GA4, ...) is rendered in its own
+            fully-labeled subsection below, never merged/summed into one
+            number -- see design-discussion.md §1c: different tools count
+            traffic differently (bot filtering, session definitions,
+            attribution windows), so a single blended figure would be
+            actively misleading. */}
+        {configuredInsights.length === 0 ? (
+          <p>
+            Traffic & Sources is not configured for this demo. Set POSTHOG_PERSONAL_API_KEY + POSTHOG_PROJECT_ID for
+            PostHog, and/or GA4_PROPERTY_ID + GA4_SERVICE_ACCOUNT_EMAIL + GA4_PRIVATE_KEY for Google Analytics (GA4),
+            to see real traffic-source data from that provider here.
+          </p>
+        ) : (
+          configuredInsights.map(({ source, trafficSources, pageViews, topReferrers }) => (
+            <div key={source.provider}>
+              <h3>{source.label}</h3>
+
+              <h4>Traffic sources</h4>
+              {trafficSources.length === 0 ? (
+                <p>No traffic-source data for this range.</p>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Source</th>
+                      <th>Sessions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trafficSources.map((row) => (
+                      <tr key={row.source}>
+                        <td>{row.source}</td>
+                        <td>{row.sessions}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              <h4>Page views</h4>
+              {pageViews.length === 0 ? (
+                <p>No page-view data for this range.</p>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Path</th>
+                      <th>Views</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageViews.map((row) => (
+                      <tr key={row.path}>
+                        <td>{row.path}</td>
+                        <td>{row.views}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              <h4>Top referrers</h4>
+              {topReferrers.length === 0 ? (
+                <p>No referrer data for this range.</p>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Referrer</th>
+                      <th>Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topReferrers.map((row) => (
+                      <tr key={row.referrer}>
+                        <td>{row.referrer}</td>
+                        <td>{row.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ))
+        )}
+        {configuredInsights.length > 0 && insightsSources.some((source) => !source.configured) && (
+          <p>
+            Also available but not configured: {insightsSources
+              .filter((source) => !source.configured)
+              .map((source) => source.label)
+              .join(", ")}
+            .
+          </p>
+        )}
       </section>
     </main>
   );
