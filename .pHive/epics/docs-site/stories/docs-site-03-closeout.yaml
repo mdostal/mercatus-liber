@@ -1,0 +1,89 @@
+id: docs-site-03-closeout
+epic: docs-site
+title: "Live verification, epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [docs-site-02-narrative-content-and-landing-link]
+
+description: |
+  Read both prior pieces of work's committed changes in full first.
+
+  Live verification, all against real dev servers (you'll need both apps/docs and
+  apps/reference-storefront running, on different ports):
+  1. Start apps/docs's dev server. Visit its index page and its getting-started page --
+     confirm both render with real content. Visit at least 3 different subsystem doc pages
+     (e.g. one early-numbered core subsystem, one from the epics built earlier in this session,
+     and the most recent one, 21-admin-auth) -- confirm each renders the real, current content
+     of its source file in docs/subsystems/, not stale or missing content.
+  2. Confirm the sidebar/navigation shows the subsystem docs in their correct numeric order.
+  3. Run `pnpm --filter @mercatus-liber/docs build` -- confirm it completes successfully.
+  4. Start apps/reference-storefront's dev server, visit `/` (the framework landing page), and
+     confirm the Docs link now points at the configured/placeholder value correctly (test both
+     with and without NEXT_PUBLIC_DOCS_URL set, per the prior piece of work's implementation).
+  5. Run the full monorepo test suite, typecheck, and build (via turbo, so apps/docs is
+     included) -- confirm everything is green, including the new app.
+
+  Update .pHive/planning/epic-backlog.md: add a new row at the next available number (grep for
+  the highest existing number first), status "done (3/3 stories complete)", with a description
+  noting the Nextra docs site now exists, syncs from the existing docs/ directory at build time
+  (no content duplication), covers all 22 subsystem docs plus new getting-started content, and
+  that real deployment/domain binding remains the user's own operational follow-up (disclosed,
+  not claimed done). Add a bullet to the "Definition of vision fully done" section noting a
+  real, from-scratch documentation site now exists for the first time in this project's
+  history.
+
+  This is very likely the LAST piece of work in the whole "flesh out commerce.mdostal.com"
+  push the user asked for across landing/routing, visual redesign, and docs -- if all three of
+  those epics (commerce-landing-and-demo-routing, storefront-visual-redesign, docs-site) are
+  now done, say so plainly and clearly in your final report, since the user will want to know
+  the whole arc is complete, not just this one epic.
+
+acceptance_criteria:
+  - "Given at least 3 real subsystem doc pages visited on the docs site, then each shows real, current, correctly-rendered content matching its source file in docs/subsystems/"
+  - "Given the docs-site build, then it completes successfully"
+  - "Given the reference-storefront's landing page, then its Docs link behaves correctly in both the env-var-set and env-var-unset cases"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green, including apps/docs"
+  - ".pHive/planning/epic-backlog.md's new row reads 'done (3/3 stories complete)' and honestly discloses that real deployment/domain binding is a separate, still-pending operational step"
+
+steps:
+  - id: implement
+    description: Run all 5 verification steps above and update epic-backlog.md per the description.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and honestly scoped, and confirm whether this really is the last piece of the whole three-epic push -- if so, say so clearly.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/docs-site; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs a new row for this epic and a vision-summary addendum.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: New epic row; vision-summary addendum.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/docs-site/docs/design-discussion.md
+    relevant_excerpt: |
+      Full design rationale this epic's live verification demonstrates end-to-end.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative."

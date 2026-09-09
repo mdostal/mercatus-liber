@@ -1,0 +1,134 @@
+id: docs-site-01-scaffold-and-content-sync
+epic: docs-site
+title: "apps/docs: Nextra + Next.js App Router scaffold, build-time content sync from docs/"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/docs-site/docs/design-discussion.md in full for the exact package
+  versions, file structure, and content-sync design already grounded by dedicated research
+  before this story was written -- follow it precisely rather than re-deriving the Nextra
+  setup from scratch.
+
+  This creates a brand-new app, apps/docs, automatically picked up by the existing
+  pnpm-workspace.yaml glob (`apps/*`) -- no root-level config changes needed at all.
+
+  Deliverables:
+  - apps/docs/package.json: name "@mercatus-liber/docs", private, with dev/build/start scripts
+    matching Nextra's own documented convention (`"dev": "next"`, `"build": "next build"`,
+    `"start": "next start"`), plus a `predev`/`prebuild` script running the new sync script
+    (see below) before Next itself runs. Dependencies: next (try the ^16 line first, matching
+    apps/reference-storefront's own pinned major -- if the build/dev server genuinely fails to
+    start or errors in a way clearly tied to Next 16 rather than your own config mistakes, fall
+    back to pinning the newest 15.x line instead and note this clearly in your report),
+    nextra, nextra-theme-docs (pin the exact versions confirmed in the design discussion doc),
+    react, react-dom.
+  - apps/docs/next.config.mjs: the standard `nextra(...)` wrapper per the design doc's exact
+    snippet.
+  - apps/docs/app/layout.tsx: the standard Nextra `Layout`/`Navbar`/`Footer` root layout per
+    the design doc's exact snippet, with a real navbar logo/title ("Mercatus Liber Docs" is
+    reasonable) and a footer -- this is scaffold-quality, not final polish (a later piece of
+    work adds real narrative content).
+  - apps/docs/app/[[...mdxPath]]/page.jsx: the standard Nextra catch-all content route, exact
+    snippet from the design doc.
+  - apps/docs/mdx-components.tsx: the standard Nextra MDX-components wrapper, exact snippet
+    from the design doc.
+  - apps/docs/scripts/sync-content.mjs: a small Node script using fs.cpSync (recursive) to
+    copy the repo-root README.md, docs/ARCHITECTURE.md, and every file under docs/subsystems/
+    into apps/docs/content/ (choose a sensible internal structure, e.g.
+    content/architecture.mdx for ARCHITECTURE.md, content/subsystems/*.mdx for each subsystem
+    doc -- Nextra accepts both .md and .mdx, confirm which extension you actually need by
+    checking Nextra's own docs/behavior, don't assume). Wire this script as the predev/prebuild
+    step in package.json so `apps/docs/content/` is always freshly regenerated, never
+    hand-edited or committed with stale content (add apps/docs/content/ to a .gitignore
+    scoped to apps/docs, since it's a build artifact of the sync script, not source).
+  - A root-level index page for the site is NOT required by this story (a later piece of work
+    builds real narrative/landing content) -- the sync script's copied content is enough for
+    this story's own verification.
+
+acceptance_criteria:
+  - "Given the sync script is run, then apps/docs/content/ contains a copy of README.md, ARCHITECTURE.md, and all subsystem docs, correctly reflecting the current content of docs/ at the repo root (not a stale snapshot)"
+  - "Given `pnpm --filter @mercatus-liber/docs dev` (or the equivalent workspace-filtered dev command) is run, then a real dev server starts and at least one synced subsystem doc renders as a real page at its expected URL, with no build/runtime errors"
+  - "Given `pnpm --filter @mercatus-liber/docs build` is run, then it completes successfully, producing a real Next.js build output"
+  - "Given the sidebar/navigation Nextra generates from the synced content, then the subsystem docs appear in their existing numeric-prefix order without needing any _meta.js file (confirm this is genuinely true, not assumed)"
+
+steps:
+  - id: research
+    description: Re-read the design discussion doc's exact Nextra setup snippets and confirm the current Nextra/nextra-theme-docs versions are still accurate by checking npm directly before installing anything.
+    agent: researcher
+  - id: implement
+    description: Scaffold apps/docs and the content-sync script per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Run the dev server and the build, confirm both work and at least one real subsystem doc renders correctly with real, current content.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the content-sync script actually pulls from the live docs/ directory (not a hardcoded copy) and that apps/docs/content/ is gitignored, not committed as static content.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/docs-site.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router + Nextra, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/epics/docs-site/docs/design-discussion.md
+      purpose: The exact, research-grounded Nextra setup snippets and package versions this story implements verbatim -- do not re-derive from scratch.
+    - path: docs/subsystems
+      purpose: The 22 existing subsystem docs the sync script must pull from.
+    - path: pnpm-workspace.yaml
+      purpose: Confirms apps/* is already a workspace glob -- no change needed here.
+
+files_to_modify:
+  - file: apps/docs/package.json
+    change: New file, Nextra app package definition.
+  - file: apps/docs/next.config.mjs
+    change: New file, Nextra config wrapper.
+  - file: apps/docs/app/layout.tsx
+    change: New file, root Nextra layout.
+  - file: apps/docs/app/[[...mdxPath]]/page.jsx
+    change: New file, Nextra catch-all content route.
+  - file: apps/docs/mdx-components.tsx
+    change: New file, MDX components wrapper.
+  - file: apps/docs/scripts/sync-content.mjs
+    change: New file, build-time content sync script.
+  - file: apps/docs/.gitignore
+    change: New file, excludes content/ (build artifact) and .next/.
+
+design_decisions:
+  - decision: "apps/docs/content/ is a gitignored build artifact, regenerated by predev/prebuild, never committed."
+    rationale: "Keeps docs/ at the repo root as the one real source of truth -- committing a synced copy would recreate the exact duplication risk this epic's design explicitly avoids."
+
+risks:
+  - severity: medium
+    description: "Next 16 might not actually work cleanly with Nextra in practice despite the research's optimistic peer-range reading."
+    mitigation: "The story explicitly authorizes falling back to Next 15.x for this app only if genuinely needed, with the deviation clearly reported."
+
+references:
+  - path: .pHive/epics/docs-site/docs/design-discussion.md
+    relevant_excerpt: |
+      §2-3: the exact, research-grounded Nextra setup and content-sync design this story
+      implements.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: docs_site.build_and_content_sync_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: dev server + build verification against real synced content
+  verify_at: integrate
+  owner: tester
