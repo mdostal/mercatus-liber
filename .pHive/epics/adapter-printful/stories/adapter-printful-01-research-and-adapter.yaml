@@ -1,0 +1,119 @@
+id: adapter-printful-01-research-and-adapter
+epic: adapter-printful
+title: "Confirm v1/v2 API shapes for real, build the FulfillmentAdapter implementation"
+status: pending
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/adapter-printful/docs/design-discussion.md in full first -- section 1
+  names the exact open questions this story must resolve via real research, not guessing.
+  Also read .pHive/planning/backlog-addendum-merch-fulfillment-2026-09-09.md's full Printful
+  section for the grounding research already done -- don't re-derive what's already confirmed
+  there (the v1/v2 split, draft-then-confirm flow, Wallet billing, rate limit, mockup API
+  shape), only research what it explicitly flagged as unverified.
+
+  Research (against Printful's real, current, live documentation -- not training-data recall):
+  1. Confirm the real field name Printful's order-creation endpoint (v1 and/or v2) uses for a
+     merchant-supplied external reference (historically `external_id` -- confirm this is still
+     current). If genuinely absent from the real current API, document that finding and fall
+     back to adapter-shopify's reserved-metafield-equivalent approach (read
+     packages/adapter-shopify/src/mapping.ts for that precedent).
+  2. Confirm v2's real, current `POST /v2/orders` field-level request schema (recipient address
+     shape, line-item shape, how it references which catalog product/variant/mockup design) --
+     the addendum's summary is directional, not a full spec.
+  3. Confirm v2's real webhook signature/HMAC verification format, or document clearly if it's
+     genuinely unconfirmable from public docs without a live account.
+
+  Then read packages/fulfillment/src/types.ts (epic 41's real FulfillmentAdapter contract this
+  story implements) and packages/adapter-clerk/src/index.ts plus packages/adapter-sanity's
+  package.json (the real sibling-package shape/dependency-declaration convention for a
+  third-party adapter in this repo) as structural templates.
+
+  Build packages/adapter-printful/ (@mercatus-liber/adapter-printful), depending only on
+  @mercatus-liber/fulfillment for the types it implements plus whatever real HTTP client
+  approach fits this repo's existing convention (check whether other adapters use a raw fetch
+  or a specific HTTP library -- follow the established pattern, don't introduce a new one
+  without cause). Implement `createPrintfulFulfillmentAdapter(config: { apiToken: string })`:
+  `submitOrder` (draft-then-confirm flow per the addendum's research), `getOrderStatus`
+  (polling the real order-status endpoint), `handleWebhookEvent` (real event-type parsing for
+  order_created/order_updated/shipment_sent/shipment_delivered, with the webhook-signature
+  question resolved or honestly disclosed per the research above).
+
+  Write real unit tests against mocked HTTP responses shaped like Printful's actual, real,
+  currently-documented API responses (not invented).
+
+acceptance_criteria:
+  - "Given the external-id research, then the real finding (confirmed field name, or the fallback approach if none exists) is documented in code comments and the final report"
+  - "Given v2's real order-creation request shape, then this adapter's submitOrder builds a real request matching that confirmed shape, verified by unit tests"
+  - "Given the webhook signature-format research, then the real finding (confirmed mechanism, or an honest 'unconfirmable from public docs' disclosure) is documented"
+  - "Given createPrintfulFulfillmentAdapter, then it implements every method of epic 41's real FulfillmentAdapter contract, verified by a real type-compatibility check"
+  - "Given `pnpm --filter @mercatus-liber/adapter-printful build` and its test suite, then both succeed"
+
+steps:
+  - id: research
+    description: Research Printful's real, current API docs for the 3 unresolved questions above before writing any adapter code.
+    agent: researcher
+  - id: implement
+    description: Build the adapter per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write and run real unit tests against realistically-shaped mocked Printful API responses, verify every acceptance criterion.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the adapter's request shapes genuinely match real, current Printful API documentation, confirm the FulfillmentAdapter contract is fully and correctly implemented.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/adapter-printful.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript }
+  key_files:
+    - path: packages/fulfillment/src/types.ts
+      purpose: The real FulfillmentAdapter contract this story implements.
+    - path: .pHive/planning/backlog-addendum-merch-fulfillment-2026-09-09.md
+      purpose: The grounding research for everything already confirmed -- don't re-derive it.
+    - path: packages/adapter-clerk/src/index.ts
+      purpose: Real sibling-package shape/dependency convention for a third-party adapter.
+
+files_to_modify:
+  - file: packages/adapter-printful/package.json
+    change: New file.
+  - file: packages/adapter-printful/src/index.ts
+    change: New file -- createPrintfulFulfillmentAdapter implementing FulfillmentAdapter.
+
+design_decisions:
+  - decision: "Depends only on @mercatus-liber/fulfillment for the types it implements, plus a real HTTP client."
+    rationale: "Same narrow-dependency discipline as every other adapter in this repo."
+
+risks:
+  - severity: medium
+    description: "v2's exact order schema and webhook format are genuinely unconfirmed until this story's research."
+    mitigation: "Story explicitly requires real research against current docs, not reuse of the addendum's directional summary as a full spec."
+
+references:
+  - path: .pHive/epics/adapter-printful/docs/design-discussion.md
+    relevant_excerpt: "§1a-c: the exact open questions this story's research must resolve."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: adapter_printful.fulfillment_contract_implemented
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "FulfillmentAdapter contract method coverage, verified by type-compatibility check and test"
+  verify_at: integrate
+  owner: tester

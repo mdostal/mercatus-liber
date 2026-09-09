@@ -1,0 +1,90 @@
+id: adapter-printful-02-wiring-verification-closeout
+epic: adapter-printful
+title: "Env-var wiring, honest credential-gap disclosure, docs, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [adapter-printful-01-research-and-adapter]
+
+description: |
+  Read the prior story's committed changes in full first.
+
+  1. Wire the adapter into apps/reference-storefront/lib/services.ts via a real env-var branch:
+     `PRINTFUL_API_TOKEN` set and truthy -> `createPrintfulFulfillmentAdapter`, else the
+     existing manual adapter from epic 41 -- mirroring the exact 2-state pattern every other
+     optional adapter in that file already uses. Add a Fulfillment row (or extend one if a
+     generic one already exists from epic 41) to lib/adapter-info.ts reporting which provider
+     is active.
+  2. Verify what's genuinely testable without a live credential: the env-var branch itself (both
+     states), the adapter's own unit test suite from the prior story, admin visibility of which
+     provider is active. Check honestly whether a real Printful token is available anywhere in
+     this environment (env vars, .env.local) -- if not, state that plainly; do not fabricate a
+     live call.
+  3. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  4. Update docs/subsystems/22-fulfillment.md (built by epic 41) with a real section on the
+     Printful adapter, including the honest credential-gap disclosure.
+  5. Update .pHive/planning/epic-backlog.md: change epic 42's row to an accurate,
+     honestly-scoped "done" status naming the real credential gap explicitly (mirror epic 27's
+     and epic 46's own disclosure style) -- match the surrounding rows' style/detail.
+  6. Commit and merge feat/adapter-printful into master with --no-ff, mirroring the "Merge epic:
+     <name> (epic NN)" convention from prior epic merges.
+
+acceptance_criteria:
+  - "Given PRINTFUL_API_TOKEN set (even to a fake/test value for wiring-verification purposes only, not a live call), then services.ts constructs the real Printful adapter instance; given it unset, the manual adapter from epic 41 is used, unchanged"
+  - "Given /admin/settings or wherever the fulfillment adapter-info row surfaces, then it accurately reports which provider is active"
+  - "Given the credential-availability check, then the final report and epic-backlog.md both honestly state whether a real Printful token exists in this environment and what was/wasn't live-verified"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given docs/subsystems/22-fulfillment.md, then it has a real Printful section including the honest disclosure"
+  - "Given .pHive/planning/epic-backlog.md, then epic 42's row accurately and honestly reflects done-with-a-disclosed-gap status"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Make the wiring/docs changes and run all verification steps per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence and honest disclosure.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and honestly scoped, confirm the merge is clean.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/adapter-printful, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Central composition root -- where the adapter gets wired via env var.
+    - path: apps/reference-storefront/lib/adapter-info.ts
+      purpose: Fulfillment adapter-visibility row.
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 42's row updated to done-with-disclosed-gap.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: "Wire adapter-printful via PRINTFUL_API_TOKEN env branch"
+  - file: apps/reference-storefront/lib/adapter-info.ts
+    change: "Add/extend a Fulfillment row"
+  - file: docs/subsystems/22-fulfillment.md
+    change: "Add a real Printful adapter section with honest disclosure"
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 42 done with an honest, specific description.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/adapter-printful/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."
