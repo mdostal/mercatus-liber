@@ -17,6 +17,7 @@ describe("getAdapterInfo", () => {
   it("with no env vars set: persistence and CMS are active, payments is unconfigured, analytics is a no-op and active", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
     vi.stubEnv("POSTHOG_API_KEY", "");
+    vi.stubEnv("SANITY_PROJECT_ID", "");
 
     const info = getAdapterInfo();
     expect(info).toHaveLength(4);
@@ -26,6 +27,7 @@ describe("getAdapterInfo", () => {
     expect(persistence.adapter).toBe("SQLite (in-memory)");
 
     const cms = info.find((e) => e.subsystem === "CMS")!;
+    expect(cms.adapter).toBe("In-memory (reference default)");
     expect(cms.status).toBe("active");
 
     const payments = info.find((e) => e.subsystem === "Payments")!;
@@ -34,6 +36,14 @@ describe("getAdapterInfo", () => {
     const analytics = info.find((e) => e.subsystem === "Analytics")!;
     expect(analytics.adapter).toBe("No-op (disabled)");
     expect(analytics.status).toBe("active");
+  });
+
+  it("reports Sanity as active when SANITY_PROJECT_ID is truthy", () => {
+    vi.stubEnv("SANITY_PROJECT_ID", "proj123");
+
+    const cms = getAdapterInfo().find((e) => e.subsystem === "CMS")!;
+    expect(cms.adapter).toBe("Sanity");
+    expect(cms.status).toBe("active");
   });
 
   it("reports a test-mode Stripe key as active with 'test' mentioned in the detail", () => {

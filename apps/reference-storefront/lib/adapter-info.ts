@@ -71,6 +71,25 @@ function analyticsInfo(): AdapterInfo {
   };
 }
 
+function cmsInfo(): AdapterInfo {
+  if (process.env.SANITY_PROJECT_ID) {
+    return {
+      subsystem: "CMS",
+      adapter: "Sanity",
+      detail: "SANITY_PROJECT_ID is set -- createSanityAdapter() (packages/adapter-sanity)",
+      status: "active",
+    };
+  }
+
+  return {
+    subsystem: "CMS",
+    adapter: "In-memory (reference default)",
+    detail:
+      "SANITY_PROJECT_ID is not set -- createInMemoryCmsAdapter() (packages/cms), a deliberately valid, fully-functional default in this app's own posture, not an error state",
+    status: "active",
+  };
+}
+
 /**
  * Returns exactly four entries describing this instance's actual adapter
  * wiring, computed fresh from process.env on every call.
@@ -83,12 +102,7 @@ export function getAdapterInfo(): AdapterInfo[] {
       detail: "createSqliteAdapter(':memory:') -- packages/adapter-sqlite, no external database configured, no env branch exists for this today",
       status: "active",
     },
-    {
-      subsystem: "CMS",
-      adapter: "In-memory (reference default)",
-      detail: "createInMemoryCmsAdapter() -- packages/cms, no external CMS (e.g. Sanity) configured, no env branch exists for this today",
-      status: "active",
-    },
+    cmsInfo(),
     paymentsInfo(),
     analyticsInfo(),
   ];
