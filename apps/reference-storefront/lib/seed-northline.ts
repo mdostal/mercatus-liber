@@ -59,6 +59,14 @@ interface DemoService {
   tiers: ServiceTier[];
   /** Indices into DEMO_SERVICE_AREAS this service is available in -- proves the subset pattern at real scale, not every service everywhere. */
   areaIndices: number[];
+  /**
+   * image-cdn epic: one real, topically-matched photo per service, sourced
+   * from LoremFlickr (https://loremflickr.com/<w>/<h>/<keywords>) -- a real,
+   * key-less, Creative-Commons Flickr-photo service, not a lorem-ipsum
+   * placeholder. Lives on the shared Product (one array, added once here),
+   * not repeated per tier/SKU -- images are a Product-level concept.
+   */
+  images: { url: string; alt: string }[];
 }
 
 interface DemoCategory {
@@ -98,6 +106,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "tv-home-theater",
     tiers: [{ package: "standard", label: "Standard", priceCents: 14900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7], // every area
+    images: [{ url: "https://loremflickr.com/800/600/tv-mount", alt: "A flat-screen TV mounted flush to the wall with cables concealed" }],
   },
   {
     slug: "home-theater-setup",
@@ -112,6 +121,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "premium", label: "Premium", priceCents: 54900 },
     ],
     areaIndices: [0, 2, 5], // premium service, fewer areas
+    images: [{ url: "https://loremflickr.com/800/600/home-theater", alt: "A home theater room with a large screen and surround-sound speakers" }],
   },
   {
     slug: "security-camera-install",
@@ -128,6 +138,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "8-camera", label: "8-Camera Package", priceCents: 159900 },
     ],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7], // every area
+    images: [{ url: "https://loremflickr.com/800/600/security-camera", alt: "A wall-mounted outdoor security camera" }],
   },
   {
     slug: "video-doorbell-install",
@@ -136,6 +147,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "security-cameras",
     tiers: [{ package: "standard", label: "Standard", priceCents: 12900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7], // every area
+    images: [{ url: "https://loremflickr.com/800/600/door-camera", alt: "A video doorbell camera mounted beside a front door" }],
   },
   {
     slug: "fiber-internet-install",
@@ -144,6 +156,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "networking-fiber",
     tiers: [{ package: "standard", label: "Standard", priceCents: 19900 }],
     areaIndices: [0, 1, 2, 3, 4], // only areas with fiber infrastructure
+    images: [{ url: "https://loremflickr.com/800/600/fiber-optic", alt: "Fiber optic cabling run for a home internet installation" }],
   },
   {
     slug: "smart-thermostat-install",
@@ -155,6 +168,7 @@ const DEMO_SERVICES: DemoService[] = [
     // smallest market there is still ramping up past its original 3 core
     // installs (see the Harborview location page blurb).
     areaIndices: [0, 1, 2, 3, 4, 5, 6],
+    images: [{ url: "https://loremflickr.com/800/600/thermostat", alt: "A smart thermostat mounted on an interior wall" }],
   },
   {
     slug: "smart-lock-install",
@@ -164,6 +178,7 @@ const DEMO_SERVICES: DemoService[] = [
     tiers: [{ package: "standard", label: "Standard", priceCents: 12900 }],
     // Not yet offered in Ashford, GA (index 4) or Harborview, ME (index 7).
     areaIndices: [0, 1, 2, 3, 5, 6],
+    images: [{ url: "https://loremflickr.com/800/600/smart-lock", alt: "A smart deadbolt lock installed on a front door" }],
   },
 
   // -- demo-store-northline-depth, northline-depth-02: significantly deepen
@@ -184,6 +199,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "full-weatherproof-enclosure", label: "Full Weatherproof Enclosure", priceCents: 34900 },
     ],
     areaIndices: [0, 2, 3, 4, 5],
+    images: [{ url: "https://loremflickr.com/800/600/outdoor-tv", alt: "A weatherproof TV mounted on an outdoor patio wall" }],
   },
   {
     slug: "projector-screen-installation",
@@ -195,6 +211,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "motorized-premium", label: "Motorized Premium", priceCents: 44900 },
     ],
     areaIndices: [0, 1, 2, 3, 4, 5],
+    images: [{ url: "https://loremflickr.com/800/600/projector,screen", alt: "A ceiling-mounted projector displaying onto a large drop-down screen" }],
   },
   {
     slug: "soundbar-subwoofer-installation",
@@ -203,6 +220,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "tv-home-theater",
     tiers: [{ package: "standard", label: "Standard", priceCents: 9900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/soundbar", alt: "A soundbar mounted beneath a wall-mounted television" }],
   },
   {
     slug: "in-wall-speaker-installation",
@@ -215,6 +233,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "whole-home-8-speaker", label: "Whole-Home 8-Speaker", priceCents: 89900 },
     ],
     areaIndices: [0, 1, 2, 3, 4, 5],
+    images: [{ url: "https://loremflickr.com/800/600/ceiling-speaker", alt: "An in-ceiling speaker installed flush with the ceiling" }],
   },
   {
     slug: "tv-cable-concealment",
@@ -223,6 +242,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "tv-home-theater",
     tiers: [{ package: "standard", label: "Standard", priceCents: 7900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/cable-management", alt: "Neatly concealed cables routed behind a mounted television" }],
   },
   {
     slug: "av-rack-equipment-setup",
@@ -231,6 +251,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "tv-home-theater",
     tiers: [{ package: "standard", label: "Standard", priceCents: 24900 }],
     areaIndices: [0, 2, 4],
+    images: [{ url: "https://loremflickr.com/800/600/equipment-rack", alt: "An AV equipment rack populated with a receiver and networking gear" }],
   },
   {
     slug: "universal-remote-control-programming",
@@ -239,6 +260,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "tv-home-theater",
     tiers: [{ package: "standard", label: "Standard", priceCents: 9900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/remote-control", alt: "A universal remote control used to operate home entertainment devices" }],
   },
   {
     slug: "tv-mount-relocation",
@@ -247,6 +269,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "tv-home-theater",
     tiers: [{ package: "standard", label: "Standard", priceCents: 9900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/tv,bracket", alt: "A TV mounting bracket attached to a wall stud" }],
   },
 
   // -- Security & Cameras --
@@ -260,6 +283,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "advanced-motion-glassbreak", label: "Advanced Motion & Glass-Break", priceCents: 44900 },
     ],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/security-alarm", alt: "A home security alarm control panel mounted on the wall" }],
   },
   {
     slug: "floodlight-camera-install",
@@ -268,6 +292,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "security-cameras",
     tiers: [{ package: "standard", label: "Standard", priceCents: 17900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/floodlight", alt: "A motion-activated floodlight camera mounted under the eaves" }],
   },
   {
     slug: "smart-access-control-keypad-install",
@@ -276,6 +301,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "security-cameras",
     tiers: [{ package: "standard", label: "Standard", priceCents: 19900 }],
     areaIndices: [0, 1, 2, 3, 4, 5],
+    images: [{ url: "https://loremflickr.com/800/600/keypad,gate", alt: "A weatherproof access keypad mounted beside a gate" }],
   },
   {
     slug: "nvr-dvr-setup",
@@ -284,6 +310,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "security-cameras",
     tiers: [{ package: "standard", label: "Standard", priceCents: 14900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/dvr", alt: "A network video recorder connected to a bank of security camera feeds" }],
   },
   {
     slug: "long-range-perimeter-camera-install",
@@ -292,6 +319,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "security-cameras",
     tiers: [{ package: "standard", label: "Standard", priceCents: 24900 }],
     areaIndices: [0, 1, 2, 4],
+    images: [{ url: "https://loremflickr.com/800/600/driveway,camera", alt: "A long-range security camera aimed down a driveway" }],
   },
 
   // -- Networking & Fiber --
@@ -306,6 +334,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "6-node", label: "6-Node", priceCents: 46900 },
     ],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/wifi-router", alt: "A WiFi mesh router node placed on a shelf for whole-home coverage" }],
   },
   {
     slug: "structured-ethernet-wiring-install",
@@ -317,6 +346,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "8-drop", label: "8-Drop", priceCents: 69900 },
     ],
     areaIndices: [0, 1, 2, 3, 4, 5],
+    images: [{ url: "https://loremflickr.com/800/600/ethernet-cable", alt: "Bundled Ethernet cables run to a structured wiring panel" }],
   },
   {
     slug: "network-rack-cabinet-setup",
@@ -325,6 +355,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "networking-fiber",
     tiers: [{ package: "standard", label: "Standard", priceCents: 34900 }],
     areaIndices: [0, 2, 4],
+    images: [{ url: "https://loremflickr.com/800/600/server-rack", alt: "A network switch and patch panel mounted in a wall cabinet" }],
   },
   {
     slug: "wifi-signal-site-survey-optimization",
@@ -333,6 +364,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "networking-fiber",
     tiers: [{ package: "standard", label: "Standard", priceCents: 14900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/signal,wifi", alt: "A technician surveying WiFi signal strength throughout a home" }],
   },
   {
     slug: "ethernet-over-powerline-setup",
@@ -341,6 +373,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "networking-fiber",
     tiers: [{ package: "standard", label: "Standard", priceCents: 12900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/powerline", alt: "A powerline network adapter plugged into a wall outlet" }],
   },
 
   // -- Smart Home & Automation --
@@ -354,6 +387,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "whole-home-10-switch", label: "Whole-Home 10-Switch", priceCents: 54900 },
     ],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/light-switch,dimmer", alt: "A smart dimmer switch installed in place of a standard light switch" }],
   },
   {
     slug: "smart-hub-automation-setup",
@@ -362,6 +396,7 @@ const DEMO_SERVICES: DemoService[] = [
     categorySlug: "smart-home-automation",
     tiers: [{ package: "standard", label: "Standard", priceCents: 14900 }],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/smart-speaker,hub", alt: "A smart home hub set up on a countertop" }],
   },
   {
     slug: "smart-garage-door-opener-install",
@@ -371,6 +406,7 @@ const DEMO_SERVICES: DemoService[] = [
     tiers: [{ package: "standard", label: "Standard", priceCents: 17900 }],
     // Not yet offered in Harborview, ME (index 7).
     areaIndices: [0, 1, 2, 3, 4, 5, 6],
+    images: [{ url: "https://loremflickr.com/800/600/garage-door", alt: "A garage door fitted with a smart garage door opener" }],
   },
   {
     slug: "smart-blinds-shades-install",
@@ -382,6 +418,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "5-to-10-windows", label: "5 to 10 Windows", priceCents: 54900 },
     ],
     areaIndices: [0, 1, 2, 3, 4, 5],
+    images: [{ url: "https://loremflickr.com/800/600/blinds", alt: "Motorized window blinds installed and ready for smart-app control" }],
   },
   {
     slug: "whole-home-audio-install",
@@ -393,6 +430,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "4-zone", label: "4-Zone", priceCents: 69900 },
     ],
     areaIndices: [0, 2, 4],
+    images: [{ url: "https://loremflickr.com/800/600/home-audio,speaker", alt: "In-ceiling speakers wired for whole-home, multi-room audio" }],
   },
   {
     slug: "smart-smoke-co-detector-install",
@@ -404,6 +442,7 @@ const DEMO_SERVICES: DemoService[] = [
       { package: "6-detector", label: "6-Detector", priceCents: 34900 },
     ],
     areaIndices: [0, 1, 2, 3, 4, 5, 6, 7],
+    images: [{ url: "https://loremflickr.com/800/600/smoke-alarm", alt: "A smart smoke and carbon monoxide detector mounted on a ceiling" }],
   },
 ];
 
@@ -509,6 +548,7 @@ export async function seedNorthlineDemo(
       title: service.title,
       description: service.description,
       identifyingAttributeKeys: ["package"],
+      images: service.images,
     });
     productIdBySlug.set(service.slug, product.id);
     await catalog.publishProduct(product.id);
