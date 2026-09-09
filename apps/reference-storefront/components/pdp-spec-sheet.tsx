@@ -1,0 +1,242 @@
+import type { PdpViewModel } from "@mercatus-liber/pdp";
+import { addToCartAction } from "../lib/actions";
+import type { DemoSlug } from "../lib/demos";
+import { DS_ATOMS_CSS, DS_FONT_MONO } from "./datasheet-styles";
+
+/**
+ * The "pdp.spec-sheet" template -- the real "Datasheet Storefront" PDP,
+ * ported from the approved mockup's `.pdp`/`.pdp-art`/`.pdp-info`/
+ * `.datasheet-table`/`.stepper` rules (design-discussion.md §1: "spec-table
+ * PDP layout, monospace pricing").
+ *
+ * visual-fidelity-datasheet: `pdp.tabbed-detail` (pdp-tabbed-detail.tsx) is
+ * genuinely shared -- it's the registered PDP default for 6 of the other 9
+ * bundles (classic/dark/retro/northline/maximalist, plus it's the
+ * first-registered fallback for any bundle that sets no PDP default at
+ * all), not just maximalist as this fix's brief called out. Restyling it
+ * in place, even conditionally, would be real cross-theme risk for far
+ * more than one other bundle. A dedicated template registered only for
+ * `datasheet` (same "new template key, new component, one more page.tsx
+ * map entry" pattern this package's own pdp-tabbed-detail.tsx doc comment
+ * describes for adding a 3rd PDP layout) is zero-risk by construction: it
+ * only ever renders when `datasheet` is the active bundle.
+ *
+ * Same real `PdpViewModel` shape as pdp-tabbed-detail.tsx (product + real
+ * SKUs, no invented fields) -- works generically across every demo's real
+ * product data, not just a single hardcoded example. Multi-SKU products
+ * (e.g. a cap in several colors) render one add-to-cart row per real SKU,
+ * same as pdp-tabbed-detail.tsx, since this repo has no client-side
+ * variant-picker state today.
+ */
+export function PdpSpecSheet({
+  demoSlug,
+  viewModel,
+  stockBySkuId = {},
+  customizable = false,
+}: {
+  demoSlug: DemoSlug;
+  viewModel: PdpViewModel;
+  /** `null` means not inventory-tracked (always available, e.g. a bookable service) -- distinct from a real tracked 0. */
+  stockBySkuId?: Record<string, number | null>;
+  customizable?: boolean;
+}) {
+  const { product, skus } = viewModel;
+
+  const amounts = skus.map((sku) => sku.price.amount);
+  const currency = skus[0]?.price.currency ?? "USD";
+  const minPrice = amounts.length > 0 ? Math.min(...amounts) : 0;
+  const maxPrice = amounts.length > 0 ? Math.max(...amounts) : 0;
+
+  const anyInStock = skus.some((sku) => {
+    const level = stockBySkuId[sku.id];
+    return level === null || level === undefined || level > 0;
+  });
+
+  // Distinct identifying-attribute values actually present across this
+  // product's real SKUs (same "never a theoretical cartesian product"
+  // real-data-only convention as PdpViewModel.optionValues) -- one
+  // datasheet-table row per identifying-attribute key.
+  const valuesByKey = new Map<string, Set<string>>();
+  for (const sku of skus) {
+    for (const attr of sku.identifyingAttributes) {
+      const set = valuesByKey.get(attr.key) ?? new Set<string>();
+      set.add(String(attr.value));
+      valuesByKey.set(attr.key, set);
+    }
+  }
+
+  return (
+    <div className="ds-scope ds-pdp">
+      <style>{DS_ATOMS_CSS}</style>
+      <style>{`
+        .ds-pdp-grid {
+          display: grid;
+          grid-template-columns: 0.9fr 1.1fr;
+          gap: 1px;
+          background: var(--color-border, #D2D7E0);
+          border: 1px solid var(--color-border, #D2D7E0);
+        }
+        .ds-pdp-art {
+          background: #FFFFFF;
+          padding: clamp(30px, 5vw, 64px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          background-image:
+            linear-gradient(rgba(18, 21, 27, 0.07) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(18, 21, 27, 0.07) 1px, transparent 1px);
+          background-size: 16px 16px;
+          font-family: ${DS_FONT_MONO};
+          color: var(--color-muted, #8891A0);
+          text-align: center;
+          font-size: 13px;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+        .ds-pdp-info { background: #FFFFFF; padding: clamp(24px, 4vw, 44px); display: flex; flex-direction: column; gap: 16px; }
+        .ds-pdp-info h1 {
+          font-family: 'Archivo', system-ui, sans-serif;
+          font-size: clamp(22px, 3vw, 30px);
+          font-weight: 800;
+          text-transform: uppercase;
+          line-height: 1.15;
+          margin: 0;
+        }
+        .ds-pdp-price-row { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+        .ds-pdp-price { font-family: ${DS_FONT_MONO}; font-size: 30px; font-weight: 600; color: var(--color-primary, #C8460A); }
+        .ds-pdp-desc { color: var(--color-accent, #5A6170); font-size: 14.5px; line-height: 1.7; max-width: 58ch; margin: 0; }
+        .ds-datasheet-table { border: 1px solid var(--color-border, #D2D7E0); }
+        .ds-datasheet-table .ds-dh {
+          font-family: ${DS_FONT_MONO};
+          font-size: 10.5px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--color-muted, #8891A0);
+          padding: 9px 14px;
+          background: var(--color-background, #E7EAF0);
+          border-bottom: 1px solid var(--color-border, #D2D7E0);
+        }
+        .ds-datasheet-table .ds-dr {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 11px 14px;
+          border-top: 1px solid var(--color-border, #D2D7E0);
+          font-size: 12.5px;
+        }
+        .ds-datasheet-table .ds-dr:first-of-type { border-top: none; }
+        .ds-datasheet-table .ds-dr .ds-k {
+          font-family: ${DS_FONT_MONO};
+          color: var(--color-accent, #5A6170);
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          font-size: 11px;
+        }
+        .ds-datasheet-table .ds-dr .ds-v { font-family: ${DS_FONT_MONO}; color: var(--color-text, #12151B); text-align: right; font-weight: 500; }
+        .ds-sku-row {
+          border: 1px solid var(--color-border, #D2D7E0);
+          padding: 14px;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: var(--space-xs, 8px);
+        }
+        .ds-sku-attrs { font-family: ${DS_FONT_MONO}; font-size: 12px; color: var(--color-text, #12151B); flex: 1; min-width: 180px; }
+        .ds-sku-price { font-family: ${DS_FONT_MONO}; font-size: 14px; color: var(--color-primary, #C8460A); font-weight: 600; }
+        .ds-custom-note label { display: block; font-size: 12px; color: var(--color-accent, #5A6170); margin-bottom: 4px; }
+        .ds-custom-note input[type="text"] {
+          font-family: var(--font-family, sans-serif);
+          border: 1px solid var(--color-muted, #AAB1BF);
+          padding: 6px 8px;
+          width: 100%;
+          max-width: 320px;
+        }
+        @media (max-width: 860px) { .ds-pdp-grid { grid-template-columns: 1fr; } }
+      `}</style>
+
+      <div className="ds-titleblock">
+        <span className="ds-name">
+          <span className="ds-num">SPEC-{product.id.slice(0, 6).toUpperCase()}</span>
+          {product.status}
+        </span>
+        <span className="ds-meta">
+          <span>{skus.length} SKU{skus.length === 1 ? "" : "S"}</span>
+        </span>
+      </div>
+
+      <div className="ds-pdp-grid">
+        <div className="ds-pdp-art">
+          <span className="ds-tick tl" aria-hidden="true" />
+          <span className="ds-tick tr" aria-hidden="true" />
+          <div>{product.title}</div>
+        </div>
+
+        <div className="ds-pdp-info">
+          <h1>{product.title}</h1>
+
+          <div className="ds-pdp-price-row">
+            <span className="ds-pdp-price">
+              {minPrice === maxPrice
+                ? `${(minPrice / 100).toFixed(2)} ${currency}`
+                : `${(minPrice / 100).toFixed(2)}–${(maxPrice / 100).toFixed(2)} ${currency}`}
+            </span>
+            <span className={`ds-stock-badge${anyInStock ? "" : " out"}`}>{anyInStock ? "In stock" : "Out of stock"}</span>
+          </div>
+
+          <p className="ds-pdp-desc">{product.description}</p>
+
+          <div className="ds-datasheet-table">
+            <div className="ds-dh">Specifications</div>
+            {[...valuesByKey.entries()].map(([key, values]) => (
+              <div className="ds-dr" key={key}>
+                <span className="ds-k">{key}</span>
+                <span className="ds-v">{[...values].join(", ")}</span>
+              </div>
+            ))}
+            <div className="ds-dr">
+              <span className="ds-k">Status</span>
+              <span className="ds-v">{product.status}</span>
+            </div>
+          </div>
+
+          <div className="ds-label">Options</div>
+          {skus.map((sku) => (
+            <form action={addToCartAction} key={sku.id} className="ds-sku-row">
+              <input type="hidden" name="demoSlug" value={demoSlug} />
+              <input type="hidden" name="skuId" value={sku.id} />
+              <div className="ds-sku-attrs">
+                {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(" · ")}
+                <br />
+                <span className="ds-label">
+                  {stockBySkuId[sku.id] == null ? "available" : `in stock: ${stockBySkuId[sku.id]}`}
+                </span>
+              </div>
+              <span className="ds-sku-price">
+                {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
+              </span>
+              <div className="ds-stepper">
+                <input type="number" name="quantity" defaultValue={1} min={1} aria-label="Quantity" />
+              </div>
+              {customizable && (
+                <div className="ds-custom-note">
+                  <label htmlFor={`customizationNote-${sku.id}`}>Personalize (e.g. embroidery text, thread color)</label>
+                  <input
+                    id={`customizationNote-${sku.id}`}
+                    type="text"
+                    name="customizationNote"
+                    placeholder="e.g. Text: Sarah -- thread color: navy"
+                  />
+                </div>
+              )}
+              <button type="submit" className="ds-btn ds-btn-accent">
+                Add to cart
+              </button>
+            </form>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
