@@ -17,6 +17,7 @@
     "@clerk/nextjs": "^7.9.1",
     "@mercatus-liber/account": "workspace:*",
     "@mercatus-liber/adapter-clerk": "workspace:*",
+    "@mercatus-liber/adapter-postgres": "workspace:*",
     "@mercatus-liber/adapter-sanity": "workspace:*",
     "@mercatus-liber/adapter-sqlite": "workspace:*",
     "@mercatus-liber/admin-auth": "workspace:*",
@@ -42,12 +43,14 @@
     "@mercatus-liber/theming": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "next": "^16.3.4",
+    "pg": "^8.23.0",
     "posthog-js": "^1.428.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tsx": "^4.23.13",

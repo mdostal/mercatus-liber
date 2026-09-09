@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createAccountService, createInMemoryCustomerProfileRepository, type AccountService } from "@mercatus-liber/account";
 import { createClerkAdminAuthAdapter } from "@mercatus-liber/adapter-clerk";
+import { createPostgresAdapter } from "@mercatus-liber/adapter-postgres";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { ADMIN_DEV_SESSION_COOKIE, createDefaultAdminAuthAdapter, type AdminAuthAdapter } from "@mercatus-liber/admin-auth";
@@ -60,6 +61,7 @@ import {
   type ServiceAreaService,
 } from "@mercatus-liber/service-areas";
 import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
+import { Pool } from "pg";
 import { DEMO_REGISTRY, isDemoSlug, type DemoSlug } from "./demos";
 
 /**
@@ -70,10 +72,16 @@ import { DEMO_REGISTRY, isDemoSlug, type DemoSlug } from "./demos";
  * where a real deployment chooses and wires concrete implementations together.
  * See docs/ARCHITECTURE.md's prime directive and cf-07's acceptance criteria.
  *
- * Uses an in-memory SQLite DB and in-memory cart/order repositories, matching
- * this app's documented purpose: a proof of integration/demo, not a persistent
- * production storefront (see this package's own README and package.json
- * description).
+ * Catalog persistence is env-var-selectable (see the `persistence` branch in
+ * buildServices below and lib/adapter-info.ts's Persistence row):
+ * `DATABASE_URL` -> Postgres, else `SQLITE_FILE_PATH` -> file-backed SQLite,
+ * else the original in-memory SQLite default. Cart/order/promotion/etc.
+ * repositories remain in-memory regardless -- this app's documented purpose
+ * is still a proof of integration/demo, not a persistent production
+ * storefront (see this package's own README and package.json description);
+ * durable catalog data is the one piece worth surviving a restart for a
+ * real demo/operator, per
+ * .pHive/epics/data-backup-restore-and-adapter-portability/docs/design-discussion.md.
  */
 export interface Services {
   events: EventBus;
@@ -181,7 +189,25 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     ? createClerkAdminAuthAdapter()
     : createDevAdminAuthAdapter();
 
-  const persistence = createSqliteAdapter(":memory:");
+  // Real Postgres adapter when DATABASE_URL is configured; else real
+  // file-backed SQLite when SQLITE_FILE_PATH is configured (DATABASE_URL
+  // unset); else today's original in-memory SQLite default -- same
+  // three/two-branch "env var truthy picks the real adapter, else a
+  // harmless local fallback" shape as the CMS/admin-auth/analytics
+  // branches above (see
+  // .pHive/epics/data-backup-restore-and-adapter-portability/docs/design-discussion.md
+  // §1a). Before this story there was no env branch here at all --
+  // catalog data was unconditionally in-memory and lost on every restart.
+  // createPostgresAdapter (packages/adapter-postgres) owns running its own
+  // idempotent schema DDL against the pool; this module only constructs
+  // the pg.Pool from DATABASE_URL, mirroring
+  // packages/create-store/src/scaffold.ts's generated services.ts wiring
+  // for the same adapter.
+  const persistence = process.env.DATABASE_URL
+    ? await createPostgresAdapter(new Pool({ connectionString: process.env.DATABASE_URL }))
+    : process.env.SQLITE_FILE_PATH
+      ? createSqliteAdapter(process.env.SQLITE_FILE_PATH)
+      : createSqliteAdapter(":memory:");
   const catalog = createCatalogService({ persistence, events });
 
   const cart = createCartService({
