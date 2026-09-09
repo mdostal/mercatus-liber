@@ -1,11 +1,14 @@
 import type { PdpViewModel } from "@mercatus-liber/pdp";
 import { addToCartAction } from "../lib/actions";
+import type { DemoSlug } from "../lib/demos";
 
 /** The "pdp.long-scroll" template component -- same view-model data as pdp-tabbed-detail, different presentation (everything inline, eBay-style, no collapsing). */
 export function PdpLongScroll({
+  demoSlug,
   viewModel,
   stockBySkuId = {},
 }: {
+  demoSlug: DemoSlug;
   viewModel: PdpViewModel;
   stockBySkuId?: Record<string, number>;
 }) {
@@ -30,6 +33,7 @@ export function PdpLongScroll({
       <h2>Buy</h2>
       {skus.map((sku) => (
         <form action={addToCartAction} key={sku.id} style={{ marginBottom: 16, borderTop: "1px solid var(--color-accent)", paddingTop: 8 }}>
+          <input type="hidden" name="demoSlug" value={demoSlug} />
           <input type="hidden" name="skuId" value={sku.id} />
           <div>{sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}</div>
           <div>

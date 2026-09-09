@@ -2,7 +2,7 @@
  * A small, hand-maintained descriptor of which concrete adapter this running
  * instance actually chose for each swappable subsystem, mirroring
  * lib/services.ts's own env-reading logic exactly. Deliberately does NOT
- * import or call getServices()/buildServices() -- it reports what
+ * import or call getServicesForDemo()/buildServices() -- it reports what
  * services.ts WOULD choose given the current environment, without
  * constructing or touching any real adapter (e.g. it never builds a real
  * Stripe client). Every entry is computed fresh from process.env on each

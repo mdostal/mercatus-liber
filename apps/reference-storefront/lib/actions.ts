@@ -13,8 +13,46 @@ import type { CreateRuleInput } from "@mercatus-liber/recommendations";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
 import { readCouponCode, setCouponCode } from "./coupon-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
-import { getServices } from "./services";
-import { THEME_COOKIE } from "./theme-cookie";
+import { isDemoSlug, type DemoSlug } from "./demos";
+import { getServicesForDemo } from "./services";
+import { themeCookieName } from "./theme-cookie";
+
+/**
+ * demo-routing-04: every one of this file's "use server" actions is bound
+ * to a `<form action={...}>` a Server Action doesn't automatically receive
+ * route params for, so every calling page/component renders a hidden
+ * `<input type="hidden" name="demoSlug" value={demoSlug} />` field inside
+ * that form (same convention already used for skuId/id/bundleId/tierId/
+ * userId etc. across this whole file's callers) -- this is the one, single
+ * mechanism used consistently by all 22 actions below (not just "each
+ * family," see the story's "be consistent within a family" requirement --
+ * one mechanism app-wide is the strictest reading of that). Throws a clear
+ * error rather than silently falling back to a default demo when the field
+ * is missing or not a known slug -- a caller-facing bug here should be loud,
+ * never a silent cross-demo bleed.
+ */
+function requireDemoSlug(formData: FormData): DemoSlug {
+  const raw = String(formData.get("demoSlug") ?? "");
+  if (!isDemoSlug(raw)) {
+    throw new Error(`Missing or invalid "demoSlug" in form submission: ${JSON.stringify(raw)}`);
+  }
+  return raw;
+}
+
+/**
+ * demo-routing-04: this app has no existing "what is my own public origin"
+ * helper anywhere (confirmed by grepping the whole app for headers()/
+ * x-forwarded-host/NEXT_PUBLIC_*URL usage -- there is none), so
+ * startCheckoutAction below introduces the simplest fix rather than a new
+ * headers()-based pattern nothing else in this app uses: an env var with a
+ * sensible localhost fallback, matching every other optional-adapter env
+ * var in lib/services.ts's own "env var truthy picks the real thing, else a
+ * harmless local default" shape. Not NEXT_PUBLIC_-prefixed -- this is only
+ * ever read from a "use server" action, never shipped to the client bundle.
+ */
+function resolveAppOrigin(): string {
+  return process.env.APP_ORIGIN ?? "http://localhost:3000";
+}
 
 /**
  * admin-auth-03: the guard every admin mutation action below calls as the
@@ -26,9 +64,15 @@ import { THEME_COOKIE } from "./theme-cookie";
  * mutation actions listed in admin-auth-03-route-and-mutation-gating.yaml
  * calls this with action="mutate"; updateAdminUserRoleAction (story 04)
  * will call it with action="manage_users" instead.
+ *
+ * demo-routing-04: now takes the caller's already-parsed demoSlug (each
+ * admin action below calls requireDemoSlug(formData) first, then passes the
+ * result here) rather than a hardcoded "dragon-merch" -- a dragon-merch
+ * admin session has no business gating a northline mutation against
+ * dragon-merch's adminAuth adapter, or vice versa.
  */
-async function requireAdminPermission(action: AdminAction): Promise<void> {
-  const { adminAuth } = await getServices();
+async function requireAdminPermission(demoSlug: DemoSlug, action: AdminAction): Promise<void> {
+  const { adminAuth } = await getServicesForDemo(demoSlug);
   const session = await adminAuth.getCurrentSession();
   if (!session || !hasPermission(session.role, action)) {
     throw new Error(`Not authorized: this action requires "${action}" permission.`);
@@ -36,12 +80,13 @@ async function requireAdminPermission(action: AdminAction): Promise<void> {
 }
 
 export async function addToCartAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
   const skuId = String(formData.get("skuId"));
   const quantity = Number(formData.get("quantity") ?? 1);
-  const cartId = await getOrCreateCartId();
-  const { cart } = await getServices();
+  const cartId = await getOrCreateCartId(demoSlug);
+  const { cart } = await getServicesForDemo(demoSlug);
   await cart.addItem(cartId, skuId, quantity);
-  revalidatePath("/cart");
+  revalidatePath(`/demo/${demoSlug}/cart`);
 }
 
 /**
@@ -55,10 +100,11 @@ export async function addToCartAction(formData: FormData): Promise<void> {
  * same-skuId-merges-quantity behavior -- no special dedup logic needed here.
  */
 export async function addBundleTierToCartAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
   const bundleId = String(formData.get("bundleId"));
   const tierId = String(formData.get("tierId"));
-  const cartId = await getOrCreateCartId();
-  const { bundles, cart } = await getServices();
+  const cartId = await getOrCreateCartId(demoSlug);
+  const { bundles, cart } = await getServicesForDemo(demoSlug);
 
   const bundle = await bundles.getBundle(bundleId);
   const tier = bundle?.tiers.find((t) => t.id === tierId);
@@ -67,22 +113,28 @@ export async function addBundleTierToCartAction(formData: FormData): Promise<voi
   for (const skuId of tier.skuIds) {
     await cart.addItem(cartId, skuId, 1);
   }
-  revalidatePath("/cart");
+  revalidatePath(`/demo/${demoSlug}/cart`);
 }
 
 export async function applyCouponAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
   const code = String(formData.get("code") ?? "").trim();
-  await setCouponCode(code);
-  revalidatePath("/cart");
+  await setCouponCode(demoSlug, code);
+  revalidatePath(`/demo/${demoSlug}/cart`);
 }
 
-export async function startCheckoutAction(): Promise<void> {
-  const cartId = await readCartId();
+export async function startCheckoutAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  const cartId = await readCartId(demoSlug);
   if (!cartId) throw new Error("Cannot check out -- no cart exists yet.");
 
-  const customerId = await getOrCreateCustomerId();
-  const couponCode = await readCouponCode();
-  const { checkout } = await getServices();
+  const customerId = await getOrCreateCustomerId(demoSlug);
+  const couponCode = await readCouponCode(demoSlug);
+  const { checkout } = await getServicesForDemo(demoSlug);
+  // Stripe requires an absolute successUrl/cancelUrl, not a relative path --
+  // resolveAppOrigin() (see this file's top) is this app's own "public
+  // origin" resolution, reused here rather than re-hardcoding localhost.
+  const origin = resolveAppOrigin();
   const result = await checkout.startCheckout({
     cartId,
     // A real deployment derives this from the authenticated shopper's session;
@@ -98,18 +150,25 @@ export async function startCheckoutAction(): Promise<void> {
     // Stripe's {CHECKOUT_SESSION_ID} URL placeholder + a session-id lookup,
     // out of scope for this reference proof). /order/[id] still exists as a
     // standalone lookup page.
-    successUrl: "http://localhost:3000/order/confirmed",
-    cancelUrl: "http://localhost:3000/cart",
+    successUrl: `${origin}/demo/${demoSlug}/order/confirmed`,
+    cancelUrl: `${origin}/demo/${demoSlug}/cart`,
   });
 
   redirect(result.redirectUrl);
 }
 
 export async function setThemeAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
   const theme = String(formData.get("theme"));
   const cookieStore = await cookies();
-  cookieStore.set(THEME_COOKIE, theme, { sameSite: "lax", path: "/" });
-  revalidatePath("/", "layout");
+  cookieStore.set(themeCookieName(demoSlug), theme, { sameSite: "lax", path: "/" });
+  // demo-routing-05: app/demo/[demoSlug]/layout.tsx (the layout that
+  // actually renders <ThemeSwitcher/> and reads the theme cookie) now
+  // exists and is scoped to exactly this path, so this revalidates that
+  // demo's own layout only -- it never touches the other demo's layout or
+  // the demo-agnostic landing page's layout (app/(landing)/layout.tsx),
+  // which don't read this cookie at all.
+  revalidatePath(`/demo/${demoSlug}`, "layout");
 }
 
 /** Parses the promotions admin form fields shared by create and update. */
@@ -141,29 +200,32 @@ function parsePromotionFormData(formData: FormData): CreatePromotionInput {
 }
 
 export async function createPromotionAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
-  const { promotions } = await getServices();
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const { promotions } = await getServicesForDemo(demoSlug);
   await promotions.createPromotion(parsePromotionFormData(formData));
-  revalidatePath("/admin/promotions");
-  redirect("/admin/promotions");
+  revalidatePath(`/demo/${demoSlug}/admin/promotions`);
+  redirect(`/demo/${demoSlug}/admin/promotions`);
 }
 
 export async function updatePromotionAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
   const id = String(formData.get("id"));
-  const { promotions } = await getServices();
+  const { promotions } = await getServicesForDemo(demoSlug);
   const updated = await promotions.updatePromotion(id, parsePromotionFormData(formData));
   if (!updated) throw new Error(`No such promotion: ${id}`);
-  revalidatePath("/admin/promotions");
-  redirect("/admin/promotions");
+  revalidatePath(`/demo/${demoSlug}/admin/promotions`);
+  redirect(`/demo/${demoSlug}/admin/promotions`);
 }
 
 export async function deactivatePromotionAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
   const id = String(formData.get("id"));
-  const { promotions } = await getServices();
+  const { promotions } = await getServicesForDemo(demoSlug);
   await promotions.deactivatePromotion(id);
-  revalidatePath("/admin/promotions");
+  revalidatePath(`/demo/${demoSlug}/admin/promotions`);
 }
 
 /** Matches BundleFormFields' fixed number of tier slots. */
@@ -202,29 +264,32 @@ function parseBundleFormData(formData: FormData): CreateBundleInput {
 }
 
 export async function createBundleAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
-  const { bundles } = await getServices();
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const { bundles } = await getServicesForDemo(demoSlug);
   await bundles.createBundle(parseBundleFormData(formData));
-  revalidatePath("/admin/bundles");
-  redirect("/admin/bundles");
+  revalidatePath(`/demo/${demoSlug}/admin/bundles`);
+  redirect(`/demo/${demoSlug}/admin/bundles`);
 }
 
 export async function updateBundleAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
   const id = String(formData.get("id"));
-  const { bundles } = await getServices();
+  const { bundles } = await getServicesForDemo(demoSlug);
   const updated = await bundles.updateBundle(id, parseBundleFormData(formData));
   if (!updated) throw new Error(`No such bundle: ${id}`);
-  revalidatePath("/admin/bundles");
-  redirect("/admin/bundles");
+  revalidatePath(`/demo/${demoSlug}/admin/bundles`);
+  redirect(`/demo/${demoSlug}/admin/bundles`);
 }
 
 export async function deactivateBundleAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
   const id = String(formData.get("id"));
-  const { bundles } = await getServices();
+  const { bundles } = await getServicesForDemo(demoSlug);
   await bundles.deactivateBundle(id);
-  revalidatePath("/admin/bundles");
+  revalidatePath(`/demo/${demoSlug}/admin/bundles`);
 }
 
 /**
@@ -252,29 +317,32 @@ function parseRecommendationRuleFormData(formData: FormData): CreateRuleInput {
 }
 
 export async function createRecommendationRuleAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
-  const { recommendations } = await getServices();
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const { recommendations } = await getServicesForDemo(demoSlug);
   await recommendations.createRule(parseRecommendationRuleFormData(formData));
-  revalidatePath("/admin/recommendations");
-  redirect("/admin/recommendations");
+  revalidatePath(`/demo/${demoSlug}/admin/recommendations`);
+  redirect(`/demo/${demoSlug}/admin/recommendations`);
 }
 
 export async function updateRecommendationRuleAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
   const id = String(formData.get("id"));
-  const { recommendations } = await getServices();
+  const { recommendations } = await getServicesForDemo(demoSlug);
   const updated = await recommendations.updateRule(id, parseRecommendationRuleFormData(formData));
   if (!updated) throw new Error(`No such recommendation rule: ${id}`);
-  revalidatePath("/admin/recommendations");
-  redirect("/admin/recommendations");
+  revalidatePath(`/demo/${demoSlug}/admin/recommendations`);
+  redirect(`/demo/${demoSlug}/admin/recommendations`);
 }
 
 export async function deactivateRecommendationRuleAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
   const id = String(formData.get("id"));
-  const { recommendations } = await getServices();
+  const { recommendations } = await getServicesForDemo(demoSlug);
   await recommendations.deactivateRule(id);
-  revalidatePath("/admin/recommendations");
+  revalidatePath(`/demo/${demoSlug}/admin/recommendations`);
 }
 
 /** Matches CampaignFormFields' fixed number of creative slots. */
@@ -334,29 +402,32 @@ function parseCampaignFormData(formData: FormData): CreateCampaignInput {
 }
 
 export async function createCampaignAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
-  const { advertising } = await getServices();
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const { advertising } = await getServicesForDemo(demoSlug);
   await advertising.createCampaign(parseCampaignFormData(formData));
-  revalidatePath("/admin/advertising");
-  redirect("/admin/advertising");
+  revalidatePath(`/demo/${demoSlug}/admin/advertising`);
+  redirect(`/demo/${demoSlug}/admin/advertising`);
 }
 
 export async function updateCampaignAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
   const id = String(formData.get("id"));
-  const { advertising } = await getServices();
+  const { advertising } = await getServicesForDemo(demoSlug);
   const updated = await advertising.updateCampaign(id, parseCampaignFormData(formData));
   if (!updated) throw new Error(`No such campaign: ${id}`);
-  revalidatePath("/admin/advertising");
-  redirect("/admin/advertising");
+  revalidatePath(`/demo/${demoSlug}/admin/advertising`);
+  redirect(`/demo/${demoSlug}/admin/advertising`);
 }
 
 export async function deactivateCampaignAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
   const id = String(formData.get("id"));
-  const { advertising } = await getServices();
+  const { advertising } = await getServicesForDemo(demoSlug);
   await advertising.deactivateCampaign(id);
-  revalidatePath("/admin/advertising");
+  revalidatePath(`/demo/${demoSlug}/admin/advertising`);
 }
 
 /** The three AdminRole values a role-change form is allowed to submit. Kept local, mirroring adapter-clerk's own VALID_ROLES convention. */
@@ -373,7 +444,8 @@ const VALID_ADMIN_ROLES: readonly AdminRole[] = ["owner", "admin", "viewer"];
  * packages/admin-auth/src/permissions.ts.
  */
 export async function updateAdminUserRoleAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("manage_users");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "manage_users");
 
   const userId = String(formData.get("userId") ?? "").trim();
   const role = formData.get("role");
@@ -381,9 +453,9 @@ export async function updateAdminUserRoleAction(formData: FormData): Promise<voi
     throw new Error(`Invalid role: ${String(role)}`);
   }
 
-  const { adminAuth } = await getServices();
+  const { adminAuth } = await getServicesForDemo(demoSlug);
   await adminAuth.setAdminUserRole(userId, role as AdminRole);
-  revalidatePath("/admin/settings/users");
+  revalidatePath(`/demo/${demoSlug}/admin/settings/users`);
 }
 
 /** Matches CmsSectionFields' fixed number of section slots. */
@@ -437,21 +509,23 @@ function parseCmsPageType(formData: FormData): PageType {
 }
 
 export async function createCmsPageAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
 
   const pageType = parseCmsPageType(formData);
   const slug = String(formData.get("slug") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
   const sections = parseCmsSectionFormData(formData);
 
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo(demoSlug);
   await cms.createPage({ pageType, slug, title, sections });
-  revalidatePath("/admin/cms");
-  redirect("/admin/cms");
+  revalidatePath(`/demo/${demoSlug}/admin/cms`);
+  redirect(`/demo/${demoSlug}/admin/cms`);
 }
 
 export async function createMarketingPageAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
 
   const slug = String(formData.get("slug") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
@@ -464,7 +538,7 @@ export async function createMarketingPageAction(formData: FormData): Promise<voi
     .filter((productId) => productId.length > 0);
   const sections = parseCmsSectionFormData(formData);
 
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo(demoSlug);
   await cms.createMarketingPage({
     slug,
     title,
@@ -474,30 +548,32 @@ export async function createMarketingPageAction(formData: FormData): Promise<voi
     endDate: endDate.length > 0 ? endDate : null,
     productIds,
   });
-  revalidatePath("/admin/cms");
-  redirect("/admin/cms");
+  revalidatePath(`/demo/${demoSlug}/admin/cms`);
+  redirect(`/demo/${demoSlug}/admin/cms`);
 }
 
 /** pageType and slug are intentionally not accepted here -- CmsService.updatePage's own type signature only accepts a title/sections patch (see packages/cms/src/service.ts). */
 export async function updateCmsPageAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
 
   const id = String(formData.get("id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
   const sections = parseCmsSectionFormData(formData);
 
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo(demoSlug);
   await cms.updatePage(id, { title, sections });
-  revalidatePath("/admin/cms");
-  redirect("/admin/cms");
+  revalidatePath(`/demo/${demoSlug}/admin/cms`);
+  redirect(`/demo/${demoSlug}/admin/cms`);
 }
 
 export async function publishCmsPageAction(formData: FormData): Promise<void> {
-  await requireAdminPermission("mutate");
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
 
   const id = String(formData.get("id") ?? "").trim();
 
-  const { cms } = await getServices();
+  const { cms } = await getServicesForDemo(demoSlug);
   await cms.publishPage(id);
-  revalidatePath("/admin/cms");
+  revalidatePath(`/demo/${demoSlug}/admin/cms`);
 }

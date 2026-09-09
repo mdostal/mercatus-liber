@@ -1,0 +1,122 @@
+id: demo-routing-01-services-and-registry
+epic: commerce-landing-and-demo-routing
+title: "services.ts: getServicesForDemo(demoSlug) keyed Map, demo registry replacing DEMO_BRAND"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md in full for
+  the resolved architecture and why the whole services graph (not just seed data) must be
+  duplicated per demo.
+
+  Read the WHOLE current apps/reference-storefront/lib/services.ts in full. Confirm the exact
+  current shape: a module-scoped `let servicesPromise: Promise<Services> | null = null;`,
+  `getServices()` as a lazy singleton, and the `DEMO_BRAND` env-var branch at the end of
+  `buildServices()` picking between `seedCatalog(...)` (default) and `seedNorthlineDemo(...)`.
+
+  This story ONLY changes services.ts and creates a small new demo-registry module. It does
+  NOT move any route files (that's the next two pieces of work) and does NOT update any page
+  to call the new function yet (those pages don't exist in their new location yet) -- but it
+  MUST leave the app in a working state, since other work continues on this same branch after
+  this lands. To keep the app working during the transition, ALSO update the current (not yet
+  moved) callers of `getServices()` to call the new function with a fixed, hardcoded demo slug
+  (e.g. "dragon-merch", matching today's default `DEMO_BRAND` behavior) -- a temporary,
+  clearly-commented shim so the app keeps building/running/passing its existing test suite
+  throughout this story and the next two, to be removed once the actual route move lands.
+
+  Deliverables:
+  - New file apps/reference-storefront/lib/demos.ts: a small registry, e.g. `export const
+    DEMO_SLUGS = ["dragon-merch", "northline"] as const; export type DemoSlug =
+    (typeof DEMO_SLUGS)[number]; export function isDemoSlug(value: string): value is DemoSlug
+    { ... }` plus a mapping from each slug to its seed function (import both `seedCatalog` and
+    `seedNorthlineDemo` from lib/seed.ts) and any per-demo display metadata useful later (a
+    display name, e.g. "Dragon Merch" / "Northline Home Tech" -- the landing/demo-layout piece
+    of work will use this).
+  - In lib/services.ts: replace the `servicesPromise` singleton with `const servicesByDemo =
+    new Map<DemoSlug, Promise<Services>>();`. Replace `getServices()` with
+    `getServicesForDemo(demoSlug: DemoSlug): Promise<Services>` that looks up/populates the
+    Map, calling `buildServices(demoSlug)` (now taking the slug as a parameter) which looks up
+    the right seed function from the new demos.ts registry instead of reading
+    `process.env.DEMO_BRAND`.
+  - Every existing call site of the bare `getServices()` across the whole app (grep the whole
+    apps/reference-storefront tree) gets updated to call `getServicesForDemo("dragon-merch")`
+    as a temporary, clearly-commented shim (`// TEMPORARY: hardcoded until demo-routing-02/03
+    move these routes under app/demo/[demoSlug]/ and thread the real param through`) -- this
+    keeps the whole app functionally identical to today's behavior while the route-move pieces
+    of work are still in flight on this same branch.
+
+acceptance_criteria:
+  - "Given getServicesForDemo('dragon-merch') is called twice, then both calls return the SAME Services instance (memoization preserved, matching today's singleton behavior for a single demo)"
+  - "Given getServicesForDemo('dragon-merch') and getServicesForDemo('northline') are both called, then they return TWO DISTINCT Services instances, each with independently empty cart/order state at construction time"
+  - "Given the existing full app test suite and typecheck, when this story lands, then both are still fully green -- zero regression, since every call site was shimmed to the same demo slug behavior as before"
+  - "Given a call to getServicesForDemo with a slug not in DEMO_SLUGS, then it throws a clear error rather than silently building an empty/wrong service graph"
+
+steps:
+  - id: research
+    description: Re-read the current services.ts and seed.ts's two seed functions before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the demo registry and the Map-keyed services function, and shim every existing call site, per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write or extend a test proving distinct demo slugs yield distinct, independently-stateful Services instances, and that the same slug is memoized.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check every existing getServices() call site was actually updated (grep for any remaining bare calls) and the full test suite/typecheck are genuinely still green.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/commerce-landing-and-demo-routing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: The singleton to replace with a Map-keyed getServicesForDemo function.
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: seedCatalog and seedNorthlineDemo -- the two existing seed functions the new registry maps demo slugs to.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/demos.ts
+    change: New file, the demo-slug registry.
+  - file: apps/reference-storefront/lib/services.ts
+    change: Map-keyed getServicesForDemo replacing the singleton getServices.
+  - file: apps/reference-storefront/app/**/*.tsx
+    change: Every existing getServices() call site shimmed to getServicesForDemo("dragon-merch") temporarily.
+
+design_decisions:
+  - decision: "This story ships a temporary hardcoded-slug shim at every call site rather than leaving the app broken until the route move lands."
+    rationale: "Keeps the branch in a continuously working, testable state across all 6 stories in this epic, rather than one giant unreviewable commit at the end."
+
+risks:
+  - severity: low
+    description: "The temporary shim comments must actually get removed by demo-routing-02/03/04 -- a missed one would silently hardcode a demo slug in production."
+    mitigation: "The shim comment's exact wording is specified in this story so later pieces of work can grep for it precisely."
+
+references:
+  - path: .pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: the full Map-keyed services design this story implements.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: reference_storefront.demo_service_isolation_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite proving distinct demo slugs yield distinct service instances
+  verify_at: integrate
+  owner: tester

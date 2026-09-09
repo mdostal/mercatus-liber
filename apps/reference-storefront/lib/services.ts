@@ -60,8 +60,7 @@ import {
   type ServiceAreaService,
 } from "@mercatus-liber/service-areas";
 import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
-import { seedCatalog } from "./seed";
-import { seedNorthlineDemo } from "./seed-northline";
+import { DEMO_REGISTRY, isDemoSlug, type DemoSlug } from "./demos";
 
 /**
  * THE ONLY MODULE IN THIS REPO that imports concrete adapter implementations
@@ -152,9 +151,9 @@ function createDevAdminAuthAdapter(): AdminAuthAdapter {
   };
 }
 
-let servicesPromise: Promise<Services> | null = null;
+const servicesByDemo = new Map<DemoSlug, Promise<Services>>();
 
-async function buildServices(): Promise<Services> {
+async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   const events = createInMemoryEventBus();
 
   // PostHog by default when a key is configured; no-op otherwise -- same
@@ -171,9 +170,10 @@ async function buildServices(): Promise<Services> {
   // two-branch "env var truthy picks the real adapter, else a harmless
   // local fallback" shape as the analytics branch above (see
   // admin-auth-03-route-and-mutation-gating.yaml). CLERK_SECRET_KEY is also
-  // the single signal apps/reference-storefront/app/layout.tsx and
-  // app/admin/layout.tsx use to decide whether to render any Clerk UI at
-  // all -- clerkMiddleware()/<ClerkProvider> both throw immediately when
+  // the single signal apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+  // uses to decide whether to render <ClerkProvider/> at all (the
+  // demo-agnostic app/(landing)/layout.tsx needs no Clerk UI at all, since
+  // no admin route lives outside a demo) -- clerkMiddleware()/<ClerkProvider> both throw immediately when
   // Clerk isn't actually configured (confirmed by reading @clerk/nextjs's
   // own source), so every one of those call sites must agree on the same
   // "is Clerk configured" check.
@@ -352,15 +352,20 @@ async function buildServices(): Promise<Services> {
     assignments: createInMemoryServiceAreaProductRepository(),
   });
 
-  // DEMO_BRAND=northline switches the seed to epic 15b's public demo
-  // (Northline Home Tech, a fictional smart-home installer) -- unset (or
-  // any other value) keeps the existing default dragon-merch seed, zero
-  // behavior change. See .pHive/epics/service-demo-theme-public/docs/brand-and-scope.md.
-  if (process.env.DEMO_BRAND === "northline") {
-    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas);
-  } else {
-    await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas, bundles, recommendations, advertising);
-  }
+  // demoSlug picks the seed via the lib/demos.ts registry -- replaces the
+  // old DEMO_BRAND env var (see design-discussion.md §3). isDemoSlug's
+  // guard in getServicesForDemo below guarantees demoSlug is a known key
+  // here, so this lookup can't silently miss.
+  await DEMO_REGISTRY[demoSlug].seed({
+    catalog,
+    marketingCatalog,
+    cms,
+    inventory,
+    serviceAreas,
+    bundles,
+    recommendations,
+    advertising,
+  });
 
   return {
     events,
@@ -387,10 +392,23 @@ async function buildServices(): Promise<Services> {
   };
 }
 
-/** Lazily builds the service graph once per server process and reuses it across requests. */
-export function getServices(): Promise<Services> {
-  if (!servicesPromise) {
-    servicesPromise = buildServices();
+/**
+ * Lazily builds one, genuinely isolated service graph per demo (separate
+ * carts, orders, promotions, everything -- see design-discussion.md §2 on
+ * why the whole graph, not just seed data, must be duplicated per demo) and
+ * reuses it across requests for that same demo. Throws a clear error for an
+ * unknown demo slug rather than silently building an empty/wrong service
+ * graph -- callers should validate with `isDemoSlug` first when the slug
+ * comes from an untrusted source (e.g. a URL route param).
+ */
+export function getServicesForDemo(demoSlug: DemoSlug): Promise<Services> {
+  if (!isDemoSlug(demoSlug)) {
+    throw new Error(`getServicesForDemo: unknown demo slug ${JSON.stringify(demoSlug)}`);
   }
-  return servicesPromise;
+  let promise = servicesByDemo.get(demoSlug);
+  if (!promise) {
+    promise = buildServices(demoSlug);
+    servicesByDemo.set(demoSlug, promise);
+  }
+  return promise;
 }

@@ -1,0 +1,151 @@
+id: demo-routing-04-actions-and-cookies
+epic: commerce-landing-and-demo-routing
+title: "lib/actions.ts demoSlug threading (all 16 actions), demo-namespaced cookies, fixed Stripe redirect URLs"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [demo-routing-02-move-shop-routes, demo-routing-03-move-admin-routes]
+
+description: |
+  This is the genuinely non-mechanical layer of this epic -- read
+  .pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md section 2 (the
+  cross-demo cookie-bleed risk) and section 3 in full before starting.
+
+  Read the WHOLE current apps/reference-storefront/lib/actions.ts (now that both route-move
+  pieces of work have landed, confirm its current state fresh -- it has 16 "use server"
+  actions, none of which currently accept a demoSlug). Read the WHOLE current
+  apps/reference-storefront/lib/cart-cookie.ts, customer-cookie.ts, coupon-cookie.ts,
+  theme-cookie.ts.
+
+  Deliverables:
+
+  1. Cookie namespacing (do this FIRST, since actions depend on it): every cookie name in
+     cart-cookie.ts/customer-cookie.ts/coupon-cookie.ts/theme-cookie.ts gets a demoSlug
+     parameter threaded into its read/write functions, and the actual cookie NAME (not just an
+     internal value) becomes namespaced by demo, e.g. `ml_cart_id__${demoSlug}` instead of a
+     bare `ml_cart_id` -- this is a mandatory correctness fix, not a nicety (see design doc §2
+     for exactly why: two tabs browsing different demos in the same browser would otherwise
+     silently corrupt cart/customer/coupon state across demos, since both demos' cart
+     repositories are genuinely separate and a shared cookie value has no meaning across them).
+
+  2. Every one of the 16 "use server" actions in lib/actions.ts (addToCartAction,
+     addBundleTierToCartAction, applyCouponAction, startCheckoutAction, setThemeAction,
+     createPromotionAction/updatePromotionAction/deactivatePromotionAction,
+     createBundleAction/updateBundleAction/deactivateBundleAction,
+     createRecommendationRuleAction/updateRecommendationRuleAction/deactivateRecommendationRuleAction,
+     createCampaignAction/updateCampaignAction/deactivateCampaignAction,
+     updateAdminUserRoleAction, createCmsPageAction/createMarketingPageAction/
+     updateCmsPageAction/publishCmsPageAction) gains a way to know which demo it's operating
+     on. Since Server Actions bound to a form don't automatically receive route params, thread
+     demoSlug through as a hidden form field (`<input type="hidden" name="demoSlug"
+     value={demoSlug} />`) read from `formData.get("demoSlug")` inside the action, OR via
+     `.bind(null, demoSlug)` at each call site if that reads more naturally for a given
+     action's existing signature -- pick whichever matches how each action is already called
+     from its page(s), and be consistent within a family of related actions (e.g. all 3
+     promotions actions should use the same mechanism as each other).
+
+  3. Every action calls `getServicesForDemo(demoSlug)` instead of the temporary "dragon-merch"
+     shim -- grep the whole file for that shim comment and remove every instance, replacing
+     with the real threaded demoSlug.
+
+  4. Every `revalidatePath()` call (23 total, confirmed during planning research) gets the
+     `/demo/${demoSlug}` prefix spliced into its target path.
+
+  5. Every `redirect()` call with a path target gets the same treatment.
+
+  6. `startCheckoutAction`'s hardcoded Stripe `successUrl`/`cancelUrl` (currently
+     `http://localhost:3000/order/confirmed` and similar) get fixed properly: both the
+     `/demo/${demoSlug}` path prefix AND the actual deployed origin instead of a hardcoded
+     localhost URL -- derive the origin from the request (e.g. Next's `headers()` API reading
+     the `host`/`x-forwarded-host` header, or an environment variable if that's cleaner given
+     how this app is deployed -- check whether any other part of this app already solves "what
+     is my own public origin" and reuse that pattern rather than inventing a new one; if
+     nothing does, use an environment-variable-with-localhost-fallback approach and document it
+     in the code).
+
+  7. Every remaining call site across the moved app pages that invokes one of these 16 actions
+     (via `<form action={...}>`) gets updated to actually supply the demoSlug (the hidden field
+     or the bind, matching whichever mechanism was chosen for that action in step 2) -- this is
+     the final piece that makes the whole demo-routing chain actually work end to end.
+
+acceptance_criteria:
+  - "Given two carts created via addToCartAction on /demo/dragon-merch and /demo/northline respectively in the same browser session, then GET /demo/dragon-merch/cart and GET /demo/northline/cart each show ONLY that demo's own items -- proving cookie namespacing genuinely isolates cart state, not just that both demos independently function"
+  - "Given all 16 actions, when grepped for the temporary 'dragon-merch' shim comment or any remaining bare getServices() call, then zero remain"
+  - "Given all 23 revalidatePath calls and every path-target redirect call, when grepped, then each one includes a demo-prefixed path, not a bare root-level path"
+  - "Given startCheckoutAction is invoked from /demo/dragon-merch/cart, then the Stripe session's success/cancel URLs point at /demo/dragon-merch/... paths on the correct origin, not a hardcoded localhost URL"
+  - "Given the full existing test suite (admin-mutation-guard.test.ts, admin-user-management.test.ts, cms-persistence-wiring.test.ts, etc.), when this story lands, then all are updated/passing against the new demoSlug-aware action signatures -- no test silently broken or skipped"
+
+steps:
+  - id: research
+    description: Re-read the current (post-route-move) lib/actions.ts and all four cookie-helper files in full before writing any code.
+    agent: researcher
+  - id: implement
+    description: Namespace the cookies, thread demoSlug through all 16 actions, fix revalidatePath/redirect targets and the Stripe URLs, and update every calling form across the app, per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write or extend a test proving cross-demo cookie isolation (the first acceptance criterion) with real, observed cart contents per demo, not assumed; update every existing test that constructs an action call to pass the now-required demoSlug.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check every one of the grep-based acceptance criteria (shim comments, revalidatePath/redirect prefixes) and that the Stripe URL fix is genuinely correct, not just plausible.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/commerce-landing-and-demo-routing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: All 16 mutation actions needing demoSlug threading, revalidatePath/redirect fixes, and the Stripe URL fix.
+    - path: apps/reference-storefront/lib/cart-cookie.ts
+      purpose: The cookie-namespacing pattern to establish, then mirror across customer-cookie.ts/coupon-cookie.ts/theme-cookie.ts.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/cart-cookie.ts
+    change: Demo-namespaced cookie name.
+  - file: apps/reference-storefront/lib/customer-cookie.ts
+    change: Demo-namespaced cookie name.
+  - file: apps/reference-storefront/lib/coupon-cookie.ts
+    change: Demo-namespaced cookie name.
+  - file: apps/reference-storefront/lib/theme-cookie.ts
+    change: Demo-namespaced cookie name.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: All 16 actions demoSlug-aware; revalidatePath/redirect/Stripe URL fixes.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/**
+    change: Every form invoking one of the 16 actions updated to supply demoSlug.
+
+design_decisions:
+  - decision: "Cookie namespacing lands in this same piece of work, not as a follow-up."
+    rationale: "Explicitly called out as mandatory, not optional, in design-discussion.md §2 -- deferring it would ship a real, live cross-demo data-corruption bug."
+
+risks:
+  - severity: high
+    description: "This is the highest-risk piece of work in the epic -- missing even one action's demoSlug threading or one cookie's namespacing reintroduces the exact cross-demo bleed-through risk this epic exists partly to prevent."
+    mitigation: "Acceptance criteria are deliberately mechanically-checkable (grep-based) wherever possible, not just 'looks right on manual testing.'"
+
+references:
+  - path: .pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md
+    relevant_excerpt: |
+      §2: the full cross-demo cookie-bleed risk analysis and why this must ship as one
+      mandatory change, not a follow-up.
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: reference_storefront.cross_demo_isolation_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: two-tab cross-demo cart isolation test, real observed cart contents per demo
+  verify_at: integrate
+  owner: tester

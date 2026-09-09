@@ -1,0 +1,119 @@
+id: demo-routing-03-move-admin-routes
+epic: commerce-landing-and-demo-routing
+title: "Move admin route tree under app/demo/[demoSlug]/admin/, wire getServicesForDemo, demo-aware Clerk gating"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [demo-routing-01-services-and-registry]
+
+description: |
+  Read the committed apps/reference-storefront/lib/demos.ts and lib/services.ts
+  (getServicesForDemo) from a prior piece of work in full first.
+
+  This piece of work moves ONLY app/admin (22 page.tsx + 1 layout.tsx + 5 shared form-field
+  components) -- NOT any shopper-facing route (a separate, concurrent piece of work owns those
+  8 trees). The two pieces of work are on disjoint file trees and can land independently.
+
+  Read the WHOLE current apps/reference-storefront/middleware.ts in full (the admin-auth
+  epic's Clerk gating) -- confirm its current `isAdminRoute` matcher pattern and sign-in
+  redirect target.
+
+  Deliverables:
+  1. `git mv apps/reference-storefront/app/admin apps/reference-storefront/app/demo/[demoSlug]/admin`
+     (preserve history).
+  2. Every moved page.tsx (and admin/layout.tsx) reads `demoSlug` from its now-present route
+     params (matching the exact params convention confirmed by the shop-routes piece of work,
+     or independently confirmed against this app's existing dynamic routes if that hasn't
+     landed yet -- check apps/reference-storefront/app/products/[slug]/page.tsx for the
+     pattern), and every `getServices()` call becomes `getServicesForDemo(demoSlug)`, removing
+     the temporary "dragon-merch" shim comment for exactly these files.
+  3. Every hardcoded internal `href`/`Link` across all 22 admin pages + the layout + the 5
+     shared form-field components gets the `/demo/${demoSlug}/admin` prefix spliced in (the
+     "← Admin" back-links, nav links between admin sections, edit/new links, etc.) -- grep
+     each file individually for `href=`, do not rely on memory.
+  4. Update middleware.ts's `isAdminRoute` matcher from `/admin(.*)` to also match
+     `/demo/[^/]+/admin(.*)` (both the pattern AND any redirect-target logic that currently
+     assumes `/admin` -- if the sign-in redirect needs to return the shopper to the SAME demo's
+     admin area after authenticating, thread the demoSlug through Clerk's redirect flow, e.g.
+     via Clerk's own return-to/after-sign-in URL parameter -- research Clerk's current
+     `@clerk/nextjs` API for this if not already obvious from the existing middleware code).
+  5. Do NOT yet update apps/reference-storefront/lib/actions.ts (the same reasoning as the
+     shop-routes piece of work -- a separate, later piece of work handles all 16 actions
+     together once both route-move pieces of work have landed). Leave admin CRUD form
+     submissions calling not-yet-demo-aware actions as-is for now; this is expected and will
+     be fixed next.
+
+acceptance_criteria:
+  - "Given the moved admin tree, when the app builds, then it compiles cleanly with app/demo/[demoSlug]/admin/... in the route manifest and app/admin at the root no longer exists"
+  - "Given a request to /demo/dragon-merch/admin (with a valid dev-default admin session), then it renders correctly using dragon-merch's service graph"
+  - "Given a request to /demo/northline/admin (with a valid dev-default admin session), then it renders correctly using northline's DISTINCT service graph -- prove this by seeding/checking data specific to each demo, not just that both pages load"
+  - "Given an unauthenticated request to /demo/dragon-merch/admin/promotions, then it redirects to sign-in (Clerk gating still enforced at the new path shape)"
+  - "Given every moved admin file's internal href/Link elements, when grepped for hardcoded '/admin' WITHOUT a preceding '/demo/${demoSlug}' or equivalent, then zero such occurrences remain"
+  - "Given the temporary 'dragon-merch' shim comment left by the prior piece of work, when grepped for across the admin tree, then zero remain"
+
+steps:
+  - id: research
+    description: Re-read middleware.ts's current matcher/redirect logic and confirm this app's dynamic-route params convention before writing any code.
+    agent: researcher
+  - id: implement
+    description: Move the admin tree, wire it, and update middleware.ts's matcher/redirect per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Build the app and manually verify, on a dev server with the dev-default admin adapter, that both /demo/dragon-merch/admin and /demo/northline/admin render correctly with distinct data, and that unauthenticated access still redirects to sign-in.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check every moved admin file's internal links were fixed (the grep-based acceptance criterion above) and that Clerk gating genuinely still works at the new path shape.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/commerce-landing-and-demo-routing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/middleware.ts
+      purpose: The admin-auth Clerk gating whose matcher/redirect logic needs updating for the new /demo/[demoSlug]/admin path shape.
+    - path: apps/reference-storefront/app/admin/layout.tsx
+      purpose: The shared admin layout being moved -- confirm its current session-check logic to preserve exactly, only adding demoSlug awareness.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/demo/[demoSlug]/admin/**
+    change: Moved from app/admin (22 pages + layout + 5 form components), wired to getServicesForDemo(demoSlug), internal links fixed.
+  - file: apps/reference-storefront/middleware.ts
+    change: isAdminRoute matcher extended to /demo/[^/]+/admin(.*); sign-in redirect preserves demoSlug.
+
+design_decisions:
+  - decision: "lib/actions.ts is explicitly NOT touched by this piece of work either."
+    rationale: "Same reasoning as the shop-routes piece of work -- handled once, consistently, after both route-move pieces of work land."
+
+risks:
+  - severity: high
+    description: "Getting the Clerk matcher/redirect update wrong could either lock everyone out of every demo's admin, or -- worse -- fail to gate a demo's admin at all, silently reopening the exact live-exploitable gap epic 27 closed."
+    mitigation: "Acceptance criteria explicitly test both the authenticated-renders-correctly case AND the unauthenticated-redirects case at the new path shape, not just one."
+
+references:
+  - path: .pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: "admin moves too, and admin-auth's Clerk gating becomes demo-slug-aware... a
+      dragon-merch admin session has no business seeing northline's promotions."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: reference_storefront.admin_gate_correctness_at_new_paths
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: manual dev-server verification of both authenticated and unauthenticated access at the new admin path shape
+  verify_at: integrate
+  owner: tester
