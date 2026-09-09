@@ -102,6 +102,7 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
         discountTotal={adjustment.discountTotal}
         total={adjustment.total}
         appliedCode={adjustment.appliedCode}
+        themeKey={activeTheme.key}
       />
       {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </>

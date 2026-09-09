@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { notFound } from "next/navigation";
 import type { ComponentInstance } from "@mercatus-liber/cms";
 import { HomeMagazineGrid } from "../../../components/home-magazine-grid";
+import { HomeMaximalistGrid } from "../../../components/home-maximalist-grid";
 import { HomeSpecGrid } from "../../../components/home-spec-grid";
 import { HomeStandardGrid } from "../../../components/home-standard-grid";
 import { InteractionTracker } from "../../../components/interaction-tracker";
@@ -20,6 +21,7 @@ const HOME_TEMPLATES = {
   "home.standard-grid": HomeStandardGrid,
   "home.magazine-grid": HomeMagazineGrid,
   "home.spec-grid": HomeSpecGrid,
+  "home.maximalist-grid": HomeMaximalistGrid,
 } as const;
 
 /**

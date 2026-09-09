@@ -19,6 +19,12 @@ export const DEFAULT_TEMPLATES: LayoutTemplate[] = [
     label: "Long Scroll",
     description: "A single long-scrolling page with all product info inline (eBay-style).",
   },
+  {
+    key: "pdp.spec-sheet",
+    pageType: "pdp",
+    label: "Spec Sheet",
+    description: "Spec-table PDP layout with monospace pricing, per \"Datasheet Storefront\".",
+  },
   // nav -- "nav.top-bar" is today's only current chrome layout and MUST stay first so it
   // remains the deterministic fallback default for the 7 pre-existing bundles.
   {
@@ -32,6 +38,12 @@ export const DEFAULT_TEMPLATES: LayoutTemplate[] = [
     pageType: "nav",
     label: "Rail",
     description: "Fixed left side-rail nav with jump links, per \"Blaze Theme\".",
+  },
+  {
+    key: "nav.blueprint-bar",
+    pageType: "nav",
+    label: "Blueprint Bar",
+    description: "Blueprint-style top nav bar with dot-grid page background, per \"Datasheet Storefront\".",
   },
   // home -- "home.standard-grid" is today's current layout and MUST stay first.
   {
@@ -52,6 +64,12 @@ export const DEFAULT_TEMPLATES: LayoutTemplate[] = [
     label: "Spec Grid",
     description: "Dense datasheet-style grid, per \"Datasheet Storefront\".",
   },
+  {
+    key: "home.maximalist-grid",
+    pageType: "home",
+    label: "Maximalist Grid",
+    description: "Asymmetric bento grid of sticker-style product cards, per \"Blaze Theme\".",
+  },
   // category -- "category.standard-grid" is today's current layout and MUST stay first.
   {
     key: "category.standard-grid",
@@ -70,6 +88,12 @@ export const DEFAULT_TEMPLATES: LayoutTemplate[] = [
     pageType: "category",
     label: "Spec Grid",
     description: "Dense datasheet-style grid, per \"Datasheet Storefront\".",
+  },
+  {
+    key: "category.maximalist-grid",
+    pageType: "category",
+    label: "Maximalist Grid",
+    description: "Uniform grid of sticker-style product cards, per \"Blaze Theme\".",
   },
   // cart -- "cart.standard" is today's current layout and MUST stay first.
   {

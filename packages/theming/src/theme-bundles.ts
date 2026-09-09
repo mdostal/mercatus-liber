@@ -242,8 +242,12 @@ export const THEME_BUNDLES: ThemeBundle[] = [
     defaultTemplatesByPageType: {
       pdp: "pdp.tabbed-detail",
       nav: "nav.rail",
-      home: "home.standard-grid",
-      category: "category.standard-grid",
+      // visual-fidelity-maximalist: previously pointed at the generic
+      // "standard" grid keys, which is why only the nav looked distinct for
+      // this theme (the real bug this fix corrects) -- now points at the
+      // real "Blaze Theme"-specific templates built for this fix.
+      home: "home.maximalist-grid",
+      category: "category.maximalist-grid",
       cart: "cart.standard",
     },
   },
@@ -270,8 +274,18 @@ export const THEME_BUNDLES: ThemeBundle[] = [
       "--shadow-card": "none",
     },
     defaultTemplatesByPageType: {
-      pdp: "pdp.tabbed-detail",
-      nav: "nav.top-bar",
+      // visual-fidelity-datasheet: previously pointed pdp/nav at the
+      // generic shared "pdp.tabbed-detail"/"nav.top-bar" keys, which is why
+      // only home/category/cart looked distinct for this theme -- the real
+      // "unstyled plain HTML" bug this fix corrects (default black links,
+      // pipe-separated nav, no real typography/borders/spec-table PDP
+      // layout). "pdp.tabbed-detail" is genuinely shared with 6 other
+      // bundles (not just "maximalist") and "nav.top-bar" is genuinely
+      // shared with 8 -- both now point at real dedicated templates built
+      // for this fix instead, with zero change to either shared template
+      // or its other consumers.
+      pdp: "pdp.spec-sheet",
+      nav: "nav.blueprint-bar",
       home: "home.spec-grid",
       category: "category.spec-grid",
       cart: "cart.spec-table",

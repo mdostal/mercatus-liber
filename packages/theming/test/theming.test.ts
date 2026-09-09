@@ -71,17 +71,22 @@ describe("theming service", () => {
       );
     });
 
-    it("home also registers home.magazine-grid and home.spec-grid", () => {
+    it("home also registers home.magazine-grid, home.spec-grid, and home.maximalist-grid", () => {
       const theming = createThemingService();
       expect(theming.listTemplates("home").map((t) => t.key)).toEqual(
-        expect.arrayContaining(["home.standard-grid", "home.magazine-grid", "home.spec-grid"]),
+        expect.arrayContaining(["home.standard-grid", "home.magazine-grid", "home.spec-grid", "home.maximalist-grid"]),
       );
     });
 
-    it("category also registers category.magazine-grid and category.spec-grid", () => {
+    it("category also registers category.magazine-grid, category.spec-grid, and category.maximalist-grid", () => {
       const theming = createThemingService();
       expect(theming.listTemplates("category").map((t) => t.key)).toEqual(
-        expect.arrayContaining(["category.standard-grid", "category.magazine-grid", "category.spec-grid"]),
+        expect.arrayContaining([
+          "category.standard-grid",
+          "category.magazine-grid",
+          "category.spec-grid",
+          "category.maximalist-grid",
+        ]),
       );
     });
 

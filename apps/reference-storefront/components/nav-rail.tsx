@@ -3,7 +3,7 @@ import type { ThemeBundle } from "@mercatus-liber/theming";
 import { ThemeSwitcher } from "./theme-switcher";
 import type { DemoSlug } from "../lib/demos";
 
-const RAIL_WIDTH_PX = 220;
+const RAIL_WIDTH_PX = 240;
 
 /**
  * The "nav.rail" template -- a real fixed left side-rail nav with jump
@@ -15,6 +15,16 @@ const RAIL_WIDTH_PX = 220;
  * real CSS media query (a component-scoped <style> block, same technique
  * app/demo/[demoSlug]/layout.tsx already uses for its :root token style) --
  * inline React style objects can't express a media query on their own.
+ *
+ * visual-fidelity-maximalist: enriched with the real ported "Blaze Theme"
+ * mockup CSS (thick 3px borders, hard offset shadows, the Anton/Space Mono
+ * type pairing) -- previously this was the ONLY component with any real
+ * theme-specific styling, and even that was thin `style={{ color: "var(...)"
+ * }}` objects, not the actual rich design language. `nav.rail` is exclusive
+ * to the "maximalist" bundle (no other bundle registers it as its default),
+ * so this file can be restyled freely with zero risk to the other 9
+ * bundles. `mx-`-prefixed classes throughout per this epic's
+ * collision-avoidance convention.
  */
 export function NavRail({
   demoSlug,
@@ -34,95 +44,121 @@ export function NavRail({
   children: ReactNode;
 }) {
   return (
-    <div className="ml-nav-rail-shell">
+    <div className="mx-nav-rail-shell">
       <style>{`
-        .ml-nav-rail-shell { display: flex; align-items: flex-start; }
-        .ml-nav-rail {
+        .mx-nav-rail-shell { display: flex; align-items: flex-start; }
+        .mx-nav-rail {
           position: sticky;
           top: 0;
           width: ${RAIL_WIDTH_PX}px;
           flex: 0 0 ${RAIL_WIDTH_PX}px;
           box-sizing: border-box;
           min-height: 100vh;
-          border-right: 1px solid var(--color-border, #17130F);
+          background: var(--color-accent, #263B8C);
+          border-right: 3px solid var(--color-border, #17130F);
           padding: var(--space-sm, 16px);
+          display: flex;
+          flex-direction: column;
         }
-        .ml-nav-rail-main { flex: 1 1 auto; min-width: 0; padding-left: var(--space-md, 32px); }
-        .ml-nav-rail-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs, 8px); }
+        .mx-nav-rail-main { flex: 1 1 auto; min-width: 0; padding-left: var(--space-md, 32px); }
+        .mx-wordmark {
+          display: inline-block;
+          font-family: 'Anton', 'Archivo Black', Impact, ui-sans-serif, sans-serif;
+          font-size: 22px;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+          background: var(--color-primary, #FF4515);
+          color: var(--color-text, #17130F);
+          border: 3px solid var(--color-border, #17130F);
+          border-radius: 8px;
+          padding: 3px 12px 5px;
+          box-shadow: 4px 4px 0 var(--color-border, #17130F);
+          text-decoration: none;
+          margin-bottom: var(--space-md, 24px);
+        }
+        .mx-nav-rail-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+        .mx-nav-rail-links a {
+          display: block;
+          color: #F3EFE4;
+          text-decoration: none;
+          font-family: 'Space Mono', ui-monospace, monospace;
+          font-weight: 700;
+          font-size: 12.5px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          padding: 9px 8px;
+          border-radius: 6px;
+          border: 2px solid transparent;
+          transition: background 120ms ease, border-color 120ms ease;
+        }
+        .mx-nav-rail-links a:hover {
+          background: var(--color-background, #EEF0E6);
+          color: var(--color-text, #17130F);
+          border-color: var(--color-border, #17130F);
+        }
+        .mx-nav-rail-links li.mx-rail-divider { border-top: 2px dashed rgba(243,239,228,0.35); margin: 8px 0; }
+        .mx-rail-switcher {
+          margin-top: var(--space-md, 24px);
+          border: 3px solid var(--color-border, #17130F);
+          border-radius: 10px;
+          background: var(--color-background, #EEF0E6);
+          box-shadow: 4px 4px 0 var(--color-border, #17130F);
+          padding: 10px;
+          font-family: 'Space Mono', ui-monospace, monospace;
+          font-size: 12px;
+          color: var(--color-text, #17130F);
+        }
         @media (max-width: 768px) {
-          .ml-nav-rail-shell { flex-direction: column; }
-          .ml-nav-rail {
+          .mx-nav-rail-shell { flex-direction: column; }
+          .mx-nav-rail {
             position: static;
             width: 100%;
             flex: 1 1 auto;
             min-height: 0;
             border-right: none;
-            border-bottom: 1px solid var(--color-border, #17130F);
+            border-bottom: 3px solid var(--color-border, #17130F);
           }
-          .ml-nav-rail-links { flex-direction: row; flex-wrap: wrap; }
-          .ml-nav-rail-main { padding-left: 0; padding-top: var(--space-sm, 16px); }
+          .mx-nav-rail-links { flex-direction: row; flex-wrap: wrap; }
+          .mx-nav-rail-main { padding-left: 0; padding-top: var(--space-sm, 16px); }
         }
       `}</style>
-      <nav className="ml-nav-rail" aria-label="Main">
-        <a
-          href={`/demo/${demoSlug}`}
-          style={{
-            display: "block",
-            fontWeight: 700,
-            textDecoration: "none",
-            color: "var(--color-primary)",
-            marginBottom: "var(--space-sm, 16px)",
-            fontSize: "var(--font-size-heading-md, 1.5rem)",
-          }}
-        >
+      <nav className="mx-nav-rail" aria-label="Main">
+        <a href={`/demo/${demoSlug}`} className="mx-wordmark">
           {displayName}
         </a>
-        <ul className="ml-nav-rail-links">
+        <ul className="mx-nav-rail-links">
           {navLinks.map((link) => (
             <li key={link.href}>
-              <a href={link.href} style={{ color: "var(--color-primary)" }}>
-                {link.label}
-              </a>
+              <a href={link.href}>{link.label}</a>
             </li>
           ))}
           <li>
-            <a href={`/demo/${demoSlug}/cart`} style={{ color: "var(--color-primary)" }}>
-              Cart
-            </a>
+            <a href={`/demo/${demoSlug}/cart`}>Cart</a>
           </li>
           <li>
-            <a href={`/demo/${demoSlug}/search`} style={{ color: "var(--color-primary)" }}>
-              Search
-            </a>
+            <a href={`/demo/${demoSlug}/search`}>Search</a>
           </li>
           <li>
-            <a href={`/demo/${demoSlug}/account`} style={{ color: "var(--color-primary)" }}>
-              Account
-            </a>
+            <a href={`/demo/${demoSlug}/account`}>Account</a>
           </li>
           <li>
-            <a href={`/demo/${demoSlug}/admin/plugins`} style={{ color: "var(--color-primary)" }}>
-              Admin: Plugins
-            </a>
+            <a href={`/demo/${demoSlug}/admin/plugins`}>Admin: Plugins</a>
           </li>
+          <li className="mx-rail-divider" aria-hidden="true" />
           <li>
-            <a href="/" style={{ color: "var(--color-primary)" }}>
-              &larr; Mercatus Liber home
-            </a>
+            <a href="/">&larr; Mercatus Liber home</a>
           </li>
           {otherDemos.map((other) => (
             <li key={other.slug}>
-              <a href={`/demo/${other.slug}`} style={{ color: "var(--color-primary)" }}>
-                Switch to {other.displayName}
-              </a>
+              <a href={`/demo/${other.slug}`}>Switch to {other.displayName}</a>
             </li>
           ))}
         </ul>
-        <div style={{ marginTop: "var(--space-md, 32px)" }}>
+        <div className="mx-rail-switcher">
           <ThemeSwitcher demoSlug={demoSlug} bundles={bundles} activeKey={activeThemeKey} />
         </div>
       </nav>
-      <div className="ml-nav-rail-main">{children}</div>
+      <div className="mx-nav-rail-main">{children}</div>
     </div>
   );
 }
