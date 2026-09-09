@@ -1,0 +1,44 @@
+name: data-backup-restore-and-adapter-portability
+title: "Real persistence env-wiring, SQLite backup/restore, and adapter-portability docs"
+description: >
+  Reframed by a real, confirmed finding: apps/reference-storefront hardcodes an in-memory
+  SQLite adapter with ZERO env-var branch to any other persistence option -- every demo's data
+  is lost on every restart, so there was nothing to back up yet. This epic wires real durable
+  persistence (DATABASE_URL -> Postgres, SQLITE_FILE_PATH -> file-backed SQLite, mirroring the
+  existing 3-state adapter-selection pattern every other subsystem already uses), builds a real
+  SQLite backup/restore mechanism (scoped there deliberately -- Postgres/Shopify already have
+  their own mature native tooling), and extends epic 38's already-accurate
+  adapters-and-portability.md page rather than duplicating it. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [persistence, ops, docs]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    persistence: "Real env-var wiring for durable storage -- the actual prerequisite this epic found missing"
+    ops: "Backup/restore is an operator action, not a shopper/admin-UI feature"
+    docs: "Extends the existing epic-38 adapters-and-portability page, doesn't duplicate it"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: backup-restore-01-persistence-wiring-and-backup-restore
+    title: "DATABASE_URL/SQLITE_FILE_PATH env wiring, admin/settings row, real SQLite backup/restore"
+    complexity: high
+    depends_on: []
+  - id: backup-restore-02-capability-matrix-docs-extension
+    title: "Extend epic-38's adapters-and-portability.md, README Configuration section"
+    complexity: low
+    depends_on: [backup-restore-01-persistence-wiring-and-backup-restore]
+  - id: backup-restore-03-verification-and-closeout
+    title: "Live verification (restart survival, backup/restore round-trip), closeout, merge"
+    complexity: low
+    depends_on: [backup-restore-02-capability-matrix-docs-extension]
