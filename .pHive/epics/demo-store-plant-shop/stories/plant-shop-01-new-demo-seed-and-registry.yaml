@@ -1,0 +1,113 @@
+id: plant-shop-01-new-demo-seed-and-registry
+epic: demo-store-plant-shop
+title: "New lib/seed-broadleaf.ts: 4 categories, 8+ real products, tiered variant, registry entry"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/demo-store-plant-shop/docs/design-discussion.md in full first.
+
+  Read apps/reference-storefront/lib/seed-northline.ts in full as your structural template
+  (module shape: one exported async seed function taking the services it needs, real
+  createCategory/createProduct/generateSkus calls) -- this new demo is closer in spirit to
+  lib/seed.ts's physical-goods-with-variants pattern than to seed-northline's
+  service-area-based one, so also read lib/seed.ts's DEMO_PRODUCTS section for the
+  generateSkus-with-real-variant-attributes convention (color/size) to follow for the tiered
+  product below.
+
+  Create apps/reference-storefront/lib/seed-broadleaf.ts, exporting `seedBroadleafDemo(deps)`.
+  Build a real 4-category catalog:
+    - "Plants" -- real plant products, e.g. Trailing Pothos, Snake Plant, Fiddle Leaf Fig. Give
+      the Trailing Pothos real tiered pot-size variants via generateSkus (small/medium/large --
+      at least 3 real SKUs at 3 distinct prices, e.g. $12/$18/$32).
+    - "Ceramics & Planters" -- e.g. a speckled ceramic planter, a hand-thrown stoneware mug set.
+    - "Textiles & Fiber Arts" -- e.g. a hand-woven wall hanging, a chunky knit throw blanket.
+    - "Paper & Ephemera" -- e.g. a letterpress card set, a botanical print.
+  At least 8 real products total across the 4 categories, real names/descriptions/prices in
+  cents, no lorem ipsum. Create a real "home" CMS page (pageType: "home", slug: "home" -- MUST
+  be exactly "home", read seed-northline.ts's own comment on why) with a hero-banner section and
+  a product-grid section referencing a representative product spread, same pattern as
+  seed-northline.ts's own home page.
+
+  Register the new demo: in apps/reference-storefront/lib/demos.ts, add `"broadleaf"` to
+  DEMO_SLUGS, import seedBroadleafDemo from the new module, and add a DEMO_REGISTRY entry:
+  `{ slug: "broadleaf", displayName: "Broadleaf & Co.", defaultThemeKey: "vibrant", seed: (deps) => seedBroadleafDemo(deps) }`
+  -- pass through whichever of DemoSeedDependencies your seed function actually needs (likely
+  catalog/marketingCatalog/cms only, mirroring seedNorthlineDemo's narrower signature rather
+  than seedCatalog's full one -- your call based on what this demo's content actually needs).
+
+acceptance_criteria:
+  - "Given apps/reference-storefront/lib/seed-broadleaf.ts, then it exports a real seed function creating exactly 4 categories (Plants, Ceramics & Planters, Textiles & Fiber Arts, Paper & Ephemera) with >=8 real products total, zero lorem ipsum"
+  - "Given the Trailing Pothos product (or equivalent tiered plant), then catalog.listSkusByProduct returns >=3 real SKUs at 3 distinct prices"
+  - "Given DEMO_SLUGS/DEMO_REGISTRY after this story, then broadleaf is a real, fully registered third demo with defaultThemeKey 'vibrant' and a real displayName"
+  - "Given a real dev server, then /demo/broadleaf renders a real home page with real product-grid content, with zero code changes needed to any shared nav/theme component"
+  - "Given the full reference-storefront test suite and typecheck, then both stay green, and print-shop/northline are both completely unaffected (their own tests still pass unchanged)"
+
+steps:
+  - id: research
+    description: Read seed-northline.ts and lib/seed.ts's DEMO_PRODUCTS/generateSkus pattern, and demos.ts's exact current registry shape, before writing anything.
+    agent: researcher
+  - id: implement
+    description: Create the new seed module and registry entry per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion against a real running dev server.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm print-shop and northline's seed files/tests are completely untouched, confirm no lorem ipsum, confirm real distinct pricing on the tiered variant.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/demo-store-plant-shop.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/seed-northline.ts
+      purpose: Structural template for the new demo's seed module shape.
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: generateSkus-with-real-variant-attributes convention to follow for the tiered plant product.
+    - path: apps/reference-storefront/lib/demos.ts
+      purpose: DEMO_SLUGS/DEMO_REGISTRY -- where the new demo gets registered.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/seed-broadleaf.ts
+    change: "New file -- the full new demo's seed data."
+  - file: apps/reference-storefront/lib/demos.ts
+    change: "Add broadleaf to DEMO_SLUGS/DEMO_REGISTRY."
+
+design_decisions:
+  - decision: "New standalone seed-broadleaf.ts module, not a branch inside an existing seed file."
+    rationale: "Matches this repo's established one-module-per-demo convention (seed.ts for print-shop, seed-northline.ts for northline)."
+
+risks:
+  - severity: low
+    description: "A third demo registered incorrectly could break the existing demo-routing Map-based service registry."
+    mitigation: "Acceptance criteria explicitly requires confirming print-shop/northline are completely unaffected."
+
+references:
+  - path: .pHive/epics/demo-store-plant-shop/docs/design-discussion.md
+    relevant_excerpt: "§1a-b: the resolved brand/category/module-shape design questions this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: broadleaf_demo.real_categories_and_products
+  direction: up
+  unit: count
+  baseline: 0
+  target: 8
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Real product count across broadleaf's 4 categories, verified by test"
+  verify_at: integrate
+  owner: tester

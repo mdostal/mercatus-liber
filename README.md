@@ -96,9 +96,15 @@ and payment keys to get real behavior instead of a local stand-in.
   keys above; only meaningful alongside `SANITY_PROJECT_ID`.
 
 **Demo content**:
-- `DEMO_BRAND` — when set to `northline`, seeds the app with the "Northline Home Tech" public
-  demo content instead of the default print-shop seed. Any other value (including unset)
-  keeps the default seed; not required for normal operation.
+- Demo selection is routed, not env-var-driven — `apps/reference-storefront/lib/demos.ts`'s
+  `DEMO_REGISTRY` holds three real public demo stores, each picked live via the
+  `/demo/[demoSlug]/...` route param (see `.pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md`
+  §3; this replaced an earlier `DEMO_BRAND` env var, no longer read anywhere): `print-shop`
+  ("The Print Shop", embroidery/custom prints, opens on the `editorial` theme by default),
+  `northline` ("Northline Home Tech", a smart-home installer, opens on the `northline` theme by
+  default), and `broadleaf` ("Broadleaf & Co.", an eclectic artisan/handmade-goods shop across
+  Plants, Ceramics & Planters, Textiles & Fiber Arts, and Paper & Ephemera, opens on the
+  `vibrant` theme by default).
 
 **Docs site link**:
 - `NEXT_PUBLIC_DOCS_URL` — the public URL of the deployed `apps/docs` documentation site,

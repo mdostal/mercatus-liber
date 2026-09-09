@@ -40,7 +40,7 @@ blow-by-blow ledger this summarizes.
 
 ## Where things stand today
 
-**Done — the real, working core** (see `.pHive/planning/epic-backlog.md` epics 1–33, 40 for the
+**Done — the real, working core** (see `.pHive/planning/epic-backlog.md` epics 1–37, 40 for the
 full detail on every item below):
 
 - Catalog, cart, checkout, Stripe payments, orders — the base commerce loop, with two real
@@ -61,17 +61,22 @@ full detail on every item below):
 - A from-scratch competitive-feature research pass (epic 40) against Shopify/BigCommerce/
   WooCommerce, which is what grounds most of the "wanted, not started" list below in real
   research rather than guesswork.
+- **`storefront-design-system-v2`** (epic 34) — three genuinely independent, professionally
+  designed visual themes (not a token palette swap) built via a repeatable blind-parallel-
+  design-agent process, now real switchable, component-level themes (`editorial`/`maximalist`/
+  `datasheet`) any demo store can use, alongside the 7 pre-existing bundles.
+- **Three demo stores with real depth** (epics 35–37) — a true navigation menu, a deep product
+  catalog, and genuine interactive actions across all three: Northline Home Tech (smart-home
+  installer, 4 categories, 8 real service-area location pages, tiered service SKUs, `northline`
+  theme by default), The Print Shop (embroidery/custom prints/coasters, reconceived from the
+  earlier dragon-branded placeholder demo and renamed to the `print-shop` slug, 4 categories,
+  per-line-item customization notes, `editorial` theme by default), and Broadleaf & Co. (a new
+  eclectic artisan/handmade-goods shop across Plants, Ceramics & Planters, Textiles & Fiber
+  Arts, and Paper & Ephemera, 9 real products including a tiered Trailing Pothos in 3 pot
+  sizes, `vibrant` theme by default).
 
 **In progress** (see the backlog for exact story-level status):
 
-- **`storefront-design-system-v2`** — three genuinely independent, professionally designed
-  visual themes (not a token palette swap) built via a repeatable blind-parallel-design-agent
-  process, becoming real switchable, component-level themes any demo store can use.
-- **Three demo stores getting real depth** — a true navigation menu, a deep product catalog, and
-  genuine interactive actions (not the thin, mostly-unlinked state they were in before): Northline
-  Home Tech (smart-home installer), The Print Shop (embroidery/custom prints, reconceived from
-  the earlier dragon-branded placeholder demo, since renamed to the `print-shop` slug), and a
-  new eclectic artisan/handmade-goods shop.
 - **Fulfillment & shipping** — a new `@mercatus-liber/fulfillment` subsystem (who/how an order
   gets produced — self-fulfilled by default, with real Printful and Printify print-on-demand
   adapters) and a new `@mercatus-liber/shipping` subsystem (rate shopping, label purchase,

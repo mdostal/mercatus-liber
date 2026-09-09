@@ -1,0 +1,80 @@
+id: plant-shop-02-verification-and-closeout
+epic: demo-store-plant-shop
+title: "Live verification, docs update, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [plant-shop-01-new-demo-seed-and-registry]
+
+description: |
+  Read the prior story's committed changes in full first.
+
+  1. Live verification against a real dev server: browse all 4 broadleaf categories and at
+     least 3 real PDPs (including the tiered plant product, confirming all 3 pot-size variants
+     are selectable) via the real nav (not direct URL access), add a tiered-variant item to
+     cart and attempt real checkout (expect the same Stripe-key-absent failure point as every
+     other demo -- that's success), confirm a fresh no-cookie visit shows the vibrant theme by
+     default, re-verify print-shop and northline are both completely unaffected by this epic
+     (their nav/categories/theme defaults/campaign links all unchanged).
+  2. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  3. Update README.md and VISION.md's demo-roster mentions to include the new 3rd demo
+     (currently they should only mention print-shop/northline after epic 36 -- add broadleaf).
+  4. Update .pHive/planning/epic-backlog.md: change epic 37's row to "done (2/2 stories
+     complete)", with a description in the same style/detail as surrounding rows (34, 35, 36)
+     naming the 4 categories, the tiered plant product, and the default theme.
+  5. Commit and merge feat/demo-store-plant-shop into master with --no-ff, mirroring the "Merge
+     epic: <name> (epic NN)" convention from prior epic merges.
+
+acceptance_criteria:
+  - "Given a real dev server, then all 4 broadleaf categories and the tiered plant product's 3 variants render and are selectable via the real nav"
+  - "Given a real checkout attempt with a tiered item in cart, then it reaches the same expected failure point as every other demo"
+  - "Given a fresh no-cookie visit to broadleaf, then the vibrant theme is active by default"
+  - "Given print-shop and northline re-checked after this epic, then both are completely unchanged"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given .pHive/planning/epic-backlog.md, then epic 37's row reads done (2/2 stories complete) with an accurate, specific description"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Run all verification steps and make the docs/backlog updates per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and the merge is clean.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/demo-store-plant-shop, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 37's row updated to done.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 37 done with an accurate description.
+  - file: README.md
+    change: Add broadleaf to the demo roster mentions.
+  - file: VISION.md
+    change: Add broadleaf to the demo roster mentions.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/demo-store-plant-shop/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's live verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."
