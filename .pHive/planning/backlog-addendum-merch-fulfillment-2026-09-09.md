@@ -1,5 +1,10 @@
 # Backlog addendum — dropship/POD fulfillment (2026-09-09)
 
+> **FOLDED IN 2026-09-09.** Epics A/B/C below are now real rows in `.pHive/planning/epic-backlog.md`
+> as epics 41 (`fulfillment-routing`), 42 (`adapter-printful`), 43 (`adapter-printify`). This file
+> is kept as the full research record (Printful/Printify API details, unverified items to confirm
+> during planning) — read it before planning those epics, don't re-research from scratch.
+
 **Why a separate file, not a direct edit to `epic-backlog.md`:** that file has live, frequent,
 uncommitted edits in progress from a concurrent session (epic 40's research squad and the
 33-40 wave landed today). This addendum is written standalone to avoid colliding with that
