@@ -1,5 +1,6 @@
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
+import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 
@@ -10,11 +11,19 @@ import type { ServiceAreaService } from "@mercatus-liber/service-areas";
  * visual identity from All That Technology (the real client epic 15a's
  * strictly-internal seed uses instead).
  *
- * These are installation SERVICES, not stocked physical goods -- inventory
- * (subsystem 11) is intentionally not seeded here; the reserve/commit/
- * release model exists for stocked SKUs, and "never throws, oversell
- * allowed by default" means checkout still works fine for a SKU with no
- * explicit stock record (see docs/subsystems/11-inventory.md).
+ * These are installation SERVICES, not stocked physical goods. **Correction,
+ * found post-deployment**: the comment that used to be here claimed
+ * inventory was "intentionally not seeded" and that an unset stock record
+ * behaves as always-available -- that was never actually true.
+ * packages/inventory/src/subscriber.ts's `catalog.sku.created` handler
+ * unconditionally calls `setStock(id, 0)` the instant every SKU is created
+ * (a real, deliberately-tested contract, not a bug -- see
+ * packages/inventory/test/subscriber.test.ts), so every service SKU here
+ * silently got a real, tracked onHand=0 record and displayed "in stock: 0" /
+ * schema.org OutOfStock in production. Fixed the same way lib/seed.ts's own
+ * SERVICE_DEMO_SKUS already does for service-style SKUs: an explicit
+ * `setStock(sku.id, 999)` right after creation, a sentinel for "always
+ * bookable," not a real physical count.
  *
  * Epic demo-store-northline-depth, story northline-depth-01: 4 real
  * categories (not 1 catch-all), real tiered SKU variants for 2 services
@@ -222,6 +231,7 @@ export async function seedNorthlineDemo(
   marketingCatalog: MarketingCatalogService,
   cms: CmsService,
   serviceAreas: ServiceAreaService,
+  inventory: InventoryAdapter,
 ): Promise<void> {
   const categoryIdBySlug = new Map<string, string>();
   for (const category of DEMO_CATEGORIES) {
@@ -252,7 +262,19 @@ export async function seedNorthlineDemo(
     await catalog.publishProduct(product.id);
 
     for (const tier of service.tiers) {
-      await catalog.generateSkus(product.id, { package: [tier.package] }, { amount: tier.priceCents, currency: "USD" });
+      const skus = await catalog.generateSkus(product.id, { package: [tier.package] }, { amount: tier.priceCents, currency: "USD" });
+      // Real bug found post-deployment: inventory's own catalog.sku.created
+      // subscriber (packages/inventory/src/subscriber.ts) unconditionally
+      // sets every new SKU's stock to a real, tracked 0 the instant it's
+      // created -- there is no "untracked, always available" state for a
+      // SKU that's never had setStock called after creation, contrary to
+      // this file's own prior (incorrect) assumption. Matches the existing
+      // convention for service-style SKUs already used in lib/seed.ts's
+      // SERVICE_DEMO_SKUS (stockUnits: 999) -- a large sentinel standing in
+      // for "always bookable," not a real physical stock count.
+      for (const sku of skus) {
+        await inventory.setStock(sku.id, 999);
+      }
     }
 
     const categoryId = categoryIdBySlug.get(service.categorySlug);

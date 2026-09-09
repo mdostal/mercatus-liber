@@ -125,7 +125,7 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
     // finally actually applying its own existing bundle by default (design-
     // discussion.md §1c).
     defaultThemeKey: "northline",
-    seed: (deps) => seedNorthlineDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.serviceAreas),
+    seed: (deps) => seedNorthlineDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.serviceAreas, deps.inventory),
   },
   broadleaf: {
     slug: "broadleaf",
@@ -137,6 +137,6 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
     // fit for a colorful, eclectic craft-market identity (design-
     // discussion.md §1d).
     defaultThemeKey: "vibrant",
-    seed: (deps) => seedBroadleafDemo(deps.catalog, deps.marketingCatalog, deps.cms),
+    seed: (deps) => seedBroadleafDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.inventory),
   },
 };

@@ -1,5 +1,6 @@
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
+import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 
 /**
@@ -13,11 +14,20 @@ import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog"
  * Physical stocked goods, closer in spirit to lib/seed.ts's
  * DEMO_PRODUCTS/generateSkus pattern than to lib/seed-northline.ts's
  * service-area-based one -- so no ServiceAreaService dependency here.
- * Inventory (subsystem 11) is intentionally not seeded, same as
- * seed-northline.ts: the reserve/commit/release model exists for stocked
- * SKUs, but "never throws, oversell allowed by default" means checkout
- * still works fine for a SKU with no explicit stock record.
+ *
+ * **Correction, found post-deployment**: this used to claim inventory was
+ * "intentionally not seeded" on the assumption an unset SKU behaves as
+ * always-available -- not true. packages/inventory/src/subscriber.ts's
+ * `catalog.sku.created` handler unconditionally sets every new SKU's stock
+ * to a real, tracked 0 the instant it's created (a deliberate, tested
+ * contract -- see packages/inventory/test/subscriber.test.ts), so every
+ * one of these real physical products silently showed "in stock: 0" /
+ * schema.org OutOfStock. Fixed with a real, explicit small-batch stock
+ * count per SKU (15 units -- a plausible small-batch quantity, not an
+ * "unlimited" sentinel the way Northline's services use, since these are
+ * genuinely finite handmade goods).
  */
+const DEFAULT_STOCK_UNITS = 15;
 
 interface DemoCategory {
   slug: string;
@@ -150,7 +160,12 @@ const DEMO_PRODUCTS: DemoProduct[] = [
   },
 ];
 
-export async function seedBroadleafDemo(catalog: CatalogService, marketingCatalog: MarketingCatalogService, cms: CmsService): Promise<void> {
+export async function seedBroadleafDemo(
+  catalog: CatalogService,
+  marketingCatalog: MarketingCatalogService,
+  cms: CmsService,
+  inventory: InventoryAdapter,
+): Promise<void> {
   const categoryIdBySlug = new Map<string, string>();
   for (const category of DEMO_CATEGORIES) {
     const created = await marketingCatalog.createCategory({
@@ -174,7 +189,10 @@ export async function seedBroadleafDemo(catalog: CatalogService, marketingCatalo
     await catalog.publishProduct(product.id);
 
     for (const tier of demo.tiers) {
-      await catalog.generateSkus(product.id, { size: [tier.size] }, { amount: tier.priceCents, currency: "USD" });
+      const skus = await catalog.generateSkus(product.id, { size: [tier.size] }, { amount: tier.priceCents, currency: "USD" });
+      for (const sku of skus) {
+        await inventory.setStock(sku.id, DEFAULT_STOCK_UNITS);
+      }
     }
 
     const categoryId = categoryIdBySlug.get(demo.categorySlug);
