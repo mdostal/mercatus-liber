@@ -35,21 +35,83 @@ export function ThemeSwitcher({
   const formRef = useRef<HTMLFormElement>(null);
 
   return (
-    <form action={setThemeAction} ref={formRef} style={{ marginTop: 8 }}>
+    <form action={setThemeAction} ref={formRef} className="ts-form">
+      <style>{THEME_SWITCHER_CSS}</style>
       <input type="hidden" name="demoSlug" value={demoSlug} />
-      <label>
-        Theme:{" "}
-        <select name="theme" defaultValue={activeKey} onChange={() => formRef.current?.requestSubmit()}>
+      <label className="ts-pill">
+        <span className="ts-label">Theme</span>
+        <select
+          className="ts-select"
+          name="theme"
+          defaultValue={activeKey}
+          onChange={() => formRef.current?.requestSubmit()}
+        >
           {bundles.map((bundle) => (
             <option key={bundle.key} value={bundle.key}>
               {DESIGN_NAMES[bundle.key] ?? bundle.label} ({bundle.key})
             </option>
           ))}
         </select>
+        <svg className="ts-chevron" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M5.5 7.5 10 12l4.5-4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </label>
       <noscript>
-        <button type="submit">Apply</button>
+        <button type="submit" className="ts-apply">
+          Apply
+        </button>
       </noscript>
     </form>
   );
 }
+
+/**
+ * theme-switcher-polish: pure CSS/markup pass -- setThemeAction's props and
+ * the underlying <select>/onChange auto-submit behavior above are byte-for-
+ * byte unchanged. Styled entirely off the ACTIVE theme's own CSS custom
+ * properties (var(--color-primary)/--color-border/--color-text/--radius/
+ * --font-family, each with a sensible literal fallback for the 6 bundles
+ * that don't define the newer --color-border/--color-muted tokens -- see
+ * theme-bundles.ts's own doc comment on that gap) so this renders correctly
+ * inside all 10 themes, not just one -- this component has no idea which
+ * theme is active beyond the CSS variables already in scope from
+ * app/demo/[demoSlug]/layout.tsx's `:root { ... }` style tag.
+ */
+const THEME_SWITCHER_CSS = `
+  .ts-form { display: inline-flex; margin-top: 4px; }
+  .ts-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    background: color-mix(in srgb, var(--color-background) 92%, var(--color-text) 8%);
+    border: 1px solid var(--color-border, var(--color-muted, currentColor));
+    border-radius: calc(var(--radius, 6px) + 4px);
+    padding: 5px 10px 5px 12px;
+    font-family: var(--font-family, inherit);
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+  .ts-label {
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-muted, var(--color-text));
+    opacity: 0.75;
+  }
+  .ts-select {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 2px 18px 2px 2px;
+    cursor: pointer;
+  }
+  .ts-select:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .ts-chevron { position: absolute; right: 9px; width: 12px; height: 12px; color: var(--color-muted, var(--color-text)); pointer-events: none; }
+  .ts-apply { margin-left: 6px; font-family: inherit; font-size: 0.78rem; }
+`;

@@ -262,6 +262,31 @@ export default async function DemoLayout({
           minHeight: "100vh",
         }}
       >
+        {/*
+          landing-visual-glow-up (architecture story): "additively" links
+          every demo route to the new /architecture story page, same as the
+          real nav-meta links (Admin: Plugins / <- Mercatus Liber home /
+          Switch to {other demo}) those three nav templates already render.
+          Deliberately rendered HERE rather than inside nav-top-bar.tsx/
+          nav-rail.tsx/nav-blueprint-bar.tsx -- this epic's own scope rules
+          exclude editing any nav-*.tsx component file, so this is a small,
+          self-contained addition at the one shared call site instead, kept
+          unobtrusive (a single right-aligned line) so it reads consistently
+          across all three nav templates without needing to touch any of
+          them.
+        */}
+        <div
+          style={{
+            textAlign: "right",
+            fontSize: "0.74rem",
+            fontFamily: "var(--font-family)",
+            padding: "2px 0 6px",
+          }}
+        >
+          <a href="/architecture" style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}>
+            How this works &rarr;
+          </a>
+        </div>
         <NavChrome
           demoSlug={demoSlug}
           displayName={DEMO_REGISTRY[demoSlug].displayName}
