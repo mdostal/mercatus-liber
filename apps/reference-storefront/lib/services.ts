@@ -36,6 +36,14 @@ import {
 } from "@mercatus-liber/checkout-orders";
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
 import {
+  createFulfillmentService,
+  createInMemoryFulfillmentRoutingRepository,
+  createManualFulfillmentAdapter,
+  MANUAL_FULFILLMENT_PROVIDER,
+  type FulfillmentRoutingRepository,
+  type FulfillmentService,
+} from "@mercatus-liber/fulfillment";
+import {
   createDefaultBiAdapter,
   createInMemoryBiEventLogRepository,
   registerBiEventLogSync,
@@ -129,6 +137,17 @@ export interface Services {
   advertising: AdvertisingService;
   bi: BiMetricsAdapter;
   adminAuth: AdminAuthAdapter;
+  fulfillment: FulfillmentService;
+  /**
+   * Exposed alongside `fulfillment` (not just wrapped inside it) so the
+   * admin fulfillment surface can show a line's routed provider (defaulting
+   * to "manual" -- see FulfillmentRoutingRepository) even before any
+   * FulfillmentLineRecord exists for it -- FulfillmentService itself only
+   * ever reports routing indirectly, via records an adapter has already
+   * created (listForOrder/submitOrder), see packages/fulfillment/src/
+   * service.ts.
+   */
+  fulfillmentRouting: FulfillmentRoutingRepository;
 }
 
 /**
@@ -441,6 +460,25 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   });
   registerBiEventLogSync({ events, eventLog: biEventLog });
 
+  // @mercatus-liber/fulfillment (subsystem 41, fulfillment-02) -- the manual
+  // adapter is the only provider wired for this story: no real POD/dropship
+  // provider adapter exists yet (epics 42-43 add the env-var branch to a
+  // real provider later, same "env var truthy picks the real thing, else a
+  // harmless local default" shape as every other adapter above). `checkout`
+  // structurally satisfies fulfillment's own narrow OrderLookup interface
+  // already (getOrder(id) -> { id, items: { skuId, quantity }[] }) -- no
+  // adapter object needed, same structural-satisfaction pattern as
+  // account/inventory/bi above. Every SKU implicitly routes to "manual"
+  // unless a mapping is explicitly set via fulfillmentRouting.setProviderForSku
+  // (no admin UI for overriding routing exists yet -- out of scope for this
+  // story, see docs/subsystems/22-fulfillment.md).
+  const fulfillmentRouting = createInMemoryFulfillmentRoutingRepository();
+  const fulfillment = createFulfillmentService({
+    orders: checkout,
+    routing: fulfillmentRouting,
+    adapters: { [MANUAL_FULFILLMENT_PROVIDER]: createManualFulfillmentAdapter() },
+  });
+
   const plugins = createPluginRegistry();
   const orderNotificationPlugin = createOrderNotificationPlugin();
   plugins.register(orderNotificationPlugin);
@@ -489,6 +527,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     advertising,
     bi,
     adminAuth,
+    fulfillment,
+    fulfillmentRouting,
   };
 }
 

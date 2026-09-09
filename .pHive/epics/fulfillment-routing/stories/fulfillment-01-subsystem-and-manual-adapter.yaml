@@ -1,0 +1,133 @@
+id: fulfillment-01-subsystem-and-manual-adapter
+epic: fulfillment-routing
+title: "New @mercatus-liber/fulfillment: contract, routing repository, manual default adapter"
+status: pending
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/fulfillment-routing/docs/design-discussion.md in full first -- section 1
+  resolves every design question this story implements, don't re-derive it. Also read
+  .pHive/planning/backlog-addendum-merch-fulfillment-2026-09-09.md in full for the original
+  API-verified research this epic is grounded in.
+
+  Read packages/internal-bi/src/ in full (types.ts, service.ts, in-memory-repository.ts,
+  subscriber.ts, index.ts, and package.json) as your structural template -- this is the closest
+  existing package to what you're building: a core-only-dependency subsystem that reads another
+  subsystem's data via a narrow structural interface, never importing it directly. Also read
+  packages/payments/src/types.ts (the PaymentAdapter shape this story's FulfillmentAdapter
+  mirrors) and packages/checkout-orders/src/types.ts's real Order/OrderLineItem shapes (what
+  the new OrderLookup-shaped interface needs to expose).
+
+  Scaffold a new package, packages/fulfillment/ (name: @mercatus-liber/fulfillment), mirroring
+  internal-bi's package.json shape exactly (core-only dependency, same scripts, same
+  devDependencies versions -- check they're still current in the workspace root but don't
+  gratuitously change versions).
+
+  Build:
+  1. `types.ts` -- the `FulfillmentAdapter` contract (`submitOrder`, `getOrderStatus`, optional
+     `handleWebhookEvent`, mirroring PaymentAdapter's real shape), a `FulfillmentLineRecord`
+     type (`{ orderId, skuId, provider, externalOrderId, status, trackingNumber, trackingUrl }`
+     -- pick sensible real types for each field, e.g. status as a real union like
+     `"unfulfilled" | "submitted" | "shipped" | "delivered"`), and an `OrderLookup` structural
+     interface (the narrowest possible read-only shape this subsystem needs from
+     checkout-orders' real Order/OrderLineItem types -- mirror internal-bi's own
+     `OrderMetricsSource` pattern exactly).
+  2. `routing-repository.ts` -- `FulfillmentRoutingRepository` interface (skuId -> provider-key
+     mapping) plus an in-memory reference implementation (mirroring internal-bi's
+     in-memory-repository.ts pattern), with every SKU implicitly routing to `"manual"` unless
+     explicitly mapped.
+  3. `manual-adapter.ts` -- `createManualFulfillmentAdapter()`: models today's real implicit
+     behavior (an operator marks a line fulfilled by hand) -- `submitOrder` just creates a
+     `FulfillmentLineRecord` with status "submitted" and no externalOrderId (nothing external to
+     submit to), `getOrderStatus` reads back the record, no `handleWebhookEvent` needed (no
+     external system sends webhooks to a manual adapter).
+  4. `service.ts` -- a small `FulfillmentService` (or equivalent orchestration layer, your call
+     on the exact shape after reading internal-bi's service.ts pattern) tying the adapter +
+     routing repository + per-line records together into the operations the admin surface
+     (story 2) will need: list fulfillment records for an order, route+submit a line, mark a
+     line shipped/update tracking.
+  5. Real unit tests covering the contract, the routing repository's default-to-manual behavior,
+     and the manual adapter's real behavior.
+
+acceptance_criteria:
+  - "Given the new @mercatus-liber/fulfillment package, then it depends only on @mercatus-liber/core, mirroring internal-bi's own dependency discipline exactly (verified by reading package.json)"
+  - "Given the FulfillmentRoutingRepository with no explicit mapping for a given skuId, then it resolves to provider 'manual' by default"
+  - "Given createManualFulfillmentAdapter().submitOrder() called against a real order-shaped input, then it produces a real FulfillmentLineRecord per line with status reflecting 'awaiting manual fulfillment,' no externalOrderId"
+  - "Given the OrderLookup structural interface, then it's satisfied by checkout-orders' real CheckoutOrdersService/OrderRepository shape without any adapter/glue code needed beyond the interface declaration itself (verified by a real type-compatibility check, not just visual inspection)"
+  - "Given `pnpm --filter @mercatus-liber/fulfillment build` and its test suite, then both succeed"
+
+steps:
+  - id: research
+    description: Read internal-bi's full source as the structural template, and payments'/checkout-orders' real contracts, before scaffolding anything.
+    agent: researcher
+  - id: implement
+    description: Scaffold the new package and build the contract/repository/adapter/service per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write and run real unit tests, verify every acceptance criterion including the real type-compatibility check for OrderLookup.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the package's dependency discipline (core-only) is genuinely followed, confirm the manual adapter's behavior genuinely models today's implicit reality.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/fulfillment-routing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/internal-bi/src
+      purpose: "The closest existing package to this one's shape -- structural template to mirror"
+    - path: packages/payments/src/types.ts
+      purpose: "PaymentAdapter's real shape -- the contract this story's FulfillmentAdapter mirrors"
+    - path: packages/checkout-orders/src/types.ts
+      purpose: "Real Order/OrderLineItem shapes the new OrderLookup interface must be satisfiable against"
+
+files_to_modify:
+  - file: packages/fulfillment/package.json
+    change: New file, mirroring internal-bi's shape.
+  - file: packages/fulfillment/src/types.ts
+    change: New file -- FulfillmentAdapter, FulfillmentLineRecord, OrderLookup.
+  - file: packages/fulfillment/src/routing-repository.ts
+    change: New file.
+  - file: packages/fulfillment/src/manual-adapter.ts
+    change: New file.
+  - file: packages/fulfillment/src/service.ts
+    change: New file.
+  - file: packages/fulfillment/src/index.ts
+    change: New file -- exports.
+
+design_decisions:
+  - decision: "New package, core-only dependency, reads Order via a narrow structural interface -- never imports checkout-orders directly."
+    rationale: "See design-discussion.md §1a, mirroring internal-bi's already-proven non-forking relationship to Order."
+
+risks: []
+
+references:
+  - path: .pHive/epics/fulfillment-routing/docs/design-discussion.md
+    relevant_excerpt: "§1a-d: every resolved design question this story implements."
+  - path: .pHive/planning/backlog-addendum-merch-fulfillment-2026-09-09.md
+    relevant_excerpt: "The original API-verified research and Epic A proposal this epic is built from."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: fulfillment.subsystem_scaffolded
+  direction: up
+  unit: count
+  baseline: 0
+  target: 1
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "@mercatus-liber/fulfillment package existing, building, and testing green"
+  verify_at: integrate
+  owner: tester

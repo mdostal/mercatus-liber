@@ -628,3 +628,58 @@ export async function publishCmsPageAction(formData: FormData): Promise<void> {
   await cms.publishPage(id);
   revalidatePath(`/demo/${demoSlug}/admin/cms`);
 }
+
+/**
+ * fulfillment-02: routes and submits a whole order's lines to their
+ * configured fulfillment provider (defaulting to "manual" -- see
+ * @mercatus-liber/fulfillment's FulfillmentRoutingRepository), via
+ * FulfillmentService.submitOrder (packages/fulfillment/src/service.ts).
+ * Guarded like every other admin mutation.
+ *
+ * The manual adapter's submitOrder has no dedup logic of its own -- it
+ * blindly appends a fresh FulfillmentLineRecord per line on every call (see
+ * manual-adapter.ts) -- so this action checks listForOrder first and is a
+ * no-op when this order already has at least one record, rather than
+ * risking duplicate records from a double form submission or a repeat
+ * click on the extended orders admin page.
+ */
+export async function submitOrderForFulfillmentAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const orderId = String(formData.get("orderId") ?? "").trim();
+
+  const { fulfillment } = await getServicesForDemo(demoSlug);
+  const existing = await fulfillment.listForOrder(orderId);
+  if (existing.length === 0) {
+    await fulfillment.submitOrder(orderId);
+  }
+  revalidatePath(`/demo/${demoSlug}/admin/orders`);
+}
+
+/**
+ * fulfillment-02: the operator-driven "mark shipped by hand" action for one
+ * order line -- delegates to FulfillmentService.markLineShipped, which
+ * itself delegates to the line's routed provider's adapter (only the manual
+ * adapter supports this today; a future webhook-driven provider updates
+ * status via handleWebhookEvent instead of this action -- see service.ts's
+ * ManualStatusUpdateNotSupportedError). trackingNumber/trackingUrl are both
+ * optional free-text fields, same blank-input-means-omit convention as
+ * every other optional text field parsed in this file (e.g.
+ * parsePromotionFormData's minCartAmount above). Guarded like every other
+ * admin mutation.
+ */
+export async function markFulfillmentLineShippedAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const orderId = String(formData.get("orderId") ?? "").trim();
+  const skuId = String(formData.get("skuId") ?? "").trim();
+  const trackingNumber = String(formData.get("trackingNumber") ?? "").trim();
+  const trackingUrl = String(formData.get("trackingUrl") ?? "").trim();
+
+  const { fulfillment } = await getServicesForDemo(demoSlug);
+  await fulfillment.markLineShipped(orderId, skuId, {
+    trackingNumber: trackingNumber.length > 0 ? trackingNumber : undefined,
+    trackingUrl: trackingUrl.length > 0 ? trackingUrl : undefined,
+  });
+  revalidatePath(`/demo/${demoSlug}/admin/orders`);
+}
