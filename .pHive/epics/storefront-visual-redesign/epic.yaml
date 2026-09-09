@@ -1,0 +1,48 @@
+name: storefront-visual-redesign
+title: Storefront Visual Redesign (Real Copy + Polished Default Theme)
+description: >
+  The default demo (dragon-merch) reads like a bare engineering scaffold, not a real shop.
+  Resolved design question: enrich StyleTokens' vocabulary (still just Record<string,string>,
+  no new component contract) with a spacing scale, a type scale, and muted/border colors;
+  refine the "classic" bundle (the actual default every demo loads) into a genuinely
+  considered design using that richer vocabulary rather than inventing an eighth bundle;
+  apply it consistently across every shared render component; rewrite copy across seed data
+  and static UI strings to read like a real shop. No new component library, per the user's
+  own stated depth choice. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: patch
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [design, copy, app-layer]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    design: "Central design question: enrich the existing token vocabulary vs. build new component infrastructure -- resolved in favor of the former, per the user's own stated scope"
+    copy: "Real shop-reading copy is half of what the user asked for, distinct from and complementary to the visual pass"
+    app-layer: "Entirely apps/reference-storefront + packages/theming's classic bundle -- no new subsystem"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session; user directly confirmed the redesign depth via an explicit clarifying-question exchange before planning began.
+
+stories:
+  - id: redesign-01-token-vocabulary-and-classic-theme
+    title: "Enrich StyleTokens vocabulary; refine the classic bundle as a genuinely considered default"
+    complexity: medium
+    depends_on: []
+  - id: redesign-02-copy-pass
+    title: "Rewrite seed-data and static UI copy to read like a real shop"
+    complexity: medium
+    depends_on: []
+  - id: redesign-03-component-visual-consistency
+    title: "Apply the enriched tokens consistently across every shared render component"
+    complexity: high
+    depends_on: [redesign-01-token-vocabulary-and-classic-theme]
+  - id: redesign-04-closeout
+    title: "Live verification, epic-backlog closeout"
+    complexity: low
+    depends_on: [redesign-02-copy-pass, redesign-03-component-visual-consistency]

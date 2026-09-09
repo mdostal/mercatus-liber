@@ -1,0 +1,107 @@
+id: redesign-02-copy-pass
+epic: storefront-visual-redesign
+title: "Rewrite seed-data and static UI copy to read like a real shop"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/storefront-visual-redesign/docs/design-discussion.md sections 1-3 for the
+  goal ("reads like a real, considered shop... not a framework's own developer-facing demo
+  language").
+
+  This story is independent of the token/theme work (different files) and can land separately.
+  It touches copy/text only -- no styling, no layout changes.
+
+  Read apps/reference-storefront/lib/seed.ts in full (the dragon-merch demo's seed data --
+  product titles/descriptions, category names/descriptions, the hero banner headline/
+  subheadline, ad campaign creative copy, promotion/bundle/recommendation labels). Read the
+  static UI strings in the shared components this app renders (button labels, empty-state
+  messages like "Your cart is empty," section headings like "Customers also bought," nav
+  labels) -- grep across apps/reference-storefront/app/demo/[demoSlug]/** and
+  apps/reference-storefront/components/** for literal string content, not just the files
+  already known from memory.
+
+  Rewrite, keeping the SAME dragon-branded identity/tone already established (this is not a
+  full rebrand -- "Dragon Merch" stays the concept) but with real, specific, shop-appropriate
+  copy instead of placeholder/developer-facing language:
+  - Product titles/descriptions: specific, appealing, real-sounding (not "the current
+    hero-banner headline reads 'Mercatus Liber -- The 100% free, open-source, headless...'"
+    style dev-tool language leaking into shop copy -- confirm this exact issue during your
+    read and fix it if present, since the framework's own pitch belongs on the landing page,
+    not inside a demo shop's hero banner).
+  - Category names/descriptions: real, not generic ("Merch" / "3D Printed" are fine as concept
+    names, but check their description text for genuine specificity).
+  - Empty states, button labels, section headings across cart/PDP/search/category pages: warm,
+    clear, on-brand -- not framework-developer phrasing like a literal component name leaking
+    into user-facing text.
+  - Ad campaign creative copy, promotion labels, bundle tier labels, recommendation shelf
+    labels: reasonable, on-brand, specific.
+  Do NOT change any data STRUCTURE (SKU counts, prices, slugs, ids) -- text content only, so
+  this doesn't collide with the routing epic's demo-isolation guarantees or any other epic's
+  seeded ids that other tests might reference by exact string.
+
+acceptance_criteria:
+  - "Given the seeded home page's hero banner, when read, then it is shop-appropriate copy about the demo's own merchandise/brand concept, not the Mercatus Liber framework's own developer-facing pitch"
+  - "Given every product/category description touched, then it reads as genuine, specific shop copy, not a placeholder sentence"
+  - "Given the existing test suite (which may assert on exact seed-data strings in some places), when this story lands, then every such test is updated to match the new copy OR the test's assertion is confirmed to only check structure (ids/counts/slugs), not exact text -- check this explicitly, don't just run tests and hope"
+
+steps:
+  - id: research
+    description: Read the full current seed.ts and grep for static UI strings across the app before writing anything.
+    agent: researcher
+  - id: implement
+    description: Rewrite the copy per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Run the full test suite and fix any test that asserted on now-changed exact copy strings (distinguishing that from tests checking structure, which should need no change).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the framework's own developer-facing pitch language has been fully removed from shop-facing copy (the specific issue named in the description), and the tone is consistent dragon-branded shop copy throughout.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/storefront-visual-redesign.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: The dragon-merch demo's seed data -- product/category/hero/campaign/promotion copy.
+    - path: apps/reference-storefront/app/demo/[demoSlug]/page.tsx
+      purpose: Renders the home page's CMS sections including the hero banner -- confirm exactly what copy shows here today.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/seed.ts
+    change: Rewritten product/category/hero/campaign/promotion/bundle/recommendation copy.
+  - file: apps/reference-storefront/components/**
+    change: Rewritten static UI strings (button labels, empty states, section headings) wherever found.
+  - file: apps/reference-storefront/test/**
+    change: Updated only where a test asserted on now-changed exact copy text.
+
+design_decisions:
+  - decision: "The dragon-branded identity stays -- this is a copy-quality pass, not a rebrand."
+    rationale: "Rebranding is a bigger, different decision the user didn't ask for; 'real copy' means specific and well-written, not a new brand concept."
+
+risks:
+  - severity: low
+    description: "Some tests may assert on exact seed-data strings, breaking when copy changes."
+    mitigation: "Explicitly called out in the acceptance criteria as something to check and fix, not just discover via a failing test run."
+
+references:
+  - path: .pHive/epics/storefront-visual-redesign/docs/design-discussion.md
+    relevant_excerpt: |
+      §1: "reads like a real, considered shop... not the framework's own developer-facing demo
+      language" -- the exact issue this story fixes, most concretely on the hero banner.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Copy-quality story verified via the acceptance criteria's manual review; not a numeric trend."
