@@ -1,0 +1,39 @@
+name: demo-store-plant-shop
+title: "Broadleaf & Co.: a new eclectic artisan-goods demo store (plants, ceramics, textiles, paper)"
+description: >
+  The third demo store the user asked for -- "somewhat eclectic but a classic commerce store...
+  an etsy neat plant store or something," resolved as a real 4-category eclectic small-batch
+  goods shop (Plants, Ceramics & Planters, Textiles & Fiber Arts, Paper & Ephemera), not a
+  single-category plant store. Extends the DEMO_SLUGS/DEMO_REGISTRY/defaultThemeKey pattern
+  epics 35-36 already proved twice -- confirmed by direct inspection that nav/theme mechanisms
+  already generalize to a 3rd demo with zero new shared-component code. See
+  docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [demo-content, seed-data, new-demo]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    demo-content: "New demo store, real catalog depth"
+    seed-data: "Bulk of the work is a new seed module"
+    new-demo: "Third instance of the already-proven DEMO_REGISTRY extension point"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: plant-shop-01-new-demo-seed-and-registry
+    title: "New lib/seed-broadleaf.ts: 4 categories, 8+ real products, tiered variant, registry entry"
+    complexity: medium
+    depends_on: []
+  - id: plant-shop-02-verification-and-closeout
+    title: "Live verification, docs update, closeout, merge"
+    complexity: low
+    depends_on: [plant-shop-01-new-demo-seed-and-registry]
