@@ -1,0 +1,97 @@
+id: demo-routing-06-closeout
+epic: commerce-landing-and-demo-routing
+title: "Live verification (both demos simultaneously live, cart isolation proven), epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [demo-routing-05-landing-and-demo-layout]
+
+description: |
+  Read every committed change across this epic's 5 prior pieces of work before starting -- this
+  is the largest single epic of this whole session (~150 files), so re-ground yourself in the
+  final, actual state rather than the plan.
+
+  Live verification, all against a real dev server:
+  1. Visit `/` -- confirm the framework landing page renders, with correct links to both demos.
+  2. Visit `/demo/dragon-merch` -- confirm it renders the dragon-merch shop with its own nav.
+  3. Visit `/demo/northline` -- confirm it renders the Northline shop with ITS OWN, DIFFERENT
+     content (theme, seeded products/service areas) -- prove the two demos are genuinely
+     distinct, not the same data shown twice.
+  4. Add a real item to the dragon-merch cart, then separately add a real (different) item to
+     the northline cart, in the same browser session (reuse the multi-tab curl/cookie
+     technique established throughout this whole wave of work, since there's no interactive
+     browser here). Confirm each demo's /cart page shows ONLY its own item -- this is the
+     single most important correctness proof in this whole epic.
+  5. Visit /demo/dragon-merch/admin unauthenticated -- confirm it redirects to sign-in. Using
+     the dev-default admin session mechanism (ADMIN_DEV_PASSWORD + the demo-namespaced cookie
+     from the prior piece of work), confirm /demo/dragon-merch/admin renders correctly and
+     /demo/northline/admin renders correctly with genuinely different admin data (e.g.
+     different promotions/orders lists).
+  6. Run the full monorepo test suite and typecheck one more time -- confirm everything is
+     green.
+  7. Grep the whole apps/reference-storefront tree one final time for the temporary
+     "dragon-merch" shim comment introduced in demo-routing-01 -- confirm ZERO remain anywhere
+     (this is the final proof every piece of work in this epic actually finished cleaning up
+     after itself).
+
+  Update .pHive/planning/epic-backlog.md: add a new row at the next available number (grep for
+  the highest existing number first), status "done (6/6 stories complete)", with a description
+  noting the scale (largest single-epic file-touch count of the session), the resolved
+  multi-tenancy architecture, and that both demos are now genuinely, simultaneously live under
+  one deployment with fully isolated state. Add a bullet to the "Definition of vision fully
+  done" section noting commerce.mdostal.com's root is now a real framework landing page with
+  two live, isolated demo storefronts underneath it -- note explicitly that the VISUAL/COPY
+  redesign and the docs site are separate, still-pending pieces of work, not claimed as done
+  here.
+
+acceptance_criteria:
+  - "Given the multi-tab cart isolation test (step 4), then real, distinct cart contents are observed per demo -- not assumed, not a single-demo test claimed as sufficient"
+  - "Given the admin isolation test (step 5), then genuinely distinct admin data is observed per demo"
+  - "Given the full monorepo test suite and typecheck, then both are green"
+  - "Given the final shim-comment grep, then zero occurrences remain anywhere in the app"
+  - ".pHive/planning/epic-backlog.md's new row reads 'done (6/6 stories complete)' and does not overclaim the visual redesign or docs site as done"
+
+steps:
+  - id: implement
+    description: Run all 7 verification steps above and update epic-backlog.md per the description.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate, complete, and doesn't overclaim scope beyond this epic's own.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/commerce-landing-and-demo-routing; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs a new row for this epic and a vision-summary addendum.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: New epic row; vision-summary addendum.
+
+design_decisions: []
+risks:
+  - severity: medium
+    description: "Given this epic's scale, some small thing (one missed link, one uncleaned shim comment) is realistically possible."
+    mitigation: "This story's own verification is deliberately thorough and mechanically-checkable where possible (the final shim-comment grep), not just a quick smoke test, given the epic's size and risk profile."
+
+references:
+  - path: .pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md
+    relevant_excerpt: |
+      Full design rationale this epic's live verification demonstrates end-to-end.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative."

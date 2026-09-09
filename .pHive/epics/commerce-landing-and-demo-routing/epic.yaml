@@ -1,0 +1,58 @@
+name: commerce-landing-and-demo-routing
+title: Commerce Landing Page + Multi-Demo Routing
+description: >
+  commerce.mdostal.com's root becomes a real landing page about Mercatus Liber itself; the
+  dragon-merch and Northline demos move to path-based routes (/demo/dragon-merch,
+  /demo/northline), both live simultaneously under one deployment. Resolved design question
+  (grounded by dedicated architecture research): a physical route move under
+  app/demo/[demoSlug]/ with getServicesForDemo(demoSlug) keyed by a Map (replacing the single
+  module-scoped services singleton, since carts/orders/promotions/CMS are genuinely separate
+  mutable state per demo, not just different seed data), plus mandatory cookie namespacing to
+  prevent cross-demo cart/customer/coupon bleed-through when both demos are browsed in the
+  same browser. ~150 files affected -- the largest single-epic file-touch count of this
+  session. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [architecture, app-layer, large-refactor]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    architecture: "Central multi-tenancy design question grounded by dedicated research before any code was written"
+    app-layer: "Entirely apps/reference-storefront routing/wiring -- no packages/* changes, no new subsystem"
+    large-refactor: "~150 files affected across routes, actions, cookies, and links -- sequenced into 6 stories on disjoint file trees to allow safe parallelism"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session; user directly confirmed the landing-page + path-based-demos + policy direction via an explicit clarifying-question exchange before planning began.
+
+stories:
+  - id: demo-routing-01-services-and-registry
+    title: "services.ts: getServicesForDemo(demoSlug) keyed Map, demo registry replacing DEMO_BRAND"
+    complexity: medium
+    depends_on: []
+  - id: demo-routing-02-move-shop-routes
+    title: "Move 9 shopper-facing route trees under app/demo/[demoSlug]/, wire getServicesForDemo"
+    complexity: high
+    depends_on: [demo-routing-01-services-and-registry]
+  - id: demo-routing-03-move-admin-routes
+    title: "Move admin route tree under app/demo/[demoSlug]/admin/, wire getServicesForDemo, demo-aware Clerk gating"
+    complexity: high
+    depends_on: [demo-routing-01-services-and-registry]
+  - id: demo-routing-04-actions-and-cookies
+    title: "lib/actions.ts demoSlug threading (all 16 actions), demo-namespaced cookies, fixed Stripe redirect URLs"
+    complexity: high
+    depends_on: [demo-routing-02-move-shop-routes, demo-routing-03-move-admin-routes]
+  - id: demo-routing-05-landing-and-demo-layout
+    title: "New framework landing page (root) + app/demo/[demoSlug]/layout.tsx shop nav"
+    complexity: medium
+    depends_on: [demo-routing-04-actions-and-cookies]
+  - id: demo-routing-06-closeout
+    title: "Live verification (both demos simultaneously live, cart isolation proven), epic-backlog closeout"
+    complexity: low
+    depends_on: [demo-routing-05-landing-and-demo-layout]

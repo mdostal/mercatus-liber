@@ -1,0 +1,111 @@
+id: demo-routing-05-landing-and-demo-layout
+epic: commerce-landing-and-demo-routing
+title: "New framework landing page (root) + app/demo/[demoSlug]/layout.tsx shop nav"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [demo-routing-04-actions-and-cookies]
+
+description: |
+  Read the committed apps/reference-storefront/lib/demos.ts (from an earlier piece of work --
+  it should carry a display name per demo slug) and the current, fully-routed
+  apps/reference-storefront/app/layout.tsx (still the pre-move root layout at this point in
+  the sequence) in full.
+
+  This story does NOT do the real visual/copy redesign (that's a separate, later piece of
+  work) -- it builds the CORRECT STRUCTURE: a real root layout/page distinct from the demo
+  layout, with placeholder-but-genuine framework-focused content (not dragon-merch shop
+  content), so the later redesign work has the right shell to polish rather than needing to
+  also invent the page split.
+
+  Deliverables:
+  - New apps/reference-storefront/app/layout.tsx (replacing today's shop-nav root layout): a
+    root layout for the FRAMEWORK LANDING PAGE -- minimal nav (e.g. "Docs" linking to wherever
+    the docs site will live once epic 33 exists -- use a placeholder link for now if that URL
+    isn't known yet, clearly commented as such), no shop-specific chrome (no cart link, no
+    theme switcher -- those belong to the demo layout now).
+  - New apps/reference-storefront/app/page.tsx: real content about what Mercatus Liber IS (the
+    framework's actual pitch -- pull genuine, accurate content from the existing root
+    README.md and docs/ARCHITECTURE.md rather than inventing marketing copy from scratch;
+    this is still a landing page, not a docs page, so keep it focused -- what it is, why it
+    exists, links to the two live demos under /demo/dragon-merch and /demo/northline (pulling
+    their display names from lib/demos.ts), a link to the framework's GitHub/source if that's
+    documented anywhere in the existing README, and a link to /docs (or wherever docs will
+    live) as a placeholder if epic 33 hasn't landed yet).
+  - New apps/reference-storefront/app/demo/[demoSlug]/layout.tsx: today's shop nav content
+    (Cart/Search/Fall Sale/Account/Admin links -- read what's currently in the pre-move root
+    layout for the exact nav items to preserve), now demo-slug-prefixed and demo-slug-aware
+    (reads `params.demoSlug`, all links point at `/demo/${demoSlug}/...`), PLUS a small
+    addition: a link back to the root landing page, and (since both demos are meant to be
+    discoverable from each other) a way to switch to the OTHER live demo without going back to
+    the landing page first (a simple link is fine, e.g. reading lib/demos.ts's registry to list
+    the other slug(s)).
+  - Confirm theme-cookie reading/writing in this new demo layout still works correctly with
+    the demo-namespacing from the prior piece of work (the theme switcher component itself
+    shouldn't need changes if the cookie helper's signature already accounts for demoSlug, but
+    verify this explicitly).
+
+acceptance_criteria:
+  - "Given a GET request to /, then it renders the new framework landing page -- no dragon-merch product content, no shop nav, correct links to both demos"
+  - "Given a GET request to /demo/dragon-merch, then it renders using the new demo layout's shop nav, correctly prefixed to /demo/dragon-merch/..."
+  - "Given a GET request to /demo/northline, then it renders using the same demo layout structure but demo-slug-correctly-prefixed to /demo/northline/..."
+  - "Given the demo layout's cross-demo switch link, when clicked from /demo/dragon-merch, then it navigates to /demo/northline (or vice versa) correctly"
+  - "Given navigation from the landing page to a demo, then Next's multiple-root-layouts behavior applies (a full page load, not a client-side transition) -- confirm this is the actual observed behavior, not assumed"
+
+steps:
+  - id: research
+    description: Read the current pre-move root layout's exact nav content and lib/demos.ts's registry shape before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the new root landing page/layout and the demo layout per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify all 5 acceptance criteria on a real dev server.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the landing page's content is genuinely accurate to the framework's real README/architecture content, not invented marketing fluff, and that the demo layout preserves every nav item the old root layout had.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/commerce-landing-and-demo-routing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: README.md
+      purpose: Source of genuine, accurate content for the new landing page's framework pitch.
+    - path: docs/ARCHITECTURE.md
+      purpose: Additional accurate source material for the landing page.
+    - path: apps/reference-storefront/lib/demos.ts
+      purpose: The demo-slug registry with display names, used to render the demo links.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/layout.tsx
+    change: New root layout, framework-landing chrome, no shop nav.
+  - file: apps/reference-storefront/app/page.tsx
+    change: New landing page content.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+    change: New file, demo-slug-aware shop nav (today's nav content, moved and adapted).
+
+design_decisions:
+  - decision: "This story builds the correct structural split (landing vs. demo layout) with genuine-but-unpolished content, deferring the real visual/copy redesign to a separate piece of work."
+    rationale: "Keeps this large epic's scope bounded to routing/structure correctness; the redesign is a distinct concern (epic 32) that shouldn't block or complicate this already-large migration."
+
+risks: []
+
+references:
+  - path: .pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: "Two root layouts, by design... Navigating landing → a demo is a full page reload...
+      an acceptable, deliberate cost."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Structural page-split story verified via the acceptance criteria's manual golden-path check; the real content/design quality is a separate, later piece of work's job to measure."

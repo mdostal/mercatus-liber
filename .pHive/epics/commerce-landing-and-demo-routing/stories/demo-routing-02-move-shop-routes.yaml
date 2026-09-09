@@ -1,0 +1,120 @@
+id: demo-routing-02-move-shop-routes
+epic: commerce-landing-and-demo-routing
+title: "Move 9 shopper-facing route trees under app/demo/[demoSlug]/, wire getServicesForDemo"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [demo-routing-01-services-and-registry]
+
+description: |
+  Read the committed apps/reference-storefront/lib/demos.ts and lib/services.ts
+  (getServicesForDemo) from the prior piece of work in full first.
+
+  This piece of work moves ONLY the shopper-facing routes -- NOT app/admin (a separate,
+  concurrent piece of work owns that tree; do not touch anything under app/admin). The two
+  pieces of work are on disjoint file trees and can land independently.
+
+  Route trees to move, each via `git mv` (preserve history) from `apps/reference-storefront/app/X`
+  to `apps/reference-storefront/app/demo/[demoSlug]/X`:
+  products, cart, category, search, campaign, locations, order, account. That is 8 trees (the
+  design doc's file count of "9 route trees" includes admin, which is the other piece of
+  work's job -- confirm this exact list against the current directory listing before starting,
+  since other work may have added routes since planning).
+
+  For every moved page.tsx (and any nested layout.tsx under these trees, if any exist):
+  - Its `params` prop gains `demoSlug: string` (Next.js App Router route params for a dynamic
+    segment -- confirm in this app's own existing dynamic routes, e.g. products/[slug]/page.tsx,
+    whether params are already awaited/Promise-based in this Next.js version's convention used
+    elsewhere in this app, and match that exact pattern).
+  - Every `getServices()` call becomes `getServicesForDemo(demoSlug)` (reading demoSlug from
+    the now-present params), removing the temporary "dragon-merch" shim comment left by the
+    prior piece of work for exactly these files.
+  - Every hardcoded internal `href`/`Link` pointing at another shop route (e.g. `href="/cart"`,
+    `href="/products/${slug}"`, `href="/search"`) gets the `/demo/${demoSlug}` prefix spliced
+    in. Grep each moved file individually for `href=` and `redirect(` to catch every instance
+    -- do not rely on memory of what a file contains.
+  - Any `notFound()`/`redirect()` calls inside these pages that reference a path (not just a
+    status) get the same treatment.
+
+  Do NOT yet update apps/reference-storefront/lib/actions.ts (a separate, later piece of work
+  owns that file, since it also needs matching changes from the admin-routes move landing
+  first) -- these moved pages calling a "use server" action (e.g. addToCartAction) via
+  `<form action={addToCartAction}>` will temporarily be passing that action a cart id read
+  from a not-yet-demo-namespaced cookie and no demoSlug -- this is EXPECTED and will be fixed
+  by demo-routing-04. Leave those specific call sites as-is for now; do not attempt to
+  partially fix lib/actions.ts yourself.
+
+acceptance_criteria:
+  - "Given the 8 moved route trees, when the app builds, then it compiles cleanly with the new app/demo/[demoSlug]/ paths in the route manifest and the OLD paths (app/products, app/cart, etc. at the root) no longer exist"
+  - "Given a GET request to /demo/dragon-merch/products/<a real seeded slug>, then the page renders correctly using dragon-merch's service graph (verify via getServicesForDemo('dragon-merch') data actually appearing)"
+  - "Given every moved page's internal href/Link elements, when grepped for hardcoded '/cart' '/products' '/search' etc. WITHOUT a preceding '/demo/${demoSlug}' or equivalent template literal, then zero such occurrences remain (this is the specific, checkable proof the link-fixing pass was thorough, not just 'looked mostly done')"
+  - "Given the temporary 'dragon-merch' shim comment left by the prior piece of work, when grepped for across exactly these 8 moved trees, then zero remain (all replaced with the real demoSlug param)"
+
+steps:
+  - id: research
+    description: Confirm the exact current file list under each of the 8 route trees, and this app's existing convention for reading dynamic route params (sync vs. Promise-based) from an already-moved/existing dynamic route like products/[slug].
+    agent: researcher
+  - id: implement
+    description: Move the 8 route trees and wire them per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Build the app and manually verify at least 3 of the 8 moved routes render correctly at their new /demo/dragon-merch/... paths on a dev server, with correct data.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check every moved file's internal links were fixed (the grep-based acceptance criterion above), not just the ones happened to be tested manually.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/commerce-landing-and-demo-routing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/products/[slug]/page.tsx
+      purpose: An existing dynamic-route page to confirm this app's current params-reading convention (async/Promise-based, per this app's Next.js version).
+    - path: apps/reference-storefront/lib/demos.ts
+      purpose: The committed demo-slug registry/type this story's pages import for type-safe demoSlug handling.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/demo/[demoSlug]/products/**
+    change: Moved from app/products, wired to getServicesForDemo(demoSlug), internal links fixed.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/cart/**
+    change: Moved from app/cart, same treatment.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/category/**
+    change: Moved from app/category, same treatment.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/search/**
+    change: Moved from app/search, same treatment.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/campaign/**
+    change: Moved from app/campaign, same treatment.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/locations/**
+    change: Moved from app/locations, same treatment.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/order/**
+    change: Moved from app/order, same treatment.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/account/**
+    change: Moved from app/account, same treatment.
+
+design_decisions:
+  - decision: "lib/actions.ts is explicitly NOT touched by this piece of work, even though these moved pages call actions from it."
+    rationale: "Actions require the admin-routes move to also land first (both route trees' action call sites need matching demoSlug threading), so it's handled once, consistently, in a single later piece of work rather than half-fixed twice."
+
+risks:
+  - severity: medium
+    description: "Missing even one hardcoded internal link would silently drop a shopper out of their active demo into a now-nonexistent root route."
+    mitigation: "The acceptance criteria include an explicit, mechanically-checkable grep proof, not just a manual spot-check."
+
+references:
+  - path: .pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: the physical-route-move design and the 24-file hardcoded-href risk this story
+      directly addresses for the shop (non-admin) routes.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Mechanical route-move story verified via the acceptance criteria's grep-based checks and manual render verification; not a numeric business-metric trend."
