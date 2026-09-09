@@ -1,0 +1,182 @@
+id: design-system-v2-02-component-template-wiring
+epic: storefront-design-system-v2
+title: "Wire shared render components to branch on resolveTemplate() per page type"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [design-system-v2-01-template-registry-and-bundles]
+
+description: |
+  Read the prior story's committed changes in full first -- the template keys registered
+  there (nav.top-bar/nav.rail, home.standard-grid/home.magazine-grid/home.spec-grid,
+  category.standard-grid/category.magazine-grid/category.spec-grid,
+  cart.standard/cart.receipt-style/cart.spec-table) and the 3 new bundles' exact token values
+  are the spec for this story's rendering work.
+
+  Follow the EXACT existing pattern already proven for PDP -- do not invent a different
+  mechanism. apps/reference-storefront/app/demo/[demoSlug]/products/[slug]/page.tsx already
+  does this for pageType "pdp": it imports one component per template key
+  (PdpTabbedDetail/PdpLongScroll from components/pdp-tabbed-detail.tsx and
+  components/pdp-long-scroll.tsx), builds a `{ "pdp.tabbed-detail": PdpTabbedDetail,
+  "pdp.long-scroll": PdpLongScroll }` lookup map, calls the theming service's
+  resolveTemplate("pdp") to get the active key, and renders the matching component. Replicate
+  this exact structure for the 4 newly-covered page types:
+
+  1. **nav** (apps/reference-storefront/app/demo/[demoSlug]/layout.tsx, the shop-nav layout) --
+     new components components/nav-top-bar.tsx (extract today's current nav markup verbatim
+     into this file, zero visual change) and components/nav-rail.tsx (a real fixed left-rail
+     nav, per "Blaze Theme"'s left-rail jump-nav pattern -- collapses to a top bar on narrow
+     viewports, same responsive behavior the source design demonstrated).
+  2. **home** (each demo's app/demo/[demoSlug]/page.tsx, which currently renders CMS home-page
+     sections via components/cms-sections.tsx) -- new components/home-standard-grid.tsx
+     (today's current section-rendering behavior, extracted verbatim),
+     components/home-magazine-grid.tsx (asymmetric feature-card grid layout wrapping the same
+     CMS section data, per "The Slow Catalog"), components/home-spec-grid.tsx (dense datasheet
+     grid wrapping the same CMS section data, per "Datasheet Storefront"). These wrap/reorganize
+     how cms-sections.tsx's existing section renderers are laid out on the page -- they do NOT
+     duplicate or fork cms-sections.tsx's own per-section-type rendering logic.
+  3. **category** (app/demo/[demoSlug]/category/[slug]/page.tsx or equivalent) -- same 3-way
+     split as home, wrapping the existing product-grid rendering.
+  4. **cart** (app/demo/[demoSlug]/cart/page.tsx) -- new components/cart-standard.tsx (today's
+     current layout, extracted verbatim), components/cart-receipt-style.tsx (monospace,
+     itemized-receipt visual treatment per "The Slow Catalog", same real cart data/actions),
+     components/cart-spec-table.tsx (a literal data-table layout per "Datasheet Storefront",
+     same real cart data/actions). All three MUST preserve every existing cart interaction
+     (quantity update, remove line, checkout button, coupon field if present) -- this is a
+     visual/layout wrapper around the real cart logic, not a reimplementation of it.
+
+  Token usage: every new component must consume the theme tokens via CSS custom properties
+  (`var(--token-name, <literal fallback>)`), exactly matching epic 32's established pattern --
+  every reference to a token not defined on all 7 pre-existing bundles (--color-muted,
+  --color-border, --space-*, --font-size-*, --shadow-card, and the new --font-family-display)
+  MUST carry a literal fallback value so the 7 old bundles keep rendering correctly through
+  these same components where applicable (nav and cart render for every bundle regardless of
+  which page-type template resolves).
+
+  Do not change any existing PDP component -- pdp.tabbed-detail/pdp.long-scroll and their
+  components are untouched by this story; only their consumption of the 3 new bundles' tokens
+  (already correct, since tokens flow through CSS custom properties automatically) needs no
+  code change at all.
+
+acceptance_criteria:
+  - "Given the nav layout rendered under the maximalist bundle, then nav.rail (left-rail nav) renders; under any other bundle (editorial, datasheet, or any of the 7 pre-existing bundles), nav.top-bar renders with identical markup/behavior to before this story"
+  - "Given a demo home page rendered under editorial, maximalist, and datasheet, then home.magazine-grid, home.standard-grid, and home.spec-grid render respectively, each visually distinct in structure (not just token color values) and each still rendering the real CMS-driven section data correctly"
+  - "Given a category page under all 3 new bundles, then the matching category.* template renders with the real seeded product grid data, same product count/data as before this story"
+  - "Given the cart page (with real items in cart) under all 3 new bundles, then the matching cart.* template renders, and quantity-update/remove-line/checkout actions all still function -- verified via real server-action form submissions, not just visual inspection"
+  - "Given any of the 7 pre-existing bundles (classic, dark, minimal, vibrant, retro, high-contrast, northline) rendered across nav/home/category/cart, then every page renders with NO visual/structural regression versus this story's starting point -- diff against a pre-story snapshot if needed to confirm"
+  - "Given every new `var(--token, fallback)` reference introduced by this story, then grep confirms a literal fallback value is present on every one that references a token not in the original 6-token vocabulary"
+
+steps:
+  - id: research
+    description: Read products/[slug]/page.tsx's exact template-lookup-map pattern and cms-sections.tsx's current section-rendering contract before writing any new component.
+    agent: researcher
+  - id: implement
+    description: Build the nav/home/category/cart template components and wire each page/layout to resolveTemplate(), per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion above against a real running dev server across all 3 new bundles plus at least 2 of the 7 pre-existing bundles (one light, one dark-ish, to catch fallback contrast issues).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm no PDP files were touched, confirm cart interactions still work under all 3 new layouts, confirm fallback values are present on every new token reference.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/storefront-design-system-v2.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router }
+  key_files:
+    - path: apps/reference-storefront/app/demo/[demoSlug]/products/[slug]/page.tsx
+      purpose: "The exact template-lookup-map pattern to replicate for nav/home/category/cart"
+    - path: apps/reference-storefront/components/pdp-tabbed-detail.tsx
+      purpose: "Reference for how an existing template-variant component is structured"
+    - path: apps/reference-storefront/components/cms-sections.tsx
+      purpose: "Existing CMS section renderers that home/category templates wrap, not fork"
+    - path: apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+      purpose: "Current nav chrome to extract into nav-top-bar.tsx verbatim as the default"
+    - path: apps/reference-storefront/app/demo/[demoSlug]/cart/page.tsx
+      purpose: "Current cart layout + real interaction logic to preserve across all 3 new cart templates"
+
+code_examples:
+  - title: "PDP's existing template-lookup-map pattern (replicate this shape)"
+    file: apps/reference-storefront/app/demo/[demoSlug]/products/[slug]/page.tsx
+    snippet: |
+      const PDP_TEMPLATES: Record<string, ComponentType<PdpProps>> = {
+        "pdp.tabbed-detail": PdpTabbedDetail,
+        "pdp.long-scroll": PdpLongScroll,
+      };
+      const templateKey = theming.resolveTemplate("pdp");
+      const Template = PDP_TEMPLATES[templateKey] ?? PdpTabbedDetail;
+
+files_to_modify:
+  - file: apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+    change: "Branch on resolveTemplate('nav') between nav-top-bar.tsx and nav-rail.tsx"
+  - file: apps/reference-storefront/app/demo/[demoSlug]/page.tsx
+    change: "Branch on resolveTemplate('home') across the 3 home-*.tsx components"
+  - file: apps/reference-storefront/app/demo/[demoSlug]/category/[slug]/page.tsx
+    change: "Branch on resolveTemplate('category') across the 3 category-*.tsx components"
+  - file: apps/reference-storefront/app/demo/[demoSlug]/cart/page.tsx
+    change: "Branch on resolveTemplate('cart') across the 3 cart-*.tsx components, preserving all real interactions"
+  - file: apps/reference-storefront/components/nav-top-bar.tsx
+    change: "New file -- today's current nav markup extracted verbatim"
+  - file: apps/reference-storefront/components/nav-rail.tsx
+    change: "New file -- left-rail nav per Blaze Theme"
+  - file: apps/reference-storefront/components/home-standard-grid.tsx
+    change: "New file -- today's current home layout extracted verbatim"
+  - file: apps/reference-storefront/components/home-magazine-grid.tsx
+    change: "New file -- asymmetric magazine grid per The Slow Catalog"
+  - file: apps/reference-storefront/components/home-spec-grid.tsx
+    change: "New file -- dense datasheet grid per Datasheet Storefront"
+  - file: apps/reference-storefront/components/category-standard-grid.tsx
+    change: "New file -- today's current category layout extracted verbatim"
+  - file: apps/reference-storefront/components/category-magazine-grid.tsx
+    change: "New file -- magazine-style category grid per The Slow Catalog"
+  - file: apps/reference-storefront/components/category-spec-grid.tsx
+    change: "New file -- spec-grid category layout per Datasheet Storefront"
+  - file: apps/reference-storefront/components/cart-standard.tsx
+    change: "New file -- today's current cart layout extracted verbatim"
+  - file: apps/reference-storefront/components/cart-receipt-style.tsx
+    change: "New file -- receipt-styled cart per The Slow Catalog, real cart logic preserved"
+  - file: apps/reference-storefront/components/cart-spec-table.tsx
+    change: "New file -- spec-table cart per Datasheet Storefront, real cart logic preserved"
+
+design_decisions:
+  - decision: "One component per template variant, looked up via a Record<templateKey, Component> map, exactly mirroring PDP's existing pattern."
+    rationale: "Zero new architectural pattern introduced -- the codebase already proves this shape works for PDP; extending it to 4 more page types is mechanical, not novel."
+  - decision: "New home/category/cart template components wrap existing section/product/cart-line renderers rather than reimplementing rendering logic."
+    rationale: "Keeps CMS section rendering and cart interaction logic single-sourced -- only the surrounding layout/visual treatment varies per template."
+
+risks:
+  - severity: high
+    description: "Largest diff in the epic -- risk of visually or functionally regressing the 7 existing bundles across 4 page types at once."
+    mitigation: "Acceptance criteria explicitly requires testing at least 2 pre-existing bundles across all 4 page types, plus confirming registration order from story 1 keeps their default template selection unchanged."
+  - severity: medium
+    description: "Cart interactions (quantity update, remove, checkout) are React Server Action form submissions -- easy to visually reskin while accidentally breaking the underlying form wiring."
+    mitigation: "Acceptance criteria explicitly requires verifying real server-action submissions, not just visual inspection, for all 3 cart templates."
+
+references:
+  - path: .pHive/epics/storefront-design-system-v2/docs/design-discussion.md
+    relevant_excerpt: "§2: the template-registry-extension approach this story implements at the component level."
+  - path: .pHive/epics/storefront-design-system-v2/stories/design-system-v2-01-template-registry-and-bundles.yaml
+    relevant_excerpt: "The exact template keys and token values this story's components must render against."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: theming.page_types_with_real_layout_variation
+  direction: up
+  unit: count
+  baseline: 1
+  target: 5
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Count of page types (pdp already =1) with >=2 structurally-distinct rendered templates, confirmed by live dev-server verification"
+  verify_at: integrate
+  owner: tester

@@ -48,13 +48,41 @@ const { addToCartAction } = await import("../lib/actions.js");
 const { default: CartPage } = await import("../app/demo/[demoSlug]/cart/page.js");
 const { getServicesForDemo } = await import("../lib/services.js");
 
-/** Flattens a React element tree (as returned by directly calling a Server Component) to its rendered text content, without a DOM renderer -- same helper shape as admin-user-management.test.ts's own renderedText. */
+/**
+ * Flattens a React element tree (as returned by directly calling a Server
+ * Component) to its rendered text content, without a DOM renderer -- same
+ * base shape as admin-user-management.test.ts's own renderedText, extended
+ * to invoke function-component elements (e.g. this story's cart.* template
+ * components, dispatched via a Record<templateKey, Component> lookup map --
+ * the same pattern PDP's page.tsx already used before this story). A React
+ * element for a function component is just a lazy {type, props} description
+ * until something actually calls it, so without this the walk would stop at
+ * <Template .../>'s own element boundary and never see its real rendered
+ * markup/text -- calling the type function directly is exactly what React
+ * itself does during a real render pass.
+ */
 function renderedText(node: ReactNode): string {
   if (node === null || node === undefined || typeof node === "boolean") return "";
   if (typeof node === "string" || typeof node === "number") return String(node);
   if (Array.isArray(node)) return node.map(renderedText).join("");
-  if (typeof node === "object" && "props" in node) {
-    return renderedText((node as { props: { children?: ReactNode } }).props?.children);
+  if (typeof node === "object" && "type" in node && "props" in node) {
+    const element = node as { type: unknown; props: { children?: ReactNode } };
+    if (typeof element.type === "function") {
+      // Some function components (e.g. RecommendationShelf -> InteractionTracker)
+      // are real client components that call hooks (useEffect) -- invoking
+      // them directly outside an actual React render throws "Invalid hook
+      // call". This helper is not a real renderer, so for those it falls
+      // back to the previous, pre-story behavior of just walking whatever
+      // children were explicitly passed in (usually none for these), rather
+      // than attempting -- and failing -- to reconstruct real React
+      // semantics here.
+      try {
+        return renderedText((element.type as (props: unknown) => ReactNode)(element.props));
+      } catch {
+        return renderedText(element.props?.children);
+      }
+    }
+    return renderedText(element.props?.children);
   }
   return "";
 }

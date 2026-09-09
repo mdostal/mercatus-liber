@@ -1,0 +1,43 @@
+name: storefront-design-system-v2
+title: "Switchable, component-level theme system from 3 independently designed concepts"
+description: >
+  Turns the 3 independently designed, personally-verified storefront concepts (produced via the
+  user's own blind-parallel-design-agent methodology and published as Artifacts this session)
+  into real, switchable, component-level themes -- not another token-only pass like epic 32.
+  Resolved design question: extend packages/theming's existing LayoutTemplate/resolveTemplate
+  primitive (already proven for PDP's tabbed-detail vs. long-scroll) to cover nav/home/category/
+  cart page types instead of inventing a new mechanism -- ThemeBundle's shape is unchanged, only
+  template-registry coverage grows. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [design-system, theming, frontend]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    design-system: "Turns 3 already-produced, user-verified design concepts into real switchable themes"
+    theming: "Extends packages/theming's existing template-registry primitive rather than a new mechanism"
+    frontend: "Component-level rendering changes across nav/home/category/cart/PDP"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention for every prior epic; user has explicitly asked to proceed through execution without further gating.
+
+stories:
+  - id: design-system-v2-01-template-registry-and-bundles
+    title: "Extend theming's template registry to nav/home/category/cart; add 3 new ThemeBundles"
+    complexity: medium
+    depends_on: []
+  - id: design-system-v2-02-component-template-wiring
+    title: "Wire shared render components to branch on resolveTemplate() per page type"
+    complexity: high
+    depends_on: [design-system-v2-01-template-registry-and-bundles]
+  - id: design-system-v2-03-switcher-and-verification
+    title: "Theme-switcher UI, live verification across all page types/bundles, closeout"
+    complexity: medium
+    depends_on: [design-system-v2-02-component-template-wiring]

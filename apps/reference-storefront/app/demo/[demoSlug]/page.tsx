@@ -1,10 +1,26 @@
+import type { ComponentType } from "react";
 import { notFound } from "next/navigation";
-import { CmsSection } from "../../../components/cms-sections";
+import type { ComponentInstance } from "@mercatus-liber/cms";
+import { HomeMagazineGrid } from "../../../components/home-magazine-grid";
+import { HomeSpecGrid } from "../../../components/home-spec-grid";
+import { HomeStandardGrid } from "../../../components/home-standard-grid";
 import { InteractionTracker } from "../../../components/interaction-tracker";
-import { isDemoSlug } from "../../../lib/demos";
+import { isDemoSlug, type DemoSlug } from "../../../lib/demos";
 import { getServicesForDemo } from "../../../lib/services";
+import { readActiveThemeBundle } from "../../../lib/theme-cookie";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Template-key -> component map, the app-layer half of the theming
+ * contract (mirrors products/[slug]/page.tsx's PDP_TEMPLATES map exactly).
+ * Adding a new registered "home" template requires one more entry here.
+ */
+const HOME_TEMPLATES = {
+  "home.standard-grid": HomeStandardGrid,
+  "home.magazine-grid": HomeMagazineGrid,
+  "home.spec-grid": HomeSpecGrid,
+} as const;
 
 /**
  * demo-routing-05: this is the demo's own home page (CMS "home" page
@@ -19,7 +35,7 @@ export default async function DemoHomePage({ params }: { params: Promise<{ demoS
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
 
-  const { cms } = await getServicesForDemo(demoSlug);
+  const { cms, theming } = await getServicesForDemo(demoSlug);
   const home = await cms.getPageBySlug("home");
 
   if (!home) {
@@ -32,13 +48,20 @@ export default async function DemoHomePage({ params }: { params: Promise<{ demoS
     );
   }
 
+  // Same override-from-active-bundle pattern PDP already uses: the active
+  // theme bundle's own defaultTemplatesByPageType.home is passed as the
+  // explicit override (undefined for the 7 pre-existing bundles, which
+  // don't define one, so resolveTemplate falls back to its own
+  // first-registered-template default, "home.standard-grid").
+  const activeTheme = await readActiveThemeBundle(demoSlug);
+  const templateKey = theming.resolveTemplate("home", activeTheme.defaultTemplatesByPageType.home);
+  const Template: ComponentType<{ demoSlug: DemoSlug; sections: ComponentInstance[] }> =
+    (templateKey && HOME_TEMPLATES[templateKey as keyof typeof HOME_TEMPLATES]) || HomeStandardGrid;
+
   return (
     <main>
       <InteractionTracker eventName="page_viewed" properties={{ slug: "home" }} />
-      {home.sections.map((section, i) => (
-        // Sections are an ordered list, not individually id-addressable in this minimal demo -- index is a stable enough key here.
-        <CmsSection key={i} demoSlug={demoSlug} section={section} pageSlug="home" />
-      ))}
+      <Template demoSlug={demoSlug} sections={home.sections} />
     </main>
   );
 }

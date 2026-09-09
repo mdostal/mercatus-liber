@@ -116,6 +116,41 @@ export async function addBundleTierToCartAction(formData: FormData): Promise<voi
   revalidatePath(`/demo/${demoSlug}/cart`);
 }
 
+/**
+ * design-system-v2-02: packages/cart's updateQuantity/removeItem were
+ * already real, tested CartService methods (see packages/cart/src/
+ * service.ts) with no app-layer server action wired to them yet -- the
+ * cart page only ever exposed addToCartAction (from the PDP), applyCoupon,
+ * and startCheckout. This story's 3 new cart templates need real
+ * quantity-update/remove-line controls (per its acceptance criteria), so
+ * these two actions expose the existing service methods following the
+ * exact same convention as every other action in this file (requireDemoSlug
+ * first, then a single service call, then revalidatePath). quantity <= 0 is
+ * intentionally allowed through to updateQuantity() itself, which already
+ * treats that as "remove the line" (see that method's own doc comment) --
+ * no extra validation duplicated here.
+ */
+export async function updateCartItemQuantityAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  const skuId = String(formData.get("skuId"));
+  const quantity = Number(formData.get("quantity") ?? 1);
+  const cartId = await readCartId(demoSlug);
+  if (!cartId) throw new Error("Cannot update quantity -- no cart exists yet.");
+  const { cart } = await getServicesForDemo(demoSlug);
+  await cart.updateQuantity(cartId, skuId, quantity);
+  revalidatePath(`/demo/${demoSlug}/cart`);
+}
+
+export async function removeCartItemAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  const skuId = String(formData.get("skuId"));
+  const cartId = await readCartId(demoSlug);
+  if (!cartId) throw new Error("Cannot remove item -- no cart exists yet.");
+  const { cart } = await getServicesForDemo(demoSlug);
+  await cart.removeItem(cartId, skuId);
+  revalidatePath(`/demo/${demoSlug}/cart`);
+}
+
 export async function applyCouponAction(formData: FormData): Promise<void> {
   const demoSlug = requireDemoSlug(formData);
   const code = String(formData.get("code") ?? "").trim();
