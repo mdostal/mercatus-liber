@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { createAccountService, createInMemoryCustomerProfileRepository, type AccountService } from "@mercatus-liber/account";
 import { createClerkAdminAuthAdapter } from "@mercatus-liber/adapter-clerk";
 import { createPostgresAdapter } from "@mercatus-liber/adapter-postgres";
+import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { ADMIN_DEV_SESSION_COOKIE, createDefaultAdminAuthAdapter, type AdminAuthAdapter } from "@mercatus-liber/admin-auth";
@@ -460,23 +461,85 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   });
   registerBiEventLogSync({ events, eventLog: biEventLog });
 
-  // @mercatus-liber/fulfillment (subsystem 41, fulfillment-02) -- the manual
-  // adapter is the only provider wired for this story: no real POD/dropship
-  // provider adapter exists yet (epics 42-43 add the env-var branch to a
-  // real provider later, same "env var truthy picks the real thing, else a
-  // harmless local default" shape as every other adapter above). `checkout`
-  // structurally satisfies fulfillment's own narrow OrderLookup interface
-  // already (getOrder(id) -> { id, items: { skuId, quantity }[] }) -- no
-  // adapter object needed, same structural-satisfaction pattern as
-  // account/inventory/bi above. Every SKU implicitly routes to "manual"
-  // unless a mapping is explicitly set via fulfillmentRouting.setProviderForSku
-  // (no admin UI for overriding routing exists yet -- out of scope for this
-  // story, see docs/subsystems/22-fulfillment.md).
+  // @mercatus-liber/fulfillment (subsystem 41/42, fulfillment-02 +
+  // adapter-printful-02) -- the manual adapter is always registered as the
+  // permanent self-fulfillment fallback (see createManualFulfillmentAdapter's
+  // own doc comment). `PRINTFUL_API_TOKEN` set and truthy additionally
+  // registers the real Printful adapter under its own provider key
+  // ("printful") -- same two-state "env var truthy picks the real thing,
+  // else nothing extra is registered" shape as every other optional adapter
+  // in this file, except this one *adds* a provider rather than swapping one
+  // (a SKU only actually routes to "printful" once
+  // fulfillmentRouting.setProviderForSku is called for it -- every SKU still
+  // defaults to "manual" either way, see FulfillmentRoutingRepository).
+  //
+  // createPrintfulFulfillmentAdapter's config requires two resolver
+  // callbacks that bridge real gaps between this reference app's own data
+  // model and Printful's real v2 order API (see packages/adapter-printful/
+  // src/mapping.ts's doc comments and design-discussion.md for the full
+  // research record):
+  //   - resolveRecipient: checkout-orders' own ShippingInfo
+  //     (packages/checkout-orders/src/types.ts) is only
+  //     `{ name, email, address }` -- one free-text address line, because
+  //     the only real payment adapter wired today (Stripe Checkout) collects
+  //     and verifies its own address at Stripe's hosted page and never
+  //     returns a structured one back to this app. Printful's real v2
+  //     `recipient` schema wants structured address1/city/state_code/
+  //     zip/country_code fields this app genuinely does not have, so this
+  //     is a best-effort bridge (the whole free-text line into address1),
+  //     not a fabricated structured address -- a real deployment would need
+  //     to collect a structured address at checkout to do better.
+  //   - resolveCatalogTarget: this reference app's catalog (@mercatus-liber/
+  //     core's `Sku`, see packages/core/src/schema.ts) has no notion of a
+  //     Printful `catalog_variant_id` at all -- SKUs here are this app's own
+  //     internal marketplace identifiers, not Printful's catalog surface.
+  //     No SKU -> Printful-catalog-variant mapping data source exists in
+  //     this reference app, so this throws a clear, honest error instead of
+  //     inventing one; a real deployment would add that mapping (e.g. a
+  //     small config table or a SKU metadata field) before routing any SKU
+  //     to "printful" via fulfillmentRouting.setProviderForSku.
+  //
+  // No real Printful account/API token exists in this environment -- see
+  // this story's final report and docs/subsystems/22-fulfillment.md's
+  // Printful section for the honest disclosure. This branch is therefore
+  // unexercised against a live Printful API here; it's covered instead by
+  // @mercatus-liber/adapter-printful's own unit test suite (prior story) plus
+  // this file's env-var branch itself being independently verifiable with a
+  // fake/test token for wiring purposes only.
   const fulfillmentRouting = createInMemoryFulfillmentRoutingRepository();
   const fulfillment = createFulfillmentService({
     orders: checkout,
     routing: fulfillmentRouting,
-    adapters: { [MANUAL_FULFILLMENT_PROVIDER]: createManualFulfillmentAdapter() },
+    adapters: {
+      [MANUAL_FULFILLMENT_PROVIDER]: createManualFulfillmentAdapter(),
+      ...(process.env.PRINTFUL_API_TOKEN
+        ? {
+            [PRINTFUL_PROVIDER]: createPrintfulFulfillmentAdapter({
+              apiToken: process.env.PRINTFUL_API_TOKEN,
+              ...(process.env.PRINTFUL_STORE_ID ? { storeId: process.env.PRINTFUL_STORE_ID } : {}),
+              async resolveRecipient(orderId) {
+                const order = await checkout.getOrder(orderId);
+                if (!order) {
+                  throw new Error(`resolveRecipient: no such order "${orderId}"`);
+                }
+                return {
+                  name: order.shippingInfo.name,
+                  email: order.shippingInfo.email,
+                  address1: order.shippingInfo.address,
+                };
+              },
+              async resolveCatalogTarget(skuId) {
+                throw new Error(
+                  `resolveCatalogTarget: no Printful catalog_variant_id mapping exists for SKU "${skuId}" -- ` +
+                    "this reference app's catalog has no notion of Printful's catalog surface; a real " +
+                    "deployment needs an explicit SKU -> Printful catalog_variant_id mapping before routing " +
+                    "any SKU to the \"printful\" provider.",
+                );
+              },
+            }),
+          }
+        : {}),
+    },
   });
 
   const plugins = createPluginRegistry();

@@ -70,6 +70,9 @@ importers:
       '@mercatus-liber/adapter-postgres':
         specifier: workspace:*
         version: link:../../packages/adapter-postgres
+      '@mercatus-liber/adapter-printful':
+        specifier: workspace:*
+        version: link:../../packages/adapter-printful
       '@mercatus-liber/adapter-sanity':
         specifier: workspace:*
         version: link:../../packages/adapter-sanity
