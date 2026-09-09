@@ -14,15 +14,16 @@ afterEach(() => {
 });
 
 describe("getAdapterInfo", () => {
-  it("with no env vars set: persistence and CMS are active, payments is unconfigured, analytics is a no-op and active", () => {
+  it("with no env vars set: persistence and CMS are active, payments is unconfigured, analytics is a no-op and active, fulfillment is manual-only and active", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
     vi.stubEnv("POSTHOG_API_KEY", "");
     vi.stubEnv("SANITY_PROJECT_ID", "");
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("SQLITE_FILE_PATH", "");
+    vi.stubEnv("PRINTFUL_API_TOKEN", "");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(4);
+    expect(info).toHaveLength(5);
 
     const persistence = info.find((e) => e.subsystem === "Persistence (catalog)")!;
     expect(persistence.status).toBe("active");
@@ -39,6 +40,10 @@ describe("getAdapterInfo", () => {
     const analytics = info.find((e) => e.subsystem === "Analytics")!;
     expect(analytics.adapter).toBe("No-op (disabled)");
     expect(analytics.status).toBe("active");
+
+    const fulfillment = info.find((e) => e.subsystem === "Fulfillment")!;
+    expect(fulfillment.adapter).toBe("Manual (self-fulfillment)");
+    expect(fulfillment.status).toBe("active");
   });
 
   it("reports file-backed SQLite as active, naming the exact path, when SQLITE_FILE_PATH is truthy and DATABASE_URL is unset", () => {
@@ -102,6 +107,23 @@ describe("getAdapterInfo", () => {
     expect(analytics.status).toBe("active");
   });
 
+  it("reports Printful as registered alongside manual when PRINTFUL_API_TOKEN is truthy", () => {
+    vi.stubEnv("PRINTFUL_API_TOKEN", "fake-test-token-for-wiring-verification-only");
+
+    const fulfillment = getAdapterInfo().find((e) => e.subsystem === "Fulfillment")!;
+    expect(fulfillment.adapter).toBe("Manual + Printful (registered)");
+    expect(fulfillment.status).toBe("active");
+    expect(fulfillment.detail).toMatch(/printful/i);
+  });
+
+  it("reports manual-only fulfillment when PRINTFUL_API_TOKEN is unset", () => {
+    vi.stubEnv("PRINTFUL_API_TOKEN", "");
+
+    const fulfillment = getAdapterInfo().find((e) => e.subsystem === "Fulfillment")!;
+    expect(fulfillment.adapter).toBe("Manual (self-fulfillment)");
+    expect(fulfillment.status).toBe("active");
+  });
+
   it("is not cached/memoized -- two calls with different env values in between reflect the current environment each time", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
     const before = getAdapterInfo().find((e) => e.subsystem === "Payments")!;
@@ -113,14 +135,14 @@ describe("getAdapterInfo", () => {
     expect(after.detail).toMatch(/test/i);
   });
 
-  it("always returns exactly four entries in the same subsystem order, persistence and CMS always active regardless of env", () => {
+  it("always returns exactly five entries in the same subsystem order, persistence and CMS always active regardless of env", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_xyz");
     vi.stubEnv("POSTHOG_API_KEY", "phc_xyz");
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(4);
-    expect(info.map((e) => e.subsystem)).toEqual(["Persistence (catalog)", "CMS", "Payments", "Analytics"]);
+    expect(info).toHaveLength(5);
+    expect(info.map((e) => e.subsystem)).toEqual(["Persistence (catalog)", "CMS", "Payments", "Analytics", "Fulfillment"]);
     // Persistence and CMS are always "active" (every one of their 2-3
     // states is a valid, functional configuration -- there's no
     // "unconfigured" state for either, unlike payments).

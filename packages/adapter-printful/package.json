@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/adapter-printful",
+  "version": "0.1.0",
+  "description": "FulfillmentAdapter (subsystem 41) backed by Printful's real v2 order API (POST /v2/orders draft, POST /v2/orders/{id}/confirmation to confirm+charge) and v2 webhooks. Proves fulfillment is genuinely swappable to a real dropship/POD provider, same shape as adapter-clerk/adapter-shopify/adapter-sanity proved for their own subsystems. Public surface is exactly FulfillmentAdapter; depends on @mercatus-liber/fulfillment only, for the types it implements, plus global fetch as the real HTTP client (no new HTTP dependency introduced -- mirrors adapter-shopify's graphql-client.ts convention).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/fulfillment": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

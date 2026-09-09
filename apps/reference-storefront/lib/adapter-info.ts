@@ -130,7 +130,45 @@ function cmsInfo(): AdapterInfo {
 }
 
 /**
- * Returns exactly four entries describing this instance's actual adapter
+ * Mirrors services.ts's own fulfillment-adapters branch exactly (see its doc
+ * comment there, adapter-printful-02): the manual adapter
+ * (@mercatus-liber/fulfillment) is always registered as the permanent
+ * self-fulfillment fallback; `PRINTFUL_API_TOKEN` set and truthy
+ * additionally registers the real Printful adapter under its own provider
+ * key -- but registering a provider is not the same as any SKU actually
+ * routing to it (every SKU still defaults to "manual" until
+ * fulfillmentRouting.setProviderForSku is called), so this row reports
+ * "Printful (registered)" rather than implying every order is Printful-
+ * fulfilled. Unlike every other row in this file, "active" here does not
+ * imply live-verified -- see docs/subsystems/22-fulfillment.md's honest
+ * disclosure: no real Printful account/API token exists in this environment.
+ */
+function fulfillmentInfo(): AdapterInfo {
+  if (process.env.PRINTFUL_API_TOKEN) {
+    return {
+      subsystem: "Fulfillment",
+      adapter: "Manual + Printful (registered)",
+      detail:
+        "PRINTFUL_API_TOKEN is set -- createPrintfulFulfillmentAdapter() (packages/adapter-printful) is registered " +
+        "alongside createManualFulfillmentAdapter() (packages/fulfillment); a SKU only actually routes to " +
+        "Printful once fulfillmentRouting.setProviderForSku is called for it, every SKU still defaults to " +
+        "\"manual\" otherwise",
+      status: "active",
+    };
+  }
+
+  return {
+    subsystem: "Fulfillment",
+    adapter: "Manual (self-fulfillment)",
+    detail:
+      "PRINTFUL_API_TOKEN is not set -- only createManualFulfillmentAdapter() (packages/fulfillment) is " +
+      "registered, a deliberately valid, fully-functional default in this app's own posture, not an error state",
+    status: "active",
+  };
+}
+
+/**
+ * Returns exactly five entries describing this instance's actual adapter
  * wiring, computed fresh from process.env on every call.
  */
 export function getAdapterInfo(): AdapterInfo[] {
@@ -139,5 +177,6 @@ export function getAdapterInfo(): AdapterInfo[] {
     cmsInfo(),
     paymentsInfo(),
     analyticsInfo(),
+    fulfillmentInfo(),
   ];
 }

@@ -1,0 +1,39 @@
+name: adapter-printful
+title: "@mercatus-liber/adapter-printful: real Printful print-on-demand fulfillment adapter"
+description: >
+  Depends on epic 41 (fulfillment-routing, done). Grounded in the real, API-verified Printful
+  research from .pHive/planning/backlog-addendum-merch-fulfillment-2026-09-09.md (v1+v2 split,
+  draft-then-confirm order flow, prepaid Wallet billing, 120 req/min). Real credential gate,
+  same disclosed pattern as epics 27 (admin-auth-clerk) and 46 (GA4/PostHog) -- built for real
+  correctness against current Printful API docs, unit-tested against realistic mocked
+  responses, live end-to-end call honestly disclosed as blocked on a real account/token. See
+  docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [adapters, fulfillment, third-party-integration]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    adapters: "Real third-party FulfillmentAdapter implementation, same pattern as every other adapter in this repo"
+    fulfillment: "Implements epic 41's contract for a real print-on-demand provider"
+    third-party-integration: "Grounded in real, API-verified Printful research"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: adapter-printful-01-research-and-adapter
+    title: "Confirm v1/v2 API shapes for real, build the FulfillmentAdapter implementation"
+    complexity: high
+    depends_on: []
+  - id: adapter-printful-02-wiring-verification-closeout
+    title: "Env-var wiring, honest credential-gap disclosure, docs, closeout, merge"
+    complexity: low
+    depends_on: [adapter-printful-01-research-and-adapter]
