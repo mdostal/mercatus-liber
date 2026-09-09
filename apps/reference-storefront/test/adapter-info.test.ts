@@ -24,9 +24,10 @@ describe("getAdapterInfo", () => {
     vi.stubEnv("PRINTIFY_API_TOKEN", "");
     vi.stubEnv("PRINTIFY_SHOP_ID", "");
     vi.stubEnv("SHIPPO_API_TOKEN", "");
+    vi.stubEnv("CLOUDINARY_CLOUD_NAME", "");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(6);
+    expect(info).toHaveLength(7);
 
     const persistence = info.find((e) => e.subsystem === "Persistence (catalog)")!;
     expect(persistence.status).toBe("active");
@@ -57,6 +58,10 @@ describe("getAdapterInfo", () => {
     const shipping = info.find((e) => e.subsystem === "Shipping")!;
     expect(shipping.adapter).toBe("Manual (PirateShip)");
     expect(shipping.status).toBe("active");
+
+    const media = info.find((e) => e.subsystem === "Image CDN")!;
+    expect(media.adapter).toBe("Passthrough (no transform)");
+    expect(media.status).toBe("active");
   });
 
   it("reports file-backed SQLite as active, naming the exact path, when SQLITE_FILE_PATH is truthy and DATABASE_URL is unset", () => {
@@ -207,8 +212,16 @@ describe("getAdapterInfo", () => {
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(6);
-    expect(info.map((e) => e.subsystem)).toEqual(["Persistence (catalog)", "CMS", "Payments", "Analytics", "Fulfillment", "Shipping"]);
+    expect(info).toHaveLength(7);
+    expect(info.map((e) => e.subsystem)).toEqual([
+      "Persistence (catalog)",
+      "CMS",
+      "Payments",
+      "Analytics",
+      "Fulfillment",
+      "Shipping",
+      "Image CDN",
+    ]);
     // Persistence and CMS are always "active" (every one of their 2-3
     // states is a valid, functional configuration) -- same as every other
     // row now that payments' unset-key state is a real sandbox adapter

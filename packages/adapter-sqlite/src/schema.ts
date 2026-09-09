@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS products (
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   identifying_attribute_keys TEXT NOT NULL, -- JSON string[]
-  status TEXT NOT NULL
+  status TEXT NOT NULL,
+  images TEXT -- JSON ProductImage[] | null, image-cdn epic
 );
 
 CREATE TABLE IF NOT EXISTS skus (

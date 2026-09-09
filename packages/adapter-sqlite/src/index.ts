@@ -5,6 +5,7 @@ import type {
   ProductAttribute,
   ProductAttributeRepository,
   ProductFilter,
+  ProductImage,
   ProductRepository,
   ProductStatus,
   Sku,
@@ -19,6 +20,7 @@ interface ProductRow {
   description: string;
   identifying_attribute_keys: string;
   status: string;
+  images: string | null;
 }
 
 interface SkuRow {
@@ -45,6 +47,7 @@ function rowToProduct(row: ProductRow): Product {
     description: row.description,
     identifyingAttributeKeys: JSON.parse(row.identifying_attribute_keys) as string[],
     status: row.status as ProductStatus,
+    ...(row.images ? { images: JSON.parse(row.images) as ProductImage[] } : {}),
   };
 }
 
@@ -77,6 +80,20 @@ export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
   db.exec(SCHEMA_SQL);
+  // image-cdn epic: SCHEMA_SQL's CREATE TABLE IF NOT EXISTS is a no-op
+  // against a file-backed DB created before the `images` column existed
+  // (:memory: DBs are always fresh, so this only matters for
+  // SQLITE_FILE_PATH deployments) -- this repo has no migration runner, so
+  // this defensive best-effort ALTER is the one place a pre-existing file
+  // gets the new column added; ignore the "duplicate column" error a
+  // database that already has it (including every fresh :memory: DB, which
+  // already got it from SCHEMA_SQL above) throws.
+  try {
+    db.exec("ALTER TABLE products ADD COLUMN images TEXT");
+  } catch {
+    // already has the column -- expected on every fresh DB and every DB
+    // that already ran this migration once.
+  }
 
   const products: ProductRepository = {
     async get(id: string): Promise<Product | null> {
@@ -108,14 +125,15 @@ export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
     },
     async save(product: Product): Promise<void> {
       db.prepare(
-        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status)
-         VALUES (@id, @slug, @title, @description, @identifyingAttributeKeys, @status)
+        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images)
+         VALUES (@id, @slug, @title, @description, @identifyingAttributeKeys, @status, @images)
          ON CONFLICT(id) DO UPDATE SET
            slug = excluded.slug,
            title = excluded.title,
            description = excluded.description,
            identifying_attribute_keys = excluded.identifying_attribute_keys,
-           status = excluded.status`,
+           status = excluded.status,
+           images = excluded.images`,
       ).run({
         id: product.id,
         slug: product.slug,
@@ -123,6 +141,7 @@ export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
         description: product.description,
         identifyingAttributeKeys: JSON.stringify(product.identifyingAttributeKeys),
         status: product.status,
+        images: product.images ? JSON.stringify(product.images) : null,
       });
     },
   };

@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/media",
+  "version": "0.1.0",
+  "description": "Image-CDN subsystem (image-cdn epic): owns the ImageAdapter contract every real image-CDN/transform provider implements (mirrors @mercatus-liber/payments' PaymentAdapter and @mercatus-liber/shipping's ShippingAdapter shape -- a small interface the app wires at startup, swappable with zero changes anywhere else). Depends on @mercatus-liber/core only for the ProductImage type it operates on. Ships createPassthroughImageAdapter() as the zero-infra default -- returns the source URL unchanged, a genuinely honest \"no transform/optimization available\" default, never a fabricated resized URL.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

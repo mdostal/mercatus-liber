@@ -50,6 +50,26 @@ describe("createSqliteAdapter", () => {
       expect(found?.title).toBe("Updated Title");
       expect(await adapter.products.list()).toHaveLength(1);
     });
+
+    it("image-cdn epic: saves and retrieves a product's real images array, round-tripping through the JSON-encoded TEXT column", async () => {
+      const withImages: Product = {
+        ...dragon,
+        images: [
+          { url: "https://example.com/dragon-front.jpg", alt: "Dragon cable organizer, front view" },
+          { url: "https://example.com/dragon-side.jpg", alt: "Dragon cable organizer, side view" },
+        ],
+      };
+      await adapter.products.save(withImages);
+      const found = await adapter.products.get("p1");
+      expect(found?.images).toEqual(withImages.images);
+    });
+
+    it("image-cdn epic: a product saved with no images round-trips with `images` absent, not an empty array or null", async () => {
+      await adapter.products.save(dragon);
+      const found = await adapter.products.get("p1");
+      expect(found?.images).toBeUndefined();
+      expect("images" in (found as object)).toBe(false);
+    });
   });
 
   describe("skus", () => {

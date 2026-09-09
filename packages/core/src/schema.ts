@@ -15,6 +15,23 @@ export interface IdentifyingAttribute {
 
 export type ProductStatus = "draft" | "active" | "archived";
 
+/**
+ * A single product photo. `url` is the raw source reference (an external
+ * URL, a CDN asset path, whatever the merchant's real image host uses) --
+ * this schema deliberately does NOT bake in any provider's own delivery/
+ * transform URL shape (Cloudinary, imgix, a plain file host, ...). Turning
+ * `url` into an actual optimized delivery URL (resized, format-converted,
+ * CDN-fronted) is the image-CDN epic's job: @mercatus-liber/media's
+ * ImageAdapter.resolveUrl() is the one place that happens, mirroring how
+ * PaymentAdapter/ShippingAdapter/etc. keep provider-specific shape out of
+ * core (see this file's own header comment).
+ */
+export interface ProductImage {
+  url: string;
+  /** Required, not optional -- every rendered <img> needs real alt text; there's no honest default to fall back to. */
+  alt: string;
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -27,6 +44,15 @@ export interface Product {
    */
   identifyingAttributeKeys: string[];
   status: ProductStatus;
+  /**
+   * image-cdn epic: optional and additive -- absent (or an empty array) for
+   * any product that predates this field or was never given photos, which
+   * every existing call site (every seed file, every persistence adapter
+   * row that predates this column) still produces, so this is zero
+   * regression. `images[0]`, when present, is the primary/hero photo; any
+   * further entries are additional gallery photos in display order.
+   */
+  images?: ProductImage[];
 }
 
 export interface Sku {

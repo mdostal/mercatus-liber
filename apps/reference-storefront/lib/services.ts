@@ -5,6 +5,7 @@ import { createPostgresAdapter } from "@mercatus-liber/adapter-postgres";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
+import { createCloudinaryFetchAdapter } from "@mercatus-liber/adapter-cloudinary";
 import { createShippoShippingAdapter } from "@mercatus-liber/adapter-shippo";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { ADMIN_DEV_SESSION_COOKIE, createDefaultAdminAuthAdapter, type AdminAuthAdapter } from "@mercatus-liber/admin-auth";
@@ -77,6 +78,7 @@ import {
   type ServiceAreaService,
 } from "@mercatus-liber/service-areas";
 import { createManualShippingAdapter, type ShippingAdapter } from "@mercatus-liber/shipping";
+import { createPassthroughImageAdapter, type ImageAdapter } from "@mercatus-liber/media";
 import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
 import { Pool } from "pg";
 import { DEMO_REGISTRY, isDemoSlug, type DemoSlug } from "./demos";
@@ -180,6 +182,8 @@ export interface Services {
    * directly from this map.
    */
   shipping: Record<string, ShippingAdapter>;
+  /** image-cdn epic -- resolves a product's raw image `url` into a real deliverable URL, see @mercatus-liber/media's own doc comment. */
+  media: ImageAdapter;
 }
 
 /**
@@ -720,6 +724,17 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       : {}),
   };
 
+  // @mercatus-liber/media (image-cdn epic) -- createPassthroughImageAdapter()
+  // (serves whatever URL a product's images carry, unchanged) is always the
+  // default; CLOUDINARY_CLOUD_NAME set and truthy additionally swaps in the
+  // real Cloudinary-fetch-mode adapter, same "env var truthy picks the real
+  // adapter, else a harmless functional default" shape as every other
+  // subsystem in this function. Fetch mode needs only a cloud name (no API
+  // key/secret), so this works against any free Cloudinary account.
+  const media: ImageAdapter = process.env.CLOUDINARY_CLOUD_NAME
+    ? createCloudinaryFetchAdapter({ cloudName: process.env.CLOUDINARY_CLOUD_NAME })
+    : createPassthroughImageAdapter();
+
   const plugins = createPluginRegistry();
   const orderNotificationPlugin = createOrderNotificationPlugin();
   plugins.register(orderNotificationPlugin);
@@ -771,6 +786,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     fulfillment,
     fulfillmentRouting,
     shipping,
+    media,
     confirmSandboxPayment: sandboxPayments ? sandboxPayments.confirmSandboxPayment.bind(sandboxPayments) : null,
   };
 }

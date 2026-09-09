@@ -51,13 +51,14 @@ export function createFakePgPool(): FakePool {
         };
       }
       if (sql.startsWith("INSERT INTO products")) {
-        const [id, slug, title, description, identifyingAttributeKeys, status] = values as [
+        const [id, slug, title, description, identifyingAttributeKeys, status, images] = values as [
           string,
           string,
           string,
           string,
           string,
           string,
+          string | null,
         ];
         products.set(id, {
           id,
@@ -66,6 +67,10 @@ export function createFakePgPool(): FakePool {
           description,
           identifying_attribute_keys: JSON.parse(identifyingAttributeKeys),
           status,
+          // Real Postgres auto-parses a JSONB column back into a JS value
+          // for the driver -- mirrored here the same way
+          // identifying_attribute_keys already is above.
+          images: images ? JSON.parse(images) : null,
         });
         return { rows: [] };
       }

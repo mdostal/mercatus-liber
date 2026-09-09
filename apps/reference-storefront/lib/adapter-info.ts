@@ -229,7 +229,38 @@ function shippingInfo(): AdapterInfo {
 }
 
 /**
- * Returns exactly six entries describing this instance's actual adapter
+ * Mirrors services.ts's own `media` branch exactly (image-cdn epic):
+ * createPassthroughImageAdapter() (@mercatus-liber/media) is always the
+ * default -- serves a product's raw image URL unchanged, a genuinely
+ * honest "no CDN wired" default, not a broken state. CLOUDINARY_CLOUD_NAME
+ * set and truthy additionally swaps in the real Cloudinary-fetch-mode
+ * adapter (@mercatus-liber/adapter-cloudinary). No real Cloudinary account
+ * exists in this environment -- same disclosed-gap posture as Shippo/
+ * Printful/Printify above.
+ */
+function mediaInfo(): AdapterInfo {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  if (!cloudName) {
+    return {
+      subsystem: "Image CDN",
+      adapter: "Passthrough (no transform)",
+      detail:
+        "CLOUDINARY_CLOUD_NAME is not set -- createPassthroughImageAdapter() (packages/media) serves every " +
+        "product image's raw URL unchanged, a genuinely honest default, not an error state",
+      status: "active",
+    };
+  }
+
+  return {
+    subsystem: "Image CDN",
+    adapter: "Cloudinary (fetch mode)",
+    detail: `CLOUDINARY_CLOUD_NAME is set -- createCloudinaryFetchAdapter({ cloudName: ${JSON.stringify(cloudName)} }) (packages/adapter-cloudinary)`,
+    status: "active",
+  };
+}
+
+/**
+ * Returns exactly seven entries describing this instance's actual adapter
  * wiring, computed fresh from process.env on every call.
  */
 export function getAdapterInfo(): AdapterInfo[] {
@@ -240,5 +271,6 @@ export function getAdapterInfo(): AdapterInfo[] {
     analyticsInfo(),
     fulfillmentInfo(),
     shippingInfo(),
+    mediaInfo(),
   ];
 }

@@ -20,6 +20,7 @@ interface ProductRow {
   description: string;
   identifying_attribute_keys: string[]; // JSONB -- already parsed by the pg driver
   status: string;
+  images: Product["images"] | null; // JSONB, image-cdn epic
 }
 
 interface SkuRow {
@@ -46,6 +47,7 @@ function rowToProduct(row: ProductRow): Product {
     description: row.description,
     identifyingAttributeKeys: row.identifying_attribute_keys,
     status: row.status as ProductStatus,
+    ...(row.images ? { images: row.images } : {}),
   };
 }
 
@@ -104,14 +106,15 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
     },
     async save(product: Product): Promise<void> {
       await pool.query(
-        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (id) DO UPDATE SET
            slug = EXCLUDED.slug,
            title = EXCLUDED.title,
            description = EXCLUDED.description,
            identifying_attribute_keys = EXCLUDED.identifying_attribute_keys,
-           status = EXCLUDED.status`,
+           status = EXCLUDED.status,
+           images = EXCLUDED.images`,
         [
           product.id,
           product.slug,
@@ -119,6 +122,7 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
           product.description,
           JSON.stringify(product.identifyingAttributeKeys),
           product.status,
+          product.images ? JSON.stringify(product.images) : null,
         ],
       );
     },

@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS products (
   identifying_attribute_keys JSONB NOT NULL,
   status TEXT NOT NULL
 );
+-- image-cdn epic: CREATE TABLE IF NOT EXISTS above is a no-op against a
+-- database that already existed before this column did, unlike a fresh one
+-- -- Postgres (unlike SQLite) supports ADD COLUMN IF NOT EXISTS natively,
+-- so this one statement (idempotent, safe to run every startup) covers both
+-- cases with no separate migration runner needed.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB;
 
 CREATE TABLE IF NOT EXISTS skus (
   id TEXT PRIMARY KEY,
