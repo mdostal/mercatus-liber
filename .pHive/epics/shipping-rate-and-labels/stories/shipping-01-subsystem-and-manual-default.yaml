@@ -1,0 +1,108 @@
+id: shipping-01-subsystem-and-manual-default
+epic: shipping-rate-and-labels
+title: "New @mercatus-liber/shipping: contract + genuinely honest manual/PirateShip default"
+status: pending
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/shipping-rate-and-labels/docs/design-discussion.md in full first -- section
+  1 resolves this story's design questions, don't re-derive them.
+
+  Read packages/fulfillment/src/ in full (this session's most recently built new-subsystem
+  package -- the closest, freshest structural template) and packages/fulfillment/package.json
+  as the scaffolding convention to mirror (core-only dependency, same script/devDependency
+  shape).
+
+  Confirm for real, via research, that PirateShip genuinely has no public API before writing the
+  manual adapter (the design discussion asserts this but says to confirm it, not assume it) --
+  if you find it's changed and PirateShip now has a real API, stop and report that instead of
+  proceeding with the manual-only design.
+
+  Scaffold packages/shipping/ (@mercatus-liber/shipping). Build:
+  1. `types.ts` -- the `ShippingAdapter` contract: `getRates(input: { fromAddress, toAddress,
+     parcel }): Promise<ShippingRate[]>` (a real rate quote shape: carrier, service level,
+     amount, estimated days), `buyLabel(rateId: string): Promise<ShippingLabel>` (a real label
+     shape: labelUrl, trackingNumber, trackingUrl, carrier), `getTrackingStatus(trackingNumber:
+     string): Promise<TrackingStatus>` (a real status shape: status, lastUpdate, events).
+  2. `manual-adapter.ts` -- `createManualShippingAdapter()`. Since PirateShip has no API, this
+     adapter's `getRates`/`buyLabel` must NOT fabricate rate/label data -- they should return a
+     real, clear, honest response object indicating "not available -- use your PirateShip
+     account directly" (with a real link to pirateship.com), not throw an unhelpful error or
+     pretend to succeed with fake numbers. `getTrackingStatus` can genuinely work if given a
+     real tracking number an operator entered by hand (via a carrier-lookup approach, or your
+     call after research on what's realistically buildable without a paid tracking API --
+     document your decision and its real limitation honestly).
+  3. Real unit tests covering the contract and the manual adapter's honest not-available
+     behavior for rates/labels.
+
+acceptance_criteria:
+  - "Given the PirateShip-API research, then the real finding is documented in code comments and the final report (confirmed no public API exists, or a report that this has changed)"
+  - "Given the new @mercatus-liber/shipping package, then it depends only on @mercatus-liber/core (or the narrowest real dependency actually needed), mirroring the fulfillment package's dependency discipline"
+  - "Given createManualShippingAdapter().getRates() and .buyLabel(), then both return a real, honest 'not available via API, use PirateShip directly' response with a real pirateship.com link -- never fabricated rate/label data"
+  - "Given `pnpm --filter @mercatus-liber/shipping build` and its test suite, then both succeed"
+
+steps:
+  - id: research
+    description: Confirm PirateShip's real current API availability (or lack thereof), and read packages/fulfillment/src/ as the structural template, before writing anything.
+    agent: researcher
+  - id: implement
+    description: Scaffold the package and build the contract/manual-adapter per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write and run real unit tests, verify every acceptance criterion.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the manual adapter never fabricates rate/label data, confirm the package's dependency discipline.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/shipping-rate-and-labels.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/fulfillment/src
+      purpose: "The closest, freshest structural template for a new core-only-dependency subsystem"
+
+files_to_modify:
+  - file: packages/shipping/package.json
+    change: New file.
+  - file: packages/shipping/src/types.ts
+    change: New file -- ShippingAdapter contract.
+  - file: packages/shipping/src/manual-adapter.ts
+    change: New file -- genuinely honest manual/PirateShip default.
+  - file: packages/shipping/src/index.ts
+    change: New file -- exports.
+
+design_decisions:
+  - decision: "Manual adapter never fabricates rate/label data -- returns an honest not-available response."
+    rationale: "See design-discussion.md §1b -- PirateShip genuinely has no API; pretending otherwise would be dishonest, not a real zero-infra default."
+
+risks: []
+
+references:
+  - path: .pHive/epics/shipping-rate-and-labels/docs/design-discussion.md
+    relevant_excerpt: "§1a-b: the resolved new-subsystem and honest-manual-default design questions this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: shipping.subsystem_scaffolded
+  direction: up
+  unit: count
+  baseline: 0
+  target: 1
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "@mercatus-liber/shipping package existing, building, and testing green"
+  verify_at: integrate
+  owner: tester

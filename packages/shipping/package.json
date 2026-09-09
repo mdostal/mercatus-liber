@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/shipping",
+  "version": "0.1.0",
+  "description": "Physical shipping-transaction subsystem (epic shipping-rate-and-labels): rate shopping, label purchase, and tracking for a self-fulfilled order line. Depends on @mercatus-liber/core only. Distinct from @mercatus-liber/fulfillment (epic 41), which routes *who produces/ships* a line -- this subsystem is *the physical shipping transaction itself*, needed even when a line has no external fulfillment provider at all. Owns the ShippingAdapter contract every real carrier adapter implements (mirrors @mercatus-liber/payments' PaymentAdapter and @mercatus-liber/fulfillment's FulfillmentAdapter shape) and ships createManualShippingAdapter() as the zero-infra default -- a genuinely honest documented-manual-workflow (PirateShip has no public API, confirmed by research, not assumed), never fabricated rate/label data.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

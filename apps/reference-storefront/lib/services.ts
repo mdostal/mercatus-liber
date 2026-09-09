@@ -5,6 +5,7 @@ import { createPostgresAdapter } from "@mercatus-liber/adapter-postgres";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
+import { createShippoShippingAdapter } from "@mercatus-liber/adapter-shippo";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { ADMIN_DEV_SESSION_COOKIE, createDefaultAdminAuthAdapter, type AdminAuthAdapter } from "@mercatus-liber/admin-auth";
 import {
@@ -75,6 +76,7 @@ import {
   createServiceAreaService,
   type ServiceAreaService,
 } from "@mercatus-liber/service-areas";
+import { createManualShippingAdapter, type ShippingAdapter } from "@mercatus-liber/shipping";
 import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
 import { Pool } from "pg";
 import { DEMO_REGISTRY, isDemoSlug, type DemoSlug } from "./demos";
@@ -151,6 +153,23 @@ export interface Services {
    * service.ts.
    */
   fulfillmentRouting: FulfillmentRoutingRepository;
+  /**
+   * The physical shipping-transaction subsystem (@mercatus-liber/shipping,
+   * epic shipping-rate-and-labels) -- distinct from `fulfillment` above
+   * (which routes *who produces/ships* a line), this is *the shipping
+   * transaction itself*: rate shopping, label purchase, tracking. Keyed by
+   * provider, same additive "manual default always present, a real
+   * provider's key present only when its env var is configured" shape as
+   * `fulfillment`'s own `adapters` map (see the `shipping` build below) --
+   * `"manual"` (createManualShippingAdapter, packages/shipping) is always
+   * present; `"shippo"` is additionally present only when
+   * `SHIPPO_API_TOKEN` is set. Not itself wrapped in a routing service (no
+   * ShippingService/routing-repository equivalent of FulfillmentService
+   * exists yet -- out of scope for this story, which only builds the real
+   * Shippo adapter and its wiring); a caller picks the adapter it wants
+   * directly from this map.
+   */
+  shipping: Record<string, ShippingAdapter>;
 }
 
 /**
@@ -656,6 +675,27 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     },
   });
 
+  // @mercatus-liber/shipping (subsystem shipping-rate-and-labels, stories
+  // shipping-01 + shipping-02) -- the manual/PirateShip default is always
+  // registered under `"manual"` (see createManualShippingAdapter's own doc
+  // comment: PirateShip has no public API, confirmed by research, so this is
+  // a genuine documented-manual-workflow, never fabricated rate/label data).
+  // `SHIPPO_API_TOKEN` set and truthy additionally registers the real Shippo
+  // adapter under `"shippo"` -- same two-state "env var truthy adds a
+  // provider, rather than swapping one" shape as the Printful/Printify
+  // branches above (this epic's own design discussion explicitly names that
+  // pattern as the one to mirror). No live Shippo account/token exists in
+  // this environment -- see this story's final report and
+  // @mercatus-liber/adapter-shippo's own unit test suite (prior to this
+  // wiring) for the real correctness proof against Shippo's actual, current
+  // API shape; this branch is unexercised against a live Shippo API here.
+  const shipping: Record<string, ShippingAdapter> = {
+    manual: createManualShippingAdapter(),
+    ...(process.env.SHIPPO_API_TOKEN
+      ? { shippo: createShippoShippingAdapter({ apiToken: process.env.SHIPPO_API_TOKEN }) }
+      : {}),
+  };
+
   const plugins = createPluginRegistry();
   const orderNotificationPlugin = createOrderNotificationPlugin();
   plugins.register(orderNotificationPlugin);
@@ -706,6 +746,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     adminAuth,
     fulfillment,
     fulfillmentRouting,
+    shipping,
   };
 }
 

@@ -1,0 +1,45 @@
+name: shipping-rate-and-labels
+title: "New @mercatus-liber/shipping subsystem + real Shippo adapter for full automation"
+description: >
+  The last piece of this session's fulfillment-and-shipping thread. Distinct from epics 41-43
+  (who produces an order): this is how a self-fulfilled order physically ships -- rate
+  shopping, label purchase, tracking. Resolved via a new, separate subsystem (not an extension
+  of @mercatus-liber/fulfillment -- every order, even self-fulfilled ones with no external
+  provider, needs this), a genuinely honest createManualShippingAdapter() default (PirateShip
+  has no public API, confirmed by research -- this is a real documented manual workflow, not a
+  fake stub), and a real @mercatus-liber/adapter-shippo implementation for full automation, per
+  the user's explicit stated preference. Real, disclosed credential gate, same pattern as every
+  other third-party adapter this session. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [shipping, new-subsystem, adapters]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    shipping: "The whole point of this epic -- rate shopping, label purchase, tracking"
+    new-subsystem: "New @mercatus-liber/shipping package, distinct concern from fulfillment"
+    adapters: "Real third-party Shippo implementation, same pattern as adapter-printful/printify"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: shipping-01-subsystem-and-manual-default
+    title: "New @mercatus-liber/shipping: contract + genuinely honest manual/PirateShip default"
+    complexity: high
+    depends_on: []
+  - id: shipping-02-adapter-shippo-and-wiring
+    title: "Real @mercatus-liber/adapter-shippo, env-var wiring"
+    complexity: high
+    depends_on: [shipping-01-subsystem-and-manual-default]
+  - id: shipping-03-verification-and-closeout
+    title: "Verification, honest credential-gap disclosure, docs, closeout, merge"
+    complexity: low
+    depends_on: [shipping-02-adapter-shippo-and-wiring]
