@@ -56,13 +56,27 @@ const DEMO_CATEGORIES: DemoCategory[] = [
     title: "Paper & Ephemera",
     description: "Letterpress cards and botanical prints for the wall, the desk, and the mailbox.",
   },
+  {
+    slug: "candles-home-fragrance",
+    title: "Candles & Home Fragrance",
+    description: "Hand-poured soy candles and botanical room sprays, made in small batches close to home.",
+  },
 ];
 
-/** One priced tier of a variant product (mirrors lib/seed-northline.ts's ServiceTier -- one generateSkus call per tier so each tier can carry its own distinct price). */
+/**
+ * One priced tier of a variant product (mirrors lib/seed-northline.ts's
+ * ServiceTier -- one generateSkus call per tier so each tier can carry its
+ * own distinct price). `stockUnits` is optional and defaults to
+ * DEFAULT_STOCK_UNITS -- most tiers use the default small-batch quantity,
+ * but a few (a one-of-a-kind hand-carved piece, a slow hand-dipped candle
+ * pair) carry a genuinely smaller real count, and a couple of the
+ * higher-volume printed paper goods carry a genuinely larger one.
+ */
 interface ProductTier {
   size: string;
   label: string;
   priceCents: number;
+  stockUnits?: number;
 }
 
 interface DemoProduct {
@@ -158,6 +172,205 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     categorySlug: "paper-ephemera",
     tiers: [{ size: "11x14in", label: "11 x 14 in", priceCents: 2800 }],
   },
+
+  // -- Plants (additional varieties) --------------------------------------
+  {
+    slug: "monstera-deliciosa",
+    title: "Monstera Deliciosa",
+    description:
+      "The iconic split-leaf philodendron cousin, prized for its dramatic fenestrated leaves. A fast, vigorous grower in bright indirect light -- give it a moss pole to climb and it rewards you with ever-larger splits.",
+    categorySlug: "plants",
+    tiers: [
+      { size: "small-4in", label: "Small (4\" pot)", priceCents: 1800 },
+      { size: "medium-6in", label: "Medium (6\" pot)", priceCents: 3200 },
+      { size: "large-10in", label: "Large (10\" pot)", priceCents: 6800, stockUnits: 8 },
+    ],
+  },
+  {
+    slug: "zz-plant",
+    title: "ZZ Plant",
+    description:
+      "Zamioculcas zamiifolia, with glossy dark-green leaves on thick upright stems that store water like succulents. Tolerates low light and long dry spells -- about as close to unkillable as a houseplant gets.",
+    categorySlug: "plants",
+    tiers: [{ size: "medium-6in", label: "Medium (6\" pot)", priceCents: 2600 }],
+  },
+  {
+    slug: "chinese-money-plant",
+    title: "Chinese Money Plant",
+    description:
+      "Pilea peperomioides, the pass-it-along plant -- round coin-shaped leaves on slender stems, and a steady producer of baby plantlets at the base you can pot up and share. Bright indirect light, let it dry out between waterings.",
+    categorySlug: "plants",
+    tiers: [{ size: "small-4in", label: "Small (4\" pot)", priceCents: 1600 }],
+  },
+  {
+    slug: "calathea-orbifolia",
+    title: "Calathea Orbifolia",
+    description:
+      "Broad, round leaves striped in silver and deep green that fold up at night and open again by morning. Wants bright indirect light, steady humidity, and soil that never fully dries out.",
+    categorySlug: "plants",
+    tiers: [{ size: "medium-6in", label: "Medium (6\" pot)", priceCents: 2800 }],
+  },
+  {
+    slug: "string-of-pearls",
+    title: "String of Pearls",
+    description:
+      "Senecio rowleyanus, a trailing succulent whose stems are strung with tiny bead-like leaves. Best in a hanging planter or high shelf where the strands can cascade; bright light and infrequent deep watering keep it plump.",
+    categorySlug: "plants",
+    tiers: [{ size: "hanging-6in", label: "Hanging (6\" pot)", priceCents: 2200 }],
+  },
+  {
+    slug: "rubber-plant",
+    title: "Burgundy Rubber Plant",
+    description:
+      "Ficus elastica 'Burgundy', broad glossy leaves in deep wine-red that catch the light. A sturdy, upright statement plant for a bright corner -- wipe the leaves occasionally and it keeps pushing out new growth.",
+    categorySlug: "plants",
+    tiers: [{ size: "large-10in", label: "Large (10\" pot)", priceCents: 4400, stockUnits: 9 }],
+  },
+
+  // -- Ceramics & Planters (additional forms) ------------------------------
+  {
+    slug: "bud-vase-trio",
+    title: "Bud Vase Trio",
+    description:
+      "Three small hand-thrown bud vases in complementary glazes -- matte white, warm speckle, and soft sage. Each holds a single stem or a short handful; grouped together on a windowsill or strung along a mantel.",
+    categorySlug: "ceramics-planters",
+    tiers: [{ size: "set-of-3", label: "Set of 3", priceCents: 2800 }],
+  },
+  {
+    slug: "reactive-glaze-serving-bowl",
+    title: "Reactive-Glaze Serving Bowl",
+    description:
+      "A hand-thrown stoneware serving bowl finished in a drippy reactive glaze that breaks to a different pattern with every firing -- no two bowls glazed alike. Equally at home holding salad or fruit on the counter.",
+    categorySlug: "ceramics-planters",
+    tiers: [
+      { size: "small-8in", label: "Small (8\")", priceCents: 3200 },
+      { size: "large-11in", label: "Large (11\")", priceCents: 4800, stockUnits: 10 },
+    ],
+  },
+  {
+    slug: "terracotta-hanging-planter",
+    title: "Terracotta Hanging Planter",
+    description:
+      "Unglazed terracotta planter with three pre-drilled holes for macrame rope (sold separately) and a built-in drainage hole. The bare clay develops a soft patina over time as it wicks moisture.",
+    categorySlug: "ceramics-planters",
+    tiers: [{ size: "6in", label: "6-inch", priceCents: 2400 }],
+  },
+  {
+    slug: "carved-stoneware-vase",
+    title: "Carved Stoneware Vase",
+    description:
+      "A tall stoneware vase, hand-carved with a fine vertical fluting pattern before glazing in a matte charcoal finish. Each groove is cut by hand, so the spacing carries the slight irregularity of real handwork.",
+    categorySlug: "ceramics-planters",
+    tiers: [{ size: "12in", label: "12-inch", priceCents: 5200, stockUnits: 7 }],
+  },
+  {
+    slug: "ceramic-trinket-dish-set",
+    title: "Ceramic Trinket Dish Set",
+    description:
+      "Two small ceramic trinket dishes -- one for the nightstand, one for the entryway catch-all. Glazed in a soft two-tone finish with an unglazed matte-clay rim.",
+    categorySlug: "ceramics-planters",
+    tiers: [{ size: "set-of-2", label: "Set of 2", priceCents: 2200 }],
+  },
+
+  // -- Textiles & Fiber Arts (additional techniques) -----------------------
+  {
+    slug: "woven-cotton-table-runner",
+    title: "Woven Cotton Table Runner",
+    description:
+      "Hand-woven on a floor loom from cotton in a striped warp pattern, finished with a hand-twisted fringe at each end. Reversible, machine washable on cold.",
+    categorySlug: "textiles-fiber-arts",
+    tiers: [{ size: "14x72in", label: "14 x 72 in", priceCents: 3800 }],
+  },
+  {
+    slug: "handwoven-market-basket",
+    title: "Hand-Woven Market Basket",
+    description:
+      "A sturdy market basket hand-woven from seagrass over a wire frame, with reinforced leather handles. Roomy enough for a farmers-market haul or a rolled-up throw blanket by the couch.",
+    categorySlug: "textiles-fiber-arts",
+    tiers: [{ size: "medium", label: "Medium", priceCents: 4600 }],
+  },
+  {
+    slug: "macrame-plant-hanger",
+    title: "Macrame Plant Hanger",
+    description:
+      "Hand-knotted from natural cotton cord in a classic diamond pattern. The single-pot version fits a standard 6-inch pot; the double-tier version hangs two pots at staggered heights on one mount.",
+    categorySlug: "textiles-fiber-arts",
+    tiers: [
+      { size: "single-pot", label: "Single-pot", priceCents: 2400 },
+      { size: "double-tier", label: "Double-tier", priceCents: 3800 },
+    ],
+  },
+  {
+    slug: "block-printed-linen-napkins",
+    title: "Block-Printed Linen Napkins",
+    description:
+      "A set of four linen napkins, hand block-printed with a repeating botanical motif using hand-carved wood blocks. Each napkin varies slightly in ink saturation and register, the mark of a hand press.",
+    categorySlug: "textiles-fiber-arts",
+    tiers: [{ size: "set-of-4", label: "Set of 4", priceCents: 3400 }],
+  },
+
+  // -- Paper & Ephemera (additional formats) -------------------------------
+  {
+    slug: "wrapping-paper-set",
+    title: "Botanical Wrapping Paper Set",
+    description:
+      "Three rolls of wrapping paper in coordinating hand-drawn botanical prints, screen-printed on uncoated kraft stock. The reversible plain-kraft backing doubles as a fourth pattern.",
+    categorySlug: "paper-ephemera",
+    tiers: [{ size: "set-of-3", label: "Set of 3 rolls", priceCents: 1800, stockUnits: 24 }],
+  },
+  {
+    slug: "pressed-botanical-bookmarks",
+    title: "Pressed Botanical Bookmarks",
+    description:
+      "A set of five bookmarks, each laminated around a real pressed flower or leaf gathered and pressed by hand. No two sets are exactly alike.",
+    categorySlug: "paper-ephemera",
+    tiers: [{ size: "set-of-5", label: "Set of 5", priceCents: 1600, stockUnits: 20 }],
+  },
+  {
+    slug: "letterpress-stationery-set",
+    title: "Letterpress Stationery Set",
+    description:
+      "A boxed correspondence set of twelve lined notecards, letterpress-printed with a simple botanical header and paired with matching kraft envelopes. Built for actual letters, not just blank greeting cards.",
+    categorySlug: "paper-ephemera",
+    tiers: [{ size: "set-of-12", label: "Set of 12", priceCents: 3200, stockUnits: 18 }],
+  },
+  {
+    slug: "seed-paper-gift-tags",
+    title: "Seed Paper Gift Tags",
+    description:
+      "A set of twelve gift tags made from real seed-embedded paper -- plant the tag after the gift is opened and wildflowers grow. Kraft twine included for tying onto packages.",
+    categorySlug: "paper-ephemera",
+    tiers: [{ size: "set-of-12", label: "Set of 12", priceCents: 1400, stockUnits: 30 }],
+  },
+
+  // -- Candles & Home Fragrance ---------------------------------------------
+  {
+    slug: "fig-cedar-soy-candle",
+    title: "Fig & Cedar Soy Candle",
+    description:
+      "A small-batch soy candle in fig and cedar, hand-poured into reusable vessels with a cotton wick. Roughly 40 hours of burn time in the standard jar, 15 in the travel tin.",
+    categorySlug: "candles-home-fragrance",
+    tiers: [
+      { size: "travel-tin", label: "Travel Tin", priceCents: 1400 },
+      { size: "standard-jar", label: "Standard Jar", priceCents: 2800 },
+    ],
+  },
+  {
+    slug: "botanical-room-spray",
+    title: "Botanical Room Spray",
+    description:
+      "A linen and room spray blended from essential oils in eucalyptus and mint, bottled in a reusable amber glass mister. A quick way to freshen a room without lighting anything.",
+    categorySlug: "candles-home-fragrance",
+    tiers: [{ size: "4oz", label: "4 oz", priceCents: 1800 }],
+  },
+  {
+    slug: "beeswax-taper-candles",
+    title: "Beeswax Taper Candles",
+    description:
+      "A pair of hand-dipped beeswax taper candles in natural honey-gold, made the old way -- dipped by hand, one layer at a time, until each taper reaches full thickness. Clean-burning with a faint honey scent.",
+    categorySlug: "candles-home-fragrance",
+    tiers: [{ size: "pair", label: "Pair", priceCents: 1600, stockUnits: 10 }],
+  },
 ];
 
 export async function seedBroadleafDemo(
@@ -191,7 +404,7 @@ export async function seedBroadleafDemo(
     for (const tier of demo.tiers) {
       const skus = await catalog.generateSkus(product.id, { size: [tier.size] }, { amount: tier.priceCents, currency: "USD" });
       for (const sku of skus) {
-        await inventory.setStock(sku.id, DEFAULT_STOCK_UNITS);
+        await inventory.setStock(sku.id, tier.stockUnits ?? DEFAULT_STOCK_UNITS);
       }
     }
 
@@ -217,15 +430,17 @@ export async function seedBroadleafDemo(
       },
       {
         componentType: "product-grid",
-        // A representative spread across all 4 categories, not every
+        // A representative spread across all 5 categories, not every
         // product -- one plant (the tiered Trailing Pothos), one ceramic,
-        // one textile, one paper good.
+        // one textile, one paper good, one candle (the newest category, so
+        // it gets a showcase slot too).
         config: {
           productIds: [
             productIdBySlug.get("trailing-pothos"),
             productIdBySlug.get("speckled-ceramic-planter"),
             productIdBySlug.get("handwoven-wall-hanging"),
             productIdBySlug.get("letterpress-card-set"),
+            productIdBySlug.get("fig-cedar-soy-candle"),
           ].filter((id): id is string => Boolean(id)),
         },
       },
