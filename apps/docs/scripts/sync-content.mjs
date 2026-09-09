@@ -2,13 +2,14 @@
 /**
  * Build-time content sync for apps/docs.
  *
- * `docs/` (and the repo-root README.md) at the repository root remain the single source of
- * truth for Mercatus Liber's documentation -- this script copies them into apps/docs/content/
- * (Nextra's content directory) so the docs site always renders the current, real docs instead
- * of a hand-maintained, driftable duplicate. The repo-root README is synced to content/readme.md
- * (not content/index.md) -- the docs site's own landing page is hand-authored content specific
- * to this site (see below), not a copy of the repo README or commerce.mdostal.com's separate
- * framework-pitch landing page.
+ * `docs/` (and the repo-root README.md and VISION.md) at the repository root remain the single
+ * source of truth for Mercatus Liber's documentation -- this script copies them into
+ * apps/docs/content/ (Nextra's content directory) so the docs site always renders the current,
+ * real docs instead of a hand-maintained, driftable duplicate. The repo-root README is synced to
+ * content/readme.md (not content/index.md) -- the docs site's own landing page is hand-authored
+ * content specific to this site (see below), not a copy of the repo README or
+ * commerce.mdostal.com's separate framework-pitch landing page. VISION.md is synced to
+ * content/vision.md, mirroring that same naming convention.
  *
  * A second source, apps/docs/content-src/ (committed, unlike content/ itself -- see
  * apps/docs/.gitignore), holds hand-authored pages that belong to this docs site specifically
@@ -47,6 +48,10 @@ const sources = [
   {
     from: join(repoRoot, 'docs', 'ARCHITECTURE.md'),
     to: join(contentDir, 'architecture.md')
+  },
+  {
+    from: join(repoRoot, 'VISION.md'),
+    to: join(contentDir, 'vision.md')
   },
   {
     from: join(repoRoot, 'docs', 'subsystems'),
