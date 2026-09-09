@@ -131,38 +131,56 @@ function cmsInfo(): AdapterInfo {
 
 /**
  * Mirrors services.ts's own fulfillment-adapters branch exactly (see its doc
- * comment there, adapter-printful-02): the manual adapter
- * (@mercatus-liber/fulfillment) is always registered as the permanent
- * self-fulfillment fallback; `PRINTFUL_API_TOKEN` set and truthy
- * additionally registers the real Printful adapter under its own provider
- * key -- but registering a provider is not the same as any SKU actually
- * routing to it (every SKU still defaults to "manual" until
- * fulfillmentRouting.setProviderForSku is called), so this row reports
- * "Printful (registered)" rather than implying every order is Printful-
- * fulfilled. Unlike every other row in this file, "active" here does not
- * imply live-verified -- see docs/subsystems/22-fulfillment.md's honest
- * disclosure: no real Printful account/API token exists in this environment.
+ * comment there, adapter-printful-02 and adapter-printify-02): the manual
+ * adapter (@mercatus-liber/fulfillment) is always registered as the
+ * permanent self-fulfillment fallback; `PRINTFUL_API_TOKEN` set and truthy
+ * additionally registers the real Printful adapter, and `PRINTIFY_API_TOKEN`
+ * + `PRINTIFY_SHOP_ID` both set and truthy additionally (and independently --
+ * either, both, or neither can be configured) registers the real Printify
+ * adapter, each under its own provider key -- but registering a provider is
+ * not the same as any SKU actually routing to it (every SKU still defaults
+ * to "manual" until fulfillmentRouting.setProviderForSku is called), so this
+ * row names whichever of "Printful"/"Printify" are additionally
+ * "(registered)" rather than implying every order is provider-fulfilled.
+ * Unlike every other row in this file, "active" here does not imply
+ * live-verified -- see docs/subsystems/22-fulfillment.md's honest
+ * disclosure: no real Printful or Printify account/API token exists in this
+ * environment.
  */
 function fulfillmentInfo(): AdapterInfo {
+  const registered: string[] = [];
+  const detailParts: string[] = [];
+
   if (process.env.PRINTFUL_API_TOKEN) {
-    return {
-      subsystem: "Fulfillment",
-      adapter: "Manual + Printful (registered)",
-      detail:
-        "PRINTFUL_API_TOKEN is set -- createPrintfulFulfillmentAdapter() (packages/adapter-printful) is registered " +
-        "alongside createManualFulfillmentAdapter() (packages/fulfillment); a SKU only actually routes to " +
-        "Printful once fulfillmentRouting.setProviderForSku is called for it, every SKU still defaults to " +
-        "\"manual\" otherwise",
-      status: "active",
-    };
+    registered.push("Printful");
+    detailParts.push(
+      "PRINTFUL_API_TOKEN is set -- createPrintfulFulfillmentAdapter() (packages/adapter-printful) is registered",
+    );
+  } else {
+    detailParts.push("PRINTFUL_API_TOKEN is not set -- Printful is not registered");
   }
+
+  if (process.env.PRINTIFY_API_TOKEN && process.env.PRINTIFY_SHOP_ID) {
+    registered.push("Printify");
+    detailParts.push(
+      "PRINTIFY_API_TOKEN and PRINTIFY_SHOP_ID are both set -- createPrintifyFulfillmentAdapter() " +
+        "(packages/adapter-printify) is registered",
+    );
+  } else {
+    detailParts.push("PRINTIFY_API_TOKEN/PRINTIFY_SHOP_ID are not both set -- Printify is not registered");
+  }
+
+  const adapter = registered.length > 0 ? `Manual + ${registered.join(" + ")} (registered)` : "Manual (self-fulfillment)";
+  const detail =
+    detailParts.join("; ") +
+    " -- alongside createManualFulfillmentAdapter() (packages/fulfillment), always registered as the permanent " +
+    "self-fulfillment fallback; a SKU only actually routes to a registered provider once " +
+    "fulfillmentRouting.setProviderForSku is called for it, every SKU still defaults to \"manual\" otherwise";
 
   return {
     subsystem: "Fulfillment",
-    adapter: "Manual (self-fulfillment)",
-    detail:
-      "PRINTFUL_API_TOKEN is not set -- only createManualFulfillmentAdapter() (packages/fulfillment) is " +
-      "registered, a deliberately valid, fully-functional default in this app's own posture, not an error state",
+    adapter,
+    detail,
     status: "active",
   };
 }

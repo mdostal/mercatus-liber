@@ -73,6 +73,9 @@ importers:
       '@mercatus-liber/adapter-printful':
         specifier: workspace:*
         version: link:../../packages/adapter-printful
+      '@mercatus-liber/adapter-printify':
+        specifier: workspace:*
+        version: link:../../packages/adapter-printify
       '@mercatus-liber/adapter-sanity':
         specifier: workspace:*
         version: link:../../packages/adapter-sanity
