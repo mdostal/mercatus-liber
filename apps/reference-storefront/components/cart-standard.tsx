@@ -32,6 +32,18 @@ export interface CartTemplateProps {
    * this field existed.
    */
   themeKey?: string;
+  /**
+   * sandbox-checkout epic: "sandbox" whenever this deployment has no real
+   * STRIPE_SECRET_KEY configured (see lib/services.ts's payments branch) --
+   * every one of this app's 3 cart templates previously hardcoded "Check
+   * out with Stripe"/"Tender: Stripe" regardless of which PaymentAdapter
+   * was actually wired, which became actively misleading once
+   * createSandboxPaymentAdapter became this app's real default (no charge
+   * is ever made in that mode). Optional so a template that hasn't been
+   * updated to read it yet (none currently) still renders, defaulting to
+   * the pre-existing "Stripe" copy.
+   */
+  paymentsMode?: "sandbox" | "stripe";
 }
 
 /**
@@ -56,8 +68,10 @@ export function CartStandard({
   total,
   appliedCode,
   themeKey,
+  paymentsMode,
 }: CartTemplateProps) {
   const isMaximalist = themeKey === "maximalist";
+  const checkoutLabel = paymentsMode === "sandbox" ? "Check out (sandbox demo)" : "Check out with Stripe";
 
   return (
     <main className={isMaximalist ? "mx-cart" : undefined} style={{ padding: "var(--space-sm, 16px)" }}>
@@ -159,7 +173,7 @@ export function CartStandard({
 
       <form action={startCheckoutAction} style={{ marginTop: "var(--space-sm, 16px)" }}>
         <input type="hidden" name="demoSlug" value={demoSlug} />
-        <button type="submit">Check out with Stripe</button>
+        <button type="submit">{checkoutLabel}</button>
       </form>
     </main>
   );

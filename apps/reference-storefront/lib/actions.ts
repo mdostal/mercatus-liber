@@ -262,6 +262,58 @@ export async function setThemeAction(formData: FormData): Promise<void> {
   revalidatePath(`/demo/${demoSlug}`, "layout");
 }
 
+/**
+ * sandbox-checkout epic: the landing page's theme gallery reuses this
+ * instead of setThemeAction above -- setThemeAction stays on whatever page
+ * it was submitted from (theme-switcher.tsx auto-submits from inside a demo
+ * page and expects to stay there), while a "preview this theme" link on the
+ * demo-agnostic landing page needs to both set the cookie AND actually
+ * navigate into that demo. Same cookie write as setThemeAction, plus a
+ * redirect; kept as a separate action rather than an optional param on
+ * setThemeAction so neither caller has to reason about a conditional
+ * redirect.
+ */
+export async function applyThemeAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  const theme = String(formData.get("theme"));
+  const cookieStore = await cookies();
+  cookieStore.set(themeCookieName(demoSlug), theme, { sameSite: "lax", path: "/" });
+  redirect(`/demo/${demoSlug}`);
+}
+
+/**
+ * sandbox-checkout epic: the server action `/demo/[demoSlug]/checkout/
+ * sandbox`'s own "Pay" form submits to -- the sandbox-mode equivalent of a
+ * verified Stripe webhook completing a real payment (see
+ * packages/payments/src/sandbox-adapter.ts's doc comment). `successUrl` is
+ * round-tripped through that page's own URL query string (originally built
+ * by resolveAppOrigin() + `/demo/${demoSlug}/order/confirmed` in
+ * startCheckoutAction above), which a shopper's browser could in principle
+ * tamper with before this action runs -- checked against resolveAppOrigin()
+ * before redirecting so this can never become an open redirect to an
+ * arbitrary external host.
+ */
+export async function confirmSandboxCheckoutAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  const sessionId = String(formData.get("session") ?? "");
+  const successUrl = String(formData.get("successUrl") ?? "");
+  if (!sessionId) throw new Error("Missing sandbox checkout session id.");
+  if (!successUrl.startsWith(resolveAppOrigin())) {
+    throw new Error("Refusing to redirect to an untrusted successUrl.");
+  }
+
+  const { confirmSandboxPayment } = await getServicesForDemo(demoSlug);
+  if (!confirmSandboxPayment) {
+    throw new Error(
+      "Sandbox checkout is not active for this deployment -- a real STRIPE_SECRET_KEY is configured, so " +
+        "checkout should have gone through real Stripe Checkout instead of this page.",
+    );
+  }
+
+  await confirmSandboxPayment(sessionId);
+  redirect(successUrl);
+}
+
 /** Parses the promotions admin form fields shared by create and update. */
 function parsePromotionFormData(formData: FormData): CreatePromotionInput {
   const code = String(formData.get("code") ?? "").trim();

@@ -67,7 +67,7 @@ import {
   createMarketingCatalogService,
   type MarketingCatalogService,
 } from "@mercatus-liber/marketing-catalog";
-import { createStripeAdapter, type PaymentAdapter } from "@mercatus-liber/payments";
+import { createSandboxPaymentAdapter, createStripeAdapter, type PaymentAdapter } from "@mercatus-liber/payments";
 import { createPdpService, type PdpService } from "@mercatus-liber/pdp";
 import { createInMemoryIndex, registerCatalogSearchSync, type SearchIndexAdapter } from "@mercatus-liber/search";
 import {
@@ -153,6 +153,16 @@ export interface Services {
    * service.ts.
    */
   fulfillmentRouting: FulfillmentRoutingRepository;
+  /**
+   * Non-null only when `payments` was built as a sandbox adapter (see
+   * `buildServices`'s payments branch below, sandbox-checkout epic) --
+   * `/demo/[demoSlug]/checkout/sandbox`'s own server action calls this
+   * directly once the shopper submits the sandbox "Pay" form, exactly the
+   * role a verified Stripe webhook plays for `payments` in real-Stripe mode.
+   * Null whenever a real STRIPE_SECRET_KEY is configured, since that sandbox
+   * checkout page/route is never reached in that mode.
+   */
+  confirmSandboxPayment: ((sessionId: string) => Promise<void>) | null;
   /**
    * The physical shipping-transaction subsystem (@mercatus-liber/shipping,
    * epic shipping-rate-and-labels) -- distinct from `fulfillment` above
@@ -361,11 +371,25 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     events,
   });
 
-  const payments = createLazyStripeAdapter({
-    secretKey: process.env.STRIPE_SECRET_KEY ?? "",
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
-    events,
-  });
+  // Real Stripe when a real key is configured; a real, fully-working
+  // no-external-provider sandbox adapter otherwise (sandbox-checkout epic)
+  // -- unlike every other env-var-truthy branch in this function, the
+  // "else" here is not a harmless-but-inert fallback: it's a second genuine
+  // PaymentAdapter implementation that actually completes checkout, so
+  // "practice card" orders always work in this deployment (no Stripe
+  // account exists for it) without needing a credential. See
+  // packages/payments/src/sandbox-adapter.ts's own doc comment for why this
+  // is possible with zero changes to checkout-orders.
+  const sandboxPayments = process.env.STRIPE_SECRET_KEY
+    ? null
+    : createSandboxPaymentAdapter({ events, checkoutPagePath: `/demo/${demoSlug}/checkout/sandbox` });
+  const payments: PaymentAdapter =
+    sandboxPayments ??
+    createLazyStripeAdapter({
+      secretKey: process.env.STRIPE_SECRET_KEY ?? "",
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+      events,
+    });
 
   const promotions = createPromotionsService({
     repository: createInMemoryPromotionRepository(),
@@ -747,6 +771,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     fulfillment,
     fulfillmentRouting,
     shipping,
+    confirmSandboxPayment: sandboxPayments ? sandboxPayments.confirmSandboxPayment.bind(sandboxPayments) : null,
   };
 }
 

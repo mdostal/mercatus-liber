@@ -68,9 +68,13 @@ function paymentsInfo(): AdapterInfo {
   if (!key) {
     return {
       subsystem: "Payments",
-      adapter: "Stripe",
-      detail: "STRIPE_SECRET_KEY is not set -- createLazyStripeAdapter() will fail on first use (packages/payments)",
-      status: "unconfigured",
+      adapter: "Sandbox (demo mode)",
+      detail:
+        "STRIPE_SECRET_KEY is not set -- createSandboxPaymentAdapter() (packages/payments) is used instead of " +
+        "Stripe: a real, fully-working PaymentAdapter that completes checkout with no external provider, so " +
+        "every order here is genuinely a demo/sandbox order, never a real charge. Set STRIPE_SECRET_KEY to " +
+        "switch this instance to real Stripe Checkout.",
+      status: "active",
     };
   }
 

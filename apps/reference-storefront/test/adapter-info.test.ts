@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe("getAdapterInfo", () => {
-  it("with no env vars set: persistence and CMS are active, payments is unconfigured, analytics is a no-op and active, fulfillment is manual-only and active", () => {
+  it("with no env vars set: persistence and CMS are active, payments is a real sandbox adapter (also active), analytics is a no-op and active, fulfillment is manual-only and active", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
     vi.stubEnv("POSTHOG_API_KEY", "");
     vi.stubEnv("SANITY_PROJECT_ID", "");
@@ -37,8 +37,14 @@ describe("getAdapterInfo", () => {
     expect(cms.adapter).toBe("In-memory (reference default)");
     expect(cms.status).toBe("active");
 
+    // sandbox-checkout epic: STRIPE_SECRET_KEY unset no longer means
+    // "broken" -- createSandboxPaymentAdapter() is a real, fully-working
+    // PaymentAdapter (packages/payments/src/sandbox-adapter.ts), so this is
+    // "active" the same as every other adapter row, just a different
+    // concrete adapter than Stripe.
     const payments = info.find((e) => e.subsystem === "Payments")!;
-    expect(payments.status).toBe("unconfigured");
+    expect(payments.status).toBe("active");
+    expect(payments.adapter).toBe("Sandbox (demo mode)");
 
     const analytics = info.find((e) => e.subsystem === "Analytics")!;
     expect(analytics.adapter).toBe("No-op (disabled)");
@@ -185,11 +191,13 @@ describe("getAdapterInfo", () => {
   it("is not cached/memoized -- two calls with different env values in between reflect the current environment each time", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
     const before = getAdapterInfo().find((e) => e.subsystem === "Payments")!;
-    expect(before.status).toBe("unconfigured");
+    expect(before.status).toBe("active");
+    expect(before.adapter).toBe("Sandbox (demo mode)");
 
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_xyz");
     const after = getAdapterInfo().find((e) => e.subsystem === "Payments")!;
     expect(after.status).toBe("active");
+    expect(after.adapter).toBe("Stripe");
     expect(after.detail).toMatch(/test/i);
   });
 
@@ -202,8 +210,10 @@ describe("getAdapterInfo", () => {
     expect(info).toHaveLength(6);
     expect(info.map((e) => e.subsystem)).toEqual(["Persistence (catalog)", "CMS", "Payments", "Analytics", "Fulfillment", "Shipping"]);
     // Persistence and CMS are always "active" (every one of their 2-3
-    // states is a valid, functional configuration -- there's no
-    // "unconfigured" state for either, unlike payments).
+    // states is a valid, functional configuration) -- same as every other
+    // row now that payments' unset-key state is a real sandbox adapter
+    // rather than "unconfigured"; no row in this file's output currently
+    // reports "unconfigured" at all.
     expect(info[0]!.status).toBe("active");
     expect(info[1]!.status).toBe("active");
   });

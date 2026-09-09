@@ -25,7 +25,9 @@ export function CartReceiptStyle({
   discountTotal,
   total,
   appliedCode,
+  paymentsMode,
 }: CartTemplateProps) {
+  const checkoutLabel = paymentsMode === "sandbox" ? "Tender: Sandbox (demo)" : "Tender: Stripe";
   return (
     <main className="ed-cart">
       <style>{`
@@ -139,7 +141,7 @@ export function CartReceiptStyle({
           <form action={startCheckoutAction}>
             <input type="hidden" name="demoSlug" value={demoSlug} />
             <button type="submit" className="ed-btn-checkout">
-              Tender: Stripe
+              {checkoutLabel}
             </button>
           </form>
         </aside>

@@ -20,7 +20,9 @@ export function CartSpecTable({
   discountTotal,
   total,
   appliedCode,
+  paymentsMode,
 }: CartTemplateProps) {
+  const checkoutLabel = paymentsMode === "sandbox" ? "Check out (sandbox)" : "Check out with Stripe";
   return (
     <div className="ds-scope ds-cart">
       <style>{DS_ATOMS_CSS}</style>
@@ -225,7 +227,7 @@ export function CartSpecTable({
             <form action={startCheckoutAction} style={{ marginTop: 16 }}>
               <input type="hidden" name="demoSlug" value={demoSlug} />
               <button type="submit" className="ds-btn ds-btn-accent ds-btn-block">
-                Check out with Stripe
+                {checkoutLabel}
               </button>
             </form>
           </div>

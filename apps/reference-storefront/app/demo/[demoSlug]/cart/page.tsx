@@ -27,7 +27,8 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const cartId = await readCartId(demoSlug);
-  const { cart, catalog, checkout, recommendations, marketingCatalog, theming } = await getServicesForDemo(demoSlug);
+  const { cart, catalog, checkout, recommendations, marketingCatalog, theming, confirmSandboxPayment } =
+    await getServicesForDemo(demoSlug);
   const currentCart = cartId ? await cart.getCart(cartId) : null;
 
   if (!cartId || !currentCart || currentCart.items.length === 0) {
@@ -103,6 +104,7 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
         total={adjustment.total}
         appliedCode={adjustment.appliedCode}
         themeKey={activeTheme.key}
+        paymentsMode={confirmSandboxPayment ? "sandbox" : "stripe"}
       />
       {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </>
