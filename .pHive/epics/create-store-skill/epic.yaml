@@ -1,0 +1,40 @@
+name: create-store-skill
+title: Agent Skill for Store Setup
+description: >
+  create-store is a real, working human CLI but has no README, and there's no SKILL.md
+  anywhere in this repo and no agent-facing path for provisioning a NEW store -- the existing
+  AI/MCP interface only operates an already-running store (its own documented scope).
+  Resolved design question: a Claude Code project skill (.claude/skills/create-store/SKILL.md),
+  not a new MCP tool -- store provisioning is a build-time action on the monorepo checkout
+  itself (run a CLI, write files, install deps), not a runtime store-operation ai-interface's
+  MCP server would expose. Also adds create-store's own missing README. See
+  docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: none
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [docs, agent-tooling, app-layer]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    docs: "create-store has no README today -- a real, disclosed gap regardless of the agent-skill question"
+    agent-tooling: "Central design question: skill vs. MCP tool for store provisioning, resolved by scope boundary reasoning"
+    app-layer: "No package code changes -- pure documentation and a new skill file"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, small well-understood scope.
+
+stories:
+  - id: create-store-skill-01-docs-and-skill
+    title: "packages/create-store README + .claude/skills/create-store/SKILL.md"
+    complexity: low
+    depends_on: []
+  - id: create-store-skill-02-closeout
+    title: "Live end-to-end verification (actually scaffold a store with it), epic-backlog closeout"
+    complexity: low
+    depends_on: [create-store-skill-01-docs-and-skill]

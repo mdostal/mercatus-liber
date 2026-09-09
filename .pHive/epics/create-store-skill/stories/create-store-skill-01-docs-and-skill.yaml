@@ -1,0 +1,119 @@
+id: create-store-skill-01-docs-and-skill
+epic: create-store-skill
+title: "packages/create-store README + .claude/skills/create-store/SKILL.md"
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/create-store-skill/docs/design-discussion.md in full for the reasoning
+  behind building a skill rather than an MCP tool.
+
+  Read packages/create-store/src/cli.ts, scaffold.ts, and manifest.ts in full -- this is the
+  entire CLI's real, current behavior: usage string, flags (store name positional,
+  --adapter <sqlite|postgres|shopify>, --theme <key>, --plugins a,b,c, --dir <path>), what
+  scaffoldStore actually writes (package.json, a generated services.ts, a
+  mercatus-liber.config.json manifest), and its own doc comment disclosing the generated
+  services.ts is a partial starter (catalog/cart/theming only) pointing at
+  apps/reference-storefront/lib/services.ts as "the complete reference" for
+  cms/payments/inventory/analytics/ai-interface wiring.
+
+  Read packages/theming/src/theme-bundles.ts for the exact list of valid theme keys (grep for
+  "key:") and README.md's Configuration section (added by previously-merged pieces of work)
+  for the exact environment variable names each adapter/service needs.
+
+  IMPORTANT -- before writing the SKILL.md file, confirm the current, correct Claude Code
+  project-skill file format and location convention (frontmatter fields, exact directory
+  layout under .claude/skills/) -- do not guess. If a claude-code-guide agent type or
+  equivalent documentation lookup is available in your environment, use it to confirm the
+  exact expected format before writing the file; if not, use whatever authoritative
+  documentation source you can reach. Getting this format wrong would make the skill
+  undiscoverable/unusable, defeating the entire point of this piece of work.
+
+  Deliverables:
+  - packages/create-store/README.md: usage (the exact CLI invocation and every flag), the
+    three adapter choices and what each needs configured afterward (env vars, matching the
+    main README's Configuration section), the full list of valid theme keys, what a scaffold
+    produces, and the explicit disclosed gap that the generated services.ts is a starter, not
+    a full copy of the reference app's wiring.
+  - .claude/skills/create-store/SKILL.md: an agent-facing procedure covering:
+    1. Gather from the human: a store name, which of the three adapters, which theme, any
+       optional plugins.
+    2. Run the CLI (via the workspace-local build, e.g. through the monorepo's own package
+       scripts/turbo, or the published bin name if that's more appropriate -- check how other
+       packages in this monorepo are typically invoked locally, e.g. via `pnpm --filter` or a
+       direct node invocation of the built CLI, since these packages aren't published to npm
+       yet per this repo's own disclosed state).
+    3. After scaffolding, cd into the new directory, install dependencies, and run a
+       typecheck to confirm the scaffold is genuinely usable, not just "files exist."
+    4. Tell the human which environment variables their chosen adapter needs (pulling the
+       exact names from README.md's Configuration section, not from memory), and that
+       CMS/payments/inventory/analytics/ai-interface wiring is a manual follow-up they'd add
+       to the generated services.ts by hand, using apps/reference-storefront/lib/services.ts
+       as the reference for how each piece is wired.
+
+acceptance_criteria:
+  - "Given packages/create-store/README.md, when read, then it accurately documents every CLI flag and the full list of valid theme keys, verified against the actual source, not written from memory"
+  - "Given .claude/skills/create-store/SKILL.md, when read, then it follows the confirmed, correct project-skill format for this environment (not a guessed format)"
+  - "Given the skill's documented procedure, when followed literally step by step, then it results in a scaffolded store that actually installs and typechecks cleanly (verified in the next piece of work, but the procedure as WRITTEN here must be literally correct and executable, not aspirational)"
+
+steps:
+  - id: research
+    description: Read the create-store CLI/scaffold/manifest source in full, the theme-bundle keys, and confirm the correct Claude Code skill file format before writing anything.
+    agent: researcher
+  - id: implement
+    description: Write the README and SKILL.md per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Dry-run the skill's documented procedure yourself (scaffold a throwaway store into a scratch directory, install, typecheck, then delete it) to confirm every step in the written procedure is literally correct before finalizing the file.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the README's flag/theme-key list is accurate against the actual source and the skill file's format is genuinely correct, not assumed.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/create-store-skill.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/create-store/src/cli.ts
+      purpose: The exact, current CLI flag/usage shape to document accurately.
+    - path: packages/create-store/src/scaffold.ts
+      purpose: What scaffoldStore actually produces, including its own disclosed-partial-starter comment.
+    - path: packages/theming/src/theme-bundles.ts
+      purpose: The full, current list of valid theme keys.
+    - path: README.md
+      purpose: The exact env var names each adapter/service needs, to reference accurately rather than guess.
+
+files_to_modify:
+  - file: packages/create-store/README.md
+    change: New file, full CLI documentation.
+  - file: .claude/skills/create-store/SKILL.md
+    change: New file, agent-facing store-provisioning procedure.
+
+design_decisions:
+  - decision: "The skill documents a dry-run-verified procedure, not an aspirational one."
+    rationale: "A skill file that doesn't actually work when followed is worse than no skill at all -- the test step in this story explicitly dry-runs it before finalizing."
+
+risks:
+  - severity: medium
+    description: "Guessing the wrong Claude Code skill file format/frontmatter would make the file silently unusable."
+    mitigation: "The story explicitly instructs confirming the real format via an available documentation source before writing, not guessing."
+
+references:
+  - path: .pHive/epics/create-store-skill/docs/design-discussion.md
+    relevant_excerpt: |
+      §2: full reasoning for a skill file over a new MCP tool.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Documentation/skill-authoring story verified by a literal dry-run of the written procedure, per its own test step -- not a numeric trend."

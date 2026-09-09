@@ -1,0 +1,82 @@
+id: create-store-skill-02-closeout
+epic: create-store-skill
+title: "Live end-to-end verification (actually scaffold a store with it), epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [create-store-skill-01-docs-and-skill]
+
+description: |
+  Read the committed README and SKILL.md from the prior piece of work in full.
+
+  Follow the SKILL.md's documented procedure literally, exactly as written, as if you were an
+  agent who had never seen this repo's internals beyond what the skill file itself says --
+  scaffold a real throwaway store (into a scratch/tmp directory, never inside this repo's own
+  working tree) using one of the three adapters (sqlite is the simplest, zero-infra choice),
+  a real theme key, install its dependencies, and run its typecheck. If any step in the
+  written procedure turns out to be wrong, incomplete, or fails when actually followed, fix
+  the SKILL.md/README in this same piece of work so the documented procedure is genuinely
+  correct, not just plausible-sounding. Delete the throwaway scaffolded store afterward --
+  it must never be committed to this repo.
+
+  Update .pHive/planning/epic-backlog.md: add a new row at the next available number (grep for
+  the highest existing number first), status "done (2/2 stories complete)", with a description
+  noting create-store now has a real README and an agent-facing skill for provisioning a new
+  store, resolved as a Claude Code skill rather than a new MCP tool (store provisioning is a
+  build-time action on the monorepo checkout, not a runtime store-operation). Add a short
+  bullet to the "Definition of vision fully done" section noting an agent can now provision a
+  new store end-to-end by following a real, dry-run-verified procedure -- be precise that this
+  covers scaffolding + verification + configuration guidance, not automatic
+  CMS/payments/inventory/analytics wiring, which remains a disclosed manual follow-up.
+
+acceptance_criteria:
+  - "Given the SKILL.md's procedure followed literally end to end, then a real store scaffold results that actually installs its dependencies and typechecks cleanly"
+  - "Given any step in the written procedure was found to be wrong or incomplete during this dry run, then the SKILL.md/README were corrected in this same piece of work, not left inaccurate"
+  - "Given the throwaway scaffolded store used for verification, then it is confirmed deleted and never appears in this repo's git status"
+  - ".pHive/planning/epic-backlog.md's new row reads 'done (2/2 stories complete)' matching sibling completed rows' style, honestly scoped"
+
+steps:
+  - id: implement
+    description: Follow the skill's procedure literally, fix any inaccuracies found, and update epic-backlog.md per the description above.
+    agent: developer
+  - id: test
+    description: Confirm the scaffolded store genuinely installs and typechecks, and that it was fully deleted afterward.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check any corrections made to the SKILL.md/README are accurate, and the epic-backlog.md edit is honestly worded.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/create-store-skill; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs a new row for this epic and a vision-summary addendum.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: New epic row; vision-summary addendum.
+  - file: packages/create-store/README.md
+    change: Corrected only if the dry run finds an inaccuracy.
+  - file: .claude/skills/create-store/SKILL.md
+    change: Corrected only if the dry run finds an inaccuracy.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/create-store-skill/docs/design-discussion.md
+    relevant_excerpt: |
+      Full design rationale this epic's live verification demonstrates end-to-end.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's literal dry-run check; epic-backlog.md's done status is qualitative."
