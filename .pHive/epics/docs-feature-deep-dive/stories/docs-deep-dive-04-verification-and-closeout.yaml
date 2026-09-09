@@ -1,0 +1,79 @@
+id: docs-deep-dive-04-verification-and-closeout
+epic: docs-feature-deep-dive
+title: "Build + live verification of all new pages, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [docs-deep-dive-02-pages-part-a, docs-deep-dive-03-pages-part-b]
+
+description: |
+  Read all 3 prior stories' committed changes in full first -- both deep-dive parts (A and B)
+  plus the infra-reconciliation/planning-sync story.
+
+  1. Start apps/docs's real dev server (or use its build) and visit all 8 new deep-dive pages
+     plus the planning-index page plus at least 3 real synced planning pages spanning this
+     project's history (e.g. one early epic, one from this session's earlier work, one from
+     this very epic once it's synced) -- confirm every one renders real, current, correctly
+     formatted content with working internal links (to subsystem docs, to each other).
+  2. Confirm the sidebar/navigation is coherent: the 8 deep-dive pages and the planning index
+     are genuinely reachable, not orphaned pages only accessible by direct URL.
+  3. Run `pnpm --filter @mercatus-liber/docs build` and the full monorepo test/typecheck/build
+     via root turbo commands -- confirm everything is green.
+  4. Confirm mkdocs.yml/docs/index.md are genuinely gone (or, per story 1's findings, correctly
+     still present with a documented reason) and that nothing else in the repo references them
+     (check README.md/VISION.md for any mkdocs mentions needing cleanup).
+  5. Update .pHive/planning/epic-backlog.md: change epic 38's row to "done (4/4 stories
+     complete)", with a description naming the mkdocs-duplication finding/resolution, the 8
+     deep-dive pages, and the planning-corpus publishing mechanism -- match the style/detail of
+     surrounding rows.
+  6. Commit and merge feat/docs-feature-deep-dive into master with --no-ff, mirroring the "Merge
+     epic: <name> (epic NN)" convention from prior epic merges.
+
+acceptance_criteria:
+  - "Given a real dev server/build, then all 8 deep-dive pages plus the planning index plus >=3 real planning pages render correctly with working internal links"
+  - "Given the docs site's navigation, then all 8 deep-dive pages and the planning index are reachable via real nav, not just direct URL"
+  - "Given `pnpm --filter @mercatus-liber/docs build` and the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given a repo-wide check, then the mkdocs-duplication finding from story 1 is confirmed resolved (removed, or documented why not) with no dangling references"
+  - "Given .pHive/planning/epic-backlog.md, then epic 38's row reads done (4/4 stories complete) with an accurate, specific description"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Run all verification steps and make the docs/backlog updates per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and the merge is clean.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/docs-feature-deep-dive, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript/Markdown, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 38's row updated to done.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 38 done with an accurate description.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/docs-feature-deep-dive/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's live verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."
