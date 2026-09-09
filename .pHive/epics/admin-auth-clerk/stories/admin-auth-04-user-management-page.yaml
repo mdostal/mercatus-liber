@@ -1,0 +1,99 @@
+id: admin-auth-04-user-management-page
+epic: admin-auth-clerk
+title: "/admin/settings/users: owner-only admin-user list + role assignment"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [admin-auth-03-route-and-mutation-gating]
+
+description: |
+  The one admin UI in this whole system gated to "owner" only, not "admin or owner" like every
+  other mutation in this epic's prior piece of work.
+
+  Read the committed admin-auth/adapter-clerk packages' listAdminUsers/setAdminUserRole
+  methods. Read apps/reference-storefront/app/admin/settings/page.tsx (the adapter-visibility
+  settings page from a much earlier piece of work) for this app's existing settings-area
+  conventions, and apps/reference-storefront/app/admin/promotions/page.tsx for the general
+  admin-table convention (though this page needs a mutation form too, unlike the read-only
+  settings page).
+
+  Deliverables:
+  - apps/reference-storefront/app/admin/settings/users/page.tsx: Server Component,
+    `export const dynamic = "force-dynamic"`. Calls `(await
+    getServices()).adminAuth.getCurrentSession()`; if the session's role is not "owner",
+    render a plain "Owner access required" message (no table, no form) rather than the page
+    content -- this is a SECOND layer of the owner-only gate, on top of whatever the
+    server-action guard in the next bullet enforces, matching this epic's established
+    defense-in-depth posture. Otherwise, call `adminAuth.listAdminUsers()` and render a
+    `<table>` (userId/email/current-role) with a per-row role-change `<form>` (a `<select>` of
+    the three AdminRole values + submit button) posting to a new server action.
+  - New server action in apps/reference-storefront/lib/actions.ts:
+    `updateAdminUserRoleAction(formData)` -- reads userId + the new role from the form,
+    calls the SAME requireAdminPermission guard from the prior piece of work but with
+    action="manage_users" (not "mutate"), then calls
+    `adminAuth.setAdminUserRole(userId, role)`, then `revalidatePath("/admin/settings/users")`.
+  - Add a `<Link href="/admin/settings/users">Manage admin users</Link>` entry to the existing
+    apps/reference-storefront/app/admin/settings/page.tsx (not the top-level /admin nav --
+    this is a sub-page of settings, matching how it's conceptually "another setting," not a
+    peer of the domain-model admin areas).
+
+acceptance_criteria:
+  - "Given a session with role 'owner', when /admin/settings/users is visited, then it renders the user list and role-change forms"
+  - "Given a session with role 'admin' (not owner), when /admin/settings/users is visited, then it shows the 'Owner access required' message, not the table/forms"
+  - "Given a session with role 'admin', when updateAdminUserRoleAction is invoked directly (bypassing the page's own render-gate), then it throws/rejects (server-action-level defense-in-depth, not just a hidden page)"
+  - "Given a session with role 'owner', when a role-change form is submitted for another user, then adapter-clerk's setAdminUserRole is called with exactly that userId and the newly selected role, and the page reflects the change after revalidation"
+
+steps:
+  - id: research
+    description: Re-read the committed adminAuth public surface and the existing settings-page conventions in this app.
+    agent: researcher
+  - id: implement
+    description: Build the user-management page and its server action per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Manually verify the owner-only page gate and the server-action-level guard (using the dev-default adapter's synthetic single-owner user, or a mocked adapter injected for this test) via a dev server or a focused unit test.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the two-layer owner-only gate (page render check AND server-action check) is genuinely both present, not just one.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/admin-auth-clerk.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/app/admin/settings/page.tsx
+      purpose: Existing settings-area page to link this new sub-page from.
+    - path: apps/reference-storefront/app/admin/promotions/page.tsx
+      purpose: Existing table-plus-form admin page convention to mirror structurally.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/admin/settings/users/page.tsx
+    change: New file, owner-only user list + role-change forms.
+  - file: apps/reference-storefront/app/admin/settings/page.tsx
+    change: Add link to the new users sub-page.
+  - file: apps/reference-storefront/lib/actions.ts
+    change: Add updateAdminUserRoleAction.
+
+design_decisions:
+  - decision: "This page gets a page-level render check AND a server-action-level check, both requiring owner."
+    rationale: "Matches the epic's established two-layer defense-in-depth posture (design-discussion.md §3) -- a hidden page alone is not a real access control."
+
+risks: []
+
+references:
+  - path: .pHive/epics/admin-auth-clerk/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: owner can manage other admin users' roles; admin and viewer cannot.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Admin UI story verified via the acceptance criteria's manual/unit golden-path check; the underlying permission logic already has its own metric in admin-auth-01's story."

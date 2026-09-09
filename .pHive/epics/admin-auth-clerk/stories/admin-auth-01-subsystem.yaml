@@ -1,0 +1,131 @@
+id: admin-auth-01-subsystem
+epic: admin-auth-clerk
+title: "@mercatus-liber/admin-auth: AdminAuthAdapter contract, permission checks, zero-infra dev default"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  New package packages/admin-auth (subsystem 21, see docs/subsystems/21-admin-auth.md,
+  already written during planning). Depends on @mercatus-liber/core only -- never imports
+  Clerk or any identity provider (that's adapter-clerk's job, a later piece of work).
+
+  Read .pHive/epics/admin-auth-clerk/docs/design-discussion.md section 3 for the exact
+  contract shape and reasoning (role data belongs in Clerk's own metadata, not a second local
+  database -- this package doesn't know or care that Clerk exists, it just declares the shape
+  a real implementation must satisfy).
+
+  Mirror packages/internal-bi/src/types.ts's doc-comment convention (the most recently built
+  adapter contract in this repo) for the exact "this is the swappable contract" framing.
+
+  Deliverables:
+  - `AdminRole` type: "owner" | "admin" | "viewer".
+  - `AdminSession` type: { userId: string; email: string; role: AdminRole }.
+  - `AdminAuthAdapter` interface: { getCurrentSession(): Promise<AdminSession | null>;
+    listAdminUsers(): Promise<{ userId: string; email: string; role: AdminRole }[]>;
+    setAdminUserRole(userId: string, role: AdminRole): Promise<void> }.
+  - `hasPermission(role: AdminRole, action: "view" | "mutate" | "manage_users"): boolean` --
+    pure function. owner: true for all three. admin: true for "view"/"mutate", false for
+    "manage_users". viewer: true for "view" only, false for "mutate"/"manage_users".
+  - `createDefaultAdminAuthAdapter(): AdminAuthAdapter` -- a zero-infra, LOCAL-DEVELOPMENT-ONLY
+    default. getCurrentSession() checks a session cookie (name your own constant, e.g.
+    "ml_admin_dev_session") set by a small helper this package also exports (e.g.
+    `verifyDevPassword(password: string): boolean`, comparing against
+    process.env.ADMIN_DEV_PASSWORD) -- when the cookie is present and valid, always resolves
+    role "owner" (single-operator dev mode, matching how this repo's other in-memory defaults
+    are "good enough to run without infra, not a production security boundary" -- put that
+    exact caveat in a loud doc comment on this factory function). listAdminUsers/
+    setAdminUserRole on the default adapter can be minimal (e.g. return a single synthetic
+    "dev-owner" entry; setAdminUserRole can no-op or throw "not supported in dev mode" --
+    document whichever you choose clearly, since this default is never meant to model
+    multi-user role management, only single-operator local dev).
+  - index.ts re-exporting the public surface.
+
+acceptance_criteria:
+  - "Given role 'owner', when hasPermission is called for each of 'view'/'mutate'/'manage_users', then all three return true"
+  - "Given role 'admin', when hasPermission is called for 'view' and 'mutate', then both return true; for 'manage_users', it returns false"
+  - "Given role 'viewer', when hasPermission is called for 'view', then it returns true; for 'mutate' and 'manage_users', both return false"
+  - "Given createDefaultAdminAuthAdapter() with no session cookie present, when getCurrentSession() is called, then it returns null"
+  - "Given createDefaultAdminAuthAdapter() with a valid dev-session cookie present, when getCurrentSession() is called, then it returns a session with role 'owner'"
+  - "Given verifyDevPassword is called with a value that doesn't match process.env.ADMIN_DEV_PASSWORD, then it returns false (and true for a matching value)"
+
+steps:
+  - id: research
+    description: Read packages/internal-bi/src/types.ts's contract-doc-comment convention and packages/bundles/src/service.ts's factory-function style before writing any code.
+    agent: researcher
+  - id: implement
+    description: Build the admin-auth package per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write vitest tests in packages/admin-auth/test/admin-auth.test.ts covering every acceptance criterion above.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the permission matrix is exactly right (all 9 role/action combinations covered, not just the ones in the acceptance criteria), and that the dev-default's loud "not a production security boundary" caveat is genuinely prominent, not buried.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/admin-auth-clerk.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, test: vitest, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/internal-bi/src/types.ts
+      purpose: Most recent adapter-contract doc-comment convention to mirror.
+    - path: packages/bundles/package.json
+      purpose: Exact package.json scoping convention (dependencies -> core only).
+
+files_to_modify:
+  - file: packages/admin-auth/package.json
+    change: New package, dependencies -> @mercatus-liber/core only.
+  - file: packages/admin-auth/tsconfig.json
+    change: Extend ../../tsconfig.base.json, reference ../core.
+  - file: packages/admin-auth/src/types.ts
+    change: AdminRole, AdminSession, AdminAuthAdapter types.
+  - file: packages/admin-auth/src/permissions.ts
+    change: hasPermission(role, action).
+  - file: packages/admin-auth/src/default-adapter.ts
+    change: createDefaultAdminAuthAdapter(), verifyDevPassword().
+  - file: packages/admin-auth/src/index.ts
+    change: Re-export public surface.
+  - file: packages/admin-auth/test/admin-auth.test.ts
+    change: Tests for every acceptance criterion.
+
+design_decisions:
+  - decision: "The dev default's listAdminUsers/setAdminUserRole are intentionally minimal (single synthetic owner, no-op or throw on role change)."
+    rationale: "This default models single-operator local development only -- multi-user role management is adapter-clerk's real job, not something worth faking here."
+  - decision: "getCurrentSession() takes no arguments on either implementation."
+    rationale: "Matches Next.js App Router's implicit request-context convention (next/headers, Clerk's own auth()) -- both the dev default and the real Clerk adapter read ambient context themselves rather than requiring callers to thread a Request object through."
+
+risks: []
+
+references:
+  - path: .pHive/epics/admin-auth-clerk/docs/design-discussion.md
+    relevant_excerpt: |
+      §3 has the full AdminAuthAdapter shape and the reasoning for why role data belongs in
+      Clerk's metadata, not a package-owned database, plus the dev-default's exact scope.
+  - path: docs/subsystems/21-admin-auth.md
+    relevant_excerpt: |
+      Full subsystem doc (purpose, depends-on, responsibilities, explicit non-goals,
+      decoupling notes with the exact grep command to run before merge).
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: admin_auth.permission_matrix_correctness
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: vitest suite in packages/admin-auth/test/admin-auth.test.ts
+  verify_at: integrate
+  owner: tester
