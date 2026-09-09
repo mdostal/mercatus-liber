@@ -37,14 +37,22 @@ function truncateDescription(text: string): string {
  */
 function buildProductOffers(
   skus: { id: string; price: { amount: number; currency: string } }[],
-  stockBySkuId: Record<string, number>,
+  stockBySkuId: Record<string, number | null>,
   url: string,
 ): Record<string, unknown> | undefined {
   if (skus.length === 0) return undefined;
 
   const currency = skus[0]!.price.currency;
   const amounts = skus.map((sku) => sku.price.amount);
-  const anyInStock = skus.some((sku) => (stockBySkuId[sku.id] ?? 0) > 0);
+  // A `null` entry means no StockLevel record exists at all -- this SKU is
+  // not inventory-tracked (e.g. a bookable service, per
+  // docs/subsystems/11-inventory.md's "no stock record" convention), never
+  // "confirmed zero." Only a real, tracked non-positive quantity counts as
+  // out of stock; untracked SKUs are always treated as available.
+  const anyInStock = skus.some((sku) => {
+    const level = stockBySkuId[sku.id];
+    return level === null || level === undefined || level > 0;
+  });
   const availability = anyInStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
 
   if (skus.length === 1) {
@@ -139,10 +147,15 @@ export default async function ProductPage({
   // decision -- no inventory epic existed yet); composed here at the app
   // layer instead, same "app composes multiple services" pattern as
   // everything else in this reference storefront.
-  const stockBySkuId: Record<string, number> = {};
+  // `null` means "not inventory-tracked" (e.g. Northline's bookable
+  // services -- no StockLevel record exists for them by design, see
+  // docs/subsystems/11-inventory.md), distinct from a real tracked quantity
+  // of 0. Collapsing both to 0 was a real bug: it showed "in stock: 0" and
+  // emitted schema.org OutOfStock for services that are always bookable.
+  const stockBySkuId: Record<string, number | null> = {};
   for (const sku of viewModel.skus) {
     const level = await inventory.getStock(sku.id);
-    stockBySkuId[sku.id] = level ? level.onHand - level.reserved : 0;
+    stockBySkuId[sku.id] = level ? level.onHand - level.reserved : null;
   }
 
   // Bundles is deliberately NOT part of pdp's view model, same "app composes

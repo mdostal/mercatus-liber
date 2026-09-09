@@ -11,7 +11,8 @@ export function PdpLongScroll({
 }: {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
-  stockBySkuId?: Record<string, number>;
+  /** `null` means not inventory-tracked (always available, e.g. a bookable service) -- distinct from a real tracked 0. */
+  stockBySkuId?: Record<string, number | null>;
   /** print-shop-02: same additive/optional personalization-input flag as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   customizable?: boolean;
 }) {
@@ -52,7 +53,7 @@ export function PdpLongScroll({
             Price: {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
           </div>
           <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
-            In stock: {stockBySkuId[sku.id] ?? 0}
+            {stockBySkuId[sku.id] == null ? "Available" : `In stock: ${stockBySkuId[sku.id]}`}
           </div>
           <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
           {customizable && (

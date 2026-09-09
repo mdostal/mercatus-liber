@@ -1,8 +1,8 @@
-# Architecture — [working name: open-source-commerce]
+# Architecture — Mercatus Liber
 
-_Status: pre-alpha, architecture/planning phase. Name is a placeholder — see
-`NAMING-CANDIDATES.md`. This document is the single map of how the system is decomposed and
-the rule that keeps it decomposed as it grows._
+_Status: v0.6.1+, 47 epics shipped and live at commerce.mdostal.com (see
+`.pHive/planning/epic-backlog.md` for the full ledger). This document is the single map of how
+the system is decomposed and the rule that keeps it decomposed as it grows._
 
 ## Why this exists
 Every free/OSS commerce option evaluated for `shop.mdostal.com` (Medusa, Saleor, Vendure,
@@ -92,6 +92,13 @@ external consumer, not just the in-repo reference app.
 Reading order for anyone new: 00 → 01 → 02 → then whichever subsystem you're actually working
 on. 00 is the only doc every other subsystem doc assumes you've read.
 
+**This table is stale and only lists the original 14 subsystems** — the real current count is
+24 (see `docs/subsystems/` directly, or `apps/docs`'s live-synced sidebar, for the complete,
+accurate, up-to-date list: promotions, bundles, recommendations, advertising, internal-bi,
+admin-auth, service-areas, fulfillment, shipping, and others shipped after this table was last
+updated). Bringing this table current is real, worthwhile follow-up work — not done as part of
+this pass, which only fixed the stale name/status header above.
+
 ## Design principles carried through every subsystem doc
 1. **Schema-first.** Core types are defined once (00), and every subsystem's storage need is
    expressed as an interface against those types — never a subsystem-specific schema that
@@ -130,7 +137,7 @@ on. 00 is the only doc every other subsystem doc assumes you've read.
    goal, not a later integration.
 
 ## Open questions (repo-level, not subsystem-specific)
-1. Final project name (see `NAMING-CANDIDATES.md` — 50 candidates, pick later).
+1. ~~Final project name~~ — resolved: **Mercatus Liber**. `NAMING-CANDIDATES.md` is historical.
 2. Monorepo tooling: pnpm workspaces + Turborepo assumed above — confirm or swap.
 3. Whether `reference-storefront` in `apps/` should itself just be a stripped-down mirror of
    what `shop.mdostal.com` needs, or a deliberately more minimal "kitchen sink" demo.

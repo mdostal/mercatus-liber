@@ -40,8 +40,8 @@ blow-by-blow ledger this summarizes.
 
 ## Where things stand today
 
-**Done — the real, working core** (see `.pHive/planning/epic-backlog.md` epics 1–40, 45 for the
-full detail on every item below):
+**Done — the real, working core** (see `.pHive/planning/epic-backlog.md` epics 1–47 for the
+full detail on every item below; only backlog epic 48 remains genuinely open):
 
 - Catalog, cart, checkout, Stripe payments, orders — the base commerce loop, with two real
   reference persistence adapters (SQLite, Postgres) proving the interface is genuinely
@@ -99,30 +99,36 @@ full detail on every item below):
   following the `llmstxt.org` convention — closing what had been zero SEO/AEO infrastructure
   anywhere in the reference storefront, flagged by the epic 40 research pass as the single
   highest-priority gap found.
-
-**In progress** — nothing is genuinely mid-build right now. The backlog is drained down to work
-that's real and scoped but not yet planned or started (below), plus the open community
-invitation further down.
-
-**Queued, not yet started** (see the backlog for exact status — these are this project's own
-planned work, not community-invitation items; each is real but has zero stories written yet):
-
-- **Fulfillment & shipping** (backlog epics 41–44) — a new `@mercatus-liber/fulfillment`
-  subsystem (who/how an order gets produced — self-fulfilled by default, with real Printful and
-  Printify print-on-demand adapters, both API-verified against real provider docs) and a new
+- **Fulfillment & shipping** (epics 41–44) — a new `@mercatus-liber/fulfillment` subsystem
+  (who/how an order gets produced — self-fulfilled by default via a real manual adapter, plus
+  real Printful and Printify print-on-demand adapters, each API-verified against real, current
+  provider docs, live and additively wired in `/admin/orders`) and a new
   `@mercatus-liber/shipping` subsystem (rate shopping, label purchase, tracking —
-  manual/PirateShip by default, a real Shippo adapter for full automation). Printful/Shippo are
-  additionally blocked on a real provider credential neither exists in this environment yet.
-- **Analytics insights & import adapters** (backlog epic 46) — tying the internal BI dashboard
-  together with *both* Google Analytics 4 and PostHog (not an either/or), plus a pluggable
-  `AnalyticsInsightsAdapter` contract so anyone can wire in their own analytics system instead,
-  surfaced as a real traffic-source/page-ranking insights view in the admin.
+  manual/PirateShip by default, confirmed to genuinely have no public API rather than assumed,
+  plus a real Shippo adapter for full automation). Printful/Printify/Shippo are each blocked on
+  a real provider credential, none of which exist in this environment yet — built and
+  unit-tested for real correctness against current API docs, honestly disclosed as
+  live-unverified rather than claimed working end to end.
+- **Analytics insights & import adapters** (epic 46) — a new `AnalyticsInsightsAdapter`
+  read-side contract (distinct from `analytics`' existing write-only event-forwarding one),
+  real GA4 Data API and PostHog Query API adapters, and a `/admin/metrics` Traffic & Sources
+  view showing every configured source side by side, never silently merged. Both providers are
+  credential-gated the same honest way as Printful/Printify/Shippo above.
+- **`apps/docs` deployed live for the first time** — its own real Vercel project
+  (`mercatus-liber-docs`), wired into `commerce.mdostal.com`'s `NEXT_PUBLIC_DOCS_URL` in
+  production, closing epic 33's original disclosed deployment gap.
+
+**In progress** — nothing is genuinely mid-build right now. The backlog is drained down to the
+open community invitation further down, plus one logged, real, not-yet-started fix:
+
 - **Demo-seed idempotency** (backlog epic 48) — a real gap surfaced by epic 39's live persistence
-  verification: with real file-backed/Postgres persistence now wired, hitting an already-seeded
-  demo a second time (e.g. a restart against the same `SQLITE_FILE_PATH`) crashes with
-  `SQLITE_CONSTRAINT_UNIQUE` on `products.slug`, since every demo's seed function creates
-  products unconditionally instead of checking first. Harmless under the in-memory default; a
-  real correctness gap now that persistent demos are possible.
+  verification, and confirmed worse on a fuller audit than first logged: within one running
+  process repeated seed calls are memoized and safe, but an actual **process restart** against a
+  persisted `SQLITE_FILE_PATH`/`DATABASE_URL` throws an unhandled `SQLITE_CONSTRAINT_UNIQUE` on
+  `products.slug` and permanently breaks that demo for the rest of the process's life (sibling
+  demos stay healthy), since every demo's seed function creates products unconditionally instead
+  of checking first. Harmless under the in-memory default (production's current state — real
+  persistence isn't enabled on `commerce.mdostal.com` yet); a real blocker the moment it is.
 
 ## Wanted, not started — the community plugin frontier
 
