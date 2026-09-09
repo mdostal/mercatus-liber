@@ -2,6 +2,7 @@ import type { ComponentInstance } from "@mercatus-liber/cms";
 import type { Product } from "@mercatus-liber/core";
 import { CmsSection } from "./cms-sections";
 import type { DemoSlug } from "../lib/demos";
+import { resolveProductImageAlt, resolveProductImageUrl } from "../lib/product-image";
 import { getServicesForDemo } from "../lib/services";
 
 /**
@@ -39,10 +40,12 @@ interface CardData {
   href: string;
   status: string;
   priceLabel: string | null;
+  imageUrl: string | null;
+  imageAlt: string;
 }
 
 async function loadProductGridCards(demoSlug: DemoSlug, config: Record<string, unknown>): Promise<CardData[]> {
-  const { catalog } = await getServicesForDemo(demoSlug);
+  const { catalog, media } = await getServicesForDemo(demoSlug);
   const productIds = Array.isArray(config.productIds) ? (config.productIds as string[]) : [];
   const products = (await Promise.all(productIds.map((id) => catalog.getProduct(id)))).filter(
     (p): p is Product => p !== null,
@@ -61,6 +64,8 @@ async function loadProductGridCards(demoSlug: DemoSlug, config: Record<string, u
         href: `/demo/${demoSlug}/products/${product.slug}`,
         status: product.status,
         priceLabel,
+        imageUrl: resolveProductImageUrl(media, product, { width: 480, height: 360, fit: "cover" }),
+        imageAlt: resolveProductImageAlt(product) ?? product.title,
       };
     }),
   );
@@ -82,8 +87,12 @@ function ProductBento({ cards }: { cards: CardData[] }) {
         {bento.map((card, i) => (
           <a key={card.key} href={card.href} className={`mx-card ${BENTO_AREA_CLASSES[i] ?? ""}`}>
             <div className="mx-card-art">
+              {card.imageUrl ? (
+                <img className="mx-card-img" src={card.imageUrl} alt={card.imageAlt} />
+              ) : (
+                <span className="mx-card-glyph">{card.title.slice(0, 1).toUpperCase()}</span>
+              )}
               <span className="mx-card-tag">{card.status}</span>
-              <span className="mx-card-glyph">{card.title.slice(0, 1).toUpperCase()}</span>
             </div>
             <div className="mx-card-body">
               <h3>{card.title}</h3>
@@ -100,8 +109,12 @@ function ProductBento({ cards }: { cards: CardData[] }) {
           {overflow.map((card) => (
             <a key={card.key} href={card.href} className="mx-card">
               <div className="mx-card-art">
+                {card.imageUrl ? (
+                  <img className="mx-card-img" src={card.imageUrl} alt={card.imageAlt} />
+                ) : (
+                  <span className="mx-card-glyph">{card.title.slice(0, 1).toUpperCase()}</span>
+                )}
                 <span className="mx-card-tag">{card.status}</span>
-                <span className="mx-card-glyph">{card.title.slice(0, 1).toUpperCase()}</span>
               </div>
               <div className="mx-card-body">
                 <h3>{card.title}</h3>
@@ -252,6 +265,9 @@ const MX_HOME_CSS = `
   }
   .mx-card-glyph {
     font-family: 'Anton', sans-serif; font-size: 48px; color: #fff; -webkit-text-stroke: 1.5px var(--color-border, #17130F);
+  }
+  .mx-card-img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   }
   .mx-card-tag {
     position: absolute; top: 10px; left: 10px; background: #fff; color: var(--color-text, #17130F);

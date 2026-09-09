@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { Product } from "@mercatus-liber/core";
+import type { ImageAdapter } from "@mercatus-liber/media";
 import { CategoryMagazineGrid } from "../../../../../components/category-magazine-grid";
 import { CategoryMaximalistGrid } from "../../../../../components/category-maximalist-grid";
 import { CategorySpecGrid, type CategorySpecRow } from "../../../../../components/category-spec-grid";
@@ -51,7 +52,7 @@ const CATEGORY_TEMPLATES = {
 export default async function CategoryPage({ params }: { params: Promise<{ demoSlug: string; slug: string }> }) {
   const { demoSlug, slug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const { marketingCatalog, catalog, theming } = await getServicesForDemo(demoSlug);
+  const { marketingCatalog, catalog, theming, media } = await getServicesForDemo(demoSlug);
   const category = await marketingCatalog.getCategoryBySlug(slug);
   if (!category) notFound();
 
@@ -90,6 +91,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
     demoSlug: DemoSlug;
     products: Product[];
     specsByProductId?: Record<string, CategorySpecRow>;
+    media: ImageAdapter;
   }> = (templateKey && CATEGORY_TEMPLATES[templateKey as keyof typeof CATEGORY_TEMPLATES]) || CategoryStandardGrid;
 
   // seo-02: real BreadcrumbList JSON-LD (Home -> Category), matching the
@@ -105,7 +107,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
       <InteractionTracker eventName="category_viewed" properties={{ categoryId: category.id, slug: category.slug }} />
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{category.title}</h1>
       <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>{category.description}</p>
-      <Template demoSlug={demoSlug} products={products} specsByProductId={specsByProductId} />
+      <Template demoSlug={demoSlug} products={products} specsByProductId={specsByProductId} media={media} />
     </main>
   );
 }

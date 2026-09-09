@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { InteractionTracker } from "../../../../components/interaction-tracker";
 import { isDemoSlug } from "../../../../lib/demos";
+import { resolveProductImageAlt, resolveProductImageUrl } from "../../../../lib/product-image";
 import { getServicesForDemo } from "../../../../lib/services";
 import { canonicalUrl } from "../../../../lib/site-url";
 
@@ -52,8 +53,24 @@ export default async function SearchPage({
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { q } = await searchParams;
-  const { search } = await getServicesForDemo(demoSlug);
+  const { search, catalog, media } = await getServicesForDemo(demoSlug);
   const results = q ? await search.query({ text: q }) : [];
+  // image-cdn epic: SearchDocument (@mercatus-liber/search) carries only
+  // id/title/description/facets -- no images -- and its `id` is always the
+  // matched product's own id (registerCatalogSearchSync indexes documents
+  // keyed by product.id), so each real photo is resolved with one extra
+  // catalog.getProduct lookup per result, same per-item resolve pattern
+  // ProductGrid/CategoryMaximalistGrid already use.
+  const resultsWithImages = await Promise.all(
+    results.map(async (doc) => {
+      const product = await catalog.getProduct(doc.id);
+      return {
+        doc,
+        imageUrl: product ? resolveProductImageUrl(media, product, { width: 480, height: 360, fit: "cover" }) : null,
+        imageAlt: product ? (resolveProductImageAlt(product) ?? doc.title) : doc.title,
+      };
+    }),
+  );
 
   return (
     <main style={{ padding: "var(--space-sm, 16px)" }}>
@@ -73,7 +90,7 @@ export default async function SearchPage({
             padding: 0,
           }}
         >
-          {results.map((doc) => (
+          {resultsWithImages.map(({ doc, imageUrl, imageAlt }) => (
             <li
               key={doc.id}
               style={{
@@ -84,6 +101,20 @@ export default async function SearchPage({
                 fontSize: "var(--font-size-body, 1rem)",
               }}
             >
+              {imageUrl && (
+                <img
+                  src={imageUrl}
+                  alt={imageAlt}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    aspectRatio: "4 / 3",
+                    objectFit: "cover",
+                    borderRadius: "var(--radius)",
+                    marginBottom: "var(--space-xs, 8px)",
+                  }}
+                />
+              )}
               {doc.title}
             </li>
           ))}

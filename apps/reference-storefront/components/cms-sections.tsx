@@ -1,5 +1,6 @@
 import type { ComponentInstance } from "@mercatus-liber/cms";
 import type { DemoSlug } from "../lib/demos";
+import { resolveProductImageAlt, resolveProductImageUrl } from "../lib/product-image";
 import { getServicesForDemo } from "../lib/services";
 
 /** Shared card treatment for product/category tile-shaped list items -- border + shadow using the enriched classic bundle's tokens (with fallbacks for the six bundles that don't define them). See design-discussion.md §3: "a subtle card treatment for product/category tiles." */
@@ -58,7 +59,7 @@ async function CategorySpot({ demoSlug, config }: { demoSlug: DemoSlug; config: 
 }
 
 async function ProductGrid({ demoSlug, config }: { demoSlug: DemoSlug; config: Record<string, unknown> }) {
-  const { catalog } = await getServicesForDemo(demoSlug);
+  const { catalog, media } = await getServicesForDemo(demoSlug);
   const productIds = Array.isArray(config.productIds) ? (config.productIds as string[]) : [];
   const products = (await Promise.all(productIds.map((id) => catalog.getProduct(id)))).filter(
     (p): p is NonNullable<typeof p> => p !== null,
@@ -67,16 +68,37 @@ async function ProductGrid({ demoSlug, config }: { demoSlug: DemoSlug; config: R
   return (
     <section>
       <ul style={TILE_GRID_STYLE}>
-        {products.map((product) => (
-          <li key={product.id} style={TILE_CARD_STYLE}>
-            <a
-              href={`/demo/${demoSlug}/products/${product.slug}`}
-              style={{ textDecoration: "none", color: "inherit", fontSize: "var(--font-size-body, 1rem)" }}
-            >
-              {product.title}
-            </a>
-          </li>
-        ))}
+        {products.map((product) => {
+          // image-cdn epic: resolveProductImageUrl returns null (no fabricated
+          // placeholder) when this product has no photos -- the <img> is simply
+          // omitted in that case, same card as before this epic.
+          const imageUrl = resolveProductImageUrl(media, product, { width: 480, height: 360, fit: "cover" });
+          const imageAlt = resolveProductImageAlt(product) ?? product.title;
+          return (
+            <li key={product.id} style={TILE_CARD_STYLE}>
+              <a
+                href={`/demo/${demoSlug}/products/${product.slug}`}
+                style={{ textDecoration: "none", color: "inherit", fontSize: "var(--font-size-body, 1rem)" }}
+              >
+                {imageUrl && (
+                  <img
+                    src={imageUrl}
+                    alt={imageAlt}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      aspectRatio: "4 / 3",
+                      objectFit: "cover",
+                      borderRadius: "var(--radius)",
+                      marginBottom: "var(--space-xs, 8px)",
+                    }}
+                  />
+                )}
+                {product.title}
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

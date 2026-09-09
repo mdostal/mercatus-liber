@@ -1,5 +1,6 @@
 import type { Product } from "@mercatus-liber/core";
 import type { DemoSlug } from "../lib/demos";
+import { resolveProductImageAlt, resolveProductImageUrl } from "../lib/product-image";
 import { getServicesForDemo } from "../lib/services";
 
 /**
@@ -19,7 +20,7 @@ import { getServicesForDemo } from "../lib/services";
  * collision-avoidance convention.
  */
 export async function CategoryMaximalistGrid({ demoSlug, products }: { demoSlug: DemoSlug; products: Product[] }) {
-  const { catalog } = await getServicesForDemo(demoSlug);
+  const { catalog, media } = await getServicesForDemo(demoSlug);
   const cards = await Promise.all(
     products.map(async (product) => {
       const skus = await catalog.listSkusByProduct(product.id);
@@ -27,7 +28,9 @@ export async function CategoryMaximalistGrid({ demoSlug, products }: { demoSlug:
         skus.length > 0
           ? `${(Math.min(...skus.map((s) => s.price.amount)) / 100).toFixed(2)} ${skus[0]!.price.currency}`
           : null;
-      return { product, priceLabel };
+      const imageUrl = resolveProductImageUrl(media, product, { width: 480, height: 360, fit: "cover" });
+      const imageAlt = resolveProductImageAlt(product) ?? product.title;
+      return { product, priceLabel, imageUrl, imageAlt };
     }),
   );
 
@@ -35,11 +38,15 @@ export async function CategoryMaximalistGrid({ demoSlug, products }: { demoSlug:
     <div className="mx-category">
       <style>{MX_CATEGORY_CSS}</style>
       <div className="mx-category-grid">
-        {cards.map(({ product, priceLabel }) => (
+        {cards.map(({ product, priceLabel, imageUrl, imageAlt }) => (
           <a key={product.id} href={`/demo/${demoSlug}/products/${product.slug}`} className="mx-card">
             <div className="mx-card-art">
+              {imageUrl ? (
+                <img className="mx-card-img" src={imageUrl} alt={imageAlt} />
+              ) : (
+                <span className="mx-card-glyph">{product.title.slice(0, 1).toUpperCase()}</span>
+              )}
               <span className="mx-card-tag">{product.status}</span>
-              <span className="mx-card-glyph">{product.title.slice(0, 1).toUpperCase()}</span>
             </div>
             <div className="mx-card-body">
               <h3>{product.title}</h3>
@@ -71,6 +78,9 @@ const MX_CATEGORY_CSS = `
   }
   .mx-card-glyph {
     font-family: 'Anton', sans-serif; font-size: 48px; color: #fff; -webkit-text-stroke: 1.5px var(--color-border, #17130F);
+  }
+  .mx-card-img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   }
   .mx-card-tag {
     position: absolute; top: 10px; left: 10px; background: #fff; color: var(--color-text, #17130F);

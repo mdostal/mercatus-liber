@@ -1,5 +1,7 @@
+import type { ImageAdapter } from "@mercatus-liber/media";
 import type { Product } from "@mercatus-liber/core";
 import type { DemoSlug } from "../lib/demos";
+import { resolveProductImageAlt, resolveProductImageUrl } from "../lib/product-image";
 
 const AREA_NAMES = ["feature", "b", "c", "d", "e"] as const;
 
@@ -27,17 +29,31 @@ function magazineAreas(count: number): { template: string; columns: string } {
  * next up to 4 fall into the mockup's "b/c/d/e" cells, and any further
  * products (real category listings vary in size) flow into a simple wrap
  * grid below using the same card treatment. Same real seeded product
- * data/links as category-standard-grid.tsx -- title/slug/description only
- * (this repo's `Product` type has no image/price field at this list level;
- * price/stock live on `Sku`, which this template doesn't receive, so no
- * price/stock is fabricated here). Only ever selected by the "editorial"
- * bundle, so this file's styling is safe to apply unconditionally.
+ * data/links as category-standard-grid.tsx -- title/slug/description, plus
+ * (image-cdn epic) each product's real photo when it has one, resolved via
+ * the shared resolveProductImageUrl helper; price/stock still live on
+ * `Sku`, which this template doesn't receive, so no price/stock is
+ * fabricated here. Only ever selected by the "editorial" bundle, so this
+ * file's styling is safe to apply unconditionally.
  */
-export function CategoryMagazineGrid({ demoSlug, products }: { demoSlug: DemoSlug; products: Product[] }) {
+export function CategoryMagazineGrid({
+  demoSlug,
+  products,
+  media,
+}: {
+  demoSlug: DemoSlug;
+  products: Product[];
+  media: ImageAdapter;
+}) {
   const [feature, ...rest] = products;
   const areas = magazineAreas(rest.length);
   const gridItems = rest.slice(0, 5);
   const overflow = rest.slice(5);
+
+  const productImage = (product: Product, opts: { width: number; height: number }) => ({
+    url: resolveProductImageUrl(media, product, { ...opts, fit: "cover" }),
+    alt: resolveProductImageAlt(product) ?? product.title,
+  });
 
   return (
     <div className="ed-category">
@@ -62,43 +78,65 @@ export function CategoryMagazineGrid({ demoSlug, products }: { demoSlug: DemoSlu
         }
       `}</style>
 
-      {feature && (
-        <a className="ed-feature-tile" href={`/demo/${demoSlug}/products/${feature.slug}`}>
-          <div className="ed-ph" />
-          <h2>{feature.title}</h2>
-          {feature.description && <p>{feature.description}</p>}
-        </a>
-      )}
+      {feature &&
+        (() => {
+          const image = productImage(feature, { width: 960, height: 420 });
+          return (
+            <a className="ed-feature-tile" href={`/demo/${demoSlug}/products/${feature.slug}`}>
+              {image.url ? (
+                <img className="ed-ph" src={image.url} alt={image.alt} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              ) : (
+                <div className="ed-ph" />
+              )}
+              <h2>{feature.title}</h2>
+              {feature.description && <p>{feature.description}</p>}
+            </a>
+          );
+        })()}
 
       {gridItems.length > 0 && (
         <div className="ed-catalog-grid">
-          {gridItems.map((product, i) => (
-            <a
-              key={product.id}
-              className={`ed-card${i === 0 ? " ed-card-feature" : ""}`}
-              href={`/demo/${demoSlug}/products/${product.slug}`}
-              style={{ gridArea: AREA_NAMES[i] }}
-            >
-              <div className="ed-ph" />
-              <div className="ed-card-body">
-                <h3>{product.title}</h3>
-                {product.description && <p>{product.description}</p>}
-              </div>
-            </a>
-          ))}
+          {gridItems.map((product, i) => {
+            const image = productImage(product, { width: 500, height: 330 });
+            return (
+              <a
+                key={product.id}
+                className={`ed-card${i === 0 ? " ed-card-feature" : ""}`}
+                href={`/demo/${demoSlug}/products/${product.slug}`}
+                style={{ gridArea: AREA_NAMES[i] }}
+              >
+                {image.url ? (
+                  <img className="ed-ph" src={image.url} alt={image.alt} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ) : (
+                  <div className="ed-ph" />
+                )}
+                <div className="ed-card-body">
+                  <h3>{product.title}</h3>
+                  {product.description && <p>{product.description}</p>}
+                </div>
+              </a>
+            );
+          })}
         </div>
       )}
 
       {overflow.length > 0 && (
         <div className="ed-overflow-grid">
-          {overflow.map((product) => (
-            <a key={product.id} className="ed-card" href={`/demo/${demoSlug}/products/${product.slug}`}>
-              <div className="ed-ph" />
-              <div className="ed-card-body">
-                <h3>{product.title}</h3>
-              </div>
-            </a>
-          ))}
+          {overflow.map((product) => {
+            const image = productImage(product, { width: 500, height: 330 });
+            return (
+              <a key={product.id} className="ed-card" href={`/demo/${demoSlug}/products/${product.slug}`}>
+                {image.url ? (
+                  <img className="ed-ph" src={image.url} alt={image.alt} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ) : (
+                  <div className="ed-ph" />
+                )}
+                <div className="ed-card-body">
+                  <h3>{product.title}</h3>
+                </div>
+              </a>
+            );
+          })}
         </div>
       )}
     </div>

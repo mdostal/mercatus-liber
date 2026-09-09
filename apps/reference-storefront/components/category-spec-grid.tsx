@@ -1,6 +1,8 @@
+import type { ImageAdapter } from "@mercatus-liber/media";
 import type { Product } from "@mercatus-liber/core";
 import { DS_ATOMS_CSS, DS_FONT_MONO } from "./datasheet-styles";
 import type { DemoSlug } from "../lib/demos";
+import { resolveProductImageAlt, resolveProductImageUrl } from "../lib/product-image";
 
 /** Real per-product price-range data, computed in category/[slug]/page.tsx from the product's real SKUs (catalog.listSkusByProduct) -- see that file's own doc comment. Additive/optional: the other 3 category templates (standard/magazine/maximalist grid) don't declare this prop, so passing it is a no-op for them. */
 export interface CategorySpecRow {
@@ -24,10 +26,12 @@ export function CategorySpecGrid({
   demoSlug,
   products,
   specsByProductId,
+  media,
 }: {
   demoSlug: DemoSlug;
   products: Product[];
   specsByProductId?: Record<string, CategorySpecRow>;
+  media: ImageAdapter;
 }) {
   const formatPrice = (spec: CategorySpecRow | undefined): string => {
     if (!spec || spec.skuCount === 0) return "--";
@@ -119,11 +123,19 @@ export function CategorySpecGrid({
       <div className="ds-product-grid">
         {products.map((product) => {
           const spec = specsByProductId?.[product.id];
+          const imageUrl = resolveProductImageUrl(media, product, { width: 480, height: 480, fit: "cover" });
+          const imageAlt = resolveProductImageAlt(product) ?? product.title;
           return (
             <div key={product.id} className="ds-p-card">
               <span className="ds-tick tl" aria-hidden="true" />
               <span className="ds-tick tr" aria-hidden="true" />
-              <div className="ds-art">{product.title}</div>
+              <div className="ds-art" style={imageUrl ? { padding: 0 } : undefined}>
+                {imageUrl ? (
+                  <img src={imageUrl} alt={imageAlt} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  product.title
+                )}
+              </div>
               <div className="ds-body">
                 <span className="ds-chip">{product.status}</span>
                 <h3>
