@@ -1,0 +1,44 @@
+name: analytics-insights-and-import-adapters
+title: "AnalyticsInsightsAdapter contract + real GA4/PostHog import adapters + admin Traffic & Sources"
+description: >
+  Confirmed by direct inspection: analytics' AnalyticsAdapter (PostHog) is write-only, no read
+  method anywhere; internal-bi's BiMetricsAdapter is a real owned read-side but has zero notion
+  of traffic sources/referrers -- that data only ever exists inside external providers. Resolved
+  via a new, separate AnalyticsInsightsAdapter contract (not an extension of BiMetricsAdapter,
+  whose whole design premise is internal-persistence-only), real PostHog Query API + GA4 Data
+  API adapters (GA4's live path is credential-gated, disclosed honestly per this repo's
+  established epic-27 pattern), and an admin Traffic & Sources surface showing every configured
+  source side by side, never silently merged. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [analytics, admin-ui, adapters]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    analytics: "The whole point of this epic -- new read-side insights contract + real adapters"
+    admin-ui: "New Traffic & Sources surface on /admin/metrics"
+    adapters: "Two real third-party adapter implementations, same pattern as every other adapter in this repo"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: analytics-insights-01-contract-and-posthog-adapter
+    title: "AnalyticsInsightsAdapter contract + real PostHog Query API adapter"
+    complexity: high
+    depends_on: []
+  - id: analytics-insights-02-ga4-adapter-and-admin-surface
+    title: "Real GA4 Data API adapter (credential-gated) + admin Traffic & Sources surface"
+    complexity: high
+    depends_on: [analytics-insights-01-contract-and-posthog-adapter]
+  - id: analytics-insights-03-verification-and-closeout
+    title: "Verification (what's testable), honest credential-gap disclosure, docs, closeout, merge"
+    complexity: low
+    depends_on: [analytics-insights-02-ga4-adapter-and-admin-surface]

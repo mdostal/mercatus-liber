@@ -1,0 +1,112 @@
+id: analytics-insights-02-ga4-adapter-and-admin-surface
+epic: analytics-insights-and-import-adapters
+title: "Real GA4 Data API adapter (credential-gated) + admin Traffic & Sources surface"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [analytics-insights-01-contract-and-posthog-adapter]
+
+description: |
+  Read the prior story's committed changes in full first -- the AnalyticsInsightsAdapter
+  contract it defined is what this story's GA4 adapter implements and the admin surface
+  consumes. Read .pHive/epics/analytics-insights-and-import-adapters/docs/design-discussion.md
+  section 1b in full for the GA4 credential-gate disclosure expectation.
+
+  Part 1 -- GA4 adapter. Research Google's real, current Analytics Data API (v1beta) docs for
+  the runReport endpoint's actual request/response shape (dimensions/metrics/dateRanges) and
+  real service-account authentication flow. Build `createGa4InsightsAdapter(config)` in
+  packages/analytics/src/ga4-insights-adapter.ts implementing AnalyticsInsightsAdapter's 3
+  methods against real GA4 API request shapes (e.g. getTrafficSources maps to a report with
+  `sessionSource`/`sessionDefaultChannelGroup` dimensions, getPageViews to `pagePath` + a
+  `screenPageViews` metric, getTopReferrers to a `sessionSource`/`sessionMedium`-based report --
+  confirm the real correct dimension/metric names against Google's actual current docs, don't
+  guess). Write real unit tests against realistic mocked GA4 API responses (shaped like Google's
+  actual documented response format). **This adapter's live path against a real GA4 property is
+  a real credential gate** (a real property ID + service-account credentials) -- build and unit-
+  test it for real correctness, but do not claim a live end-to-end call was verified unless a
+  real credential is genuinely available in this environment (check, don't assume one isn't --
+  but don't fabricate one either).
+
+  Part 2 -- admin Traffic & Sources surface. Read apps/reference-storefront/app/demo/[demoSlug]/admin/metrics/page.tsx
+  in full first. Add a new "Traffic & Sources" section to this page, wired through
+  apps/reference-storefront/lib/services.ts (same env-var-truthy-picks-the-real-adapter-else-
+  noop-fallback pattern as every other adapter in that file -- read the existing CMS/admin-auth/
+  analytics branches as the convention). Show results from every CONFIGURED source (PostHog if
+  its env var is set, GA4 if its env vars are set, internal-bi's existing revenue/order data
+  always available) labeled clearly by source, side by side -- never merged or summed across
+  sources, per the design discussion's explicit resolution. When zero external sources are
+  configured, show a clear, honest "not configured" state (not empty/broken-looking tables).
+
+acceptance_criteria:
+  - "Given createGa4InsightsAdapter with a real config, then it constructs real HTTP requests matching Google's actual documented GA4 Data API runReport shape, verified by unit tests against realistic mocked responses"
+  - "Given the GA4 live-verification question, then the final report explicitly states whether a real credential was available in this environment and what was/wasn't actually verified live -- no unverified claim of success"
+  - "Given /admin/metrics after this story, then a real Traffic & Sources section is present, showing every configured source labeled distinctly, with an honest not-configured state when nothing is set"
+  - "Given lib/services.ts, then the new adapters are wired via the same env-var-truthy pattern as every other adapter in that file"
+  - "Given the full monorepo test suite and typecheck, then both stay green"
+
+steps:
+  - id: research
+    description: Research GA4's real current Data API request/response shapes and confirm real, correct dimension/metric names before writing the adapter.
+    agent: researcher
+  - id: implement
+    description: Build the GA4 adapter and admin surface per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion, including honest documentation of what was/wasn't live-verified for GA4.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the admin surface genuinely never merges numbers across sources, confirm the GA4 credential-gate disclosure is honest, not glossed over.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/analytics-insights-and-import-adapters.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router }
+  key_files:
+    - path: "apps/reference-storefront/app/demo/[demoSlug]/admin/metrics/page.tsx"
+      purpose: Existing admin metrics page this story extends with a new Traffic & Sources section.
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Central composition root -- where the new adapters get wired via env vars.
+
+files_to_modify:
+  - file: packages/analytics/src/ga4-insights-adapter.ts
+    change: "New file -- real GA4 Data API adapter"
+  - file: "apps/reference-storefront/app/demo/[demoSlug]/admin/metrics/page.tsx"
+    change: "Add Traffic & Sources section"
+  - file: apps/reference-storefront/lib/services.ts
+    change: "Wire the new insights adapters via env-var-truthy branches"
+
+design_decisions:
+  - decision: "Show every configured source side by side, never merged/summed."
+    rationale: "Per design-discussion.md §1c -- different tools count differently, a blended number would be misleading."
+
+risks:
+  - severity: medium
+    description: "GA4's live path can't be fully proven without a real credential in this environment."
+    mitigation: "Honest disclosure required by this story's own acceptance criteria, mirroring epic 27's established precedent."
+
+references:
+  - path: .pHive/epics/analytics-insights-and-import-adapters/docs/design-discussion.md
+    relevant_excerpt: "§1b-c: the resolved GA4 credential-gate and side-by-side-display design questions this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: analytics.admin_traffic_sources_configured
+  direction: up
+  unit: count
+  baseline: 0
+  target: 3
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Count of real, wireable insights sources (internal-bi, PostHog, GA4) surfaced on /admin/metrics, verified by test"
+  verify_at: integrate
+  owner: tester

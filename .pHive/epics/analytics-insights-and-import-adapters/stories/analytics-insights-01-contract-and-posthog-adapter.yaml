@@ -1,0 +1,115 @@
+id: analytics-insights-01-contract-and-posthog-adapter
+epic: analytics-insights-and-import-adapters
+title: "AnalyticsInsightsAdapter contract + real PostHog Query API adapter"
+status: pending
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/analytics-insights-and-import-adapters/docs/design-discussion.md in full
+  first -- section 1a-b resolve this story's exact scope, don't re-derive it.
+
+  Read packages/analytics/src/types.ts, posthog-adapter.ts, and noop-adapter.ts in full first --
+  this is the existing write-side package this story adds a read-side contract alongside.
+
+  1. Define a new `AnalyticsInsightsAdapter` interface in packages/analytics/src/types.ts (or a
+     new sibling file in the same package -- your call after reading the existing file
+     structure), with real, genuinely useful methods:
+     - `getTrafficSources(range: { from: string; to: string }): Promise<{ source: string; sessions: number }[]>`
+     - `getPageViews(range: { from: string; to: string }): Promise<{ path: string; views: number }[]>`
+     - `getTopReferrers(range: { from: string; to: string }): Promise<{ referrer: string; count: number }[]>`
+     Every method's return type must include a `source` field or equivalent (or be wrapped by
+     the caller with one -- your call on the cleanest shape) identifying which provider answered
+     it, since story 2's admin surface must show results labeled by source, never silently
+     merged.
+  2. Research PostHog's real, current Query/Insights API (their HogQL query endpoint or
+     equivalent) -- confirm for real whether the existing `POSTHOG_API_KEY` (used today for
+     write-side event capture) has query scope, or whether PostHog requires a distinct
+     "personal API key" for reading data back. Do not assume either way -- check their real,
+     current docs.
+  3. Build `createPostHogInsightsAdapter(config)` implementing `AnalyticsInsightsAdapter` against
+     PostHog's real query API, in a new file (packages/analytics/src/posthog-insights-adapter.ts
+     is a reasonable name, following the existing posthog-adapter.ts naming convention).
+  4. Build a zero-infra default, `createNoopInsightsAdapter()`, returning empty results for all
+     3 methods (mirroring noop-adapter.ts's existing pattern for the write-side contract) -- so
+     the admin surface (story 2) has a safe default when no external insights provider is
+     configured.
+  5. Write real unit tests against the PostHog adapter using mocked HTTP responses shaped like
+     PostHog's actual real API response format (from their real docs, not invented).
+
+acceptance_criteria:
+  - "Given the AnalyticsInsightsAdapter contract, then all 3 methods have real, sensible return shapes each carrying source-attribution information"
+  - "Given the PostHog query-scope research, then the finding (existing key works vs. a distinct personal API key is required) is explicitly documented in code comments and the final report, not assumed"
+  - "Given createPostHogInsightsAdapter with a real config, then it constructs real HTTP requests matching PostHog's actual documented query API shape, verified by unit tests against realistic mocked responses"
+  - "Given createNoopInsightsAdapter, then it returns real, valid empty results for all 3 methods with zero external calls"
+  - "Given the full monorepo test suite and typecheck, then both stay green"
+
+steps:
+  - id: research
+    description: Read the existing analytics package fully, and research PostHog's real current query API docs (including the key-scope question) before writing any adapter code.
+    agent: researcher
+  - id: implement
+    description: Build the contract, PostHog adapter, and noop default per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write and run real unit tests against realistic mocked PostHog responses, verify every acceptance criterion.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the PostHog adapter's request shapes genuinely match real, current PostHog API documentation, not an assumed/outdated shape.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/analytics-insights-and-import-adapters.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, package: "@mercatus-liber/analytics" }
+  key_files:
+    - path: packages/analytics/src/types.ts
+      purpose: Existing write-side AnalyticsAdapter contract this story adds a sibling read-side contract alongside.
+    - path: packages/analytics/src/posthog-adapter.ts
+      purpose: Existing PostHog write-side adapter -- the naming/construction convention to follow.
+    - path: packages/analytics/src/noop-adapter.ts
+      purpose: Existing zero-infra default pattern to mirror for the new read-side contract.
+
+files_to_modify:
+  - file: packages/analytics/src/types.ts
+    change: "Add the new AnalyticsInsightsAdapter contract"
+  - file: packages/analytics/src/posthog-insights-adapter.ts
+    change: "New file -- real PostHog Query API adapter"
+  - file: packages/analytics/src/noop-insights-adapter.ts
+    change: "New file -- zero-infra default"
+
+design_decisions:
+  - decision: "AnalyticsInsightsAdapter is a new, separate contract in the same package, not an extension of BiMetricsAdapter."
+    rationale: "See design-discussion.md §1a -- traffic/referrer data fundamentally doesn't live in this app's own persistence, unlike everything BiMetricsAdapter computes."
+
+risks:
+  - severity: low
+    description: "PostHog's exact query-scope requirement is unconfirmed until researched."
+    mitigation: "Story explicitly requires researching and documenting the real finding, not assuming."
+
+references:
+  - path: .pHive/epics/analytics-insights-and-import-adapters/docs/design-discussion.md
+    relevant_excerpt: "§1a-b: the resolved contract-placement and adapter-scope design questions this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: analytics.insights_adapters_implemented
+  direction: up
+  unit: count
+  baseline: 0
+  target: 2
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Count of real AnalyticsInsightsAdapter implementations (PostHog + noop), verified by test"
+  verify_at: integrate
+  owner: tester
