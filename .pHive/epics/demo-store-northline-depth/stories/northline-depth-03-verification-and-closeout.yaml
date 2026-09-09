@@ -1,0 +1,78 @@
+id: northline-depth-03-verification-and-closeout
+epic: demo-store-northline-depth
+title: "Live verification across both demos, docs update, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [northline-depth-02-real-nav-and-actions]
+
+description: |
+  Read both prior stories' committed changes in full first.
+
+  1. Live verification against a real dev server: browse Northline's 4 categories via the real
+     nav links, visit all 8 service-area location pages, add both a single-tier and a
+     multi-tier-variant service to cart and complete a real checkout attempt (fails loudly on
+     Stripe key absence, same as every other demo -- that's expected, not a bug), run the 2 real
+     search queries from story 2 again end to end. Re-verify dragon-merch's nav/categories are
+     completely unaffected.
+  2. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  3. Update docs/subsystems/15-service-areas.md if any of its content-depth claims (e.g.
+     example area counts) are now stale given all 8 areas have real pages.
+  4. Update .pHive/planning/epic-backlog.md: change epic 35's row to "done (3/3 stories
+     complete)", with an accurate description naming the 4 categories, the tiered SKUs, the
+     8/8 location pages, and the nav fix (including the Fall Sale hardcode bug this epic found
+     and fixed) -- match the style/detail of surrounding rows.
+  5. Commit and merge feat/demo-store-northline-depth into master with --no-ff, mirroring the
+     "Merge epic: <name> (epic NN)" commit-message convention from prior epic merges in this
+     repo's git log.
+
+acceptance_criteria:
+  - "Given a real dev server, then all 4 Northline categories and all 8 location pages render real content when browsed via the actual nav links (not just direct URL access)"
+  - "Given a real checkout attempt with a tiered-variant service in cart, then it proceeds through the same real flow (and same expected Stripe-key-absent failure point) as every other demo"
+  - "Given dragon-merch re-checked after this epic, then its nav/categories/campaign link are unchanged from before this epic"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given .pHive/planning/epic-backlog.md, then epic 35's row reads done (3/3 stories complete) with an accurate, specific description"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Run all verification steps and make the docs/backlog updates per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and the merge is clean.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/demo-store-northline-depth, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 35's row updated to done.
+    - path: docs/subsystems/15-service-areas.md
+      purpose: May need a content-depth update now that all 8 areas have real pages.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 35 done with an accurate description.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/demo-store-northline-depth/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's live verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."

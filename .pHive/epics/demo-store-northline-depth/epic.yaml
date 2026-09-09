@@ -1,0 +1,44 @@
+name: demo-store-northline-depth
+title: "Northline Home Tech: real nav, real category depth, real per-area location pages"
+description: >
+  Fixes the user's explicit critique ("these aren't themed, they aren't integrated, we hardly
+  have actions, it should have a true menu, a true set of products") for Northline Home Tech
+  first. Confirmed by direct inspection: the shared nav renders zero category/service-area
+  links and one hardcoded dragon-merch-only campaign link; Northline has 1 category (everything
+  dumped into it) and only 1 of 8 defined service areas has a published location page. Resolved
+  design questions: nav becomes demo-built (navLinks prop, real per-demo data, no hardcoded
+  strings) rather than forking the shared nav components; depth is a seed-data/CMS-content
+  problem, no new subsystem needed. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [demo-content, storefront, seed-data]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    demo-content: "Real category/service-area/nav depth for one demo store"
+    storefront: "Shared nav component contract change, demo-aware not demo-forked"
+    seed-data: "Bulk of the work is richer seed-data and CMS content authoring, not new architecture"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: northline-depth-01-catalog-and-location-depth
+    title: "4 real categories, tiered SKUs, all 8 service-area location pages published"
+    complexity: medium
+    depends_on: []
+  - id: northline-depth-02-real-nav-and-actions
+    title: "Demo-built navLinks (categories + service areas), delete hardcoded Fall Sale link, verify search"
+    complexity: medium
+    depends_on: [northline-depth-01-catalog-and-location-depth]
+  - id: northline-depth-03-verification-and-closeout
+    title: "Live verification across both demos, docs update, closeout, merge"
+    complexity: low
+    depends_on: [northline-depth-02-real-nav-and-actions]
