@@ -22,11 +22,17 @@ describe("seeded marketing catalog + search", () => {
     const embroidery = await marketingCatalog.getCategoryBySlug("embroidery");
     expect(embroidery).not.toBeNull();
     const embroideryProductIds = await marketingCatalog.listProductIdsInCategory(embroidery!.id);
-    expect(embroideryProductIds).toHaveLength(3); // tote, cap, hoodie
+    // Original 3 (tote, cap, hoodie) + demo-store-catalog-depth's 7 new
+    // embroidered products (zip pouch, luggage tag, baby onesie, canvas
+    // apron, quarter-zip pullover, kids' tee, iron-on patch set).
+    expect(embroideryProductIds).toHaveLength(10);
 
     const apparel = await marketingCatalog.getCategoryBySlug("apparel");
     const apparelProductIds = await marketingCatalog.listProductIdsInCategory(apparel!.id);
-    expect(apparelProductIds).toHaveLength(2); // hoodie, tee
+    // Original 2 (hoodie, tee) + demo-store-catalog-depth's 5 new apparel
+    // products (baby onesie, canvas apron, quarter-zip pullover, kids' tee,
+    // screen-printed sweatshirt).
+    expect(apparelProductIds).toHaveLength(7);
 
     const hoodie = await catalog.getProductBySlug("embroidered-fleece-hoodie");
     expect(embroideryProductIds).toContain(hoodie!.id);
@@ -44,11 +50,23 @@ describe("seeded marketing catalog + search", () => {
     const results = await search.query({ text: "embroidered" });
     expect(results.length).toBeGreaterThanOrEqual(4);
     const titles = results.map((r) => r.title).sort();
+    // Original 4 + demo-store-catalog-depth's 7 new products whose title
+    // literally says "Embroidered" (see lib/seed.ts's DEMO_PRODUCTS/
+    // DEMO_VARIANT_PRODUCTS doc comments) -- the woven (non-embroidered)
+    // patch set is deliberately excluded here, proving this is a real
+    // substring match, not "everything in the embroidery category".
     expect(titles).toEqual([
+      "Embroidered Baby Onesie",
+      "Embroidered Canvas Apron",
       "Embroidered Canvas Tote Bag",
       "Embroidered Cotton T-Shirt",
       "Embroidered Dad Cap",
       "Embroidered Fleece Hoodie",
+      "Embroidered Iron-On Patch Set (Set of 3)",
+      "Embroidered Luggage Tag",
+      "Embroidered Quarter-Zip Pullover",
+      "Embroidered Zip Pouch",
+      "Kids' Embroidered Tee",
     ]);
   });
 });

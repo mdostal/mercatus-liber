@@ -40,6 +40,25 @@ interface DemoProduct {
  * category assignment the same way the old organizer/mat pair proved it via
  * "desk-accessories". Real names/descriptions/prices in cents, zero lorem
  * ipsum, per this story's acceptance criteria.
+ *
+ * demo-store-catalog-depth: this original 8-product catalog read as a
+ * single bad landing page rather than a real shop, so this pass ~3x's it
+ * (mirrors lib/seed-northline.ts's northline-depth-02 "~4x catalog-depth"
+ * pass on the same principle) with real, distinct single-SKU products across
+ * the same 4 categories plus one new 5th category, "Stickers & Patches", a
+ * genuine fit for a small-batch embroidery/print shop (iron-on/woven patches
+ * pair naturally with the embroidery line; vinyl stickers are a real
+ * low-cost print-shop staple). Real multi-SKU tiered variants (the "Trailing
+ * Pothos" pattern from lib/seed-broadleaf.ts -- one generateSkus call per
+ * tier so each tier carries its own price/stock) live separately in
+ * DEMO_VARIANT_PRODUCTS below, since this array's shape is single-SKU-per-
+ * product. Every genuinely embroidered/monogrammed new product keeps this
+ * story's existing naming convention of leading its title with "Embroidered"
+ * (or "Embroidered ..."), the same substring isCustomizableProduct-adjacent
+ * search-index behavior the original 4 embroidered products already relied
+ * on -- see test/marketing-catalog-search.test.ts's "embroidered" full-text
+ * query assertion, updated alongside this pass to the real, larger match
+ * set.
  */
 const DEMO_PRODUCTS: DemoProduct[] = [
   {
@@ -140,19 +159,295 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     stockUnits: 40,
     customizable: false,
   },
+  // -- demo-store-catalog-depth additions below (14 new single-SKU
+  // products; 4 more real multi-SKU tiered products live in
+  // DEMO_VARIANT_PRODUCTS below) --
+  {
+    slug: "embroidered-zip-pouch",
+    title: "Embroidered Zip Pouch",
+    description:
+      "A compact water-resistant canvas zip pouch, right for cards or small tools, embroidered with your initials or a short custom design.",
+    color: "natural-canvas",
+    size: "one-size",
+    priceCents: 1600,
+    categorySlugs: ["embroidery"],
+    stockUnits: 28,
+    customizable: true,
+  },
+  {
+    slug: "embroidered-luggage-tag",
+    title: "Embroidered Luggage Tag",
+    description:
+      "A sturdy vegetable-tanned leather luggage tag with a brass buckle strap, embroidered on the backing panel with your name or initials.",
+    color: "chestnut-brown",
+    size: "one-size",
+    priceCents: 1400,
+    categorySlugs: ["embroidery"],
+    stockUnits: 20,
+    customizable: true,
+  },
+  {
+    slug: "embroidered-canvas-apron",
+    title: "Embroidered Canvas Apron",
+    description:
+      "A heavyweight canvas work apron with an adjustable neck strap and a large front pocket, embroidered on the chest with your name, shop name, or a small custom design.",
+    color: "natural-canvas",
+    size: "one-size",
+    // Shared category (a worn embroidered garment genuinely belongs in
+    // both), same many-to-many pattern as the Embroidered Fleece Hoodie
+    // above.
+    categorySlugs: ["embroidery", "apparel"],
+    priceCents: 3400,
+    stockUnits: 16,
+    customizable: true,
+  },
+  {
+    slug: "kids-embroidered-tee",
+    title: "Kids' Embroidered Tee",
+    description:
+      "A soft 100% cotton youth crewneck tee, embroidered (not printed) on the chest with your child's name, initials, or a small custom design.",
+    color: "light-blue",
+    size: "youth-medium",
+    priceCents: 1900,
+    categorySlugs: ["embroidery", "apparel"],
+    stockUnits: 24,
+    customizable: true,
+  },
+  {
+    slug: "birch-wood-slice-coaster-set",
+    title: "Birch Wood Slice Coaster Set (Set of 4)",
+    description:
+      "Four natural birch wood slice coasters with a protective matte sealant, laser-etched with a monogram or short custom text. Packaged in a kraft gift box.",
+    color: "natural-birch",
+    size: "4-pack",
+    priceCents: 3600,
+    categorySlugs: ["custom-coasters"],
+    stockUnits: 22,
+    customizable: true,
+  },
+  {
+    slug: "marbled-resin-coaster-set",
+    title: "Marbled Resin Coaster Set (Set of 4)",
+    description:
+      "Four hand-poured resin coasters in a swirled marble pattern with a cork backing -- our standard in-house colorway, ready to ship as-is.",
+    color: "ivory-marble",
+    size: "4-pack",
+    priceCents: 3000,
+    categorySlugs: ["custom-coasters"],
+    stockUnits: 30,
+    customizable: false,
+  },
+  {
+    slug: "leather-coaster-set",
+    title: "Leather Coaster Set (Set of 4)",
+    description:
+      "Four thick vegetable-tanned leather coasters, hand-cut and edge-burnished, deboss-stamped with a monogram or short custom text of your choosing.",
+    color: "saddle-tan",
+    size: "4-pack",
+    priceCents: 4200,
+    categorySlugs: ["custom-coasters"],
+    stockUnits: 18,
+    customizable: true,
+  },
+  {
+    slug: "custom-etched-pint-glass-set",
+    title: "Custom-Etched Pint Glass Set (Set of 2)",
+    description:
+      "Two 16oz glass pint glasses, permanently laser-etched with your own text, initials, or a small design -- dishwasher-safe, no ink to fade.",
+    color: "clear-glass",
+    size: "2-pack",
+    priceCents: 2400,
+    categorySlugs: ["drinkware"],
+    stockUnits: 34,
+    customizable: true,
+  },
+  {
+    slug: "custom-printed-enamel-camp-mug",
+    title: "Custom-Printed Enamel Camp Mug",
+    description:
+      "A 12oz classic speckled enamel camp mug with a rolled rim, full-color printed edge-to-edge with your own text, photo, or design.",
+    color: "speckled-black",
+    size: "12oz",
+    priceCents: 1600,
+    categorySlugs: ["drinkware"],
+    stockUnits: 38,
+    customizable: true,
+  },
+  {
+    slug: "custom-printed-can-cooler-set",
+    title: "Custom-Printed Can Cooler Set (Set of 4)",
+    description:
+      "Four neoprene slim-can coolers with a stitched seam, full-color printed with our standard in-house pattern -- ready to ship as-is.",
+    color: "assorted",
+    size: "4-pack",
+    priceCents: 2200,
+    categorySlugs: ["drinkware"],
+    stockUnits: 40,
+    customizable: false,
+  },
+  {
+    slug: "custom-vinyl-sticker-sheet",
+    title: "Custom Vinyl Sticker Sheet",
+    description:
+      "A weatherproof matte vinyl sticker sheet, cut to your own text or small design -- dishwasher- and sun-safe for water bottles, laptops, and cars.",
+    color: "assorted",
+    size: "one-sheet",
+    priceCents: 1200,
+    categorySlugs: ["stickers-patches"],
+    stockUnits: 60,
+    customizable: true,
+  },
+  {
+    slug: "embroidered-iron-on-patch-set",
+    title: "Embroidered Iron-On Patch Set (Set of 3)",
+    description:
+      "Three twill-backed embroidered patches with a heat-activated iron-on backing, stitched to order with your text, initials, or a small custom design.",
+    color: "assorted",
+    size: "3-pack",
+    // Shared category -- a genuinely embroidered product that also belongs
+    // in the new Stickers & Patches category, same many-to-many pattern as
+    // the Embroidered Fleece Hoodie above.
+    categorySlugs: ["embroidery", "stickers-patches"],
+    priceCents: 1800,
+    stockUnits: 26,
+    customizable: true,
+  },
+  {
+    slug: "woven-name-patch-set",
+    title: "Woven Name Patch Set (Set of 6)",
+    description:
+      "Six sew-on woven labels, finely dye-sublimated with your name or a short custom text -- a lightweight stitch-free alternative for gear tags and clothing labels.",
+    color: "black-on-white",
+    size: "6-pack",
+    priceCents: 1600,
+    categorySlugs: ["stickers-patches"],
+    stockUnits: 32,
+    customizable: true,
+  },
+  {
+    slug: "die-cut-vinyl-sticker-pack",
+    title: "Die-Cut Vinyl Sticker Pack (Pack of 10)",
+    description:
+      "Ten die-cut glossy vinyl stickers in our standard in-house shop designs -- ready to ship as-is, no customization needed.",
+    color: "assorted",
+    size: "10-pack",
+    priceCents: 1000,
+    categorySlugs: ["stickers-patches"],
+    stockUnits: 70,
+    customizable: false,
+  },
+];
+
+interface DemoProductTier {
+  /** Becomes the SKU's "size" identifying attribute -- e.g. "small" / "0-3m" / "20oz". */
+  size: string;
+  /** Human label for the tier (PDP-facing, mirrors lib/seed-broadleaf.ts's ProductTier.label). */
+  label: string;
+  priceCents: number;
+  stockUnits: number;
+}
+
+/**
+ * A real multi-SKU tiered product -- mirrors lib/seed-broadleaf.ts's
+ * "Trailing Pothos" ProductTier pattern (one generateSkus call per tier, so
+ * each tier carries its own distinct price and stock) rather than
+ * DEMO_PRODUCTS' single-SKU-per-product shape above. `color` is held fixed
+ * across all of a product's tiers (only `size` varies per tier) since none
+ * of these 4 products need per-tier color variation.
+ */
+interface DemoVariantProduct {
+  slug: string;
+  title: string;
+  description: string;
+  color: string;
+  categorySlugs: string[];
+  customizable: boolean;
+  tiers: DemoProductTier[];
+}
+
+/**
+ * demo-store-catalog-depth: 4 real tiered products (proves this pass isn't
+ * just 18 more flat single-SKU listings) -- a baby onesie in 3 real infant
+ * sizes, an embroidered pullover and a screen-printed sweatshirt each in 4
+ * real adult sizes, and an insulated water bottle in 2 real capacities, each
+ * size at its own real price point.
+ */
+const DEMO_VARIANT_PRODUCTS: DemoVariantProduct[] = [
+  {
+    slug: "embroidered-baby-onesie",
+    title: "Embroidered Baby Onesie",
+    description:
+      "A soft 100% cotton snap-front onesie, embroidered on the chest with baby's name or a small custom design -- a keepsake-quality baby gift.",
+    color: "natural-white",
+    categorySlugs: ["embroidery", "apparel"],
+    customizable: true,
+    tiers: [
+      { size: "0-3m", label: "0-3 months", priceCents: 2000, stockUnits: 18 },
+      { size: "3-6m", label: "3-6 months", priceCents: 2000, stockUnits: 18 },
+      { size: "6-12m", label: "6-12 months", priceCents: 2000, stockUnits: 14 },
+    ],
+  },
+  {
+    slug: "embroidered-quarter-zip-pullover",
+    title: "Embroidered Quarter-Zip Pullover",
+    description:
+      "A midweight brushed-fleece quarter-zip pullover with a chest pocket, embroidered on the left chest with your text or a small custom design.",
+    color: "heather-navy",
+    // Shared category (a worn embroidered garment genuinely belongs in
+    // both), same many-to-many pattern as the Embroidered Fleece Hoodie
+    // above.
+    categorySlugs: ["embroidery", "apparel"],
+    customizable: true,
+    tiers: [
+      { size: "small", label: "Small", priceCents: 4800, stockUnits: 20 },
+      { size: "medium", label: "Medium", priceCents: 4800, stockUnits: 26 },
+      { size: "large", label: "Large", priceCents: 4800, stockUnits: 22 },
+      { size: "x-large", label: "X-Large", priceCents: 4800, stockUnits: 12 },
+    ],
+  },
+  {
+    slug: "screen-printed-crewneck-sweatshirt",
+    title: "Screen-Printed Crewneck Sweatshirt",
+    description:
+      "A heavyweight 10oz cotton-poly fleece crewneck sweatshirt, screen-printed front and center with our standard in-house shop logo design.",
+    color: "charcoal-heather",
+    categorySlugs: ["apparel"],
+    customizable: false,
+    tiers: [
+      { size: "small", label: "Small", priceCents: 4600, stockUnits: 20 },
+      { size: "medium", label: "Medium", priceCents: 4600, stockUnits: 28 },
+      { size: "large", label: "Large", priceCents: 4600, stockUnits: 24 },
+      { size: "x-large", label: "X-Large", priceCents: 4600, stockUnits: 14 },
+    ],
+  },
+  {
+    slug: "custom-printed-insulated-water-bottle",
+    title: "Custom-Printed Insulated Water Bottle",
+    description:
+      "A double-wall vacuum-insulated stainless steel water bottle with a leakproof lid -- our standard in-house wrap design, ready to ship as-is.",
+    color: "matte-forest",
+    categorySlugs: ["drinkware"],
+    customizable: false,
+    tiers: [
+      { size: "20oz", label: "20oz", priceCents: 2800, stockUnits: 32 },
+      { size: "32oz", label: "32oz", priceCents: 3400, stockUnits: 24 },
+    ],
+  },
 ];
 
 /**
  * Reads the "is this product customizable" flag straight off DEMO_PRODUCTS
- * above (the single source of truth for the seed data's customizable tag --
- * see DemoProduct's doc comment) so the PDP (app/demo/[demoSlug]/products/
- * [slug]/page.tsx) can decide whether to show the personalization input
- * without re-declaring the flag anywhere else. Returns false for any slug
- * not in this print-shop-specific array (e.g. a northline product slug) --
- * correct, since northline isn't a customization demo.
+ * and DEMO_VARIANT_PRODUCTS above (the single source of truth for the seed
+ * data's customizable tag -- see DemoProduct's doc comment) so the PDP
+ * (app/demo/[demoSlug]/products/[slug]/page.tsx) can decide whether to show
+ * the personalization input without re-declaring the flag anywhere else.
+ * Returns false for any slug not in these print-shop-specific arrays (e.g. a
+ * northline product slug) -- correct, since northline isn't a customization
+ * demo.
  */
 export function isCustomizableProduct(slug: string): boolean {
-  return DEMO_PRODUCTS.some((product) => product.slug === slug && product.customizable);
+  if (DEMO_PRODUCTS.some((product) => product.slug === slug && product.customizable)) return true;
+  return DEMO_VARIANT_PRODUCTS.some((product) => product.slug === slug && product.customizable);
 }
 
 interface ServiceDemoSku {
@@ -250,12 +545,14 @@ async function seedServiceBundle(catalog: CatalogService, inventory: InventoryAd
 }
 
 /**
- * Seeds print-shop's 4 real categories, all top-level (parentId: null) --
+ * Seeds print-shop's 5 real categories, all top-level (parentId: null) --
  * same "every real category is top-level" shape northline-depth-02 already
  * proved for Northline (see app/demo/[demoSlug]/layout.tsx's buildNavLinks
- * doc comment), so every one of these 4 automatically surfaces in the demo
+ * doc comment), so every one of these 5 automatically surfaces in the demo
  * nav via that already-built, demo-aware navLinks mechanism -- zero new nav
- * code needed (print-shop-02's Part 4).
+ * code needed (print-shop-02's Part 4). "Stickers & Patches" is new as of
+ * demo-store-catalog-depth -- a genuine fit for a small-batch
+ * embroidery/print shop, not a bolt-on catch-all.
  */
 async function seedCategories(marketingCatalog: MarketingCatalogService): Promise<Map<string, string>> {
   const embroidery = await marketingCatalog.createCategory({
@@ -282,12 +579,19 @@ async function seedCategories(marketingCatalog: MarketingCatalogService): Promis
     description: "Mugs and tumblers, custom-printed with your own text, photo, or design.",
     parentId: null,
   });
+  const stickersPatches = await marketingCatalog.createCategory({
+    slug: "stickers-patches",
+    title: "Stickers & Patches",
+    description: "Embroidered and woven patches, plus vinyl stickers -- custom-cut to order or ready to ship as-is.",
+    parentId: null,
+  });
 
   return new Map([
     [embroidery.slug, embroidery.id],
     [customCoasters.slug, customCoasters.id],
     [apparel.slug, apparel.id],
     [drinkware.slug, drinkware.id],
+    [stickersPatches.slug, stickersPatches.id],
   ]);
 }
 
@@ -518,6 +822,38 @@ export async function seedCatalog(
     // inventory subscriber -- this sets the real seeded stock level.
     for (const sku of skus) {
       await inventory.setStock(sku.id, demo.stockUnits);
+    }
+
+    for (const categorySlug of demo.categorySlugs) {
+      const categoryId = categoryIdBySlug.get(categorySlug);
+      if (categoryId) await marketingCatalog.assignProductToCategory(product.id, categoryId);
+    }
+  }
+
+  // Real multi-SKU tiered products (DemoVariantProduct's doc comment) --
+  // one generateSkus call per tier so each tier gets its own real
+  // price/stock, mirroring lib/seed-broadleaf.ts's Trailing Pothos pattern.
+  for (const demo of DEMO_VARIANT_PRODUCTS) {
+    const product = await catalog.createProduct({
+      slug: demo.slug,
+      title: demo.title,
+      description: demo.description,
+      identifyingAttributeKeys: ["color", "size"],
+    });
+    productIdBySlug.set(demo.slug, product.id);
+    await catalog.publishProduct(product.id);
+
+    for (const tier of demo.tiers) {
+      const skus = await catalog.generateSkus(
+        product.id,
+        { color: [demo.color], size: [tier.size] },
+        { amount: tier.priceCents, currency: "USD" },
+      );
+      // catalog.sku.created already initialized each SKU at onHand=0 via the
+      // inventory subscriber -- this sets the real seeded stock level.
+      for (const sku of skus) {
+        await inventory.setStock(sku.id, tier.stockUnits);
+      }
     }
 
     for (const categorySlug of demo.categorySlugs) {

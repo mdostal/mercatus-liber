@@ -251,15 +251,43 @@ describe("Northline demo seed (epic 15b public demo)", () => {
     await seedCatalog(catalog, marketingCatalog, cms, inventory, serviceAreas);
 
     const products = await catalog.listProducts();
-    expect(products.map((p) => p.slug).sort()).toEqual([
-      "cork-back-print-coaster-set",
-      "custom-printed-ceramic-mug",
-      "custom-printed-travel-tumbler",
-      "embroidered-canvas-tote",
-      "embroidered-cotton-tee",
-      "embroidered-dad-cap",
-      "embroidered-fleece-hoodie",
-      "monogram-stoneware-coaster-set",
-    ]);
+    // demo-store-catalog-depth grew this catalog from 8 to 26 real products
+    // (14 new single-SKU + 4 new tiered products across the original 4
+    // categories plus a new 5th "Stickers & Patches" category) -- see
+    // lib/seed.ts's DEMO_PRODUCTS/DEMO_VARIANT_PRODUCTS doc comments.
+    expect(products.map((p) => p.slug).sort()).toEqual(
+      [
+        // Original 8 (print-shop-02) -- unchanged.
+        "cork-back-print-coaster-set",
+        "custom-printed-ceramic-mug",
+        "custom-printed-travel-tumbler",
+        "embroidered-canvas-tote",
+        "embroidered-cotton-tee",
+        "embroidered-dad-cap",
+        "embroidered-fleece-hoodie",
+        "monogram-stoneware-coaster-set",
+        // demo-store-catalog-depth additions -- single-SKU.
+        "birch-wood-slice-coaster-set",
+        "custom-etched-pint-glass-set",
+        "custom-printed-can-cooler-set",
+        "custom-printed-enamel-camp-mug",
+        "custom-vinyl-sticker-sheet",
+        "die-cut-vinyl-sticker-pack",
+        "embroidered-canvas-apron",
+        "embroidered-iron-on-patch-set",
+        "embroidered-luggage-tag",
+        "embroidered-zip-pouch",
+        "kids-embroidered-tee",
+        "leather-coaster-set",
+        "marbled-resin-coaster-set",
+        "woven-name-patch-set",
+        // demo-store-catalog-depth additions -- real multi-SKU tiered
+        // products (DEMO_VARIANT_PRODUCTS).
+        "custom-printed-insulated-water-bottle",
+        "embroidered-baby-onesie",
+        "embroidered-quarter-zip-pullover",
+        "screen-printed-crewneck-sweatshirt",
+      ].sort(),
+    );
   });
 });
