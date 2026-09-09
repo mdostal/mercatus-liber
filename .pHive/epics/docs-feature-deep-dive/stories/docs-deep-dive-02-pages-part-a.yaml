@@ -1,0 +1,110 @@
+id: docs-deep-dive-02-pages-part-a
+epic: docs-feature-deep-dive
+title: "Real deep-dive pages: Commerce Core, Theming, CMS & Marketing, Admin & Access Control"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [docs-deep-dive-01-infra-reconciliation-and-planning-sync]
+
+description: |
+  Read .pHive/epics/docs-feature-deep-dive/docs/design-discussion.md §2c in full first --
+  it names the exact 8 capability areas and what each page needs.
+
+  This story owns 4 of the 8: (1) Commerce Core, (2) Theming & Design System, (3) CMS &
+  Marketing, (4) Admin & Access Control. A sibling piece of work (different story, same epic,
+  running independently -- do not touch its files) owns the other 4; you touch only the 4 new
+  page files below plus whatever nav/_meta wiring those 4 specifically need.
+
+  For EACH of your 4 pages, before writing it: read the real subsystem doc(s) it covers under
+  docs/subsystems/, and read at least one real source file implementing that capability (e.g.
+  for Theming, read packages/theming/src/theme-bundles.ts and the design-system-v2 epic's
+  design-discussion; for Admin & Access Control, read packages/admin-auth/src/ and
+  docs/subsystems/21-admin-auth.md). Every code example in these pages must be lifted from real
+  source in this repo (with a comment noting the file it's from), never invented pseudocode.
+
+  Create these 4 files under apps/docs/content-src/deep-dive/ (new subdirectory):
+  1. commerce-core.md -- catalog, cart, checkout-orders, payments (Stripe). What the base
+     browse -> cart -> checkout -> order loop actually does, the adapter contract for payments,
+     a real code example of the CatalogService/CartService/CheckoutOrdersService shapes.
+  2. theming-and-design-system.md -- the theming/layout subsystem, and specifically the
+     design-system-v2 epic's switchable component-level theme system (ThemeBundle,
+     LayoutTemplate, resolveTemplate, the 10 real bundles) -- this is the newest, richest
+     subsystem in the repo and deserves real depth: explain the template-registry mechanism
+     with a real code snippet, not just token colors.
+  3. cms-and-marketing.md -- CMS (5 page types), marketing-catalog, search, service-areas --
+     how content/data vs. page-layout is split, a real example of a CMS page's section config.
+  4. admin-and-access-control.md -- admin-auth's AdminAuthAdapter contract, the Clerk adapter,
+     the owner/admin/viewer role model, hasPermission()'s real shape, why Clerk (the user's own
+     explicit, deliberate choice, not a generic abstraction).
+
+  Follow apps/docs/content-src/getting-started.md's existing tone/heading structure/level of
+  polish as your style guide -- these are real documentation pages for a real audience
+  (developers evaluating or building on this framework), not internal planning notes.
+
+  Once written, ensure the sync mechanism (from the sibling infra story, already landed) picks
+  these up -- confirm content-src/ files get copied into content/ the same way index.md/
+  getting-started.md already are; if deep-dive/ needs an explicit addition to sync-content.mjs's
+  copy list (rather than a blanket directory copy), make that addition.
+
+acceptance_criteria:
+  - "Given all 4 new pages, then each contains at least one real code example lifted verbatim (with its source file noted) from this actual repo -- zero invented pseudocode"
+  - "Given the theming-and-design-system.md page specifically, then it explains the LayoutTemplate/resolveTemplate mechanism with a real snippet, not just a token/color description"
+  - "Given `pnpm --filter @mercatus-liber/docs dev`, then all 4 pages render at real URLs with no build/runtime errors"
+  - "Given each page, then it links to its corresponding docs/subsystems/*.md synced page(s) for deeper technical reference"
+  - "Given a fresh reader unfamiliar with this repo, then each page is genuinely readable start to finish (real prose, not a bullet-point-only stub)"
+
+steps:
+  - id: research
+    description: Read the relevant subsystem docs and real source files for all 4 pages before writing anything.
+    agent: researcher
+  - id: implement
+    description: Write the 4 deep-dive pages per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Build/serve apps/docs and verify every page renders correctly with real content.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Spot-check every code example against its cited real source file for accuracy.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/docs-feature-deep-dive.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: Markdown/MDX, framework: Nextra }
+  key_files:
+    - path: apps/docs/content-src/getting-started.md
+      purpose: Existing tone/structure style guide to follow.
+    - path: docs/subsystems
+      purpose: The terse technical reference docs these pages expand on narratively.
+
+files_to_modify:
+  - file: apps/docs/content-src/deep-dive/commerce-core.md
+    change: New file.
+  - file: apps/docs/content-src/deep-dive/theming-and-design-system.md
+    change: New file.
+  - file: apps/docs/content-src/deep-dive/cms-and-marketing.md
+    change: New file.
+  - file: apps/docs/content-src/deep-dive/admin-and-access-control.md
+    change: New file.
+
+design_decisions: []
+risks:
+  - severity: low
+    description: "Running concurrently with a sibling story writing 4 different deep-dive pages -- risk of touching shared files (e.g. a nav index)."
+    mitigation: "This story is scoped to only its own 4 new files plus deep-dive/ subdirectory wiring; if a shared nav/_meta file needs an entry for these 4 pages, make the minimal addition and note it clearly in the commit so the sibling story's integration doesn't conflict."
+
+references:
+  - path: .pHive/epics/docs-feature-deep-dive/docs/design-discussion.md
+    relevant_excerpt: "§2c: the exact 8 capability areas and depth expectations."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Content-authoring story; correctness is verified by the acceptance criteria's real-code-example and real-render checks, not a numeric trend."

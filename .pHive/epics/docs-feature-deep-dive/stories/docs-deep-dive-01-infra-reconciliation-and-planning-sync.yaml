@@ -1,0 +1,122 @@
+id: docs-deep-dive-01-infra-reconciliation-and-planning-sync
+epic: docs-feature-deep-dive
+title: "Remove duplicate mkdocs baseline, build the public planning-corpus sync mechanism"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/docs-feature-deep-dive/docs/design-discussion.md in full first -- §1 and
+  §2b resolve both parts of this story's scope, don't re-derive them.
+
+  Part 1 -- remove the duplicate docs infrastructure. Confirm for yourself first (read both
+  files) that mkdocs.yml and docs/index.md at the repo root are exactly what the design
+  discussion describes: a minimal, unwired mkdocs-material config + one placeholder index page,
+  with no CI/deployment/inbound links anywhere. If that's confirmed true, delete both files.
+  If you find EITHER file has grown real content or wiring beyond what's described (i.e. this
+  finding is stale), STOP and report that instead of deleting -- don't blindly follow this
+  instruction if reality has changed.
+
+  Part 2 -- planning-corpus sync. Read apps/docs/scripts/sync-content.mjs in full first to
+  understand its exact current behavior (what it copies, from where, to where) before extending
+  it. Add a new sync step (extend the existing script, or add a clearly-named sibling script
+  invoked alongside it from the same predev/prebuild hook -- your call on which is cleaner,
+  document your reasoning) that copies every `.pHive/epics/*/docs/design-discussion.md` file in
+  this repo into `apps/docs/content/planning/<epic-name>.md`, preserving each file's real
+  content (a light front-matter/heading addition noting the source epic name is fine, but the
+  actual design reasoning content must be unmodified). Before enabling this, do a real grep pass
+  across every design-discussion.md this repo has for anything resembling a credential, API key,
+  token, or real (non-fictional) client-identifying information -- report what you found (almost
+  certainly nothing, per the design discussion's risk note, but verify don't assume) before
+  proceeding.
+
+  Author apps/docs/content-src/planning-index.md: a real hand-written index page listing every
+  epic that has a design-discussion.md, each with a one-line summary of what it covered and a
+  link to its now-synced planning page. Group them sensibly (e.g. chronologically, or by theme
+  -- your call) rather than a flat undifferentiated list.
+
+  Wire this new planning-index page into the docs site's navigation (read apps/docs/app/layout.tsx
+  to see how the existing Navbar/nav structure is configured, and how Nextra's file-system-based
+  routing already handles the subsystems folder without an explicit _meta.js -- confirm whether
+  content/planning/ needs the same treatment).
+
+acceptance_criteria:
+  - "Given a repo-wide check after this story, then mkdocs.yml and docs/index.md no longer exist (or, if reality had changed from what's described above, a clear report explaining why they were NOT removed)"
+  - "Given the sync mechanism run (via predev/prebuild or manually), then apps/docs/content/planning/ contains a real copy of every epic's design-discussion.md currently in this repo, with unmodified design-reasoning content"
+  - "Given the credential/secret grep pass, then its findings are explicitly reported (expected: none found)"
+  - "Given apps/docs/content-src/planning-index.md, then it's a real, organized index linking to every synced planning page, not a flat unstyled list"
+  - "Given `pnpm --filter @mercatus-liber/docs dev` (or build), then the planning-index page and at least 2 real synced planning pages render correctly with no build/runtime errors"
+
+steps:
+  - id: research
+    description: Read sync-content.mjs, mkdocs.yml, docs/index.md, and apps/docs/app/layout.tsx in full before making any change.
+    agent: researcher
+  - id: implement
+    description: Make the changes per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion, including running the actual sync and checking real rendered output.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the mkdocs removal reasoning is sound (or the non-removal report is clear), confirm no design-discussion content was altered by the sync, confirm the credential grep was real.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/docs-feature-deep-dive.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript/JavaScript, framework: "Next.js App Router + Nextra" }
+  key_files:
+    - path: apps/docs/scripts/sync-content.mjs
+      purpose: The existing sync script this story extends.
+    - path: mkdocs.yml
+      purpose: The duplicate docs infra to remove (after confirming it's still just a stub).
+    - path: docs/index.md
+      purpose: The other half of the duplicate docs infra to remove.
+    - path: apps/docs/app/layout.tsx
+      purpose: Nav structure the new planning-index page needs to be reachable from.
+
+files_to_modify:
+  - file: mkdocs.yml
+    change: Deleted (after confirming it's still an unwired stub).
+  - file: docs/index.md
+    change: Deleted (after confirming it's still an unwired stub).
+  - file: apps/docs/scripts/sync-content.mjs
+    change: Extended to sync every epic's design-discussion.md into content/planning/.
+  - file: apps/docs/content-src/planning-index.md
+    change: New file -- real organized index of every synced planning page.
+
+design_decisions:
+  - decision: "Publish real design-discussion.md content (via the existing sync mechanism), not committed HTML sidecars."
+    rationale: "See design-discussion.md §2b -- most epics used transient sidecar retention, so there's nothing durable to copy; the synced-and-rendered-as-MDX source doc is a better, always-current public artifact."
+
+risks:
+  - severity: low
+    description: "Removing another session's recent work (the mkdocs baseline) without flagging it clearly."
+    mitigation: "This story's acceptance criteria requires an explicit report either way -- removed-and-why, or not-removed-and-why."
+
+references:
+  - path: .pHive/epics/docs-feature-deep-dive/docs/design-discussion.md
+    relevant_excerpt: "§1: the mkdocs-duplication finding and resolution. §2b: the planning-corpus-sync design."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: docs_site.planning_corpus_pages_published
+  direction: up
+  unit: count
+  baseline: 0
+  target: 999
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Count of real design-discussion.md files successfully synced into apps/docs/content/planning/, verified by test"
+  verify_at: integrate
+  owner: tester

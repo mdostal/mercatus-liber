@@ -1,0 +1,118 @@
+id: docs-deep-dive-03-pages-part-b
+epic: docs-feature-deep-dive
+title: "Real deep-dive pages: Promotions & Merchandising, BI & Analytics, Plugins & AI, Adapters & Portability"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [docs-deep-dive-01-infra-reconciliation-and-planning-sync]
+
+description: |
+  Read .pHive/epics/docs-feature-deep-dive/docs/design-discussion.md §2c in full first --
+  it names the exact 8 capability areas and what each page needs.
+
+  This story owns 4 of the 8: (5) Promotions & Merchandising, (6) Business Intelligence &
+  Analytics, (7) Plugins & AI/Agent Interface, (8) Adapters & Portability. A sibling piece of
+  work (different story, same epic, running independently -- do not touch its files) owns the
+  other 4 (Commerce Core, Theming, CMS & Marketing, Admin & Access Control) -- do not create or
+  edit those pages.
+
+  For EACH of your 4 pages, before writing it: read the real subsystem doc(s) it covers under
+  docs/subsystems/, and read at least one real source file implementing that capability (e.g.
+  for Plugins & AI, read the MCP server source and docs/subsystems/12-plugins.md and
+  14-ai-mcp-interface.md; for Adapters & Portability, read the adapter-info.ts descriptor and
+  at least 2 real adapter packages like adapter-sanity and adapter-clerk to ground the pattern
+  in real code, not the abstract idea of it). Every code example in these pages must be lifted
+  from real source in this repo (with a comment noting the file it's from), never invented
+  pseudocode.
+
+  Create these 4 files under apps/docs/content-src/deep-dive/ (new subdirectory, likely already
+  created by the sibling story -- if it doesn't exist yet when you start, create it):
+  1. promotions-and-merchandising.md -- promotions/coupons, bundles (tiered packages),
+     recommendations (admin-curated cross-sell), advertising (campaign/creative rotation) --
+     how these 4 subsystems compose without forking catalog/cart's own types.
+  2. business-intelligence-and-analytics.md -- internal-bi (owned dashboard: revenue, funnel,
+     top products) vs. analytics/PostHog (external, write-only event forwarding) -- the real
+     distinction between them, the BiMetricsAdapter contract, and forward-reference the
+     in-progress analytics-insights-and-import-adapters epic (46) as where GA4/PostHog
+     read-side import is headed.
+  3. plugins-and-ai-agent-interface.md -- the plugin/event-bus extension model, and the MCP
+     server + Claude Code skills that let an AI agent operate a store the same way a human
+     admin would -- this is the "no AI-agent tax" principle from VISION.md made concrete; use a
+     real MCP tool definition as the code example.
+  4. adapters-and-portability.md -- the adapter pattern itself as a cross-cutting architectural
+     principle: narrow structural interfaces + zero-infra defaults + real third-party adapters
+     in sibling packages, with a real table of which subsystems are swappable today
+     (persistence: sqlite/postgres/shopify; CMS: in-memory/sanity; payments: stripe;
+     admin-auth: dev-default/clerk; analytics: posthog) -- this page directly feeds epic 39's
+     "roll your own commerce" capability-matrix work, so be concrete and accurate, not aspirational.
+
+  Follow apps/docs/content-src/getting-started.md's existing tone/heading structure/level of
+  polish as your style guide.
+
+  Once written, confirm the sync mechanism (from the sibling infra story, already landed) picks
+  these up the same way content-src/index.md/getting-started.md already are.
+
+acceptance_criteria:
+  - "Given all 4 new pages, then each contains at least one real code example lifted verbatim (with its source file noted) from this actual repo -- zero invented pseudocode"
+  - "Given the adapters-and-portability.md page specifically, then it contains a real, accurate table of which subsystems are swappable today and what adapter(s) actually exist for each -- verified against the real packages/adapter-* directories, not assumed"
+  - "Given `pnpm --filter @mercatus-liber/docs dev`, then all 4 pages render at real URLs with no build/runtime errors"
+  - "Given each page, then it links to its corresponding docs/subsystems/*.md synced page(s) for deeper technical reference"
+  - "Given a fresh reader unfamiliar with this repo, then each page is genuinely readable start to finish (real prose, not a bullet-point-only stub)"
+
+steps:
+  - id: research
+    description: Read the relevant subsystem docs and real source files for all 4 pages before writing anything.
+    agent: researcher
+  - id: implement
+    description: Write the 4 deep-dive pages per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Build/serve apps/docs and verify every page renders correctly with real content.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Spot-check every code example and the adapters table against real source files for accuracy.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/docs-feature-deep-dive.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: Markdown/MDX, framework: Nextra }
+  key_files:
+    - path: apps/docs/content-src/getting-started.md
+      purpose: Existing tone/structure style guide to follow.
+    - path: docs/subsystems
+      purpose: The terse technical reference docs these pages expand on narratively.
+    - path: apps/reference-storefront/lib/adapter-info.ts
+      purpose: Real, current adapter-swappability descriptor to ground the adapters table in.
+
+files_to_modify:
+  - file: apps/docs/content-src/deep-dive/promotions-and-merchandising.md
+    change: New file.
+  - file: apps/docs/content-src/deep-dive/business-intelligence-and-analytics.md
+    change: New file.
+  - file: apps/docs/content-src/deep-dive/plugins-and-ai-agent-interface.md
+    change: New file.
+  - file: apps/docs/content-src/deep-dive/adapters-and-portability.md
+    change: New file.
+
+design_decisions: []
+risks:
+  - severity: low
+    description: "Running concurrently with a sibling story writing 4 different deep-dive pages -- risk of touching shared files (e.g. a nav index)."
+    mitigation: "This story is scoped to only its own 4 new files plus deep-dive/ subdirectory wiring if not already created; if a shared nav/_meta file needs an entry, make the minimal addition and note it clearly."
+
+references:
+  - path: .pHive/epics/docs-feature-deep-dive/docs/design-discussion.md
+    relevant_excerpt: "§2c: the exact 8 capability areas and depth expectations."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Content-authoring story; correctness is verified by the acceptance criteria's real-code-example and real-render checks, not a numeric trend."

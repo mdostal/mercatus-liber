@@ -1,0 +1,47 @@
+name: docs-feature-deep-dive
+title: "Real feature deep-dive content on apps/docs + public planning-corpus sync"
+description: >
+  Epic 33 shipped the docs-site shell/sync mechanism, not deep feature content -- this epic
+  adds it. Found and resolved a real, unplanned issue: a concurrent session added a duplicate,
+  unwired mkdocs-material baseline alongside the already-real, already-deployed apps/docs
+  (Nextra) site; removed in favor of the one real system, flagged explicitly. Also builds the
+  public planning-corpus sync (every epic's real design-discussion.md, not summaries) per the
+  user's separate mid-session ask. 8 real narrative deep-dive pages across major capability
+  areas. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [docs, content, app-layer]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    docs: "The whole point of this epic -- real feature deep-dive content"
+    content: "Mostly narrative writing, not new architecture"
+    app-layer: "Extends apps/docs, an existing self-contained app"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: docs-deep-dive-01-infra-reconciliation-and-planning-sync
+    title: "Remove duplicate mkdocs baseline, build the public planning-corpus sync mechanism"
+    complexity: medium
+    depends_on: []
+  - id: docs-deep-dive-02-pages-part-a
+    title: "Real deep-dive pages: Commerce Core, Theming, CMS & Marketing, Admin & Access Control"
+    complexity: high
+    depends_on: [docs-deep-dive-01-infra-reconciliation-and-planning-sync]
+  - id: docs-deep-dive-03-pages-part-b
+    title: "Real deep-dive pages: Promotions & Merchandising, BI & Analytics, Plugins & AI, Adapters & Portability"
+    complexity: high
+    depends_on: [docs-deep-dive-01-infra-reconciliation-and-planning-sync]
+  - id: docs-deep-dive-04-verification-and-closeout
+    title: "Build + live verification of all new pages, closeout, merge"
+    complexity: low
+    depends_on: [docs-deep-dive-02-pages-part-a, docs-deep-dive-03-pages-part-b]
