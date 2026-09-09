@@ -23,12 +23,21 @@ importers:
 
   apps/reference-storefront:
     dependencies:
+      '@clerk/nextjs':
+        specifier: ^7.9.1
+        version: 7.9.1(next@16.3.4(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@mercatus-liber/account':
         specifier: workspace:*
         version: link:../../packages/account
+      '@mercatus-liber/adapter-clerk':
+        specifier: workspace:*
+        version: link:../../packages/adapter-clerk
       '@mercatus-liber/adapter-sqlite':
         specifier: workspace:*
         version: link:../../packages/adapter-sqlite
+      '@mercatus-liber/admin-auth':
+        specifier: workspace:*
+        version: link:../../packages/admin-auth
       '@mercatus-liber/advertising':
         specifier: workspace:*
         version: link:../../packages/advertising

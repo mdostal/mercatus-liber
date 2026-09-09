@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { hasPermission, type AdminAction } from "@mercatus-liber/admin-auth";
 import type { BundleTier, CreateBundleInput } from "@mercatus-liber/bundles";
 import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
@@ -13,6 +14,25 @@ import { readCouponCode, setCouponCode } from "./coupon-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
 import { getServices } from "./services";
 import { THEME_COOKIE } from "./theme-cookie";
+
+/**
+ * admin-auth-03: the guard every admin mutation action below calls as the
+ * literal first line of its body. Reads the current session via the wired
+ * adminAuth service (Clerk when configured, the dev default otherwise --
+ * see lib/services.ts), then checks hasPermission(role, action) --
+ * throwing a clear error when there is no session at all, or when the
+ * session's role lacks the requested permission. Every one of the 12
+ * mutation actions listed in admin-auth-03-route-and-mutation-gating.yaml
+ * calls this with action="mutate"; updateAdminUserRoleAction (story 04)
+ * will call it with action="manage_users" instead.
+ */
+async function requireAdminPermission(action: AdminAction): Promise<void> {
+  const { adminAuth } = await getServices();
+  const session = await adminAuth.getCurrentSession();
+  if (!session || !hasPermission(session.role, action)) {
+    throw new Error(`Not authorized: this action requires "${action}" permission.`);
+  }
+}
 
 export async function addToCartAction(formData: FormData): Promise<void> {
   const skuId = String(formData.get("skuId"));
@@ -120,6 +140,7 @@ function parsePromotionFormData(formData: FormData): CreatePromotionInput {
 }
 
 export async function createPromotionAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const { promotions } = await getServices();
   await promotions.createPromotion(parsePromotionFormData(formData));
   revalidatePath("/admin/promotions");
@@ -127,6 +148,7 @@ export async function createPromotionAction(formData: FormData): Promise<void> {
 }
 
 export async function updatePromotionAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
   const { promotions } = await getServices();
   const updated = await promotions.updatePromotion(id, parsePromotionFormData(formData));
@@ -136,6 +158,7 @@ export async function updatePromotionAction(formData: FormData): Promise<void> {
 }
 
 export async function deactivatePromotionAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
   const { promotions } = await getServices();
   await promotions.deactivatePromotion(id);
@@ -178,6 +201,7 @@ function parseBundleFormData(formData: FormData): CreateBundleInput {
 }
 
 export async function createBundleAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const { bundles } = await getServices();
   await bundles.createBundle(parseBundleFormData(formData));
   revalidatePath("/admin/bundles");
@@ -185,6 +209,7 @@ export async function createBundleAction(formData: FormData): Promise<void> {
 }
 
 export async function updateBundleAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
   const { bundles } = await getServices();
   const updated = await bundles.updateBundle(id, parseBundleFormData(formData));
@@ -194,6 +219,7 @@ export async function updateBundleAction(formData: FormData): Promise<void> {
 }
 
 export async function deactivateBundleAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
   const { bundles } = await getServices();
   await bundles.deactivateBundle(id);
@@ -225,6 +251,7 @@ function parseRecommendationRuleFormData(formData: FormData): CreateRuleInput {
 }
 
 export async function createRecommendationRuleAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const { recommendations } = await getServices();
   await recommendations.createRule(parseRecommendationRuleFormData(formData));
   revalidatePath("/admin/recommendations");
@@ -232,6 +259,7 @@ export async function createRecommendationRuleAction(formData: FormData): Promis
 }
 
 export async function updateRecommendationRuleAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
   const { recommendations } = await getServices();
   const updated = await recommendations.updateRule(id, parseRecommendationRuleFormData(formData));
@@ -241,6 +269,7 @@ export async function updateRecommendationRuleAction(formData: FormData): Promis
 }
 
 export async function deactivateRecommendationRuleAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
   const { recommendations } = await getServices();
   await recommendations.deactivateRule(id);
@@ -304,6 +333,7 @@ function parseCampaignFormData(formData: FormData): CreateCampaignInput {
 }
 
 export async function createCampaignAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const { advertising } = await getServices();
   await advertising.createCampaign(parseCampaignFormData(formData));
   revalidatePath("/admin/advertising");
@@ -311,6 +341,7 @@ export async function createCampaignAction(formData: FormData): Promise<void> {
 }
 
 export async function updateCampaignAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
   const { advertising } = await getServices();
   const updated = await advertising.updateCampaign(id, parseCampaignFormData(formData));
@@ -320,6 +351,7 @@ export async function updateCampaignAction(formData: FormData): Promise<void> {
 }
 
 export async function deactivateCampaignAction(formData: FormData): Promise<void> {
+  await requireAdminPermission("mutate");
   const id = String(formData.get("id"));
   const { advertising } = await getServices();
   await advertising.deactivateCampaign(id);
