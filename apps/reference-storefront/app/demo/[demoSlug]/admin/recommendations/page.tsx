@@ -50,6 +50,7 @@ export default async function AdminRecommendationsPage({ params }: { params: Pro
                   <td>
                     {rule.status === "active" ? (
                       <form action={deactivateRecommendationRuleAction}>
+                        <input type="hidden" name="demoSlug" value={demoSlug} />
                         <input type="hidden" name="id" value={rule.id} />
                         <button type="submit">Deactivate</button>
                       </form>

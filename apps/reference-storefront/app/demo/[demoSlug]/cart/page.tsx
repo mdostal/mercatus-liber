@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function CartPage({ params }: { params: Promise<{ demoSlug: string }> }) {
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const cartId = await readCartId();
+  const cartId = await readCartId(demoSlug);
   const { cart, catalog, checkout, recommendations, marketingCatalog } = await getServicesForDemo(demoSlug);
   const currentCart = cartId ? await cart.getCart(cartId) : null;
 
@@ -47,7 +47,7 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
   const cartProductIds = Array.from(new Set(lines.map((line) => line.productId).filter((id): id is string => id !== null)));
   const recommendationShelf = await resolveCartRecommendations({ recommendations, catalog, marketingCatalog }, cartProductIds);
 
-  const couponCode = await readCouponCode();
+  const couponCode = await readCouponCode(demoSlug);
   const adjustment = await checkout.previewCheckout({ cartId, couponCode });
   // adjustment.total is already post-discount (see PricingAdjustment's doc
   // comment: sum(items[].unitAmount * quantity), where unitAmount is the
@@ -68,6 +68,7 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
       </ul>
 
       <form action={applyCouponAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <input type="text" name="code" placeholder="Coupon code" defaultValue={couponCode ?? ""} />
         <button type="submit">Apply coupon</button>
       </form>
@@ -89,6 +90,7 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
       </section>
 
       <form action={startCheckoutAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <button type="submit">Check out with Stripe</button>
       </form>
 

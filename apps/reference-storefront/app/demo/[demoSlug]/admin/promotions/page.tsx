@@ -51,6 +51,7 @@ export default async function AdminPromotionsPage({ params }: { params: Promise<
               <td>
                 {promotion.status === "active" ? (
                   <form action={deactivatePromotionAction}>
+                    <input type="hidden" name="demoSlug" value={demoSlug} />
                     <input type="hidden" name="id" value={promotion.id} />
                     <button type="submit">Deactivate</button>
                   </form>

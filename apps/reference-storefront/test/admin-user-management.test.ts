@@ -113,6 +113,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
+    formData.set("demoSlug", "dragon-merch");
     formData.set("userId", "u1");
     formData.set("role", "owner");
 
@@ -125,6 +126,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
+    formData.set("demoSlug", "dragon-merch");
     formData.set("userId", "u1");
     formData.set("role", "admin");
 
@@ -137,6 +139,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
+    formData.set("demoSlug", "dragon-merch");
     formData.set("userId", "u1");
     formData.set("role", "admin");
 
@@ -149,6 +152,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
+    formData.set("demoSlug", "dragon-merch");
     formData.set("userId", "u2");
     formData.set("role", "admin");
 
@@ -163,6 +167,7 @@ describe("updateAdminUserRoleAction (admin-auth-04, server-action-level owner-on
     setAdminUserRole.mockClear();
 
     const formData = new FormData();
+    formData.set("demoSlug", "dragon-merch");
     formData.set("userId", "u2");
     formData.set("role", "superadmin");
 

@@ -31,6 +31,7 @@ export default async function EditCmsPagePage({ params }: { params: Promise<{ de
         Type: {page.pageType} &middot; Slug: {page.slug} &middot; Status: {page.status}
       </p>
       <form action={updateCmsPageAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <input type="hidden" name="id" value={page.id} />
         <p>
           <label>
@@ -46,6 +47,7 @@ export default async function EditCmsPagePage({ params }: { params: Promise<{ de
       </form>
       {page.status === "draft" ? (
         <form action={publishCmsPageAction}>
+          <input type="hidden" name="demoSlug" value={demoSlug} />
           <input type="hidden" name="id" value={page.id} />
           <button type="submit">Publish</button>
         </form>

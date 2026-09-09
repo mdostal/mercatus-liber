@@ -21,6 +21,7 @@ export default async function EditCampaignPage({ params }: { params: Promise<{ d
       </p>
       <h1>Admin: Edit campaign</h1>
       <form action={updateCampaignAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <input type="hidden" name="id" value={campaign.id} />
         <CampaignFormFields campaign={campaign} />
         <p>
@@ -29,6 +30,7 @@ export default async function EditCampaignPage({ params }: { params: Promise<{ d
       </form>
       {campaign.status === "active" ? (
         <form action={deactivateCampaignAction}>
+          <input type="hidden" name="demoSlug" value={demoSlug} />
           <input type="hidden" name="id" value={campaign.id} />
           <button type="submit">Deactivate</button>
         </form>

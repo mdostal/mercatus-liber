@@ -21,6 +21,7 @@ export default async function EditPromotionPage({ params }: { params: Promise<{ 
       </p>
       <h1>Admin: Edit promotion</h1>
       <form action={updatePromotionAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <input type="hidden" name="id" value={promotion.id} />
         <PromotionFormFields promotion={promotion} />
         <p>
@@ -29,6 +30,7 @@ export default async function EditPromotionPage({ params }: { params: Promise<{ 
       </form>
       {promotion.status === "active" ? (
         <form action={deactivatePromotionAction}>
+          <input type="hidden" name="demoSlug" value={demoSlug} />
           <input type="hidden" name="id" value={promotion.id} />
           <button type="submit">Deactivate</button>
         </form>

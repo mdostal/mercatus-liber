@@ -33,7 +33,7 @@ export default async function LocationDetailPage({ params }: { params: Promise<{
       {area.phone && <p>Phone: {area.phone}</p>}
 
       {locationSections.map((section, i) => (
-        <CmsSection key={i} section={section} pageSlug={slug} serviceAreaId={area.id} />
+        <CmsSection key={i} demoSlug={demoSlug} section={section} pageSlug={slug} serviceAreaId={area.id} />
       ))}
 
       <h2>Available products</h2>

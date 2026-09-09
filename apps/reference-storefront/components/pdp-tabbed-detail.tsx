@@ -1,5 +1,6 @@
 import type { PdpViewModel } from "@mercatus-liber/pdp";
 import { addToCartAction } from "../lib/actions";
+import type { DemoSlug } from "../lib/demos";
 
 /**
  * The "pdp.tabbed-detail" template component. This is the app-layer
@@ -11,9 +12,11 @@ import { addToCartAction } from "../lib/actions";
  * more branch in app/products/[slug]/page.tsx -- no other package changes.
  */
 export function PdpTabbedDetail({
+  demoSlug,
   viewModel,
   stockBySkuId = {},
 }: {
+  demoSlug: DemoSlug;
   viewModel: PdpViewModel;
   stockBySkuId?: Record<string, number>;
 }) {
@@ -33,6 +36,7 @@ export function PdpTabbedDetail({
         <summary>Options</summary>
         {skus.map((sku) => (
           <form action={addToCartAction} key={sku.id} style={{ marginBottom: 12 }}>
+            <input type="hidden" name="demoSlug" value={demoSlug} />
             <input type="hidden" name="skuId" value={sku.id} />
             <span>
               {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")} --{" "}

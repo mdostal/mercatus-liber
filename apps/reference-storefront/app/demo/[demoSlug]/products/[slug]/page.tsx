@@ -38,7 +38,7 @@ export default async function ProductPage({
   // the shared theming singleton, so concurrent requests with different
   // themes never race each other). Only pdp's own internal default (theming
   // .resolveTemplate) is used if neither is provided.
-  const activeTheme = await readActiveThemeBundle();
+  const activeTheme = await readActiveThemeBundle(demoSlug);
   const templateOverride = template ?? activeTheme.defaultTemplatesByPageType.pdp;
 
   const viewModel = await pdp.getViewModel(slug, templateOverride);
@@ -87,8 +87,8 @@ export default async function ProductPage({
   return (
     <>
       <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug }} />
-      {bundle ? <BundleTierSelector bundle={bundle} pricingByTierId={pricingByTierId} /> : null}
-      <Component viewModel={viewModel} stockBySkuId={stockBySkuId} />
+      {bundle ? <BundleTierSelector demoSlug={demoSlug} bundle={bundle} pricingByTierId={pricingByTierId} /> : null}
+      <Component demoSlug={demoSlug} viewModel={viewModel} stockBySkuId={stockBySkuId} />
       {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </>
   );

@@ -13,6 +13,7 @@ export default async function NewCampaignPage({ params }: { params: Promise<{ de
       </p>
       <h1>Admin: New campaign</h1>
       <form action={createCampaignAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <CampaignFormFields />
         <p>
           <button type="submit">Create campaign</button>

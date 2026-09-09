@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { THEME_BUNDLES } from "@mercatus-liber/theming";
 import { ThemeSwitcher } from "../components/theme-switcher";
+import { DEFAULT_DEMO_SLUG } from "../lib/demos";
 import { readActiveThemeBundle } from "../lib/theme-cookie";
 
 export const metadata = {
@@ -25,7 +26,12 @@ export const metadata = {
 const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const activeTheme = await readActiveThemeBundle();
+  // demo-routing-04: this root layout renders OUTSIDE `/demo/[demoSlug]/...`
+  // (see app/page.tsx's own doc comment) -- DEFAULT_DEMO_SLUG is the same
+  // named provisional stand-in used there, pending demo-routing-05's real
+  // framework-landing-page redesign (which moves this nav/theme-switcher
+  // content into the demo-scoped layout instead).
+  const activeTheme = await readActiveThemeBundle(DEFAULT_DEMO_SLUG);
   const rootCssVars = Object.entries(activeTheme.tokens)
     .map(([key, value]) => `${key}: ${value};`)
     .join(" ");
@@ -62,7 +68,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {" · "}
           <a href="/admin/plugins" style={{ color: "var(--color-primary)" }}>Admin: Plugins</a>
 
-          <ThemeSwitcher bundles={THEME_BUNDLES} activeKey={activeTheme.key} />
+          <ThemeSwitcher demoSlug={DEFAULT_DEMO_SLUG} bundles={THEME_BUNDLES} activeKey={activeTheme.key} />
         </header>
         {children}
       </body>

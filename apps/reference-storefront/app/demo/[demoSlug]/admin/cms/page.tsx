@@ -47,6 +47,7 @@ export default async function AdminCmsPage({ params }: { params: Promise<{ demoS
               <td>
                 {page.status === "draft" ? (
                   <form action={publishCmsPageAction}>
+                    <input type="hidden" name="demoSlug" value={demoSlug} />
                     <input type="hidden" name="id" value={page.id} />
                     <button type="submit">Publish</button>
                   </form>

@@ -61,6 +61,7 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ dem
               <td>{user.role}</td>
               <td>
                 <form action={updateAdminUserRoleAction}>
+                  <input type="hidden" name="demoSlug" value={demoSlug} />
                   <input type="hidden" name="userId" value={user.userId} />
                   <select name="role" defaultValue={user.role}>
                     {ADMIN_ROLES.map((role) => (

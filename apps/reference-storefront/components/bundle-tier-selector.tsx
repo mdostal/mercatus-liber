@@ -1,5 +1,6 @@
 import type { Bundle, TierPricing } from "@mercatus-liber/bundles";
 import { addBundleTierToCartAction } from "../lib/actions";
+import type { DemoSlug } from "../lib/demos";
 import { InteractionTracker } from "./interaction-tracker";
 
 /**
@@ -12,9 +13,11 @@ import { InteractionTracker } from "./interaction-tracker";
  * per tier) so this component stays a pure render -- no data fetching here.
  */
 export function BundleTierSelector({
+  demoSlug,
   bundle,
   pricingByTierId,
 }: {
+  demoSlug: DemoSlug;
   bundle: Bundle;
   pricingByTierId: Record<string, TierPricing>;
 }) {
@@ -30,6 +33,7 @@ export function BundleTierSelector({
             key={tier.id}
             style={{ marginBottom: 12, borderTop: "1px solid var(--color-accent)", paddingTop: 8 }}
           >
+            <input type="hidden" name="demoSlug" value={demoSlug} />
             <input type="hidden" name="bundleId" value={bundle.id} />
             <input type="hidden" name="tierId" value={tier.id} />
             <span>

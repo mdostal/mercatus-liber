@@ -62,6 +62,7 @@ export default async function AdminAdvertisingPage({ params }: { params: Promise
               <td>
                 {campaign.status === "active" ? (
                   <form action={deactivateCampaignAction}>
+                    <input type="hidden" name="demoSlug" value={demoSlug} />
                     <input type="hidden" name="id" value={campaign.id} />
                     <button type="submit">Deactivate</button>
                   </form>

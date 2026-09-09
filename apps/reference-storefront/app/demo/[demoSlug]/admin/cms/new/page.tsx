@@ -23,6 +23,7 @@ export default async function NewCmsPagePage({ params }: { params: Promise<{ dem
       </p>
       <h1>Admin: New page</h1>
       <form action={createCmsPageAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <p>
           <label>
             Page type

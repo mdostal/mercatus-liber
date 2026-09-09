@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function AccountPage({ params }: { params: Promise<{ demoSlug: string }> }) {
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const customerId = await readCustomerId();
+  const customerId = await readCustomerId(demoSlug);
 
   if (!customerId) {
     return (

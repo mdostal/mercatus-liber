@@ -13,6 +13,7 @@ export default async function NewBundlePage({ params }: { params: Promise<{ demo
       </p>
       <h1>Admin: New bundle</h1>
       <form action={createBundleAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <BundleFormFields />
         <p>
           <button type="submit">Create bundle</button>

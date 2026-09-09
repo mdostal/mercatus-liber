@@ -13,6 +13,7 @@ export default async function NewPromotionPage({ params }: { params: Promise<{ d
       </p>
       <h1>Admin: New promotion</h1>
       <form action={createPromotionAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <PromotionFormFields />
         <p>
           <button type="submit">Create promotion</button>

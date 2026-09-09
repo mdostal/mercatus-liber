@@ -48,6 +48,7 @@ export default async function AdminBundlesPage({ params }: { params: Promise<{ d
                   <td>
                     {bundle.status === "active" ? (
                       <form action={deactivateBundleAction}>
+                        <input type="hidden" name="demoSlug" value={demoSlug} />
                         <input type="hidden" name="id" value={bundle.id} />
                         <button type="submit">Deactivate</button>
                       </form>

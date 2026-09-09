@@ -13,6 +13,7 @@ export default async function NewRecommendationRulePage({ params }: { params: Pr
       </p>
       <h1>Admin: New recommendation rule</h1>
       <form action={createRecommendationRuleAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <RecommendationFormFields />
         <p>
           <button type="submit">Create rule</button>

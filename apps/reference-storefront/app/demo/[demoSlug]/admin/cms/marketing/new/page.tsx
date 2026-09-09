@@ -27,6 +27,7 @@ export default async function NewMarketingCmsPagePage({ params }: { params: Prom
       </p>
       <h1>Admin: New marketing page</h1>
       <form action={createMarketingPageAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <p>
           <label>
             Slug

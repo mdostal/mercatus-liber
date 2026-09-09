@@ -24,6 +24,7 @@ export default async function EditRecommendationRulePage({ params }: { params: P
       </p>
       <h1>Admin: Edit recommendation rule</h1>
       <form action={updateRecommendationRuleAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <input type="hidden" name="id" value={rule.id} />
         <RecommendationFormFields rule={rule} />
         <p>
@@ -32,6 +33,7 @@ export default async function EditRecommendationRulePage({ params }: { params: P
       </form>
       {rule.status === "active" ? (
         <form action={deactivateRecommendationRuleAction}>
+          <input type="hidden" name="demoSlug" value={demoSlug} />
           <input type="hidden" name="id" value={rule.id} />
           <button type="submit">Deactivate</button>
         </form>

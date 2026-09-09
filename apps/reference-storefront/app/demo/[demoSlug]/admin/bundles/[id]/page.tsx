@@ -21,6 +21,7 @@ export default async function EditBundlePage({ params }: { params: Promise<{ dem
       </p>
       <h1>Admin: Edit bundle</h1>
       <form action={updateBundleAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
         <input type="hidden" name="id" value={bundle.id} />
         <BundleFormFields bundle={bundle} />
         <p>
@@ -29,6 +30,7 @@ export default async function EditBundlePage({ params }: { params: Promise<{ dem
       </form>
       {bundle.status === "active" ? (
         <form action={deactivateBundleAction}>
+          <input type="hidden" name="demoSlug" value={demoSlug} />
           <input type="hidden" name="id" value={bundle.id} />
           <button type="submit">Deactivate</button>
         </form>
