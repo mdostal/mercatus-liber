@@ -1,0 +1,111 @@
+id: seo-02-sitemap-robots-structured-data
+epic: seo-aeo-infrastructure
+title: "app/sitemap.ts, app/robots.ts, Product/Organization/BreadcrumbList JSON-LD"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [seo-01-dynamic-metadata-and-canonical]
+
+description: |
+  Read the prior story's committed changes in full first -- the canonical-URL base-URL
+  resolution it added is what this story's sitemap/JSON-LD should reuse, not re-derive.
+  Read .pHive/epics/seo-aeo-infrastructure/docs/design-discussion.md §2b-c in full.
+
+  1. Create apps/reference-storefront/app/sitemap.ts using Next.js's native `MetadataRoute.Sitemap`
+     convention -- a real, LIVE-QUERIED sitemap (not a hardcoded route list): for each demo in
+     DEMO_REGISTRY, call getServicesForDemo(slug) and enumerate real URLs for: the demo's home
+     page, every real category (via marketingCatalog), every real published product (via
+     catalog.listProducts), every real published CMS page (marketing/location) for that demo.
+     Include the framework landing page itself. Use each demo's own canonical base URL from
+     story 1's env-var resolution.
+  2. Create apps/reference-storefront/app/robots.ts using Next.js's native `MetadataRoute.Robots`
+     convention -- allow all real shopper-facing routes, explicitly disallow `/demo/*/admin`
+     (already auth-gated, but excluding it from crawl indexing is still correct practice),
+     reference the real sitemap URL.
+  3. JSON-LD structured data, added as real `<script type="application/ld+json">` tags (Next.js
+     supports this natively in a Server Component -- research the current idiomatic pattern,
+     don't assume a specific library is needed):
+     - `Product` schema on the PDP page: real name/description/price/currency/availability
+       pulled from the actual product/SKU data already being rendered on that page (do not
+       fetch redundantly -- reuse data already in scope).
+     - `Organization` + `WebSite` schema on the framework landing page: real name ("Mercatus
+       Liber"), real description (from README/VISION), real url.
+     - `BreadcrumbList` schema on category and PDP pages, reflecting the real
+       Home -> Category -> Product hierarchy (using each page's own real nav-derived category
+       data, not invented breadcrumb labels).
+
+acceptance_criteria:
+  - "Given a real fetch of /sitemap.xml, then it returns valid XML listing real URLs for all 3 demos' real products/categories/published pages -- count roughly matches the real seeded catalog sizes (e.g. broadleaf's 9 products should appear)"
+  - "Given a real fetch of /robots.txt, then it's valid, allows real shopper routes, disallows /demo/*/admin, and references the real sitemap URL"
+  - "Given a real PDP fetch, then a valid, parseable Product JSON-LD block is present with the real product's actual name/price"
+  - "Given the framework landing page, then valid Organization/WebSite JSON-LD is present"
+  - "Given a category and a PDP page, then valid BreadcrumbList JSON-LD reflects the real Home -> Category -> Product hierarchy"
+  - "Given the full reference-storefront test suite and typecheck, then both stay green"
+
+steps:
+  - id: research
+    description: Read Next.js's current app/sitemap.ts and app/robots.ts conventions and confirm the idiomatic JSON-LD pattern for Server Components before writing anything.
+    agent: researcher
+  - id: implement
+    description: Make the sitemap/robots/structured-data changes per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion against a real running dev server -- fetch and parse the actual sitemap.xml/robots.txt/JSON-LD output, don't just visually inspect source.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the sitemap is genuinely live-queried (not hardcoded), confirm JSON-LD is valid parseable JSON matching real page data.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/seo-aeo-infrastructure.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router }
+  key_files:
+    - path: apps/reference-storefront/lib/demos.ts
+      purpose: DEMO_REGISTRY -- the real per-demo data the sitemap enumerates.
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: getServicesForDemo -- how the sitemap gets real per-demo service access.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/sitemap.ts
+    change: "New file -- real, live-queried sitemap across all demos"
+  - file: apps/reference-storefront/app/robots.ts
+    change: "New file -- real robots.txt"
+  - file: "apps/reference-storefront/app/demo/[demoSlug]/products/[slug]/page.tsx"
+    change: "Add Product + BreadcrumbList JSON-LD"
+  - file: "apps/reference-storefront/app/demo/[demoSlug]/category/[slug]/page.tsx"
+    change: "Add BreadcrumbList JSON-LD"
+  - file: "apps/reference-storefront/app/(landing)/page.tsx"
+    change: "Add Organization/WebSite JSON-LD"
+
+design_decisions:
+  - decision: "One combined root sitemap.ts across all demos, not per-demo sitemaps."
+    rationale: "Simpler and correct for this single-deployment, path-based multi-tenancy architecture, per design-discussion.md §2b."
+
+risks: []
+
+references:
+  - path: .pHive/epics/seo-aeo-infrastructure/docs/design-discussion.md
+    relevant_excerpt: "§2b-c: the resolved sitemap and structured-data scope this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: seo.real_urls_in_sitemap
+  direction: up
+  unit: count
+  baseline: 0
+  target: 30
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Real URL count in /sitemap.xml across all 3 demos, verified by test"
+  verify_at: integrate
+  owner: tester

@@ -1,0 +1,117 @@
+id: seo-01-dynamic-metadata-and-canonical
+epic: seo-aeo-infrastructure
+title: "generateMetadata on PDP/category/search/home + landing, canonical URLs"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/seo-aeo-infrastructure/docs/design-discussion.md in full first -- section 2a
+  resolves this story's exact mechanism, don't re-derive it.
+
+  Read apps/reference-storefront/app/demo/[demoSlug]/layout.tsx in full -- confirm its current
+  static `export const metadata = { title: "Shop", ... }` yourself before changing it.
+
+  1. Replace the demo layout's static metadata export with a root-template fallback:
+     `export async function generateMetadata({ params }): Promise<Metadata>` returning
+     `{ title: { template: "%s | <real demo displayName>", default: "<real demo displayName>" },
+     description: "<a real one-sentence description per demo, not the generic cart copy>" }` --
+     read lib/demos.ts's DEMO_REGISTRY to get each demo's real displayName, and write a real
+     one-line description per demo (3 demos: print-shop, northline, broadleaf) reflecting what
+     it actually sells, not a copy-pasted generic line.
+  2. Add real `generateMetadata` to the PDP page (app/demo/[demoSlug]/products/[slug]/page.tsx):
+     title = the real product's title, description = the real product's description (truncated
+     sensibly if very long), using the child-title-template from the layout above (so the
+     rendered tab title reads "Product Name | Demo Name").
+  3. Add real `generateMetadata` to the category page: title = the real category's title.
+  4. Add real `generateMetadata` to the search page: title reflects the real query string when
+     present (e.g. "Search: camera | Northline Home Tech"), a sane default when absent.
+  5. Add real `generateMetadata` to each demo's home page (app/demo/[demoSlug]/page.tsx) if it
+     doesn't already inherit a good title from the layout default (it likely does -- confirm,
+     don't duplicate work).
+  6. Add `generateMetadata` (or a static `metadata` export, whichever fits) to the framework
+     landing page (app/(landing)/page.tsx) with real, specific title/description reflecting what
+     Mercatus Liber actually is (source from README.md/VISION.md's own real opening lines, not
+     invented copy).
+  7. Canonical URLs: every generateMetadata above should also set
+     `alternates: { canonical: <the real absolute URL for this exact page> } }` -- resolve the
+     base URL from an env var if one already exists for this purpose (check services.ts/README
+     for an existing deployed-URL convention like NEXT_PUBLIC_DOCS_URL's sibling), or add one if
+     none exists, with a sensible localhost fallback for dev.
+
+acceptance_criteria:
+  - "Given 3 different real products across at least 2 different demos, then each PDP's rendered <title> is genuinely distinct and matches that exact product's real title, not the string 'Shop'"
+  - "Given a category page for a real category, then its <title> reflects that real category's title"
+  - "Given a search results page with a real query, then its <title> reflects that real query string"
+  - "Given the framework landing page, then its <title>/description are real and specific, not generic placeholder text"
+  - "Given any of the pages above, then a canonical <link rel=canonical> tag is present pointing at a real, correct absolute URL for that exact page"
+  - "Given the full reference-storefront test suite and typecheck, then both stay green"
+
+steps:
+  - id: research
+    description: Read the demo layout's current metadata, lib/demos.ts, and README.md/VISION.md's real opening copy before writing anything.
+    agent: researcher
+  - id: implement
+    description: Make the generateMetadata changes per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion against a real running dev server by fetching real pages and inspecting rendered <title>/<link rel=canonical> tags.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm no page is left with the old generic "Shop" title, confirm canonical URLs are genuinely correct absolute URLs, not relative or malformed.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/seo-aeo-infrastructure.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router }
+  key_files:
+    - path: apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+      purpose: "The static metadata export this story replaces with a real root-template fallback"
+    - path: apps/reference-storefront/lib/demos.ts
+      purpose: Real per-demo displayName/content used to build real metadata.
+
+files_to_modify:
+  - file: apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+    change: "Replace static metadata with a real root-template generateMetadata fallback"
+  - file: apps/reference-storefront/app/demo/[demoSlug]/products/[slug]/page.tsx
+    change: "Add real per-product generateMetadata + canonical"
+  - file: apps/reference-storefront/app/demo/[demoSlug]/category/[slug]/page.tsx
+    change: "Add real per-category generateMetadata + canonical"
+  - file: apps/reference-storefront/app/demo/[demoSlug]/search/page.tsx
+    change: "Add query-aware generateMetadata + canonical"
+  - file: apps/reference-storefront/app/(landing)/page.tsx
+    change: "Real, specific metadata + canonical"
+
+design_decisions:
+  - decision: "Next.js App Router's native generateMetadata/root-template mechanism, no new dependency."
+    rationale: "Framework-idiomatic, zero new dependencies, per design-discussion.md §2a."
+
+risks: []
+
+references:
+  - path: .pHive/epics/seo-aeo-infrastructure/docs/design-discussion.md
+    relevant_excerpt: "§2a: the resolved metadata mechanism this story implements."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: seo.pages_with_real_distinct_metadata
+  direction: up
+  unit: count
+  baseline: 0
+  target: 5
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "Count of page types with real, distinct, non-generic metadata, verified by test"
+  verify_at: integrate
+  owner: tester
