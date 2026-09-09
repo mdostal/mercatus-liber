@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { Product } from "@mercatus-liber/core";
 import { CategoryMagazineGrid } from "../../../../../components/category-magazine-grid";
-import { CategorySpecGrid } from "../../../../../components/category-spec-grid";
+import { CategoryMaximalistGrid } from "../../../../../components/category-maximalist-grid";
+import { CategorySpecGrid, type CategorySpecRow } from "../../../../../components/category-spec-grid";
 import { CategoryStandardGrid } from "../../../../../components/category-standard-grid";
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { isDemoSlug, type DemoSlug } from "../../../../../lib/demos";
@@ -44,6 +45,7 @@ const CATEGORY_TEMPLATES = {
   "category.standard-grid": CategoryStandardGrid,
   "category.magazine-grid": CategoryMagazineGrid,
   "category.spec-grid": CategorySpecGrid,
+  "category.maximalist-grid": CategoryMaximalistGrid,
 } as const;
 
 export default async function CategoryPage({ params }: { params: Promise<{ demoSlug: string; slug: string }> }) {
@@ -58,6 +60,25 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
     (p): p is NonNullable<typeof p> => p !== null,
   );
 
+  // visual-fidelity-datasheet: real per-product price-range data, computed
+  // from each product's real SKUs (same "app composes multiple services"
+  // pattern as products/[slug]/page.tsx's buildProductOffers) -- additive
+  // and optional (CategorySpecRow, components/category-spec-grid.tsx): the
+  // other 3 category templates don't declare this prop, so computing and
+  // passing it is a no-op for them, never a fabricated price.
+  const specsByProductId: Record<string, CategorySpecRow> = {};
+  for (const product of products) {
+    const skus = await catalog.listSkusByProduct(product.id);
+    if (skus.length === 0) continue;
+    const amounts = skus.map((sku) => sku.price.amount);
+    specsByProductId[product.id] = {
+      minPriceCents: Math.min(...amounts),
+      maxPriceCents: Math.max(...amounts),
+      currency: skus[0]!.price.currency,
+      skuCount: skus.length,
+    };
+  }
+
   // Same override-from-active-bundle pattern PDP already uses: the active
   // theme bundle's own defaultTemplatesByPageType.category is passed as the
   // explicit override (undefined for the 7 pre-existing bundles, which
@@ -65,8 +86,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
   // first-registered-template default, "category.standard-grid").
   const activeTheme = await readActiveThemeBundle(demoSlug);
   const templateKey = theming.resolveTemplate("category", activeTheme.defaultTemplatesByPageType.category);
-  const Template: ComponentType<{ demoSlug: DemoSlug; products: Product[] }> =
-    (templateKey && CATEGORY_TEMPLATES[templateKey as keyof typeof CATEGORY_TEMPLATES]) || CategoryStandardGrid;
+  const Template: ComponentType<{
+    demoSlug: DemoSlug;
+    products: Product[];
+    specsByProductId?: Record<string, CategorySpecRow>;
+  }> = (templateKey && CATEGORY_TEMPLATES[templateKey as keyof typeof CATEGORY_TEMPLATES]) || CategoryStandardGrid;
 
   // seo-02: real BreadcrumbList JSON-LD (Home -> Category), matching the
   // real nav hierarchy -- design-discussion.md §2c.
@@ -81,7 +105,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
       <InteractionTracker eventName="category_viewed" properties={{ categoryId: category.id, slug: category.slug }} />
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{category.title}</h1>
       <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>{category.description}</p>
-      <Template demoSlug={demoSlug} products={products} />
+      <Template demoSlug={demoSlug} products={products} specsByProductId={specsByProductId} />
     </main>
   );
 }

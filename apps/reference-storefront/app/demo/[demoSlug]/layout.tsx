@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ClerkProvider } from "@clerk/nextjs";
 import { THEME_BUNDLES } from "@mercatus-liber/theming";
+import { NavBlueprintBar } from "../../../components/nav-blueprint-bar";
 import { NavRail } from "../../../components/nav-rail";
 import { NavTopBar } from "../../../components/nav-top-bar";
 import { DEMO_REGISTRY, DEMO_SLUGS, isDemoSlug, type DemoSlug } from "../../../lib/demos";
@@ -18,6 +19,7 @@ import { readActiveThemeBundle } from "../../../lib/theme-cookie";
 const NAV_TEMPLATES = {
   "nav.top-bar": NavTopBar,
   "nav.rail": NavRail,
+  "nav.blueprint-bar": NavBlueprintBar,
 } as const;
 
 type NavChromeProps = {
@@ -181,6 +183,12 @@ export default async function DemoLayout({
   // visual-fidelity-maximalist: gates the real "Blaze Theme" Google Fonts
   // load below -- same additive, bundle-scoped pattern as isEditorial.
   const isMaximalist = activeTheme.key === "maximalist";
+  // visual-fidelity-datasheet: same additive, bundle-scoped pattern as
+  // isEditorial/isMaximalist above -- gates "Datasheet Storefront"'s real
+  // Google Fonts load and its wider reading width (the hairline-grid
+  // product grid needs real room for more than a single column, same
+  // reasoning as isEditorial's magazine-grid).
+  const isDatasheet = activeTheme.key === "datasheet";
   const navLinks = await buildNavLinks(demoSlug);
 
   const page = (
@@ -220,6 +228,22 @@ export default async function DemoLayout({
             />
           </>
         )}
+        {/*
+          Real Google Fonts for "Datasheet Storefront" (Archivo/IBM Plex
+          Sans/IBM Plex Mono), ported verbatim from the approved design
+          mockup's own <link> tag -- additive, only rendered when
+          "datasheet" is the active bundle, same isEditorial/isMaximalist
+          pattern above.
+        */}
+        {isDatasheet && (
+          <>
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link
+              rel="stylesheet"
+              href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+            />
+          </>
+        )}
       </head>
       <body
         style={{
@@ -229,9 +253,10 @@ export default async function DemoLayout({
           // nav.rail needs more horizontal room than the single-column
           // top-bar layout ever did -- widened only for that template, so
           // every other (nav.top-bar) bundle keeps today's exact 720px
-          // reading-width layout. editorial's magazine-grid layouts need
-          // the same real room (see isEditorial above).
-          maxWidth: isRailNav ? 1100 : isEditorial ? 1180 : 720,
+          // reading-width layout. editorial's magazine-grid layouts and
+          // datasheet's hairline-grid product grid need the same real room
+          // (see isEditorial/isDatasheet above).
+          maxWidth: isRailNav ? 1100 : isEditorial ? 1180 : isDatasheet ? 1240 : 720,
           margin: "0 auto",
           padding: 24,
           minHeight: "100vh",

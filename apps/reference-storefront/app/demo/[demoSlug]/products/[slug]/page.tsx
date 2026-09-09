@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { TierPricing } from "@mercatus-liber/bundles";
 import { PdpLongScroll } from "../../../../../components/pdp-long-scroll";
+import { PdpSpecSheet } from "../../../../../components/pdp-spec-sheet";
 import { PdpTabbedDetail } from "../../../../../components/pdp-tabbed-detail";
 import { BundleTierSelector } from "../../../../../components/bundle-tier-selector";
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
@@ -118,6 +119,7 @@ export async function generateMetadata({
 const TEMPLATE_COMPONENTS = {
   "pdp.tabbed-detail": PdpTabbedDetail,
   "pdp.long-scroll": PdpLongScroll,
+  "pdp.spec-sheet": PdpSpecSheet,
 } as const;
 
 export default async function ProductPage({
@@ -230,6 +232,12 @@ export default async function ProductPage({
         // it returns false for a slug it doesn't recognize (e.g. a northline
         // product), so this call never needs a demoSlug guard.
         customizable={isCustomizableProduct(viewModel.product.slug)}
+        // visual-fidelity-maximalist: additive -- see pdp-tabbed-detail.tsx's
+        // themeKey doc comment. PdpLongScroll doesn't accept this prop
+        // (TypeScript's excess-property check only fires for object
+        // literals, not for a value passed through a union-typed
+        // ComponentType, so this is safe for both branches).
+        themeKey={activeTheme.key}
       />
       {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </>

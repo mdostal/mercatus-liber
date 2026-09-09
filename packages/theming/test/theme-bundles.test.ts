@@ -200,8 +200,8 @@ describe("theme bundles", () => {
 
       expect(theming.resolveTemplate("pdp")).toBe("pdp.tabbed-detail");
       expect(theming.resolveTemplate("nav")).toBe("nav.rail");
-      expect(theming.resolveTemplate("home")).toBe("home.standard-grid");
-      expect(theming.resolveTemplate("category")).toBe("category.standard-grid");
+      expect(theming.resolveTemplate("home")).toBe("home.maximalist-grid");
+      expect(theming.resolveTemplate("category")).toBe("category.maximalist-grid");
       expect(theming.resolveTemplate("cart")).toBe("cart.standard");
     });
 
@@ -229,8 +229,12 @@ describe("theme bundles", () => {
         "--shadow-card": "none",
       });
 
-      expect(theming.resolveTemplate("pdp")).toBe("pdp.tabbed-detail");
-      expect(theming.resolveTemplate("nav")).toBe("nav.top-bar");
+      // visual-fidelity-datasheet: previously "pdp.tabbed-detail"/
+      // "nav.top-bar" (the generic shared fallbacks) -- now dedicated
+      // datasheet-only templates, per that fix's own design-discussion
+      // reasoning (theme-bundles.ts's comment on this bundle).
+      expect(theming.resolveTemplate("pdp")).toBe("pdp.spec-sheet");
+      expect(theming.resolveTemplate("nav")).toBe("nav.blueprint-bar");
       expect(theming.resolveTemplate("home")).toBe("home.spec-grid");
       expect(theming.resolveTemplate("category")).toBe("category.spec-grid");
       expect(theming.resolveTemplate("cart")).toBe("cart.spec-table");
