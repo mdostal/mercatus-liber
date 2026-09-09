@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
-import { InteractionTracker } from "../../../components/interaction-tracker";
-import { getServicesForDemo } from "../../../lib/services";
+import { InteractionTracker } from "../../../../../components/interaction-tracker";
+import { isDemoSlug } from "../../../../../lib/demos";
+import { getServicesForDemo } from "../../../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
-export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const { marketingCatalog, catalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
+export default async function CategoryPage({ params }: { params: Promise<{ demoSlug: string; slug: string }> }) {
+  const { demoSlug, slug } = await params;
+  if (!isDemoSlug(demoSlug)) notFound();
+  const { marketingCatalog, catalog } = await getServicesForDemo(demoSlug);
   const category = await marketingCatalog.getCategoryBySlug(slug);
   if (!category) notFound();
 
@@ -23,7 +25,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       <ul>
         {products.map((product) => (
           <li key={product.id}>
-            <a href={`/products/${product.slug}`}>{product.title}</a>
+            <a href={`/demo/${demoSlug}/products/${product.slug}`}>{product.title}</a>
           </li>
         ))}
       </ul>

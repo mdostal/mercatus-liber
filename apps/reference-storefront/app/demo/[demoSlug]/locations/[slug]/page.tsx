@@ -1,13 +1,15 @@
 import { notFound } from "next/navigation";
-import { CmsSection } from "../../../components/cms-sections";
-import { InteractionTracker } from "../../../components/interaction-tracker";
-import { getServicesForDemo } from "../../../lib/services";
+import { CmsSection } from "../../../../../components/cms-sections";
+import { InteractionTracker } from "../../../../../components/interaction-tracker";
+import { isDemoSlug } from "../../../../../lib/demos";
+import { getServicesForDemo } from "../../../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
-export default async function LocationDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const { serviceAreas, catalog, cms } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
+export default async function LocationDetailPage({ params }: { params: Promise<{ demoSlug: string; slug: string }> }) {
+  const { demoSlug, slug } = await params;
+  if (!isDemoSlug(demoSlug)) notFound();
+  const { serviceAreas, catalog, cms } = await getServicesForDemo(demoSlug);
 
   const area = await serviceAreas.getServiceAreaBySlug(slug);
   if (!area) notFound();
@@ -38,7 +40,7 @@ export default async function LocationDetailPage({ params }: { params: Promise<{
       <ul>
         {products.map((product) => (
           <li key={product.id}>
-            <a href={`/products/${product.slug}`}>{product.title}</a>
+            <a href={`/demo/${demoSlug}/products/${product.slug}`}>{product.title}</a>
           </li>
         ))}
         {products.length === 0 && <li>No products currently assigned to this location.</li>}

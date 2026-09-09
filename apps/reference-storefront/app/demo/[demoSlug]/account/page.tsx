@@ -1,9 +1,13 @@
-import { readCustomerId } from "../../lib/customer-cookie";
-import { getServicesForDemo } from "../../lib/services";
+import { notFound } from "next/navigation";
+import { readCustomerId } from "../../../../lib/customer-cookie";
+import { isDemoSlug } from "../../../../lib/demos";
+import { getServicesForDemo } from "../../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountPage() {
+export default async function AccountPage({ params }: { params: Promise<{ demoSlug: string }> }) {
+  const { demoSlug } = await params;
+  if (!isDemoSlug(demoSlug)) notFound();
   const customerId = await readCustomerId();
 
   if (!customerId) {
@@ -15,7 +19,7 @@ export default async function AccountPage() {
     );
   }
 
-  const { account } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
+  const { account } = await getServicesForDemo(demoSlug);
   const [profile, orders, activity] = await Promise.all([
     account.getProfile(customerId),
     account.listOrders(customerId),
@@ -37,7 +41,7 @@ export default async function AccountPage() {
         <ul>
           {orders.map((order) => (
             <li key={order.id}>
-              <a href={`/order/${order.id}`}>{order.id}</a> -- {order.status} ({order.itemCount} item
+              <a href={`/demo/${demoSlug}/order/${order.id}`}>{order.id}</a> -- {order.status} ({order.itemCount} item
               {order.itemCount === 1 ? "" : "s"})
             </li>
           ))}

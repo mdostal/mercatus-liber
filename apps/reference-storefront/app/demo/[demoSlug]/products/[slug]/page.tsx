@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import type { TierPricing } from "@mercatus-liber/bundles";
-import { PdpLongScroll } from "../../../components/pdp-long-scroll";
-import { PdpTabbedDetail } from "../../../components/pdp-tabbed-detail";
-import { BundleTierSelector } from "../../../components/bundle-tier-selector";
-import { InteractionTracker } from "../../../components/interaction-tracker";
-import { RecommendationShelf, resolvePdpRecommendations } from "../../../components/recommendation-shelf";
-import { getServicesForDemo } from "../../../lib/services";
-import { readActiveThemeBundle } from "../../../lib/theme-cookie";
+import { PdpLongScroll } from "../../../../../components/pdp-long-scroll";
+import { PdpTabbedDetail } from "../../../../../components/pdp-tabbed-detail";
+import { BundleTierSelector } from "../../../../../components/bundle-tier-selector";
+import { InteractionTracker } from "../../../../../components/interaction-tracker";
+import { RecommendationShelf, resolvePdpRecommendations } from "../../../../../components/recommendation-shelf";
+import { isDemoSlug } from "../../../../../lib/demos";
+import { getServicesForDemo } from "../../../../../lib/services";
+import { readActiveThemeBundle } from "../../../../../lib/theme-cookie";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +25,13 @@ export default async function ProductPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ demoSlug: string; slug: string }>;
   searchParams: Promise<{ template?: string }>;
 }) {
-  const { slug } = await params;
+  const { demoSlug, slug } = await params;
+  if (!isDemoSlug(demoSlug)) notFound();
   const { template } = await searchParams;
-  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
+  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog } = await getServicesForDemo(demoSlug);
 
   // Explicit ?template= always wins; otherwise fall back to the active
   // theme's PDP choice (a per-request, per-call override -- never mutates

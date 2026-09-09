@@ -1,14 +1,18 @@
-import { applyCouponAction, startCheckoutAction } from "../../lib/actions";
-import { RecommendationShelf, resolveCartRecommendations } from "../../components/recommendation-shelf";
-import { readCartId } from "../../lib/cart-cookie";
-import { readCouponCode } from "../../lib/coupon-cookie";
-import { getServicesForDemo } from "../../lib/services";
+import { notFound } from "next/navigation";
+import { applyCouponAction, startCheckoutAction } from "../../../../lib/actions";
+import { RecommendationShelf, resolveCartRecommendations } from "../../../../components/recommendation-shelf";
+import { readCartId } from "../../../../lib/cart-cookie";
+import { readCouponCode } from "../../../../lib/coupon-cookie";
+import { isDemoSlug } from "../../../../lib/demos";
+import { getServicesForDemo } from "../../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
-export default async function CartPage() {
+export default async function CartPage({ params }: { params: Promise<{ demoSlug: string }> }) {
+  const { demoSlug } = await params;
+  if (!isDemoSlug(demoSlug)) notFound();
   const cartId = await readCartId();
-  const { cart, catalog, checkout, recommendations, marketingCatalog } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
+  const { cart, catalog, checkout, recommendations, marketingCatalog } = await getServicesForDemo(demoSlug);
   const currentCart = cartId ? await cart.getCart(cartId) : null;
 
   if (!cartId || !currentCart || currentCart.items.length === 0) {

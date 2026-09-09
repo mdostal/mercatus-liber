@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
-import { getServicesForDemo } from "../../../lib/services";
+import { isDemoSlug } from "../../../../../lib/demos";
+import { getServicesForDemo } from "../../../../../lib/services";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const { checkout } = await getServicesForDemo("dragon-merch"); // TEMPORARY: hardcoded until routes move
+export default async function OrderPage({ params }: { params: Promise<{ demoSlug: string; id: string }> }) {
+  const { demoSlug, id } = await params;
+  if (!isDemoSlug(demoSlug)) notFound();
+  const { checkout } = await getServicesForDemo(demoSlug);
   const order = await checkout.getOrder(id);
   if (!order) notFound();
 
