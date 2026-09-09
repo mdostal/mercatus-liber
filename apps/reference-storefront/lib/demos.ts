@@ -20,7 +20,7 @@ import { seedNorthlineDemo } from "./seed-northline";
  * (`app/demo/[demoSlug]/...`, landing in a later story of this same epic)
  * picks the demo instead of a build-time environment variable.
  */
-export const DEMO_SLUGS = ["dragon-merch", "northline"] as const;
+export const DEMO_SLUGS = ["print-shop", "northline"] as const;
 
 export type DemoSlug = (typeof DEMO_SLUGS)[number];
 
@@ -44,7 +44,7 @@ export function isDemoSlug(value: string): value is DemoSlug {
  * under `/demo/[demoSlug]/` must keep using its own real
  * `params.demoSlug`, never this constant.
  */
-export const DEFAULT_DEMO_SLUG: DemoSlug = "dragon-merch";
+export const DEFAULT_DEMO_SLUG: DemoSlug = "print-shop";
 
 /**
  * The full set of already-constructed services a demo's seed function might
@@ -72,12 +72,25 @@ export interface DemoDefinition {
   /** Human-readable name for navigation links etc. (landing/demo-layout work uses this). */
   displayName: string;
   seed: DemoSeedFn;
+  /**
+   * The @mercatus-liber/theming ThemeBundle key this demo opens with on a
+   * fresh (no theme cookie) visit -- see design-discussion.md §1c.
+   * lib/theme-cookie.ts's readActiveThemeBundle() falls back to this (via
+   * getThemeBundle) before falling back to THEME_BUNDLES[0]; a cookie, once
+   * set (the visitor manually switched themes), always still wins. Optional
+   * so a future demo with no particular default keeps today's exact
+   * THEME_BUNDLES[0] behavior.
+   */
+  defaultThemeKey?: string;
 }
 
 export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
-  "dragon-merch": {
-    slug: "dragon-merch",
-    displayName: "Dragon Merch",
+  "print-shop": {
+    slug: "print-shop",
+    displayName: "The Print Shop",
+    // The warm artisan-market bundle -- the closest fit for a hand-crafted
+    // embroidery/coasters shop (design-discussion.md §1c).
+    defaultThemeKey: "editorial",
     seed: (deps) =>
       seedCatalog(
         deps.catalog,
@@ -93,6 +106,11 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
   northline: {
     slug: "northline",
     displayName: "Northline Home Tech",
+    // Northline never had a real default either (it always silently fell
+    // back to THEME_BUNDLES[0], "classic") -- this retroactively fixes that,
+    // finally actually applying its own existing bundle by default (design-
+    // discussion.md §1c).
+    defaultThemeKey: "northline",
     seed: (deps) => seedNorthlineDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.serviceAreas),
   },
 };

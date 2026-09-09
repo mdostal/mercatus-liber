@@ -97,7 +97,7 @@ and payment keys to get real behavior instead of a local stand-in.
 
 **Demo content**:
 - `DEMO_BRAND` — when set to `northline`, seeds the app with the "Northline Home Tech" public
-  demo content instead of the default dragon-merch seed. Any other value (including unset)
+  demo content instead of the default print-shop seed. Any other value (including unset)
   keeps the default seed; not required for normal operation.
 
 **Docs site link**:

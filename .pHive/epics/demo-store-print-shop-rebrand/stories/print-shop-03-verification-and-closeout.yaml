@@ -1,0 +1,76 @@
+id: print-shop-03-verification-and-closeout
+epic: demo-store-print-shop-rebrand
+title: "Live verification, docs update, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [print-shop-02-catalog-and-personalization]
+
+description: |
+  Read both prior stories' committed changes in full first.
+
+  1. Live verification against a real dev server: confirm /demo/print-shop is the live route
+     with the new embroidery/custom-print catalog and real nav categories, confirm
+     /demo/dragon-merch is a genuine 404, add a customizable product to cart with real
+     personalization text and confirm it's visible through cart and (if reachable without a
+     Stripe key) order confirmation, confirm a fresh no-cookie visit to both print-shop and
+     northline shows the correct per-demo default theme, re-confirm northline is otherwise
+     completely unaffected by this epic.
+  2. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  3. Update README.md/VISION.md if anything about the demo roster still says dragon-merch
+     (should already be handled by story 1, but re-check as a final pass).
+  4. Update .pHive/planning/epic-backlog.md: change epic 36's row to "done (3/3 stories
+     complete)", with an accurate description naming the new catalog/categories, the
+     customizationNote feature, the per-demo default theme mechanism, and the completed slug
+     rename -- match the style/detail of surrounding rows (34, 35).
+  5. Commit and merge feat/demo-store-print-shop-rebrand into master with --no-ff, mirroring
+     the "Merge epic: <name> (epic NN)" convention from prior epic merges.
+
+acceptance_criteria:
+  - "Given a real dev server, then /demo/print-shop renders the full new catalog/nav and /demo/dragon-merch is a genuine 404"
+  - "Given a real add-to-cart-with-personalization flow, then the customization text is visible on the cart page"
+  - "Given fresh no-cookie visits to print-shop and northline, then each shows its own correct default theme"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given .pHive/planning/epic-backlog.md, then epic 36's row reads done (3/3 stories complete) with an accurate, specific description"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Run all verification steps and make the docs/backlog updates per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and the merge is clean.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/demo-store-print-shop-rebrand, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 36's row updated to done.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 36 done with an accurate description.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/demo-store-print-shop-rebrand/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's live verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."

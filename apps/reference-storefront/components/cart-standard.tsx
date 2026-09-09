@@ -8,6 +8,8 @@ export interface CartTemplateLine {
   title: string;
   quantity: number;
   priceSnapshot: Money;
+  /** print-shop-02: the personalization text captured on the PDP at add-to-cart time, if any (design-discussion.md §1b). Additive/optional -- absent for every non-customized line, same as before this field existed. */
+  customizationNote?: string;
 }
 
 export interface CartTemplateProps {
@@ -70,7 +72,20 @@ export function CartStandard({
               fontSize: "var(--font-size-body, 1rem)",
             }}
           >
-            <span>{line.title}</span>
+            <span>
+              {line.title}
+              {line.customizationNote && (
+                <span
+                  style={{
+                    display: "block",
+                    color: "var(--color-muted, #666)",
+                    fontSize: "var(--font-size-body, 1rem)",
+                  }}
+                >
+                  Personalization: {line.customizationNote}
+                </span>
+              )}
+            </span>
             <form
               action={updateCartItemQuantityAction}
               style={{ display: "flex", alignItems: "center", gap: "var(--space-xs, 8px)" }}

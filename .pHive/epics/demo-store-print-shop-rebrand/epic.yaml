@@ -1,0 +1,43 @@
+name: demo-store-print-shop-rebrand
+title: "Rebrand dragon-merch into The Print Shop: real slug rename, embroidery/custom-print catalog, scoped personalization"
+description: >
+  Genuine business-concept change, not a cosmetic rename: dragon-merch -> print-shop across
+  DEMO_SLUGS/DEMO_REGISTRY and ~20 real code/doc references, refocused on embroidery/custom
+  prints/coasters. Resolved design questions: real slug rename (user said "change," not "add
+  alongside"); product personalization scoped to one additive customizationNote cart-line
+  field, not a full subsystem (the full version is explicitly a VISION.md community-plugin
+  item); a small additive per-demo defaultThemeKey mechanism added (also retroactively fixes
+  Northline, which never had a real default either). See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [demo-content, rename, seed-data]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    demo-content: "New business concept, real catalog depth for the rebranded demo"
+    rename: "Genuine slug rename across the codebase, not a new parallel demo"
+    seed-data: "Bulk of the content work is seed-data replacement"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: print-shop-01-slug-rename-and-registry
+    title: "Mechanical rename: dragon-merch -> print-shop, zero live references remain"
+    complexity: medium
+    depends_on: []
+  - id: print-shop-02-catalog-and-personalization
+    title: "Real embroidery/custom-print catalog, customizationNote cart-line field, per-demo default themes"
+    complexity: high
+    depends_on: [print-shop-01-slug-rename-and-registry]
+  - id: print-shop-03-verification-and-closeout
+    title: "Live verification, docs update, closeout, merge"
+    complexity: low
+    depends_on: [print-shop-02-catalog-and-personalization]

@@ -19,7 +19,7 @@ describe("seeded CMS pages", () => {
     expect(home?.sections.map((s) => s.componentType)).toEqual(["hero-banner", "category-spot", "ad-slot"]);
 
     const categorySpot = home!.sections.find((s) => s.componentType === "category-spot");
-    expect(categorySpot?.config).toEqual({ categorySlugs: ["merch", "3d-printed"] });
+    expect(categorySpot?.config).toEqual({ categorySlugs: ["embroidery", "custom-coasters"] });
   });
 
   it("seeds a published marketing page with a curated single-product mini-catalog", async () => {
@@ -35,7 +35,7 @@ describe("seeded CMS pages", () => {
     expect(meta?.campaignName).toBe("Fall Sale 2026");
     expect(meta?.productIds).toHaveLength(1);
 
-    const organizer = await catalog.getProductBySlug("dragon-cable-organizer");
-    expect(meta?.productIds).toEqual([organizer?.id]);
+    const tote = await catalog.getProductBySlug("embroidered-canvas-tote");
+    expect(meta?.productIds).toEqual([tote?.id]);
   });
 });

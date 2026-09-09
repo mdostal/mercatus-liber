@@ -3,7 +3,7 @@
  * across demos in the same browser session -- the single most important
  * behavior this story exists to guarantee (design-discussion.md §2, and
  * this story's own #1 acceptance criterion). Adds an item to a cart under
- * dragon-merch and a *different* item to a cart under northline via the
+ * print-shop and a *different* item to a cart under northline via the
  * REAL addToCartAction (never lib/services.ts's cart service directly),
  * against one shared fake cookie jar simulating a single browser holding
  * both demos' cookies at once, then renders the REAL CartPage Server
@@ -92,34 +92,34 @@ describe("cross-demo cart cookie isolation (demo-routing-04)", () => {
     cookieJar.clear();
   });
 
-  it("keeps dragon-merch's and northline's carts genuinely separate in the same browser session", async () => {
+  it("keeps print-shop's and northline's carts genuinely separate in the same browser session", async () => {
     // Real seeded catalog data per demo -- ids/titles are looked up, never
     // fabricated, and each demo's services graph is genuinely separate
     // (getServicesForDemo's own Map-keyed-by-demoSlug design, proven
     // elsewhere by services-demo-registry.test.ts).
-    const dragonServices = await getServicesForDemo("dragon-merch");
+    const printShopServices = await getServicesForDemo("print-shop");
     const northlineServices = await getServicesForDemo("northline");
 
-    const dragonProduct = (await dragonServices.catalog.listProducts())[0];
-    if (!dragonProduct) throw new Error("expected at least one seeded dragon-merch product");
-    const dragonSku = (await dragonServices.catalog.listSkusByProduct(dragonProduct.id))[0];
-    if (!dragonSku) throw new Error("expected at least one seeded dragon-merch SKU");
+    const printShopProduct = (await printShopServices.catalog.listProducts())[0];
+    if (!printShopProduct) throw new Error("expected at least one seeded print-shop product");
+    const printShopSku = (await printShopServices.catalog.listSkusByProduct(printShopProduct.id))[0];
+    if (!printShopSku) throw new Error("expected at least one seeded print-shop SKU");
 
     const northlineProduct = (await northlineServices.catalog.listProducts())[0];
     if (!northlineProduct) throw new Error("expected at least one seeded northline product");
     const northlineSku = (await northlineServices.catalog.listSkusByProduct(northlineProduct.id))[0];
     if (!northlineSku) throw new Error("expected at least one seeded northline SKU");
 
-    expect(dragonProduct.title).not.toBe(northlineProduct.title);
+    expect(printShopProduct.title).not.toBe(northlineProduct.title);
 
     // Same "browser" (same cookieJar) adds to both demos' carts via the
     // real Server Action -- exactly what browsing both demos in two tabs of
     // the same browser would do.
-    const dragonForm = new FormData();
-    dragonForm.set("demoSlug", "dragon-merch");
-    dragonForm.set("skuId", dragonSku.id);
-    dragonForm.set("quantity", "1");
-    await addToCartAction(dragonForm);
+    const printShopForm = new FormData();
+    printShopForm.set("demoSlug", "print-shop");
+    printShopForm.set("skuId", printShopSku.id);
+    printShopForm.set("quantity", "1");
+    await addToCartAction(printShopForm);
 
     const northlineForm = new FormData();
     northlineForm.set("demoSlug", "northline");
@@ -130,22 +130,22 @@ describe("cross-demo cart cookie isolation (demo-routing-04)", () => {
     // Both demo-namespaced cart cookies now coexist in the one shared jar,
     // with distinct cart ids -- proves the cookie NAME itself is
     // namespaced, not just its stored value.
-    expect(cookieJar.has("ml_cart_id__dragon-merch")).toBe(true);
+    expect(cookieJar.has("ml_cart_id__print-shop")).toBe(true);
     expect(cookieJar.has("ml_cart_id__northline")).toBe(true);
-    expect(cookieJar.get("ml_cart_id__dragon-merch")).not.toBe(cookieJar.get("ml_cart_id__northline"));
+    expect(cookieJar.get("ml_cart_id__print-shop")).not.toBe(cookieJar.get("ml_cart_id__northline"));
 
     // Real GET-equivalent: render each demo's real CartPage Server
     // Component against this exact same shared cookie jar.
-    const dragonPage = await CartPage({ params: Promise.resolve({ demoSlug: "dragon-merch" }) });
+    const printShopPage = await CartPage({ params: Promise.resolve({ demoSlug: "print-shop" }) });
     const northlinePage = await CartPage({ params: Promise.resolve({ demoSlug: "northline" }) });
 
-    const dragonText = renderedText(dragonPage);
+    const printShopText = renderedText(printShopPage);
     const northlineText = renderedText(northlinePage);
 
-    expect(dragonText).toContain(dragonProduct.title);
-    expect(dragonText).not.toContain(northlineProduct.title);
+    expect(printShopText).toContain(printShopProduct.title);
+    expect(printShopText).not.toContain(northlineProduct.title);
 
     expect(northlineText).toContain(northlineProduct.title);
-    expect(northlineText).not.toContain(dragonProduct.title);
+    expect(northlineText).not.toContain(printShopProduct.title);
   });
 });

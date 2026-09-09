@@ -6,6 +6,7 @@ import { BundleTierSelector } from "../../../../../components/bundle-tier-select
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { RecommendationShelf, resolvePdpRecommendations } from "../../../../../components/recommendation-shelf";
 import { isDemoSlug } from "../../../../../lib/demos";
+import { isCustomizableProduct } from "../../../../../lib/seed";
 import { getServicesForDemo } from "../../../../../lib/services";
 import { readActiveThemeBundle } from "../../../../../lib/theme-cookie";
 
@@ -88,7 +89,16 @@ export default async function ProductPage({
     <>
       <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug }} />
       {bundle ? <BundleTierSelector demoSlug={demoSlug} bundle={bundle} pricingByTierId={pricingByTierId} /> : null}
-      <Component demoSlug={demoSlug} viewModel={viewModel} stockBySkuId={stockBySkuId} />
+      <Component
+        demoSlug={demoSlug}
+        viewModel={viewModel}
+        stockBySkuId={stockBySkuId}
+        // print-shop-02: isCustomizableProduct is print-shop-specific seed
+        // data (see lib/seed.ts) but is a safe no-op for any other demo --
+        // it returns false for a slug it doesn't recognize (e.g. a northline
+        // product), so this call never needs a demoSlug guard.
+        customizable={isCustomizableProduct(viewModel.product.slug)}
+      />
       {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </>
   );

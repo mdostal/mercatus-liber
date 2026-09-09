@@ -113,4 +113,40 @@ describe("cart service", () => {
   it("throws CartNotFoundError for an unknown cart id", async () => {
     await expect(cart.addItem("missing", activeSkuId, 1)).rejects.toThrow(CartNotFoundError);
   });
+
+  it("addItem stores an optional customizationNote on the line, omitted entirely when not passed", async () => {
+    const created = await cart.createCart();
+    const updated = await cart.addItem(created.id, activeSkuId, 1, "Text: Sarah -- thread color: navy");
+    expect(updated.items).toEqual([
+      { skuId: activeSkuId, quantity: 1, priceSnapshot: { amount: 1500, currency: "USD" }, customizationNote: "Text: Sarah -- thread color: navy" },
+    ]);
+
+    const plain = await cart.createCart();
+    const updatedPlain = await cart.addItem(plain.id, activeSkuId, 1);
+    // No customizationNote key at all -- byte-identical to pre-personalization behavior.
+    expect(updatedPlain.items).toEqual([{ skuId: activeSkuId, quantity: 1, priceSnapshot: { amount: 1500, currency: "USD" } }]);
+    expect(Object.keys(updatedPlain.items[0]!)).not.toContain("customizationNote");
+  });
+
+  it("addItem merges quantity when the same SKU is re-added with the SAME customizationNote", async () => {
+    const created = await cart.createCart();
+    await cart.addItem(created.id, activeSkuId, 1, "monogram: JD");
+    const updated = await cart.addItem(created.id, activeSkuId, 2, "monogram: JD");
+    expect(updated.items).toHaveLength(1);
+    expect(updated.items[0]?.quantity).toBe(3);
+  });
+
+  it("addItem keeps two lines separate when the same SKU is added with DIFFERENT customizationNote text", async () => {
+    const created = await cart.createCart();
+    await cart.addItem(created.id, activeSkuId, 1, "monogram: JD");
+    const updated = await cart.addItem(created.id, activeSkuId, 1, "monogram: AB");
+    expect(updated.items).toHaveLength(2);
+    expect(updated.items.map((i) => i.customizationNote).sort()).toEqual(["monogram: AB", "monogram: JD"]);
+  });
+
+  it("addItem treats a blank/whitespace-only customizationNote as no note", async () => {
+    const created = await cart.createCart();
+    const updated = await cart.addItem(created.id, activeSkuId, 1, "   ");
+    expect(Object.keys(updated.items[0]!)).not.toContain("customizationNote");
+  });
 });

@@ -20,6 +20,8 @@ export default async function OrderPage({ params }: { params: Promise<{ demoSlug
           <li key={item.skuId}>
             SKU {item.skuId} x{item.quantity} -- {((item.priceAtPurchase.amount * item.quantity) / 100).toFixed(2)}{" "}
             {item.priceAtPurchase.currency}
+            {/* print-shop-02: the cart line's personalization text, carried through checkout onto the order record (design-discussion.md §1b). */}
+            {item.customizationNote && <div>Personalization: {item.customizationNote}</div>}
           </li>
         ))}
       </ul>

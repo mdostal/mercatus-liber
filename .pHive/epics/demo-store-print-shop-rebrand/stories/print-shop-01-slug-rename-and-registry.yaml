@@ -1,0 +1,142 @@
+id: print-shop-01-slug-rename-and-registry
+epic: demo-store-print-shop-rebrand
+title: "Mechanical rename: dragon-merch -> print-shop, zero live references remain"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/demo-store-print-shop-rebrand/docs/design-discussion.md §1a in full first.
+
+  IMPORTANT scoping distinction -- read carefully before touching anything:
+  `grep -rl "dragon-merch" --include="*.ts" --include="*.tsx" --include="*.md" --include="*.yaml" .`
+  (excluding node_modules/.next) returns ~36 files. Most of them are **historical planning
+  records under .pHive/epics/<already-done-epic>/** (e.g. commerce-landing-and-demo-routing,
+  storefront-visual-redesign, service-demo-theme-public, docs-site) documenting what those
+  ALREADY-COMPLETED epics actually built AT THE TIME -- those must be left untouched. Rewriting
+  them to say "print-shop" would be historically false (those epics genuinely built and shipped
+  something called dragon-merch). Only rename in:
+    - Live application code: apps/reference-storefront/app/demo/[demoSlug]/layout.tsx,
+      apps/reference-storefront/mcp-server.ts, apps/reference-storefront/middleware.ts,
+      apps/reference-storefront/lib/demos.ts, apps/reference-storefront/lib/actions.ts,
+      apps/reference-storefront/lib/seed.ts (this story only renames identifiers/slugs in
+      seed.ts -- the PRODUCT CONTENT inside it stays as dragon-merch/desk-accessories content
+      for this story; content replacement is the next story's job, kept separate).
+    - Live tests: every apps/reference-storefront/test/*.ts file in the grep list (update slug
+      references, demo names, fixture data identifiers -- NOT the test assertions' meaning).
+    - Living, forward-facing docs that should reflect current reality: README.md, VISION.md,
+      apps/docs/content-src/getting-started.md.
+    - Do NOT touch: anything under .pHive/epics/<name>/ for any epic other than this one and
+      demo-store-northline-depth's own currently-open references to dragon-merch as "the other
+      demo" (those are fine to leave as-is too, historical). Do NOT touch
+      .pHive/planning/epic-backlog.md's historical epic rows (1-35) -- if this story needs to
+      touch that file at all, it should only be to note (in THIS epic's own eventual closeout
+      row, which is story 3's job, not this one) that the rename happened; do not edit any
+      other row.
+
+  Rename steps:
+  1. In apps/reference-storefront/lib/demos.ts: change `DEMO_SLUGS = ["dragon-merch",
+     "northline"]` to `["print-shop", "northline"]`, rename the `DemoSlug` union member, rename
+     the `DEMO_REGISTRY` key from `"dragon-merch"` to `"print-shop"`, update its `displayName`
+     to a real display name (e.g. "The Print Shop") -- keep `seed: seedDragonMerchDemo` (or
+     whatever the current seed function is named) pointing at the same function for this story;
+     you MAY rename the seed function itself to something like `seedPrintShopDemo` if you do
+     so consistently everywhere it's referenced (lib/demos.ts's import, and the function's own
+     definition in seed.ts), but this is optional for this story since content itself isn't
+     changing yet.
+  2. Propagate the slug rename through every file in the "live" list above -- every hardcoded
+     `"dragon-merch"` string literal, every `/demo/dragon-merch` path reference, every
+     `dragon-merch`-named test fixture/describe block.
+  3. Confirm cookie namespacing (`ml_cart_id__dragon-merch` etc.) requires NO manual migration
+     -- these are demo-namespaced by the `DemoSlug` value at read/write time, so once the slug
+     itself changes to `print-shop`, new cookies are automatically namespaced correctly; there
+     is no existing user data to migrate in a demo environment. Confirm this understanding is
+     actually correct by reading lib/cart-cookie.ts (or wherever cookie naming lives) before
+     asserting it in your report.
+
+acceptance_criteria:
+  - "Given a repo-wide grep for 'dragon-merch' after this story, then zero matches remain in any LIVE code/test/README/VISION.md/apps/docs/content-src file (matches inside .pHive/epics/<already-done-epic>/ historical planning docs are expected and correct to remain)"
+  - "Given apps/reference-storefront/lib/demos.ts, then DEMO_SLUGS/DEMO_REGISTRY both reference print-shop, not dragon-merch, with a real displayName"
+  - "Given the full reference-storefront test suite, then it passes using the new print-shop slug with zero references to the old slug remaining in any test file"
+  - "Given a real dev server, then /demo/print-shop renders the (still old-content-for-now) demo correctly, and /demo/dragon-merch returns a real 404 (not a broken partial render)"
+  - "Given `pnpm typecheck` and `pnpm build` via turbo, then both stay green"
+
+steps:
+  - id: research
+    description: Read lib/demos.ts, lib/seed.ts, and every test file in the live-scope list before making any change, and confirm the cookie-namespacing understanding above by reading the actual cookie-naming code.
+    agent: researcher
+  - id: implement
+    description: Make the rename per the description above, scoped exactly to the live-code list -- do not touch historical .pHive/epics/ docs for other epics.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion, including the historical-docs-untouched check (diff .pHive/epics/ for any other epic against its pre-story state).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm no historical planning doc was altered, confirm the rename is complete (zero live references), confirm no product content changed yet.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/demo-store-print-shop-rebrand.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/demos.ts
+      purpose: DEMO_SLUGS/DEMO_REGISTRY -- the central rename point.
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: Slug/identifier rename only in this story -- product content stays as-is.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/demos.ts
+    change: "Rename dragon-merch -> print-shop in DEMO_SLUGS/DEMO_REGISTRY, real displayName"
+  - file: apps/reference-storefront/lib/seed.ts
+    change: "Rename slug/identifier references only, product content unchanged"
+  - file: apps/reference-storefront/app/demo/[demoSlug]/layout.tsx
+    change: "Any hardcoded dragon-merch references updated"
+  - file: apps/reference-storefront/mcp-server.ts
+    change: "Any hardcoded dragon-merch references updated"
+  - file: apps/reference-storefront/middleware.ts
+    change: "Any hardcoded dragon-merch references updated"
+  - file: apps/reference-storefront/lib/actions.ts
+    change: "Any hardcoded dragon-merch references updated"
+  - file: README.md
+    change: "Update demo references to print-shop"
+  - file: VISION.md
+    change: "Update demo references to print-shop"
+  - file: apps/docs/content-src/getting-started.md
+    change: "Update demo references to print-shop"
+
+design_decisions:
+  - decision: "Historical .pHive/epics/ planning docs for already-completed epics are left untouched."
+    rationale: "They document what those epics genuinely built at the time -- rewriting them would falsify project history. See design-discussion.md §1a."
+
+risks:
+  - severity: low
+    description: "Missing a live reference could leave a broken hardcoded dragon-merch path somewhere."
+    mitigation: "Acceptance criteria requires a hard zero-match grep proof, not a best-effort pass."
+
+references:
+  - path: .pHive/epics/demo-store-print-shop-rebrand/docs/design-discussion.md
+    relevant_excerpt: "§1a: the resolved rename-vs-new-slug design question."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: print_shop_rename.live_references_remaining
+  direction: down
+  unit: count
+  baseline: 36
+  target: 0
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "grep -rl 'dragon-merch' across live code/test/doc files (excluding historical .pHive/epics/ docs), verified by test"
+  verify_at: integrate
+  owner: tester

@@ -70,7 +70,8 @@ full detail on every item below):
 - **Three demo stores getting real depth** — a true navigation menu, a deep product catalog, and
   genuine interactive actions (not the thin, mostly-unlinked state they were in before): Northline
   Home Tech (smart-home installer), The Print Shop (embroidery/custom prints, reconceived from
-  the earlier `dragon-merch` placeholder demo), and a new eclectic artisan/handmade-goods shop.
+  the earlier dragon-branded placeholder demo, since renamed to the `print-shop` slug), and a
+  new eclectic artisan/handmade-goods shop.
 - **Fulfillment & shipping** — a new `@mercatus-liber/fulfillment` subsystem (who/how an order
   gets produced — self-fulfilled by default, with real Printful and Printify print-on-demand
   adapters) and a new `@mercatus-liber/shipping` subsystem (rate shopping, label purchase,

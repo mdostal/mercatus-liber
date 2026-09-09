@@ -15,10 +15,13 @@ export function PdpTabbedDetail({
   demoSlug,
   viewModel,
   stockBySkuId = {},
+  customizable = false,
 }: {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
   stockBySkuId?: Record<string, number>;
+  /** print-shop-02: when true, renders a real personalization text input inside each SKU's add-to-cart form (design-discussion.md §1b). Additive/optional -- omitted entirely for every non-customizable product, so this template's markup/behavior is unchanged for them. */
+  customizable?: boolean;
 }) {
   const { product, skus } = viewModel;
 
@@ -42,6 +45,23 @@ export function PdpTabbedDetail({
               {(sku.price.amount / 100).toFixed(2)} {sku.price.currency} -- in stock: {stockBySkuId[sku.id] ?? 0}
             </span>{" "}
             <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
+            {customizable && (
+              <div style={{ marginTop: "var(--space-xs, 8px)" }}>
+                <label
+                  htmlFor={`customizationNote-${sku.id}`}
+                  style={{ display: "block", fontSize: "var(--font-size-body, 1rem)", color: "var(--color-muted, #666)" }}
+                >
+                  Personalize this item (e.g. embroidery text, thread color)
+                </label>
+                <input
+                  id={`customizationNote-${sku.id}`}
+                  type="text"
+                  name="customizationNote"
+                  placeholder="e.g. Text: Sarah -- thread color: navy"
+                  style={{ width: "100%", maxWidth: 360 }}
+                />
+              </div>
+            )}
             <button
               type="submit"
               style={{

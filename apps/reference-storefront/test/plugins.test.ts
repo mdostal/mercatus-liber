@@ -32,8 +32,8 @@ describe("order-notification plugin wiring", () => {
       events,
     });
 
-    const organizer = await catalog.getProductBySlug("dragon-cable-organizer");
-    const skus = await catalog.listSkusByProduct(organizer!.id);
+    const tote = await catalog.getProductBySlug("embroidered-canvas-tote");
+    const skus = await catalog.listSkusByProduct(tote!.id);
     const shopperCart = await cart.createCart();
     await cart.addItem(shopperCart.id, skus[0]!.id, 1);
     const { order } = await checkout.startCheckout({

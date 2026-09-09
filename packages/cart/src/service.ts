@@ -6,7 +6,8 @@ import type { Cart, CartRepository, SkuLookup } from "./types.js";
 export interface CartService {
   createCart(): Promise<Cart>;
   getCart(id: string): Promise<Cart | null>;
-  addItem(cartId: string, skuId: string, quantity: number): Promise<Cart>;
+  /** customizationNote is additive/optional (see types.ts's CartItem doc comment) -- every existing 3-arg call site keeps working unchanged. */
+  addItem(cartId: string, skuId: string, quantity: number, customizationNote?: string): Promise<Cart>;
   removeItem(cartId: string, skuId: string): Promise<Cart>;
   /** quantity <= 0 removes the line item, matching common cart UX. */
   updateQuantity(cartId: string, skuId: string, quantity: number): Promise<Cart>;
@@ -37,7 +38,7 @@ export function createCartService(deps: {
       return repository.get(id);
     },
 
-    async addItem(cartId, skuId, quantity) {
+    async addItem(cartId, skuId, quantity, customizationNote) {
       if (quantity <= 0) {
         throw new RangeError(`quantity must be > 0, got ${quantity}`);
       }
@@ -47,11 +48,18 @@ export function createCartService(deps: {
         throw new SkuNotAvailableError(skuId);
       }
 
-      const existing = cart.items.find((item) => item.skuId === skuId);
+      // Blank/whitespace-only note normalizes to "no note", same as omitting
+      // it -- avoids a stray customizationNote key on an otherwise-plain line.
+      const note = customizationNote?.trim() || undefined;
+      // Merge by skuId AND customizationNote (both undefined counts as a
+      // match) -- two lines of the same SKU with DIFFERENT personalization
+      // text must stay separate lines, not silently collapse into one
+      // (see types.ts's CartItem doc comment).
+      const existing = cart.items.find((item) => item.skuId === skuId && item.customizationNote === note);
       if (existing) {
         existing.quantity += quantity;
       } else {
-        cart.items.push({ skuId, quantity, priceSnapshot: sku.price });
+        cart.items.push({ skuId, quantity, priceSnapshot: sku.price, ...(note ? { customizationNote: note } : {}) });
       }
       await repository.save(cart);
       await events.publish("cart.item.added", { cartId, skuId, quantity });

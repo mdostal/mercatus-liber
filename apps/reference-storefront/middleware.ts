@@ -10,7 +10,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
  * lib/actions.ts, not here.
  *
  * demo-routing-03 moved the whole admin tree from the bare app/admin to
- * app/demo/[demoSlug]/admin (design-discussion.md §3: "a dragon-merch admin
+ * app/demo/[demoSlug]/admin (design-discussion.md §3: "a print-shop admin
  * session has no business seeing northline's promotions"). The old
  * `/admin(.*)` pattern is replaced outright, not supplemented -- app/admin no
  * longer exists at the app root after that move, so a route matching only

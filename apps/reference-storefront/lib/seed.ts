@@ -17,33 +17,143 @@ interface DemoProduct {
   priceCents: number;
   categorySlugs: string[];
   stockUnits: number;
+  /**
+   * Whether this product's PDP shows a real personalization text input
+   * ("Personalize this item (e.g. embroidery text, thread color)") that
+   * flows into the cart line's optional customizationNote field (see
+   * @mercatus-liber/cart's CartItem doc comment and design-discussion.md
+   * §1b). The single source of truth for this flag -- isCustomizableProduct
+   * below reads it straight off this array, so seed data and PDP behavior
+   * can never drift out of sync.
+   */
+  customizable: boolean;
 }
 
+/**
+ * print-shop-02: a real embroidery/custom-print catalog (design-
+ * discussion.md §0/§1b) across 4 real categories -- Embroidery, Custom
+ * Coasters, Apparel, Drinkware -- replacing the old dragon-themed
+ * desk-accessory catalog wholesale (see print-shop-01's commit for the pure
+ * slug/identifier rename that preceded this). "Embroidered Fleece Hoodie" is
+ * deliberately assigned to BOTH "embroidery" and "apparel" (a real
+ * embroidered garment genuinely belongs in both), proving many-to-many
+ * category assignment the same way the old organizer/mat pair proved it via
+ * "desk-accessories". Real names/descriptions/prices in cents, zero lorem
+ * ipsum, per this story's acceptance criteria.
+ */
 const DEMO_PRODUCTS: DemoProduct[] = [
   {
-    slug: "dragon-cable-organizer",
-    title: "Dragon Cable Organizer",
+    slug: "embroidered-canvas-tote",
+    title: "Embroidered Canvas Tote Bag",
     description:
-      "A coiled dragon curls around your cables and keeps them off the desk for good. Multi-color 3D print, snap-fit base, no adhesive required.",
-    color: "red",
-    size: "large",
-    priceCents: 1999,
-    // Shared category ("desk-accessories") proves many-to-many assignment.
-    categorySlugs: ["desk-accessories", "3d-printed"],
+      "A heavyweight 12oz natural canvas tote with reinforced stitched handles, embroidered to order with your text, initials, or a small custom design.",
+    color: "natural-canvas",
+    size: "one-size",
+    priceCents: 2800,
+    categorySlugs: ["embroidery"],
     stockUnits: 12,
+    customizable: true,
   },
   {
-    slug: "dragon-desk-mat",
-    title: "Dragon Desk Mat",
+    slug: "embroidered-dad-cap",
+    title: "Embroidered Dad Cap",
     description:
-      "An extra-large stitched-edge desk mat with a subtle dragon-scale texture. Smooth glide for your mouse, soft landing for your wrists.",
-    color: "black",
-    size: "medium",
-    priceCents: 2999,
-    categorySlugs: ["desk-accessories"],
+      "An unstructured low-profile cotton twill cap with an adjustable brass buckle strap, embroidered front-and-center with your own text or monogram.",
+    color: "khaki",
+    size: "one-size",
+    priceCents: 2400,
+    categorySlugs: ["embroidery"],
     stockUnits: 5,
+    customizable: true,
+  },
+  {
+    slug: "monogram-stoneware-coaster-set",
+    title: "Monogram Stoneware Coaster Set (Set of 4)",
+    description:
+      "Four absorbent stoneware coasters with a cork backing, laser-etched with a monogram or short custom text of your choosing. Packaged in a kraft gift box.",
+    color: "slate-gray",
+    size: "4-pack",
+    priceCents: 3200,
+    categorySlugs: ["custom-coasters"],
+    stockUnits: 35,
+    customizable: true,
+  },
+  {
+    slug: "cork-back-print-coaster-set",
+    title: "Cork-Backed Print Coaster Set (Set of 6)",
+    description:
+      "Six round hardboard coasters with a natural cork backing and a full-color printed top -- our standard in-house pattern, ready to ship as-is.",
+    color: "natural-cork",
+    size: "6-pack",
+    priceCents: 2600,
+    categorySlugs: ["custom-coasters"],
+    stockUnits: 50,
+    customizable: false,
+  },
+  {
+    slug: "embroidered-fleece-hoodie",
+    title: "Embroidered Fleece Hoodie",
+    description:
+      "A midweight 8.5oz cotton-poly fleece pullover hoodie with a kangaroo pocket, embroidered on the left chest with your text or a small custom design.",
+    color: "heather-gray",
+    size: "medium",
+    priceCents: 5400,
+    // Shared category (an embroidered garment genuinely belongs in both) --
+    // proves many-to-many category assignment.
+    categorySlugs: ["embroidery", "apparel"],
+    stockUnits: 25,
+    customizable: true,
+  },
+  {
+    slug: "embroidered-cotton-tee",
+    title: "Embroidered Cotton T-Shirt",
+    description:
+      "A 100% ringspun cotton crewneck tee, embroidered (not printed) on the left chest with your own text, initials, or small design.",
+    color: "navy",
+    size: "medium",
+    priceCents: 2200,
+    categorySlugs: ["apparel"],
+    stockUnits: 45,
+    customizable: true,
+  },
+  {
+    slug: "custom-printed-ceramic-mug",
+    title: "Custom-Printed Ceramic Mug",
+    description:
+      "An 11oz glossy white ceramic mug, dishwasher- and microwave-safe, full-color printed edge-to-edge with your own text, photo, or design.",
+    color: "white",
+    size: "11oz",
+    priceCents: 1800,
+    categorySlugs: ["drinkware"],
+    stockUnits: 55,
+    customizable: true,
+  },
+  {
+    slug: "custom-printed-travel-tumbler",
+    title: "Custom-Printed Travel Tumbler",
+    description:
+      "A 20oz double-wall insulated stainless steel tumbler with a spill-resistant lid -- our standard in-house wrap design, ready to ship as-is.",
+    color: "matte-black",
+    size: "20oz",
+    priceCents: 2600,
+    categorySlugs: ["drinkware"],
+    stockUnits: 40,
+    customizable: false,
   },
 ];
+
+/**
+ * Reads the "is this product customizable" flag straight off DEMO_PRODUCTS
+ * above (the single source of truth for the seed data's customizable tag --
+ * see DemoProduct's doc comment) so the PDP (app/demo/[demoSlug]/products/
+ * [slug]/page.tsx) can decide whether to show the personalization input
+ * without re-declaring the flag anywhere else. Returns false for any slug
+ * not in this print-shop-specific array (e.g. a northline product slug) --
+ * correct, since northline isn't a customization demo.
+ */
+export function isCustomizableProduct(slug: string): boolean {
+  return DEMO_PRODUCTS.some((product) => product.slug === slug && product.customizable);
+}
 
 interface ServiceDemoSku {
   slug: string;
@@ -61,27 +171,31 @@ interface ServiceDemoSku {
  * referenced only as shape inspiration; none of its content is read or
  * copied here. `install` is the bundle's base product; `proSetup` and
  * `overhaul` are add-on SKUs only ever sold as part of a tier, never listed
- * standalone in DEMO_PRODUCTS.
+ * standalone in DEMO_PRODUCTS. Rebranded to print-shop's own embroidery
+ * business (print-shop-02) so no "Dragon"-branded content survives under
+ * "The Print Shop" name -- this bundle-04 acceptance demo is otherwise
+ * untouched by this story (it's a separate SKU family from DEMO_PRODUCTS,
+ * never listed in the real catalog/nav).
  */
 const SERVICE_DEMO_SKUS: { install: ServiceDemoSku; proSetup: ServiceDemoSku; overhaul: ServiceDemoSku } = {
   install: {
-    slug: "dragon-install-service",
-    title: "Dragon Install Service",
-    description: "Professional installation of your dragon-branded desk setup, done right the first time.",
+    slug: "onsite-embroidery-setup",
+    title: "On-Site Embroidery Setup Service",
+    description: "A technician visits your space to set up and calibrate your new embroidery equipment, done right the first time.",
     priceCents: 4900,
     stockUnits: 999,
   },
   proSetup: {
-    slug: "dragon-pro-setup-addon",
-    title: "Dragon Pro Setup Add-On",
-    description: "Adds cable routing, mount calibration, and a full pro configuration pass.",
+    slug: "onsite-embroidery-pro-setup-addon",
+    title: "Pro Setup Add-On",
+    description: "Adds thread-path calibration, hooping-station setup, and a full pro configuration pass.",
     priceCents: 2900,
     stockUnits: 999,
   },
   overhaul: {
-    slug: "dragon-complete-overhaul-addon",
-    title: "Dragon Complete Overhaul Add-On",
-    description: "Adds a full desk teardown, deep clean, and rebuild to factory-fresh spec.",
+    slug: "onsite-embroidery-complete-overhaul-addon",
+    title: "Complete Overhaul Add-On",
+    description: "Adds a full equipment teardown, deep clean, and rebuild to factory-fresh spec.",
     priceCents: 5900,
     stockUnits: 999,
   },
@@ -116,8 +230,8 @@ async function createServiceDemoSku(
  * each tier's skuIds the correct CUMULATIVE set -- tier 1 is [install], tier
  * 2 is [install, proSetup], tier 3 is [install, proSetup, overhaul]. Mirrors
  * the ATT recreation's confirmed 3-tier package-selector shape (see
- * design-discussion.md §0) using this repo's own dragon-branded demo data --
- * the ATT recreation repo itself is never read or touched.
+ * design-discussion.md §0) using this repo's own print-shop-branded demo
+ * data -- the ATT recreation repo itself is never read or touched.
  */
 async function seedServiceBundle(catalog: CatalogService, inventory: InventoryAdapter, bundles: BundlesService): Promise<void> {
   const install = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.install);
@@ -126,7 +240,7 @@ async function seedServiceBundle(catalog: CatalogService, inventory: InventoryAd
 
   await bundles.createBundle({
     productId: install.productId,
-    title: "Dragon Install Service Packages",
+    title: "Embroidery Setup Service Packages",
     tiers: [
       { id: randomUUID(), label: "Product Only", skuIds: [install.skuId] },
       { id: randomUUID(), label: "+ Pro Setup", skuIds: [install.skuId, proSetup.skuId] },
@@ -135,31 +249,45 @@ async function seedServiceBundle(catalog: CatalogService, inventory: InventoryAd
   });
 }
 
-/** Seeds demo categories (top-level "Merch" with one child "Desk Accessories", plus a standalone "3D Printed"). */
+/**
+ * Seeds print-shop's 4 real categories, all top-level (parentId: null) --
+ * same "every real category is top-level" shape northline-depth-02 already
+ * proved for Northline (see app/demo/[demoSlug]/layout.tsx's buildNavLinks
+ * doc comment), so every one of these 4 automatically surfaces in the demo
+ * nav via that already-built, demo-aware navLinks mechanism -- zero new nav
+ * code needed (print-shop-02's Part 4).
+ */
 async function seedCategories(marketingCatalog: MarketingCatalogService): Promise<Map<string, string>> {
-  const merch = await marketingCatalog.createCategory({
-    slug: "merch",
-    title: "Merch",
-    description: "Everything wearing our dragon, from desk gear to the pieces we're still dreaming up.",
+  const embroidery = await marketingCatalog.createCategory({
+    slug: "embroidery",
+    title: "Embroidery",
+    description: "Totes, caps, and more, embroidered to order with your own text or a small custom design.",
     parentId: null,
   });
-  const deskAccessories = await marketingCatalog.createCategory({
-    slug: "desk-accessories",
-    title: "Desk Accessories",
-    description: "Cable organizers, mats, and the small stuff that makes a desk feel like yours.",
-    parentId: merch.id,
+  const customCoasters = await marketingCatalog.createCategory({
+    slug: "custom-coasters",
+    title: "Custom Coasters",
+    description: "Stoneware and cork-backed coaster sets, from a monogrammed custom order to our standard in-house prints.",
+    parentId: null,
   });
-  const printed3d = await marketingCatalog.createCategory({
-    slug: "3d-printed",
-    title: "3D Printed",
-    description: "Designed in-house and printed layer by layer -- our own line of 3D-printed originals.",
+  const apparel = await marketingCatalog.createCategory({
+    slug: "apparel",
+    title: "Apparel",
+    description: "Hoodies and tees, embroidered on the chest with your own text or design.",
+    parentId: null,
+  });
+  const drinkware = await marketingCatalog.createCategory({
+    slug: "drinkware",
+    title: "Drinkware",
+    description: "Mugs and tumblers, custom-printed with your own text, photo, or design.",
     parentId: null,
   });
 
   return new Map([
-    [merch.slug, merch.id],
-    [deskAccessories.slug, deskAccessories.id],
-    [printed3d.slug, printed3d.id],
+    [embroidery.slug, embroidery.id],
+    [customCoasters.slug, customCoasters.id],
+    [apparel.slug, apparel.id],
+    [drinkware.slug, drinkware.id],
   ]);
 }
 
@@ -173,13 +301,13 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
       {
         componentType: "hero-banner",
         config: {
-          headline: "Dragon Merch",
-          subheadline: "Desk gear and 3D-printed originals, all wearing our dragon. New drops every season.",
+          headline: "The Print Shop",
+          subheadline: "Embroidery, custom coasters, apparel, and drinkware -- personalized to order. New drops every season.",
         },
       },
       {
         componentType: "category-spot",
-        config: { categorySlugs: ["merch", "3d-printed"] },
+        config: { categorySlugs: ["embroidery", "custom-coasters"] },
       },
       {
         // Renders via components/cms-sections.tsx's AdSlot, resolved against
@@ -192,25 +320,23 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
   });
   await cms.publishPage(home.id);
 
-  const organizerId = productIdBySlug.get("dragon-cable-organizer");
+  const toteId = productIdBySlug.get("embroidered-canvas-tote");
   const { page: campaign } = await cms.createMarketingPage({
     slug: "fall-sale",
     title: "Fall Sale",
-    sections: organizerId
-      ? [{ componentType: "product-grid", config: { productIds: [organizerId] } }]
-      : [],
+    sections: toteId ? [{ componentType: "product-grid", config: { productIds: [toteId] } }] : [],
     campaignName: "Fall Sale 2026",
     startDate: "2026-10-01",
     endDate: "2026-10-31",
-    productIds: organizerId ? [organizerId] : [],
+    productIds: toteId ? [toteId] : [],
   });
   await cms.publishPage(campaign.id);
 }
 
 /**
  * Seeds a handful of demo service areas (generic local pickup/delivery
- * regions for this dragon-merch demo shop -- see epic 15a/15b for the real
- * ATT-style business seed data). The desk mat is deliberately assigned to
+ * regions for this print-shop demo shop -- see epic 15a/15b for the real
+ * ATT-style business seed data). The dad cap is deliberately assigned to
  * only 2 of the 3 areas, proving a product can be available in a subset of
  * areas, not all-or-nothing. Also publishes one CMS "location" page,
  * proving the ServiceArea-data / CMS-page-layout split end to end. Returns
@@ -245,14 +371,14 @@ async function seedServiceAreas(
     phone: null,
   });
 
-  const organizerId = productIdBySlug.get("dragon-cable-organizer");
-  const matId = productIdBySlug.get("dragon-desk-mat");
+  const toteId = productIdBySlug.get("embroidered-canvas-tote");
+  const capId = productIdBySlug.get("embroidered-dad-cap");
 
   for (const area of [portland, austin, chicago]) {
-    if (organizerId) await serviceAreas.assignProductToServiceArea(organizerId, area.id);
+    if (toteId) await serviceAreas.assignProductToServiceArea(toteId, area.id);
   }
   for (const area of [portland, austin]) {
-    if (matId) await serviceAreas.assignProductToServiceArea(matId, area.id);
+    if (capId) await serviceAreas.assignProductToServiceArea(capId, area.id);
   }
 
   const locationPage = await cms.createPage({
@@ -278,29 +404,29 @@ async function seedServiceAreas(
 
 /**
  * Seeds the rec-04 acceptance demo: one curated, active RecommendationRule
- * from the Dragon Cable Organizer to the Dragon Desk Mat, placement "both"
- * (so it satisfies both the PDP and cart resolution paths -- see
+ * from the Embroidered Canvas Tote Bag to the Embroidered Dad Cap, placement
+ * "both" (so it satisfies both the PDP and cart resolution paths -- see
  * resolvePdpRecommendations/resolveCartRecommendations in
  * components/recommendation-shelf.tsx), labeled "Customers also bought". The
- * two products already share the "desk-accessories" category (see
- * DEMO_PRODUCTS above), so this also reads naturally as a real
- * "customers also bought" pairing, and the desk mat itself is left with no
- * curated rule of its own -- its PDP demonstrates the same-category fallback
- * shelf instead (it falls back to the organizer via that shared category).
+ * two products already share the "embroidery" category (see DEMO_PRODUCTS
+ * above), so this also reads naturally as a real "customers also bought"
+ * pairing, and the dad cap itself is left with no curated rule of its own --
+ * its PDP demonstrates the same-category fallback shelf instead (it falls
+ * back to the tote bag via that shared category).
  */
 async function seedRecommendations(
   recommendations: RecommendationsService,
   productIdBySlug: Map<string, string>,
 ): Promise<void> {
-  const organizerId = productIdBySlug.get("dragon-cable-organizer");
-  const matId = productIdBySlug.get("dragon-desk-mat");
-  if (!organizerId || !matId) return;
+  const toteId = productIdBySlug.get("embroidered-canvas-tote");
+  const capId = productIdBySlug.get("embroidered-dad-cap");
+  if (!toteId || !capId) return;
 
   await recommendations.createRule({
-    sourceProductId: organizerId,
+    sourceProductId: toteId,
     label: "Customers also bought",
     placement: "both",
-    targetProductIds: [matId],
+    targetProductIds: [capId],
   });
 }
 
@@ -316,25 +442,25 @@ async function seedRecommendations(
  */
 async function seedAdvertising(advertising: AdvertisingService, targetedServiceAreaId?: string): Promise<void> {
   await advertising.createCampaign({
-    name: "Dragon Merch Sale",
+    name: "Print Shop Sale",
     startsAt: null,
     endsAt: null,
     targeting: { serviceAreaId: null, pageSlug: null },
     creatives: [
       {
         id: randomUUID(),
-        headline: "Dragon Merch Sale -- 20% Off Everything",
-        body: "Cable organizers, desk mats, and more -- all dragon-branded, all on sale this week only.",
+        headline: "The Print Shop Sale -- 20% Off Everything",
+        body: "Embroidery, custom coasters, apparel, and drinkware -- all personalized to order, all on sale this week only.",
         imageUrl: null,
-        linkHref: "/demo/dragon-merch/category/merch",
+        linkHref: "/demo/print-shop/category/embroidery",
         weight: 1,
       },
       {
         id: randomUUID(),
-        headline: "New: Dragon Desk Mat Restock",
-        body: "Our best-selling dragon desk mat is back in stock. Grab yours before it's gone again.",
+        headline: "New: Embroidered Dad Cap Restock",
+        body: "Our best-selling embroidered dad cap is back in stock. Grab yours before it's gone again.",
         imageUrl: null,
-        linkHref: "/demo/dragon-merch/products/dragon-desk-mat",
+        linkHref: "/demo/print-shop/products/embroidered-dad-cap",
         weight: 1,
       },
     ],
@@ -343,17 +469,17 @@ async function seedAdvertising(advertising: AdvertisingService, targetedServiceA
   if (!targetedServiceAreaId) return;
 
   await advertising.createCampaign({
-    name: "Portland Dragon Pop-Up",
+    name: "Portland Print Shop Pop-Up",
     startsAt: null,
     endsAt: null,
     targeting: { serviceAreaId: targetedServiceAreaId, pageSlug: null },
     creatives: [
       {
         id: randomUUID(),
-        headline: "Portland Dragon Pop-Up This Saturday",
-        body: "Meet the dragon merch team in person at our Portland pop-up -- local pickup discounts all day.",
+        headline: "Portland Print Shop Pop-Up This Saturday",
+        body: "Meet the print shop team in person at our Portland pop-up -- local pickup discounts all day.",
         imageUrl: null,
-        linkHref: "/demo/dragon-merch/locations/portland-or",
+        linkHref: "/demo/print-shop/locations/portland-or",
         weight: 1,
       },
     ],

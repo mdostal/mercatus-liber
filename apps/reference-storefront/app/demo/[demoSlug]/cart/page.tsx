@@ -51,6 +51,9 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
         title: product?.title ?? `SKU ${item.skuId}`,
         quantity: item.quantity,
         priceSnapshot: item.priceSnapshot,
+        // print-shop-02: additive/optional (design-discussion.md §1b) --
+        // absent for every non-customized line, same as before this field existed.
+        customizationNote: item.customizationNote,
       };
     }),
   );
@@ -86,7 +89,13 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
     <>
       <Template
         demoSlug={demoSlug}
-        lines={lines.map(({ skuId, title, quantity, priceSnapshot }) => ({ skuId, title, quantity, priceSnapshot }))}
+        lines={lines.map(({ skuId, title, quantity, priceSnapshot, customizationNote }) => ({
+          skuId,
+          title,
+          quantity,
+          priceSnapshot,
+          customizationNote,
+        }))}
         couponCode={couponCode}
         couponEnteredButInvalid={couponEnteredButInvalid}
         subtotalAmount={subtotalAmount}

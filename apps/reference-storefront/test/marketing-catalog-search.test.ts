@@ -16,15 +16,21 @@ describe("seeded marketing catalog + search", () => {
     const { catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
     await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
-    const deskAccessories = await marketingCatalog.getCategoryBySlug("desk-accessories");
-    expect(deskAccessories).not.toBeNull();
-    const productIdsInCategory = await marketingCatalog.listProductIdsInCategory(deskAccessories!.id);
-    // Both seeded products share "desk-accessories" -- proves many-to-many, not just 1:1.
-    expect(productIdsInCategory).toHaveLength(2);
+    // "Embroidered Fleece Hoodie" is deliberately assigned to BOTH
+    // "embroidery" and "apparel" (see lib/seed.ts's DEMO_PRODUCTS doc
+    // comment) -- proves many-to-many, not just 1:1.
+    const embroidery = await marketingCatalog.getCategoryBySlug("embroidery");
+    expect(embroidery).not.toBeNull();
+    const embroideryProductIds = await marketingCatalog.listProductIdsInCategory(embroidery!.id);
+    expect(embroideryProductIds).toHaveLength(3); // tote, cap, hoodie
 
-    const printed3d = await marketingCatalog.getCategoryBySlug("3d-printed");
-    const printedProductIds = await marketingCatalog.listProductIdsInCategory(printed3d!.id);
-    expect(printedProductIds).toHaveLength(1);
+    const apparel = await marketingCatalog.getCategoryBySlug("apparel");
+    const apparelProductIds = await marketingCatalog.listProductIdsInCategory(apparel!.id);
+    expect(apparelProductIds).toHaveLength(2); // hoodie, tee
+
+    const hoodie = await catalog.getProductBySlug("embroidered-fleece-hoodie");
+    expect(embroideryProductIds).toContain(hoodie!.id);
+    expect(apparelProductIds).toContain(hoodie!.id);
   });
 
   it("indexes every seeded product for search without a manual reindex call", async () => {
@@ -35,9 +41,14 @@ describe("seeded marketing catalog + search", () => {
 
     await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
-    const results = await search.query({ text: "dragon" });
-    expect(results.length).toBeGreaterThanOrEqual(2);
+    const results = await search.query({ text: "embroidered" });
+    expect(results.length).toBeGreaterThanOrEqual(4);
     const titles = results.map((r) => r.title).sort();
-    expect(titles).toEqual(["Dragon Cable Organizer", "Dragon Desk Mat"]);
+    expect(titles).toEqual([
+      "Embroidered Canvas Tote Bag",
+      "Embroidered Cotton T-Shirt",
+      "Embroidered Dad Cap",
+      "Embroidered Fleece Hoodie",
+    ]);
   });
 });

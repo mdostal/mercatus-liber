@@ -18,7 +18,7 @@ describe("PDP theming wiring", () => {
     const theming = createThemingService();
     const pdp = createPdpService({ catalog, theming });
 
-    const viewModel = await pdp.getViewModel("dragon-cable-organizer");
+    const viewModel = await pdp.getViewModel("embroidered-canvas-tote");
     expect(viewModel?.templateKey).toBe("pdp.tabbed-detail");
   });
 
@@ -29,8 +29,8 @@ describe("PDP theming wiring", () => {
     const theming = createThemingService();
     const pdp = createPdpService({ catalog, theming });
 
-    const defaultView = await pdp.getViewModel("dragon-cable-organizer");
-    const longScrollView = await pdp.getViewModel("dragon-cable-organizer", "pdp.long-scroll");
+    const defaultView = await pdp.getViewModel("embroidered-canvas-tote");
+    const longScrollView = await pdp.getViewModel("embroidered-canvas-tote", "pdp.long-scroll");
 
     expect(longScrollView?.templateKey).toBe("pdp.long-scroll");
     expect(defaultView?.templateKey).not.toBe(longScrollView?.templateKey);
