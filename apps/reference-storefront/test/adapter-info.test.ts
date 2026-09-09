@@ -21,6 +21,8 @@ describe("getAdapterInfo", () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("SQLITE_FILE_PATH", "");
     vi.stubEnv("PRINTFUL_API_TOKEN", "");
+    vi.stubEnv("PRINTIFY_API_TOKEN", "");
+    vi.stubEnv("PRINTIFY_SHOP_ID", "");
 
     const info = getAdapterInfo();
     expect(info).toHaveLength(5);
@@ -118,10 +120,44 @@ describe("getAdapterInfo", () => {
 
   it("reports manual-only fulfillment when PRINTFUL_API_TOKEN is unset", () => {
     vi.stubEnv("PRINTFUL_API_TOKEN", "");
+    vi.stubEnv("PRINTIFY_API_TOKEN", "");
+    vi.stubEnv("PRINTIFY_SHOP_ID", "");
 
     const fulfillment = getAdapterInfo().find((e) => e.subsystem === "Fulfillment")!;
     expect(fulfillment.adapter).toBe("Manual (self-fulfillment)");
     expect(fulfillment.status).toBe("active");
+  });
+
+  it("reports Printify as registered alongside manual when both PRINTIFY_API_TOKEN and PRINTIFY_SHOP_ID are truthy", () => {
+    vi.stubEnv("PRINTFUL_API_TOKEN", "");
+    vi.stubEnv("PRINTIFY_API_TOKEN", "fake-test-token-for-wiring-verification-only");
+    vi.stubEnv("PRINTIFY_SHOP_ID", "12345");
+
+    const fulfillment = getAdapterInfo().find((e) => e.subsystem === "Fulfillment")!;
+    expect(fulfillment.adapter).toBe("Manual + Printify (registered)");
+    expect(fulfillment.status).toBe("active");
+    expect(fulfillment.detail).toMatch(/printify/i);
+  });
+
+  it("does not register Printify when only one of PRINTIFY_API_TOKEN/PRINTIFY_SHOP_ID is set -- both are required", () => {
+    vi.stubEnv("PRINTFUL_API_TOKEN", "");
+    vi.stubEnv("PRINTIFY_API_TOKEN", "fake-test-token-for-wiring-verification-only");
+    vi.stubEnv("PRINTIFY_SHOP_ID", "");
+
+    const fulfillment = getAdapterInfo().find((e) => e.subsystem === "Fulfillment")!;
+    expect(fulfillment.adapter).toBe("Manual (self-fulfillment)");
+  });
+
+  it("registers Printful and Printify additively (both, not a swap) when all three env vars are truthy", () => {
+    vi.stubEnv("PRINTFUL_API_TOKEN", "fake-test-token-for-wiring-verification-only");
+    vi.stubEnv("PRINTIFY_API_TOKEN", "fake-test-token-for-wiring-verification-only");
+    vi.stubEnv("PRINTIFY_SHOP_ID", "12345");
+
+    const fulfillment = getAdapterInfo().find((e) => e.subsystem === "Fulfillment")!;
+    expect(fulfillment.adapter).toBe("Manual + Printful + Printify (registered)");
+    expect(fulfillment.status).toBe("active");
+    expect(fulfillment.detail).toMatch(/printful/i);
+    expect(fulfillment.detail).toMatch(/printify/i);
   });
 
   it("is not cached/memoized -- two calls with different env values in between reflect the current environment each time", () => {

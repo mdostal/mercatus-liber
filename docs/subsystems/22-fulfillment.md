@@ -7,8 +7,8 @@ Before this subsystem, every shop built on this framework implicitly assumed 100
 self-fulfillment: `checkout-orders`' `Order.status` (`pending_payment -> paid -> fulfilled ->
 cancelled`) has no notion of a fulfillment provider or per-line routing at all. This subsystem
 makes that implicit "an operator fulfills by hand" reality explicit and visible, and is the
-foundation epic 42's real Printful print-on-demand adapter (see below) is built on top of, with
-epic 43 (Printify) as disclosed future work.
+foundation both epic 42's real Printful print-on-demand adapter and epic 43's real Printify
+print-on-demand adapter (see below) are built on top of.
 
 ## Depends on
 `@mercatus-liber/core` only. Declares its own narrow structural interface — `OrderLookup`
@@ -52,8 +52,10 @@ compile-time type-compatibility proof — see `src/order-lookup-compat.ts`). Mir
 - Wired into `apps/reference-storefront/lib/services.ts`: `checkout` structurally satisfies
   `OrderLookup` already (no adapter object needed); the manual adapter is always registered, and
   `PRINTFUL_API_TOKEN` set and truthy additionally registers the real Printful adapter (epic 42)
-  under the `"printful"` provider key — see "The Printful adapter" section below for the full
-  wiring and its disclosed design gaps.
+  under the `"printful"` provider key, and `PRINTIFY_API_TOKEN` + `PRINTIFY_SHOP_ID` both set and
+  truthy additionally (and independently) registers the real Printify adapter (epic 43) under the
+  `"printify"` provider key — see "The Printful adapter" and "The Printify adapter" sections below
+  for the full wiring and each adapter's disclosed design gaps.
 - Surfaced as a real extension of `/demo/<demoSlug>/admin/orders` (not a separate
   `/admin/fulfillment` page — see that page's own doc comment for the reasoning): each order's
   line items show their routed provider (defaulting to `"manual"`), their current status
@@ -126,9 +128,103 @@ states — manual-only vs. manual+Printful-registered, including with a fake/tes
 wiring-verification purposes only, never a live call), the adapter's own unit test suite, and
 `/admin/settings` accurately reporting which provider is active.
 
+## The Printify adapter (epic 43, `@mercatus-liber/adapter-printify`)
+A real, deployed `FulfillmentAdapter` implementation wrapping Printify's real, current v1 order
+API, grounded in developers.printify.com's own raw HTML (fetched directly, not a lossy summarized
+render — the research pass found that a summarized render truncated before the docs' Webhooks
+section) — same sibling-package shape as `adapter-printful`/`adapter-shopify`/`adapter-clerk`.
+`submitOrder` implements the real create-then-send-to-production flow (`POST
+/v1/shops/{shop_id}/orders.json` creates the order UNCHARGED, then `POST
+/v1/shops/{shop_id}/orders/{order_id}/send_to_production.json` is the real point Printify charges
+the merchant — mirroring Printful's own draft-then-confirm shape for the analogous reason);
+`getOrderStatus` polls `GET /v1/shops/{shop_id}/orders/{order_id}.json` for the real, current
+per-line status and shipment/tracking facts.
+
+**Wiring** (`apps/reference-storefront/lib/services.ts`, adapter-printify-02): `manual` is always
+registered as the permanent self-fulfillment fallback; `PRINTFUL_API_TOKEN` and
+`PRINTIFY_API_TOKEN` + `PRINTIFY_SHOP_ID` are each independent, additive branches — any
+combination of none/either/both can be registered side by side, the same "env var truthy adds a
+provider, rather than swapping one" shape as the Printful branch above. Printify additionally
+requires a real shop id (`PRINTIFY_SHOP_ID`), unlike Printful's single-token gate, because real
+Printify accounts can have multiple shops with no auto-discovery endpoint (confirmed in
+research — see `PrintifyFulfillmentAdapterConfig`'s own doc comment,
+`packages/adapter-printify/src/index.ts`). Registering the provider does not itself route any SKU
+to it — every SKU still defaults to `"manual"` until `fulfillmentRouting.setProviderForSku` is
+called for it. `lib/adapter-info.ts`'s `getAdapterInfo()` reports the `Fulfillment` row additively
+across both providers, e.g. `"Manual + Printful + Printify (registered)"` when both are configured,
+`"Manual + Printify (registered)"` when only Printify is, and `"Manual (self-fulfillment)"` when
+neither is — visible on `/demo/<demoSlug>/admin/settings`.
+
+**Three real, disclosed design gaps this adapter bridges via injected config callbacks** (not
+implementation oversights — see `packages/adapter-printify/src/index.ts` and `src/mapping.ts`'s
+own doc comments and this epic's `design-discussion.md`):
+- `resolveRecipient(orderId)`: the same real gap as Printful's `resolveRecipient` — this reference
+  app's `checkout-orders`' `Order.shippingInfo` is only `{ name, email, address }`, but Printify's
+  real `address_to` schema wants structured `first_name`/`last_name`/`address1`/`city`/`zip`/
+  `country` fields. `services.ts`'s wiring is a best-effort bridge (the whole free-text name into
+  `first_name`, leaving `last_name` unset, and the whole free-text address line into `address1`),
+  not a fabricated structured name/address.
+- `resolveCatalogTarget(skuId)`: Printify's confirmed v1 "order an existing product" line-item
+  shape addresses a line by a Printify-assigned `product_id` (string) + `variant_id` (integer),
+  not an arbitrary caller-assigned SKU string. This reference app's catalog has no notion of
+  Printify's catalog surface at all, so `services.ts`'s wiring throws a clear, honest error here
+  rather than inventing a mapping — a real deployment needs an explicit SKU → Printify
+  product/variant mapping (e.g. a small config table or a SKU metadata field) before routing any
+  SKU to `"printify"`.
+- `resolveExternalOrderId(orderId)`: **Printify-specific — Printful needs no equivalent.**
+  Printify's real, confirmed `GET /v1/shops/{shop_id}/orders/{order_id}.json` addresses an order by
+  PRINTIFY'S OWN id, with no confirmed external_id-based lookup (unlike Printful's confirmed
+  `@external_id` trick). `FulfillmentService.submitOrder` returns each provider's
+  `FulfillmentLineRecord[]` to its caller but does not itself persist them anywhere, so
+  `services.ts` wraps the constructed adapter (`withPrintifyExternalOrderIdCapture`) to capture
+  each `submitOrder` call's real returned `externalOrderId` into a plain in-memory `Map` keyed by
+  our own `orderId`, then `resolveExternalOrderId` reads it back for a later `getOrderStatus` call.
+  Best-effort and lost on restart, same as every other in-memory piece of this reference app's own
+  service graph — a real deployment would persist this durably instead.
+
+**Tracking only attaches when an order has exactly one shipment** — a real, disclosed limit
+confirmed during research: unlike Printful's real v2 `Shipment` schema (which carries
+`shipment_items[].order_item_id`), Printify's real, confirmed `Order.shipments[]` shape
+(`carrier`/`number`/`url`/`delivered_at`) carries no per-line-item linkage at all — no field on a
+shipment names which line item(s) it covers. When an order has exactly one real shipment,
+attributing it to every line item is a safe, unambiguous read (the common case for a small
+single-item-per-order shop); when an order has zero or two-or-more real shipments, this adapter
+cannot honestly attribute a specific shipment to a specific line item from Printify's own response
+shape alone, so it returns `null` tracking rather than guessing (`findTrackingForLineItem`,
+`packages/adapter-printify/src/mapping.ts`).
+
+**Webhook signatures are genuinely confirmed and verified by default** — a different posture than
+Printful's fail-closed-with-no-default. Printify's docs' own "Securing your Webhooks" section
+confirms a real envelope (`{ id, type, created_at, resource: { id, type, data } }`) and a real
+HMAC-SHA256 `X-Pfy-Signature: sha256={digest}` scheme. Because this is confirmed rather than
+guessed, `handleWebhookEvent` implements it as a real default verifier (`webhookSecret` config) —
+still fails closed with `PrintifyWebhookSignatureNotConfiguredError` if no secret/override is
+configured at all.
+
+**Honest credential-gap disclosure:** no real Printify account, API token, or shop id exists in
+this environment (checked directly: no `PRINTIFY_API_TOKEN`/`PRINTIFY_SHOP_ID` in the shell
+environment or `.env.local`, which carries only `VERCEL_OIDC_TOKEN`) — same disclosed gap as
+`admin-auth-clerk` (epic 27), the PostHog/GA4 insights adapters (epic 46), and this same epic's own
+Printful adapter (epic 42) above. This adapter is built and unit-tested (30 tests,
+`packages/adapter-printify/test/`) for real correctness against Printify's actual, current API
+shape, not exercised against a live Printify API. What *is* genuinely verified without a live
+credential: the `services.ts` env-var branch itself across every combination of Printful/Printify
+configured (including with fake/test credentials for wiring-verification purposes only, never a
+live call), the adapter's own unit test suite, and `/admin/settings` accurately reporting which
+providers are registered.
+
+**Marketplace routing is out of scope.** Printify is a marketplace where the same product can be
+fulfilled by multiple independent print providers with different base cost/quality/ship time,
+either auto-routed via "Printify Choice" or picked per product listing — that provider selection
+happens entirely in Printify's own dashboard/catalog setup, upstream of this adapter. This
+subsystem's `FulfillmentRoutingRepository` only ever routes a SKU to the `"printify"` *provider
+key* (i.e., "submit this line to Printify at all"), never to a specific print provider within
+Printify — the same boundary Printful's `resolveCatalogTarget` gap already draws (which
+Printify-catalog product/variant a SKU maps to, and therefore which underlying print provider
+fulfills it, is Printify-dashboard setup, not something this adapter or this reference app's
+catalog has any notion of).
+
 ## Explicitly NOT this subsystem's job
-- **A real Printify adapter** — disclosed future work (epic 43), not built here. Printful is the
-  only real third-party provider registered today, alongside the permanent manual fallback.
 - **Automatically routing/submitting an order for fulfillment when it's placed or paid** — no
   event-bus subscription exists yet (unlike `inventory`/`internal-bi`'s
   `registerInventorySync`/`registerBiEventLogSync`). An operator explicitly triggers
@@ -142,11 +238,16 @@ wiring-verification purposes only, never a live call), the adapter's own unit te
 - **Changing `Order.status`** — `checkout-orders`' own coarse order status is untouched by this
   subsystem entirely; fulfillment status is a separate, finer-grained, per-line concern (see
   design-discussion.md §1a).
-- **A live-verified Printful webhook receiver route** — `handleWebhookEvent` is implemented and
-  fails closed on an unconfirmed signature scheme (see above), but no route in
-  `apps/reference-storefront` calls it yet and no real Printful account exists in this
-  environment to send a real webhook from; the manual adapter has no external system to receive
-  webhooks from at all, so it doesn't implement this method.
+- **A live-verified Printful or Printify webhook receiver route** — both adapters implement
+  `handleWebhookEvent` (Printful fails closed on an unconfirmed signature scheme; Printify verifies
+  a real, confirmed HMAC-SHA256 scheme by default), but no route in `apps/reference-storefront`
+  calls either yet and no real Printful or Printify account exists in this environment to send a
+  real webhook from; the manual adapter has no external system to receive webhooks from at all, so
+  it doesn't implement this method.
+- **Printify marketplace/print-provider routing** — which of Printify's own independent print
+  providers actually fulfills a given Printify-catalog product/variant (auto-routed via "Printify
+  Choice" or picked per listing) is Printify-dashboard setup, entirely upstream of this adapter and
+  this subsystem — see "The Printify adapter" section's marketplace-routing note above.
 
 ## Decoupling notes
 `packages/fulfillment`'s only runtime dependency is `@mercatus-liber/core`.
@@ -167,8 +268,10 @@ one of those must return zero hits; `fulfillment` is consumed only by
    `checkout.order.paid`, mirroring `registerInventorySync`) instead of the operator-triggered
    admin action this story ships? Deferred — the explicit action is a real, working default
    and doesn't block epics 42-43's real provider adapters.
-2. A real Printify adapter (epic 43) is disclosed future work, a deliberate *second*, later,
-   optional POD provider — no live Printful credential exists in this environment either (see
-   "The Printful adapter" section's disclosure above), so the Printful adapter itself stands as
-   the proof of swappability for v1, same posture as `internal-bi`'s external-BI-tool adapter and
-   `admin-auth`'s non-Clerk identity providers.
+2. Both Printful (epic 42) and Printify (epic 43) are now real, wired, unit-tested adapters, but
+   no live Printful or Printify credential exists in this environment (see each adapter's own
+   disclosure section above) — the two adapters' own unit test suites, plus the `services.ts`
+   env-var branch verified across every registration combination, stand as the proof of
+   swappability for v1, same posture as `internal-bi`'s external-BI-tool adapter and `admin-auth`'s
+   non-Clerk identity providers. Live account verification for either provider is disclosed future
+   work, not required for this epic's scope.

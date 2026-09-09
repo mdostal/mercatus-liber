@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/adapter-printify",
+  "version": "0.1.0",
+  "description": "FulfillmentAdapter (subsystem 41) backed by Printify's real, current v1 order API (POST /v1/shops/{shop_id}/orders.json to create, POST .../send_to_production.json to actually charge/produce -- Printify's confirmed 'charged only when an order moves to production' billing model, no wallet abstraction) plus real v1 webhooks with confirmed HMAC-SHA256 X-Pfy-Signature verification. Proves fulfillment is genuinely swappable to a second, independent dropship/POD provider, same shape as adapter-printful proved for the first. Public surface is exactly FulfillmentAdapter; depends on @mercatus-liber/fulfillment only, for the types it implements, plus global fetch as the real HTTP client (no new HTTP dependency introduced -- mirrors adapter-printful's own convention) and Node's built-in crypto for webhook signature verification.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/fulfillment": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

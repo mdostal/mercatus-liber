@@ -19,6 +19,7 @@
     "@mercatus-liber/adapter-clerk": "workspace:*",
     "@mercatus-liber/adapter-postgres": "workspace:*",
     "@mercatus-liber/adapter-printful": "workspace:*",
+    "@mercatus-liber/adapter-printify": "workspace:*",
     "@mercatus-liber/adapter-sanity": "workspace:*",
     "@mercatus-liber/adapter-sqlite": "workspace:*",
     "@mercatus-liber/admin-auth": "workspace:*",

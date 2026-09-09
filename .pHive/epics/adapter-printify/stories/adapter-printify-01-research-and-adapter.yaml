@@ -1,0 +1,114 @@
+id: adapter-printify-01-research-and-adapter
+epic: adapter-printify
+title: "Confirm real Printify API details, build the FulfillmentAdapter implementation"
+status: pending
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/adapter-printify/docs/design-discussion.md in full first -- section 1
+  resolves the marketplace-routing scope question and names the exact open items this story's
+  research must confirm. Also read .pHive/planning/backlog-addendum-merch-fulfillment-2026-09-09.md's
+  Printify section for the grounding research already done.
+
+  Look into Printify's real, current, live API documentation (prefer an authoritative source
+  like their published OpenAPI spec or official SDK if one exists, same discipline that worked
+  well for epic 42's Printful adapter) to confirm:
+  1. The real field name for a merchant-supplied external order reference on order creation.
+  2. Real, current rate limits (the addendum flagged these as unconfirmed, unlike Printful's
+     clearly-documented 120/min).
+  3. The real, current `POST /v1/shops/{shop_id}/orders.json` request schema (line-item shape,
+     how it references a specific Printify product/variant).
+  4. The real, current webhook payload/signature format for order lifecycle events.
+
+  Then read packages/adapter-printful/src/index.ts in full (the sibling adapter built for epic
+  42 -- same FulfillmentAdapter contract, same general shape, though Printify's real API details
+  will differ) and packages/fulfillment/src/types.ts (the contract itself) as structural
+  references.
+
+  Build packages/adapter-printify/ (@mercatus-liber/adapter-printify), depending only on
+  @mercatus-liber/fulfillment for the types it satisfies plus a real HTTP client matching this
+  repo's established convention. Implement `createPrintifyFulfillmentAdapter(config: { apiToken:
+  string; shopId: string })`: `submitOrder` (real request shape per the confirmed schema above,
+  including the required app-identifying User-Agent header on every request), `getOrderStatus`,
+  `handleWebhookEvent` (real event-type parsing, with the signature-verification specifics
+  resolved or honestly disclosed per the research above, same fail-closed discipline as
+  adapter-printful if the format is genuinely unconfirmable).
+
+  Write real unit tests against mocked HTTP responses shaped like Printify's actual, real,
+  currently-documented API responses.
+
+acceptance_criteria:
+  - "Given the 4 research questions, then each real finding (or an honest 'unconfirmable from public docs' disclosure) is documented in code comments and the final report"
+  - "Given createPrintifyFulfillmentAdapter, then every real HTTP request it builds includes the required app-identifying User-Agent header"
+  - "Given submitOrder, then it builds a real request matching Printify's confirmed order-creation schema, verified by unit tests against realistic mocked responses"
+  - "Given a real type-compatibility check, then this adapter fully satisfies every method of epic 41's FulfillmentAdapter contract"
+  - "Given `pnpm --filter @mercatus-liber/adapter-printify build` and its own test suite, then both succeed"
+
+steps:
+  - id: research
+    description: Research Printify's real, current API docs for the 4 open questions before writing any adapter code.
+    agent: researcher
+  - id: implement
+    description: Build the adapter per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write and run real unit tests against realistically-shaped mocked Printify API responses, verify every acceptance criterion.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the adapter's request shapes genuinely match real, current Printify API documentation, confirm the User-Agent header requirement is genuinely met on every request.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/adapter-printify.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript }
+  key_files:
+    - path: packages/fulfillment/src/types.ts
+      purpose: The real FulfillmentAdapter contract this story satisfies.
+    - path: packages/adapter-printful/src/index.ts
+      purpose: Sibling adapter built for epic 42 -- structural reference (contract shape), not a source of Printify-specific API details.
+    - path: .pHive/planning/backlog-addendum-merch-fulfillment-2026-09-09.md
+      purpose: The grounding research for what's already confirmed about Printify.
+
+files_to_modify:
+  - file: packages/adapter-printify/package.json
+    change: New file.
+  - file: packages/adapter-printify/src/index.ts
+    change: New file -- createPrintifyFulfillmentAdapter.
+
+design_decisions:
+  - decision: "This adapter does not implement multi-provider routing logic -- provider selection is Printify's own platform responsibility."
+    rationale: "See design-discussion.md §1a -- the same boundary Printful's mockup/template setup already has with adapter-printful."
+
+risks:
+  - severity: low
+    description: "Printify's rate limits and webhook format are genuinely unconfirmed until this story's research."
+    mitigation: "Story explicitly requires real research, honest disclosure if genuinely unconfirmable, same discipline that worked for epic 42."
+
+references:
+  - path: .pHive/epics/adapter-printify/docs/design-discussion.md
+    relevant_excerpt: "§1: the resolved marketplace-routing scope and the exact research items this story must confirm."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: adapter_printify.fulfillment_contract_implemented
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "FulfillmentAdapter contract method coverage, verified by type-compatibility check and test"
+  verify_at: integrate
+  owner: tester

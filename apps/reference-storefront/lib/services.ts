@@ -3,6 +3,7 @@ import { createAccountService, createInMemoryCustomerProfileRepository, type Acc
 import { createClerkAdminAuthAdapter } from "@mercatus-liber/adapter-clerk";
 import { createPostgresAdapter } from "@mercatus-liber/adapter-postgres";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
+import { createPrintifyFulfillmentAdapter, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { ADMIN_DEV_SESSION_COOKIE, createDefaultAdminAuthAdapter, type AdminAuthAdapter } from "@mercatus-liber/admin-auth";
@@ -41,6 +42,7 @@ import {
   createInMemoryFulfillmentRoutingRepository,
   createManualFulfillmentAdapter,
   MANUAL_FULFILLMENT_PROVIDER,
+  type FulfillmentAdapter,
   type FulfillmentRoutingRepository,
   type FulfillmentService,
 } from "@mercatus-liber/fulfillment";
@@ -172,6 +174,37 @@ function createLazyStripeAdapter(config: { secretKey: string; webhookSecret: str
     createPaymentSession: (input) => get().createPaymentSession(input),
     confirmPayment: (sessionId) => get().confirmPayment(sessionId),
     handleWebhookEvent: (rawBody, signature) => get().handleWebhookEvent(rawBody, signature),
+  };
+}
+
+/**
+ * Bridges adapter-printify's own `resolveExternalOrderId(orderId)` config
+ * callback (see @mercatus-liber/adapter-printify's index.ts doc comment for
+ * why this adapter, unlike adapter-printful, needs one at all: Printify's
+ * real, confirmed `GET /v1/shops/{shop_id}/orders/{order_id}.json` addresses
+ * an order by PRINTIFY'S OWN id, with no confirmed external_id-based lookup
+ * equivalent to Printful's `@external_id` trick). `FulfillmentService.
+ * submitOrder` (packages/fulfillment/src/service.ts) returns each provider's
+ * `FulfillmentLineRecord[]` to its caller but does not itself persist them
+ * anywhere, so nothing else in this app's service graph already remembers
+ * "our orderId -> Printify's own order id" -- this wrapper captures it at the
+ * one point it's genuinely available (the adapter's own submitOrder return
+ * value, which already carries `externalOrderId` on every record) into a
+ * plain in-memory Map, then getOrderStatus's resolveExternalOrderId reads it
+ * back. Best-effort and lost on restart, same as every other in-memory piece
+ * of this reference app's own service graph (see this module's header
+ * comment) -- a real deployment would persist this durably (e.g. alongside
+ * real FulfillmentLineRecord storage) instead.
+ */
+function withPrintifyExternalOrderIdCapture(adapter: FulfillmentAdapter, externalOrderIdByOrderId: Map<string, string>): FulfillmentAdapter {
+  return {
+    ...adapter,
+    async submitOrder(input) {
+      const records = await adapter.submitOrder(input);
+      const externalOrderId = records.find((record) => record.externalOrderId)?.externalOrderId;
+      if (externalOrderId) externalOrderIdByOrderId.set(input.orderId, externalOrderId);
+      return records;
+    },
   };
 }
 
@@ -506,6 +539,12 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // @mercatus-liber/adapter-printful's own unit test suite (prior story) plus
   // this file's env-var branch itself being independently verifiable with a
   // fake/test token for wiring purposes only.
+  // Printify's own `resolveExternalOrderId` bridge (see
+  // withPrintifyExternalOrderIdCapture's doc comment above) -- declared
+  // outside the adapters map so both the wrapper and the config callback
+  // below close over the same Map instance.
+  const printifyExternalOrderIdByOrderId = new Map<string, string>();
+
   const fulfillmentRouting = createInMemoryFulfillmentRoutingRepository();
   const fulfillment = createFulfillmentService({
     orders: checkout,
@@ -537,6 +576,81 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
                 );
               },
             }),
+          }
+        : {}),
+      // `PRINTIFY_API_TOKEN` and `PRINTIFY_SHOP_ID` both required and truthy
+      // (unlike Printful's single-token gate) -- real Printify accounts can
+      // have multiple shops with no auto-discovery endpoint (adapter-printify's
+      // own PrintifyFulfillmentAdapterConfig doc comment, design-discussion.md
+      // §1b), so a shop id genuinely has to be supplied, not guessed. Additive,
+      // same two-state "env var truthy adds a provider, rather than swapping
+      // one" shape as the Printful branch immediately above -- both can be
+      // registered side by side, and a SKU only actually routes to
+      // `"printify"` once fulfillmentRouting.setProviderForSku is called for
+      // it (every SKU still defaults to "manual" either way).
+      //
+      // createPrintifyFulfillmentAdapter's config requires three resolver
+      // callbacks bridging real gaps between this reference app's own data
+      // model and Printify's real v1 order API (see packages/adapter-printify/
+      // src/index.ts and src/mapping.ts's doc comments, and this epic's
+      // design-discussion.md for the full research record):
+      //   - resolveRecipient: same real gap as Printful's resolveRecipient
+      //     above -- checkout-orders' ShippingInfo carries only one free-text
+      //     address line, but Printify's real address_to schema wants
+      //     structured first_name/last_name/address1/city/zip/country fields.
+      //     This is a best-effort bridge (the whole free-text name into
+      //     first_name, leaving last_name unset, and the whole free-text
+      //     address line into address1), not a fabricated structured name/
+      //     address -- a real deployment would need to collect structured
+      //     shipping info at checkout to do better.
+      //   - resolveCatalogTarget: same real gap as Printful's
+      //     resolveCatalogTarget above -- this reference app's catalog has no
+      //     notion of a Printify product_id/variant_id at all, so this throws
+      //     a clear, honest error instead of inventing one; a real deployment
+      //     would add that mapping (e.g. a small config table or a SKU
+      //     metadata field) before routing any SKU to "printify".
+      //   - resolveExternalOrderId: Printify-specific bridge (Printful needs
+      //     no equivalent) -- see withPrintifyExternalOrderIdCapture's own doc
+      //     comment above for why.
+      //
+      // No real Printify account/API token exists in this environment -- see
+      // this story's final report and docs/subsystems/22-fulfillment.md's
+      // Printify section for the honest disclosure. This branch is therefore
+      // unexercised against a live Printify API here; it's covered instead by
+      // @mercatus-liber/adapter-printify's own unit test suite (prior story)
+      // plus this file's env-var branch itself being independently verifiable
+      // with fake/test credentials for wiring purposes only.
+      ...(process.env.PRINTIFY_API_TOKEN && process.env.PRINTIFY_SHOP_ID
+        ? {
+            [PRINTIFY_PROVIDER]: withPrintifyExternalOrderIdCapture(
+              createPrintifyFulfillmentAdapter({
+                apiToken: process.env.PRINTIFY_API_TOKEN,
+                shopId: process.env.PRINTIFY_SHOP_ID,
+                async resolveRecipient(orderId) {
+                  const order = await checkout.getOrder(orderId);
+                  if (!order) {
+                    throw new Error(`resolveRecipient: no such order "${orderId}"`);
+                  }
+                  return {
+                    first_name: order.shippingInfo.name,
+                    email: order.shippingInfo.email,
+                    address1: order.shippingInfo.address,
+                  };
+                },
+                async resolveCatalogTarget(skuId) {
+                  throw new Error(
+                    `resolveCatalogTarget: no Printify product/variant mapping exists for SKU "${skuId}" -- ` +
+                      "this reference app's catalog has no notion of Printify's catalog surface; a real " +
+                      "deployment needs an explicit SKU -> Printify product_id/variant_id mapping before " +
+                      "routing any SKU to the \"printify\" provider.",
+                  );
+                },
+                async resolveExternalOrderId(orderId) {
+                  return printifyExternalOrderIdByOrderId.get(orderId) ?? null;
+                },
+              }),
+              printifyExternalOrderIdByOrderId,
+            ),
           }
         : {}),
     },
