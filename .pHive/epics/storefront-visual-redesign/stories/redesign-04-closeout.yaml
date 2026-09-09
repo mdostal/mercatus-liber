@@ -1,0 +1,88 @@
+id: redesign-04-closeout
+epic: storefront-visual-redesign
+title: "Live verification, epic-backlog closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [redesign-02-copy-pass, redesign-03-component-visual-consistency]
+
+description: |
+  Read both prior pieces of work's committed changes in full first.
+
+  Live verification, all against a real dev server:
+  1. Visit /demo/dragon-merch and read the rendered HTML (or the page's visible text content
+     via a fetch) -- confirm the hero banner and product/category copy read as real shop
+     content, not framework developer-pitch language, and confirm the new spacing/type/card
+     tokens are actually present in the rendered inline styles (grep the response HTML for the
+     new CSS custom property names, e.g. var(--space-md), var(--shadow-card), to prove they're
+     genuinely wired, not just defined and unused).
+  2. Visit a PDP, the cart page, and a category page -- same check.
+  3. Switch to a different theme bundle (e.g. dark) via the existing theme-switcher and confirm
+     the page still renders without errors or obviously broken/invisible content (proving the
+     fallback-value pattern from the component-consistency piece of work actually works).
+  4. Confirm the Northline demo (/demo/northline) is completely unaffected by this epic --
+     it should render exactly as it did before (this epic explicitly doesn't touch Northline's
+     own theme/copy).
+  5. Run the full monorepo test suite and typecheck one more time -- confirm everything is
+     green.
+
+  Update .pHive/planning/epic-backlog.md: add a new row at the next available number (grep for
+  the highest existing number first), status "done (4/4 stories complete)", with a description
+  noting the enriched token vocabulary, the refined classic default, the copy pass, and the
+  component-consistency pass -- be honest that visual verification was done via rendered-HTML/
+  inline-style inspection, not a screenshot tool (none is available in this environment), so
+  don't claim a pixel-perfect design review happened. Add a bullet to the "Definition of vision
+  fully done" section noting the default demo storefront now has real copy and a genuinely
+  considered visual theme, distinct from (and building on top of) epic 31's routing/structure
+  work.
+
+acceptance_criteria:
+  - "Given the rendered HTML of at least 3 different page types, then the new CSS custom property names are genuinely present in inline styles, not just defined in theme-bundles.ts and unused"
+  - "Given a non-classic theme bundle is active, then the page still renders correctly, proving the fallback-value pattern works"
+  - "Given /demo/northline, then it is confirmed completely unaffected by this epic's changes"
+  - "Given the full monorepo test suite and typecheck, then both are green"
+  - ".pHive/planning/epic-backlog.md's new row reads 'done (4/4 stories complete)' and honestly discloses the verification method (rendered-HTML inspection, not a screenshot tool)"
+
+steps:
+  - id: implement
+    description: Run all 5 verification steps above and update epic-backlog.md per the description.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence (actual grep/fetch output, not assumptions).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and honestly discloses the verification method's limits.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/storefront-visual-redesign; this story's completion is the trigger to merge the whole epic branch --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs a new row for this epic and a vision-summary addendum.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: New epic row; vision-summary addendum.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/storefront-visual-redesign/docs/design-discussion.md
+    relevant_excerpt: |
+      §4: "Visual verification via screenshot -- no browser/screenshot tool is connected in
+      this environment... flagged here so later verification doesn't overclaim what was
+      actually checked."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative."

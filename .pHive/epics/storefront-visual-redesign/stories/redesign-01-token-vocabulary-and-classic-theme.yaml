@@ -1,0 +1,101 @@
+id: redesign-01-token-vocabulary-and-classic-theme
+epic: storefront-visual-redesign
+title: "Enrich StyleTokens vocabulary; refine the classic bundle as a genuinely considered default"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/storefront-visual-redesign/docs/design-discussion.md sections 2-3 in full
+  for the exact reasoning and scope of this change.
+
+  Read packages/theming/src/types.ts (StyleTokens is Record<string, string>, deliberately
+  unopinionated) and packages/theming/src/theme-bundles.ts (all 7 existing bundles) in full.
+
+  This story does NOT touch any component's rendering code (that's a separate, later piece of
+  work) -- it only defines the richer token vocabulary and the refined "classic" bundle's
+  values. It also does NOT create an eighth bundle -- "classic" itself is refined in place,
+  since it's the actual default every demo loads today.
+
+  Deliverables:
+  - Extend the "classic" bundle's `tokens` object in packages/theming/src/theme-bundles.ts
+    with a small, disciplined set of additional CSS custom properties (still just more
+    key-value pairs in the same Record<string, string> -- no new type, no new package):
+    - `--color-muted`: a secondary/muted text color for less-emphasized copy (e.g. prices'
+      currency suffix, helper text).
+    - `--color-border`: a subtle divider/border color for card and section separation.
+    - `--space-xs`, `--space-sm`, `--space-md`, `--space-lg`: a 4-step spacing scale (pick real
+      pixel or rem values with a coherent ratio, e.g. 4/8/16/32px or similar -- your judgment,
+      document the ratio chosen in a code comment).
+    - `--font-size-heading-lg`, `--font-size-heading-md`, `--font-size-body`: a minimal type
+      scale (3 sizes is enough -- page-title-level, section-heading-level, body-level).
+    - `--shadow-card`: one subtle box-shadow value for product/category tile elevation.
+  - Refine "classic"'s EXISTING tokens (`--color-background`, `--color-text`,
+    `--color-primary`, `--color-accent`, `--font-family`, `--radius`) into values that
+    genuinely compose well with the new ones above -- this is real design judgment, not just
+    filling in blanks: pick a considered palette (the current flat blue-on-white is a
+    reasonable starting point to refine, not necessarily replace wholesale), and a real font
+    stack if system-ui feels too generic for a "real shop" feel (your call, document why).
+  - The other 6 bundles (dark/minimal/vibrant/retro/high-contrast/northline) are NOT required
+    to define the new tokens -- but check whether any component (in a LATER piece of work) will
+    need a sensible fallback when a bundle doesn't define one of the new tokens; if so, note
+    this as a finding for that later story rather than trying to solve it here (this story is
+    scoped to "classic" only).
+
+acceptance_criteria:
+  - "Given the refined classic bundle, when its full token object is read, then it contains all 6 original tokens plus the new spacing/color/type/shadow tokens listed above, each with a real, considered value (not a placeholder)"
+  - "Given the existing test suite for packages/theming, when this story lands, then it still passes -- the token map's TYPE is unchanged (still Record<string,string>), only its VALUES and KEY COUNT for the classic bundle changed"
+  - "Given a documented rationale (code comment) for the spacing-scale ratio and any font-family change, then both are present and genuinely explain the choice, not just restate the values"
+
+steps:
+  - id: research
+    description: Read the full existing theme-bundles.ts and types.ts before writing any code.
+    agent: researcher
+  - id: implement
+    description: Extend the token vocabulary and refine the classic bundle per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Confirm packages/theming's existing test suite still passes; add a small assertion if useful that the classic bundle's token count/keys match the new expected set.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the chosen values are genuinely coherent as a system (not just individually reasonable), and the rationale comments are real explanations.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/storefront-visual-redesign.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: packages/theming/src/theme-bundles.ts
+      purpose: The file this story edits -- the classic bundle's tokens object specifically.
+    - path: packages/theming/src/types.ts
+      purpose: Confirms StyleTokens is Record<string,string>, unopinionated -- the contract this story stays within.
+
+files_to_modify:
+  - file: packages/theming/src/theme-bundles.ts
+    change: Extended token vocabulary + refined classic bundle values.
+
+design_decisions:
+  - decision: "classic is refined in place, not replaced by an eighth bundle."
+    rationale: "It's the literal default every demo loads today -- refining it in place means 'the default experience is good' is simply true, without adding bundle-selection complexity or orphaning the old classic values as unused dead code."
+
+risks: []
+
+references:
+  - path: .pHive/epics/storefront-visual-redesign/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: the exact token-vocabulary-enrichment design and why it stays within the existing
+      Record<string,string> contract.
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Design/token-value story -- verified via the acceptance criteria's completeness check and documented rationale, not a numeric trend."

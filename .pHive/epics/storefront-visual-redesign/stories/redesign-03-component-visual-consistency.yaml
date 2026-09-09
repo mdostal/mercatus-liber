@@ -1,0 +1,119 @@
+id: redesign-03-component-visual-consistency
+epic: storefront-visual-redesign
+title: "Apply the enriched tokens consistently across every shared render component"
+status: pending
+complexity: high
+methodology: classic
+depends_on: [redesign-01-token-vocabulary-and-classic-theme]
+
+description: |
+  Read the committed packages/theming/src/theme-bundles.ts (the enriched classic bundle's new
+  token names: --color-muted, --color-border, --space-xs/sm/md/lg,
+  --font-size-heading-lg/md/body, --shadow-card) from the prior piece of work in full.
+
+  Read .pHive/epics/storefront-visual-redesign/docs/design-discussion.md section 3 for the
+  goal: "real spacing rhythm, a real type scale for headings vs. body text, a subtle card
+  treatment for product/category tiles."
+
+  This is a real but BOUNDED CSS-consistency pass -- no new components, no new files (other
+  than possibly a tiny shared style-constants helper if that reduces duplication across the
+  components below, your call). Every component already uses inline `style={{ ... }}` with
+  `var(--color-x)` references -- this story updates those inline styles to use the newly
+  available tokens consistently, replacing ad-hoc hardcoded pixel values with the new spacing
+  scale and ad-hoc font-size guesses with the new type scale, and adding the subtle card
+  treatment (border + shadow) to product/category tile-shaped elements.
+
+  Components to update (read each one's current content fresh, don't rely on memory):
+  - apps/reference-storefront/components/cms-sections.tsx (HeroBanner, CategorySpot,
+    ProductGrid, AdSlot, ServiceAreaInfo)
+  - apps/reference-storefront/components/pdp-tabbed-detail.tsx and pdp-long-scroll.tsx
+  - apps/reference-storefront/components/bundle-tier-selector.tsx
+  - apps/reference-storefront/components/recommendation-shelf.tsx
+  - apps/reference-storefront/app/demo/[demoSlug]/cart/page.tsx (grand total / line-item
+    presentation)
+  - apps/reference-storefront/app/demo/[demoSlug]/category/[slug]/page.tsx and
+    apps/reference-storefront/app/demo/[demoSlug]/search/page.tsx (product listing tiles, if
+    they render their own markup rather than reusing ProductGrid)
+
+  For components not defining a token this story added (the 6 non-classic bundles won't have
+  --color-muted etc.) -- use a CSS fallback value in the var() call (e.g. `var(--color-muted,
+  #666)`) so those bundles still render sensibly without erroring or looking broken, rather
+  than requiring every bundle to define every new token.
+
+  Do NOT touch admin pages' styling (`app/demo/[demoSlug]/admin/**`) -- this epic is about the
+  shopper-facing storefront experience specifically; admin UI polish is out of scope here.
+
+acceptance_criteria:
+  - "Given every listed component, when grepped for hardcoded pixel spacing values (e.g. literal '16px', '8px' in style objects) that duplicate what the new --space-* tokens already express, then such duplication is meaningfully reduced -- most spacing in these files now references the token scale, not ad-hoc numbers"
+  - "Given a product/category tile-shaped element (ProductGrid items, category listing items), when rendered, then it uses the new --shadow-card and --color-border tokens for a real card treatment, not a bare unstyled block"
+  - "Given a non-classic bundle (e.g. dark or vibrant) is active, when any updated component renders, then it does not error or render obviously broken (missing colors, invisible text) due to a token that bundle doesn't define -- the fallback-value pattern is applied everywhere a new token is used"
+  - "Given the full existing test suite, when this story lands, then it still passes -- this is a styling-only change, no behavioral/structural change to any component's props or logic"
+
+steps:
+  - id: research
+    description: Read the committed enriched classic bundle and every listed component's current content fresh before writing any code.
+    agent: researcher
+  - id: implement
+    description: Apply the enriched tokens consistently across the listed components per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Run the full test suite; manually verify on a dev server that both the classic (enriched) theme and at least one other bundle (e.g. dark) render without errors or obviously broken/invisible content.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the fallback-value pattern is genuinely applied everywhere a new token is referenced, and spacing/type-scale usage is meaningfully more consistent than before, not just changed in a couple of spots.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/storefront-visual-redesign.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/components/cms-sections.tsx
+      purpose: HeroBanner/CategorySpot/ProductGrid -- the highest-visibility components to polish.
+    - path: packages/theming/src/theme-bundles.ts
+      purpose: The enriched classic bundle's exact new token names to consume.
+
+files_to_modify:
+  - file: apps/reference-storefront/components/cms-sections.tsx
+    change: Consistent spacing/type-scale/card treatment.
+  - file: apps/reference-storefront/components/pdp-tabbed-detail.tsx
+    change: Consistent spacing/type-scale.
+  - file: apps/reference-storefront/components/pdp-long-scroll.tsx
+    change: Consistent spacing/type-scale.
+  - file: apps/reference-storefront/components/bundle-tier-selector.tsx
+    change: Consistent spacing/type-scale.
+  - file: apps/reference-storefront/components/recommendation-shelf.tsx
+    change: Consistent spacing/type-scale/card treatment.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/cart/page.tsx
+    change: Consistent spacing/type-scale.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/category/[slug]/page.tsx
+    change: Card treatment if it renders its own product tiles.
+  - file: apps/reference-storefront/app/demo/[demoSlug]/search/page.tsx
+    change: Card treatment if it renders its own product tiles.
+
+design_decisions:
+  - decision: "CSS var() fallback values are used everywhere a new token is referenced."
+    rationale: "The 6 non-classic demonstration bundles won't define the new tokens -- fallback values keep them rendering sensibly without requiring every bundle to be updated in this story."
+
+risks:
+  - severity: low
+    description: "A broad styling pass across many components risks missing one, leaving an inconsistent spot."
+    mitigation: "The acceptance criteria ask for 'meaningfully reduced' duplication, not perfect zero-hardcoded-values -- a real, bounded, honest pass, not a perfection claim."
+
+references:
+  - path: .pHive/epics/storefront-visual-redesign/docs/design-discussion.md
+    relevant_excerpt: |
+      §3: "Every shared render component gets updated to consume the new tokens
+      consistently... a real, if bounded, CSS pass across the existing components."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Visual-consistency story verified via the acceptance criteria's manual dev-server check and grep-based reduction check; no browser/screenshot tool available in this environment for pixel-level review, disclosed explicitly rather than overclaimed."

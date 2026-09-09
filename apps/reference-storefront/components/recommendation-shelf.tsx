@@ -149,18 +149,37 @@ export async function resolveCartRecommendations(
  */
 export function RecommendationShelf({ label, products }: RecommendationShelfData) {
   return (
-    <section style={{ marginTop: 24, borderTop: "1px solid var(--color-accent)", paddingTop: 12 }}>
+    <section
+      style={{
+        marginTop: "var(--space-md, 32px)",
+        borderTop: "1px solid var(--color-border, #e5e5e5)",
+        paddingTop: "var(--space-sm, 16px)",
+      }}
+    >
       <InteractionTracker
         eventName="recommendation_shelf_viewed"
         properties={{ label, productSlugs: products.map((product) => product.slug) }}
       />
-      <h2>{label}</h2>
-      <ul style={{ display: "flex", flexWrap: "wrap", gap: 16, listStyle: "none", padding: 0 }}>
+      <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>{label}</h2>
+      <ul style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-sm, 16px)", listStyle: "none", padding: 0, margin: 0 }}>
         {products.map((product) => (
-          <li key={product.slug}>
-            <a href={`/products/${product.slug}`}>{product.title}</a>
+          <li
+            key={product.slug}
+            style={{
+              border: "1px solid var(--color-border, #ddd)",
+              borderRadius: "var(--radius)",
+              boxShadow: "var(--shadow-card, none)",
+              padding: "var(--space-sm, 16px)",
+            }}
+          >
+            <a
+              href={`/products/${product.slug}`}
+              style={{ textDecoration: "none", color: "inherit", fontSize: "var(--font-size-body, 1rem)" }}
+            >
+              {product.title}
+            </a>
             {product.price ? (
-              <span>
+              <span style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
                 {" -- "}
                 {(product.price.amount / 100).toFixed(2)} {product.price.currency}
               </span>

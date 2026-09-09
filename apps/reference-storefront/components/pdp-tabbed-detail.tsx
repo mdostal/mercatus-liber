@@ -24,28 +24,33 @@ export function PdpTabbedDetail({
 
   return (
     <main>
-      <h1>{product.title}</h1>
-      <p style={{ fontSize: 12, color: "var(--color-accent)" }}>Layout: tabbed-detail</p>
+      <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{product.title}</h1>
 
       <details open>
-        <summary>Description</summary>
-        <p>{product.description}</p>
+        <summary style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Description</summary>
+        <p style={{ fontSize: "var(--font-size-body, 1rem)" }}>{product.description}</p>
       </details>
 
       <details open>
-        <summary>Options</summary>
+        <summary style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Options</summary>
         {skus.map((sku) => (
-          <form action={addToCartAction} key={sku.id} style={{ marginBottom: 12 }}>
+          <form action={addToCartAction} key={sku.id} style={{ marginBottom: "var(--space-sm, 16px)" }}>
             <input type="hidden" name="demoSlug" value={demoSlug} />
             <input type="hidden" name="skuId" value={sku.id} />
-            <span>
+            <span style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
               {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")} --{" "}
               {(sku.price.amount / 100).toFixed(2)} {sku.price.currency} -- in stock: {stockBySkuId[sku.id] ?? 0}
             </span>{" "}
             <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
             <button
               type="submit"
-              style={{ background: "var(--color-primary)", color: "var(--color-background)", borderRadius: "var(--radius)", border: "none", padding: "4px 12px" }}
+              style={{
+                background: "var(--color-primary)",
+                color: "var(--color-background)",
+                borderRadius: "var(--radius)",
+                border: "none",
+                padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+              }}
             >
               Add to cart
             </button>

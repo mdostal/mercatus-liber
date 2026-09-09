@@ -14,7 +14,7 @@ export default async function AccountPage({ params }: { params: Promise<{ demoSl
     return (
       <main>
         <h1>Account</h1>
-        <p>No demo account yet -- complete a checkout to create one.</p>
+        <p>You don't have an account yet -- complete a checkout and we'll set one up for you.</p>
       </main>
     );
   }
@@ -29,10 +29,7 @@ export default async function AccountPage({ params }: { params: Promise<{ demoSl
   return (
     <main>
       <h1>Account</h1>
-      <p style={{ color: "#666" }}>
-        Demo account (no real auth -- see docs/subsystems/10-customer-account.md open question 1).{" "}
-        {profile?.email}
-      </p>
+      <p style={{ color: "#666" }}>{profile?.email}</p>
 
       <h2>Order history</h2>
       {orders.length === 0 ? (

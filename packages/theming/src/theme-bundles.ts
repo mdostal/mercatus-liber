@@ -23,20 +23,77 @@ export function applyTheme(theming: ThemingService, bundle: ThemeBundle): void {
 }
 
 /**
- * Every bundle below fills in the same token vocabulary: --color-background,
- * --color-text, --color-primary, --color-accent, --font-family, --radius.
+ * Every bundle below fills in at least the original six-token vocabulary:
+ * --color-background, --color-text, --color-primary, --color-accent, --font-family,
+ * --radius. "classic" (the actual default every demo loads) additionally defines a
+ * richer vocabulary -- --color-muted, --color-border, a --space-* scale, a
+ * --font-size-heading-lg/md and --font-size-body type scale, and --shadow-card -- refined in place as
+ * part of the storefront-visual-redesign epic (story redesign-01). The other six bundles
+ * are untouched demonstration/utility bundles and don't define these new tokens; a
+ * component consuming them needs a sensible fallback for bundles that don't define them
+ * (noted here as a finding for the later component-consuming story, not solved in this
+ * token-only change).
  */
 export const THEME_BUNDLES: ThemeBundle[] = [
   {
+    // Refined as the actual default every demo loads (storefront-visual-redesign epic,
+    // story redesign-01) -- not an eighth bundle. The original tokens were a reasonable
+    // starting point (flat blue-on-white, system-ui) but composed with nothing: no muted
+    // text color, no border color, no spacing/type scale, no elevation. Refined here into
+    // a genuinely coherent system built on a warm, print-catalog-leaning palette rather
+    // than a generic app palette.
     key: "classic",
     label: "Classic",
     tokens: {
-      "--color-background": "#ffffff",
-      "--color-text": "#1a1a1a",
-      "--color-primary": "#2563eb",
-      "--color-accent": "#0d9488",
-      "--font-family": "system-ui, sans-serif",
-      "--radius": "4px",
+      // Warm ivory instead of stark #ffffff, and a warm near-black instead of flat
+      // #1a1a1a -- both read as "considered" rather than default-browser white/black,
+      // and set up --color-muted/--color-border (also warm-toned) to feel like part of
+      // one family instead of a cold gray bolted onto a cold background.
+      "--color-background": "#fdfbf7",
+      "--color-text": "#1c1917",
+      // Deepened from the original #2563eb/#0d9488 (Tailwind blue-600/teal-600) to
+      // blue-700/teal-700: same recognizable blue-primary + teal-accent pairing, just
+      // richer and more confident -- reads less like a default component-library demo.
+      "--color-primary": "#1d4ed8",
+      "--color-accent": "#0f766e",
+      // New: secondary/muted text (e.g. a price's currency suffix, helper copy) and a
+      // subtle card/section divider. Both are warm grays (stone-500 / stone-200) so they
+      // sit naturally against the warm background/text above instead of reading as a
+      // mismatched cool gray dropped onto a warm page.
+      "--color-muted": "#78716c",
+      "--color-border": "#e7e5e4",
+      // A serif stack, not system-ui: system-ui reads as "whatever this OS's UI chrome
+      // font is" -- correct for an app, generic for a shop. A serif built from
+      // widely-preinstalled fonts (Iowan Old Style on Apple platforms, Palatino
+      // elsewhere, Georgia as the universal fallback) reads more like a considered goods
+      // catalog than a web app, without requiring any font-loading infrastructure this
+      // package doesn't have.
+      "--font-family": "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif",
+      // Softened from 4px to 6px -- enough to read as "designed" (vs. minimal's stark
+      // 0px) without tipping into vibrant's playful 12px.
+      "--radius": "6px",
+      // 4-step spacing scale, ratio 2 (each step doubles the previous): 0.5rem -> 1rem ->
+      // 2rem -> 4rem. A strict doubling is the easiest ratio to reason about consistently
+      // across very different uses -- xs for tight inline gaps (e.g. a price and its
+      // muted currency suffix), sm for internal component padding, md for gaps between
+      // components within a section, lg for gaps between whole page sections -- while
+      // still producing a visibly distinct step at every level.
+      "--space-xs": "0.5rem",
+      "--space-sm": "1rem",
+      "--space-md": "2rem",
+      "--space-lg": "4rem",
+      // Minimal 3-step type scale: page-level heading (hero/page title), section-level
+      // heading, and body copy. 40px/24px/16px gives each level a clearly distinct role
+      // without needing a full modular scale for what's still a token map, not a design
+      // system.
+      "--font-size-heading-lg": "2.5rem",
+      "--font-size-heading-md": "1.5rem",
+      "--font-size-body": "1rem",
+      // One subtle card shadow for product/category tile elevation: a tight low-opacity
+      // contact shadow plus a softer, larger ambient one, both tinted from --color-text
+      // (warm near-black) rather than pure black so the shadow reads as part of the same
+      // warm palette instead of a generic cool-gray dropped in from elsewhere.
+      "--shadow-card": "0 1px 2px rgba(28, 25, 23, 0.06), 0 4px 12px rgba(28, 25, 23, 0.08)",
     },
     defaultTemplatesByPageType: { pdp: "pdp.tabbed-detail" },
   },
