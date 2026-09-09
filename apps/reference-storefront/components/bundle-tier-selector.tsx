@@ -22,32 +22,42 @@ export function BundleTierSelector({
   pricingByTierId: Record<string, TierPricing>;
 }) {
   return (
-    <section style={{ marginBottom: 16 }}>
+    <section style={{ marginBottom: "var(--space-sm, 16px)" }}>
       <InteractionTracker eventName="bundle_viewed" properties={{ bundleId: bundle.id, title: bundle.title }} />
-      <h2>{bundle.title}</h2>
+      <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>{bundle.title}</h2>
       {bundle.tiers.map((tier) => {
         const pricing = pricingByTierId[tier.id];
         return (
           <form
             action={addBundleTierToCartAction}
             key={tier.id}
-            style={{ marginBottom: 12, borderTop: "1px solid var(--color-accent)", paddingTop: 8 }}
+            style={{
+              marginBottom: "var(--space-sm, 16px)",
+              borderTop: "1px solid var(--color-border, #e5e5e5)",
+              paddingTop: "var(--space-xs, 8px)",
+            }}
           >
             <input type="hidden" name="demoSlug" value={demoSlug} />
             <input type="hidden" name="bundleId" value={bundle.id} />
             <input type="hidden" name="tierId" value={tier.id} />
-            <span>
+            <span style={{ fontSize: "var(--font-size-body, 1rem)" }}>
               {tier.label}
               {pricing ? (
-                <>
+                <span style={{ color: "var(--color-muted, #666)" }}>
                   {" -- "}
                   {(pricing.total.amount / 100).toFixed(2)} {pricing.total.currency}
-                </>
+                </span>
               ) : null}
             </span>{" "}
             <button
               type="submit"
-              style={{ background: "var(--color-primary)", color: "var(--color-background)", borderRadius: "var(--radius)", border: "none", padding: "4px 12px" }}
+              style={{
+                background: "var(--color-primary)",
+                color: "var(--color-background)",
+                borderRadius: "var(--radius)",
+                border: "none",
+                padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+              }}
             >
               Add to cart
             </button>

@@ -2,11 +2,31 @@ import type { ComponentInstance } from "@mercatus-liber/cms";
 import type { DemoSlug } from "../lib/demos";
 import { getServicesForDemo } from "../lib/services";
 
+/** Shared card treatment for product/category tile-shaped list items -- border + shadow using the enriched classic bundle's tokens (with fallbacks for the six bundles that don't define them). See design-discussion.md §3: "a subtle card treatment for product/category tiles." */
+const TILE_CARD_STYLE = {
+  border: "1px solid var(--color-border, #ddd)",
+  borderRadius: "var(--radius)",
+  boxShadow: "var(--shadow-card, none)",
+  padding: "var(--space-sm, 16px)",
+} as const;
+
+/** Shared grid layout for a list of tile cards (ProductGrid, CategorySpot, category/search listings). */
+const TILE_GRID_STYLE = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+  gap: "var(--space-sm, 16px)",
+  listStyle: "none",
+  padding: 0,
+  margin: 0,
+} as const;
+
 async function HeroBanner({ config }: { config: Record<string, unknown> }) {
   return (
-    <section style={{ padding: 24, background: "#222", color: "#fff", marginBottom: 16 }}>
-      <h1 style={{ margin: 0 }}>{String(config.headline ?? "")}</h1>
-      {config.subheadline ? <p style={{ margin: "8px 0 0" }}>{String(config.subheadline)}</p> : null}
+    <section style={{ padding: "var(--space-md, 32px)", background: "#222", color: "#fff", marginBottom: "var(--space-sm, 16px)" }}>
+      <h1 style={{ margin: 0, fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{String(config.headline ?? "")}</h1>
+      {config.subheadline ? (
+        <p style={{ margin: "var(--space-xs, 8px) 0 0", fontSize: "var(--font-size-body, 1rem)" }}>{String(config.subheadline)}</p>
+      ) : null}
     </section>
   );
 }
@@ -19,12 +39,17 @@ async function CategorySpot({ demoSlug, config }: { demoSlug: DemoSlug; config: 
   );
 
   return (
-    <section style={{ marginBottom: 16 }}>
-      <h2>Shop by category</h2>
-      <ul>
+    <section style={{ marginBottom: "var(--space-sm, 16px)" }}>
+      <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Shop by category</h2>
+      <ul style={TILE_GRID_STYLE}>
         {categories.map((category) => (
-          <li key={category.id}>
-            <a href={`/demo/${demoSlug}/category/${category.slug}`}>{category.title}</a>
+          <li key={category.id} style={TILE_CARD_STYLE}>
+            <a
+              href={`/demo/${demoSlug}/category/${category.slug}`}
+              style={{ textDecoration: "none", color: "inherit", fontSize: "var(--font-size-body, 1rem)" }}
+            >
+              {category.title}
+            </a>
           </li>
         ))}
       </ul>
@@ -41,10 +66,15 @@ async function ProductGrid({ demoSlug, config }: { demoSlug: DemoSlug; config: R
 
   return (
     <section>
-      <ul>
+      <ul style={TILE_GRID_STYLE}>
         {products.map((product) => (
-          <li key={product.id}>
-            <a href={`/demo/${demoSlug}/products/${product.slug}`}>{product.title}</a>
+          <li key={product.id} style={TILE_CARD_STYLE}>
+            <a
+              href={`/demo/${demoSlug}/products/${product.slug}`}
+              style={{ textDecoration: "none", color: "inherit", fontSize: "var(--font-size-body, 1rem)" }}
+            >
+              {product.title}
+            </a>
           </li>
         ))}
       </ul>
@@ -54,9 +84,9 @@ async function ProductGrid({ demoSlug, config }: { demoSlug: DemoSlug; config: R
 
 async function ServiceAreaInfo({ config }: { config: Record<string, unknown> }) {
   return (
-    <section style={{ marginBottom: 16 }}>
+    <section style={{ marginBottom: "var(--space-sm, 16px)" }}>
       {config.hours ? (
-        <p>
+        <p style={{ fontSize: "var(--font-size-body, 1rem)" }}>
           <strong>Hours:</strong> {String(config.hours)}
         </p>
       ) : null}
@@ -87,13 +117,22 @@ async function AdSlot({
 
   const { creative } = result;
   return (
-    <section style={{ padding: 24, background: "#f5f5f5", border: "1px solid #ddd", marginBottom: 16 }}>
+    <section
+      style={{
+        padding: "var(--space-md, 32px)",
+        background: "#f5f5f5",
+        border: "1px solid var(--color-border, #ddd)",
+        borderRadius: "var(--radius)",
+        boxShadow: "var(--shadow-card, none)",
+        marginBottom: "var(--space-sm, 16px)",
+      }}
+    >
       <a href={creative.linkHref} style={{ color: "inherit", textDecoration: "none" }}>
         {creative.imageUrl ? (
-          <img src={creative.imageUrl} alt={creative.headline} style={{ maxWidth: "100%", marginBottom: 8 }} />
+          <img src={creative.imageUrl} alt={creative.headline} style={{ maxWidth: "100%", marginBottom: "var(--space-xs, 8px)" }} />
         ) : null}
-        <h2 style={{ margin: 0 }}>{creative.headline}</h2>
-        <p style={{ margin: "8px 0 0" }}>{creative.body}</p>
+        <h2 style={{ margin: 0, fontSize: "var(--font-size-heading-md, 1.5rem)" }}>{creative.headline}</h2>
+        <p style={{ margin: "var(--space-xs, 8px) 0 0", fontSize: "var(--font-size-body, 1rem)" }}>{creative.body}</p>
       </a>
     </section>
   );

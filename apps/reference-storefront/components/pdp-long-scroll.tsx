@@ -16,33 +16,51 @@ export function PdpLongScroll({
 
   return (
     <main>
-      <h1>{product.title}</h1>
+      <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{product.title}</h1>
 
-      <p>{product.description}</p>
+      <p style={{ fontSize: "var(--font-size-body, 1rem)" }}>{product.description}</p>
 
-      <h2>Available options</h2>
+      <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Available options</h2>
       <ul>
         {optionValues.map((option) => (
-          <li key={option.key}>
+          <li key={option.key} style={{ fontSize: "var(--font-size-body, 1rem)" }}>
             {option.key}: {option.values.map(String).join(", ")}
           </li>
         ))}
       </ul>
 
-      <h2>Buy</h2>
+      <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Buy</h2>
       {skus.map((sku) => (
-        <form action={addToCartAction} key={sku.id} style={{ marginBottom: 16, borderTop: "1px solid var(--color-accent)", paddingTop: 8 }}>
+        <form
+          action={addToCartAction}
+          key={sku.id}
+          style={{
+            marginBottom: "var(--space-sm, 16px)",
+            borderTop: "1px solid var(--color-border, #e5e5e5)",
+            paddingTop: "var(--space-xs, 8px)",
+          }}
+        >
           <input type="hidden" name="demoSlug" value={demoSlug} />
           <input type="hidden" name="skuId" value={sku.id} />
-          <div>{sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}</div>
-          <div>
+          <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+            {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}
+          </div>
+          <div style={{ fontSize: "var(--font-size-body, 1rem)" }}>
             Price: {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
           </div>
-          <div>In stock: {stockBySkuId[sku.id] ?? 0}</div>
+          <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+            In stock: {stockBySkuId[sku.id] ?? 0}
+          </div>
           <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
           <button
             type="submit"
-            style={{ background: "var(--color-primary)", color: "var(--color-background)", borderRadius: "var(--radius)", border: "none", padding: "4px 12px" }}
+            style={{
+              background: "var(--color-primary)",
+              color: "var(--color-background)",
+              borderRadius: "var(--radius)",
+              border: "none",
+              padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+            }}
           >
             Add to cart
           </button>

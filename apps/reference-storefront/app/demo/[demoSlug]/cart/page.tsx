@@ -17,9 +17,11 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
 
   if (!cartId || !currentCart || currentCart.items.length === 0) {
     return (
-      <main>
-        <h1>Cart</h1>
-        <p>Your cart is empty. Take a look around and find something you like.</p>
+      <main style={{ padding: "var(--space-sm, 16px)" }}>
+        <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>Cart</h1>
+        <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+          Your cart is empty. Take a look around and find something you like.
+        </p>
       </main>
     );
   }
@@ -56,40 +58,72 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
   const couponEnteredButInvalid = couponCode !== null && adjustment.appliedCode === null;
 
   return (
-    <main>
-      <h1>Cart</h1>
-      <ul>
+    <main style={{ padding: "var(--space-sm, 16px)" }}>
+      <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>Cart</h1>
+      <ul
+        style={{
+          listStyle: "none",
+          padding: 0,
+          margin: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-sm, 16px)",
+        }}
+      >
         {lines.map((line) => (
-          <li key={line.skuId}>
-            {line.title} x{line.quantity} -- {((line.priceSnapshot.amount * line.quantity) / 100).toFixed(2)}{" "}
-            {line.priceSnapshot.currency}
+          <li
+            key={line.skuId}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              borderBottom: "1px solid var(--color-border, #e5e5e5)",
+              paddingBottom: "var(--space-xs, 8px)",
+              fontSize: "var(--font-size-body, 1rem)",
+            }}
+          >
+            <span>
+              {line.title} x{line.quantity}
+            </span>
+            <span style={{ color: "var(--color-muted, #666)" }}>
+              {((line.priceSnapshot.amount * line.quantity) / 100).toFixed(2)} {line.priceSnapshot.currency}
+            </span>
           </li>
         ))}
       </ul>
 
-      <form action={applyCouponAction}>
+      <form action={applyCouponAction} style={{ marginTop: "var(--space-md, 32px)" }}>
         <input type="hidden" name="demoSlug" value={demoSlug} />
         <input type="text" name="code" placeholder="Coupon code" defaultValue={couponCode ?? ""} />
         <button type="submit">Apply coupon</button>
       </form>
-      {couponEnteredButInvalid && <p>Coupon code not valid</p>}
+      {couponEnteredButInvalid && (
+        <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>Coupon code not valid</p>
+      )}
 
-      <section>
-        <p>
+      <section
+        style={{
+          marginTop: "var(--space-md, 32px)",
+          padding: "var(--space-sm, 16px)",
+          border: "1px solid var(--color-border, #e5e5e5)",
+          borderRadius: "var(--radius)",
+          boxShadow: "var(--shadow-card, none)",
+        }}
+      >
+        <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)", margin: 0 }}>
           Subtotal: {(subtotalAmount / 100).toFixed(2)} {adjustment.total.currency}
         </p>
         {adjustment.discountTotal.amount > 0 && (
-          <p>
+          <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)", margin: "var(--space-xs, 8px) 0 0" }}>
             Discount{adjustment.appliedCode ? ` (${adjustment.appliedCode})` : ""}: -
             {(adjustment.discountTotal.amount / 100).toFixed(2)} {adjustment.discountTotal.currency}
           </p>
         )}
-        <p>
+        <p style={{ fontSize: "var(--font-size-heading-md, 1.5rem)", fontWeight: "bold", margin: "var(--space-xs, 8px) 0 0" }}>
           Total: {(adjustment.total.amount / 100).toFixed(2)} {adjustment.total.currency}
         </p>
       </section>
 
-      <form action={startCheckoutAction}>
+      <form action={startCheckoutAction} style={{ marginTop: "var(--space-sm, 16px)" }}>
         <input type="hidden" name="demoSlug" value={demoSlug} />
         <button type="submit">Check out with Stripe</button>
       </form>
