@@ -1,0 +1,69 @@
+id: fulfillment-03-verification-and-closeout
+epic: fulfillment-routing
+title: "Live verification, closeout, merge"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [fulfillment-02-admin-surface-and-wiring]
+
+description: |
+  Read both prior stories' committed changes in full first.
+
+  1. Live verification against a real dev server: place a real order (any demo), confirm its
+     lines show up in /admin/fulfillment (or the extended orders page) with the correct default
+     manual routing, perform a real mark-shipped action and confirm the status/tracking updates
+     correctly, confirm a viewer-role session is genuinely rejected from the mutation.
+  2. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  3. Update .pHive/planning/epic-backlog.md: change epic 41's row to "done (3/3 stories
+     complete)", naming the new subsystem, the admin surface, and that this unblocks epics
+     42-43 (Printful/Printify adapters) -- match the style/detail of surrounding rows.
+  4. Commit and merge feat/fulfillment-routing into master with --no-ff, mirroring the "Merge
+     epic: <name> (epic NN)" convention from prior epic merges.
+
+acceptance_criteria:
+  - "Given a real order, then its lines appear in the admin fulfillment surface with correct default manual routing"
+  - "Given a real mark-shipped action, then the status/tracking updates correctly, and a viewer-role session is genuinely rejected"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given .pHive/planning/epic-backlog.md, then epic 41's row reads done (3/3 stories complete) with an accurate, specific description"
+  - "Given git log after this story, then master shows a clean --no-ff merge commit for this epic with no conflicts"
+
+steps:
+  - id: implement
+    description: Run all verification steps and make the backlog update per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the epic-backlog.md edit is accurate and the merge is clean.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/fulfillment-routing, then merge --no-ff to master.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: Needs epic 41's row updated to done.
+
+files_to_modify:
+  - file: .pHive/planning/epic-backlog.md
+    change: Mark epic 41 done with an accurate description.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/fulfillment-routing/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's live verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; epic-backlog.md's done status is qualitative, consistent with every other epic's closeout story in this repo."

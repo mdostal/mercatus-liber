@@ -1,0 +1,91 @@
+id: fulfillment-02-admin-surface-and-wiring
+epic: fulfillment-routing
+title: "/admin/fulfillment, services.ts wiring, docs/subsystems/22-fulfillment.md"
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [fulfillment-01-subsystem-and-manual-adapter]
+
+description: |
+  Read the prior story's committed changes in full first -- the FulfillmentService/adapter/
+  repository it built is what this story wires into the running app and surfaces in the admin
+  UI.
+
+  1. Wire @mercatus-liber/fulfillment into apps/reference-storefront/lib/services.ts, following
+     this file's standard composition pattern (read a couple of existing wiring blocks, e.g.
+     internal-bi's or promotions', for the convention) -- construct the manual adapter as the
+     zero-infra default (no env var needed for this story, since no real POD provider adapter
+     exists yet; epics 42-43 add the env-var branch to a real provider later).
+  2. Add a real `/admin/fulfillment` page (or, if reading apps/reference-storefront/app/demo/[demoSlug]/admin/orders/page.tsx
+     shows it's a cleaner fit, a real extension of that existing list-only orders page -- your
+     call after reading it, document your reasoning either way) showing, for real orders,
+     their per-line fulfillment routing/status, and a real "mark shipped" action (a
+     `"use server"` action, same convention as every other admin mutation in this repo, gated by
+     `requireAdminPermission("mutate")` per the existing admin-auth pattern -- read
+     lib/actions.ts for the exact convention to follow).
+  3. Write docs/subsystems/22-fulfillment.md, matching the existing subsystem docs' structure/
+     level of detail (read a couple of recent ones, e.g. 20-internal-bi.md or 21-admin-auth.md,
+     as the format template).
+
+acceptance_criteria:
+  - "Given lib/services.ts after this story, then it constructs a real FulfillmentService backed by the manual adapter, following the file's standard composition pattern"
+  - "Given a real order with real line items, then /admin/fulfillment (or the extended orders page) shows its real per-line routing (defaulting to manual) and status"
+  - "Given the mark-shipped action invoked by an owner/admin-role session, then it succeeds and the line's status updates to shipped with real tracking info if provided"
+  - "Given the mark-shipped action invoked by a viewer-role session, then it's rejected by requireAdminPermission, mirroring every other admin mutation's guard"
+  - "Given docs/subsystems/22-fulfillment.md, then it exists and matches this repo's established subsystem-doc format/detail level"
+  - "Given the full monorepo test suite and typecheck, then both stay green"
+
+steps:
+  - id: research
+    description: Read services.ts's existing wiring conventions, the admin/orders page, lib/actions.ts's requireAdminPermission pattern, and a couple of recent subsystem docs as templates, before writing anything.
+    agent: researcher
+  - id: implement
+    description: Wire the subsystem, build the admin surface, and write the subsystem doc per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify every acceptance criterion against a real running dev server, including the viewer-role rejection check.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the admin mutation follows the exact same guard pattern as every other admin action in this repo.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/fulfillment-routing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, framework: Next.js App Router }
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Central composition root -- where the new subsystem gets wired.
+    - path: "apps/reference-storefront/app/demo/[demoSlug]/admin/orders/page.tsx"
+      purpose: Existing list-only orders page -- read to decide new page vs. real extension.
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: requireAdminPermission convention every admin mutation action follows.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: "Wire @mercatus-liber/fulfillment via the manual adapter"
+  - file: "apps/reference-storefront/app/demo/[demoSlug]/admin/fulfillment/page.tsx"
+    change: "New file (or a real extension of admin/orders/page.tsx -- developer's call, documented)"
+  - file: apps/reference-storefront/lib/actions.ts
+    change: "Add the mark-shipped admin mutation action"
+  - file: docs/subsystems/22-fulfillment.md
+    change: New file.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/fulfillment-routing/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's admin surface implements."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Wiring/admin-UI story; correctness is verified by the acceptance criteria's real end-to-end checks, not a numeric trend."

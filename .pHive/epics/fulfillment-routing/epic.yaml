@@ -1,0 +1,44 @@
+name: fulfillment-routing
+title: "New @mercatus-liber/fulfillment subsystem: who/how an order gets fulfilled"
+description: >
+  Foundational for epics 42-44 (Printful/Printify/Shippo adapters). Confirmed by direct
+  inspection: checkout-orders' Order.status has zero notion of a fulfillment provider or
+  per-line routing -- every shop today implicitly assumes 100% self-fulfillment. Adopts the
+  design already resolved by a real, API-verified concurrent-session research pass
+  (.pHive/planning/backlog-addendum-merch-fulfillment-2026-09-09.md): a new subsystem owning
+  its own per-order-line fulfillment records, read alongside orders via a narrow OrderLookup-
+  shaped structural interface (mirroring internal-bi's existing non-forking relationship to
+  Order), never forking checkout-orders' own types. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [fulfillment, new-subsystem, admin-ui]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    fulfillment: "The whole point of this epic -- who/how an order gets produced/shipped"
+    new-subsystem: "New @mercatus-liber/fulfillment package, core-only dependency"
+    admin-ui: "New /admin/fulfillment surface for per-line routing/status"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this session's established convention.
+
+stories:
+  - id: fulfillment-01-subsystem-and-manual-adapter
+    title: "New @mercatus-liber/fulfillment: contract, routing repository, manual default adapter"
+    complexity: high
+    depends_on: []
+  - id: fulfillment-02-admin-surface-and-wiring
+    title: "/admin/fulfillment, services.ts wiring, docs/subsystems/22-fulfillment.md"
+    complexity: medium
+    depends_on: [fulfillment-01-subsystem-and-manual-adapter]
+  - id: fulfillment-03-verification-and-closeout
+    title: "Live verification, closeout, merge"
+    complexity: low
+    depends_on: [fulfillment-02-admin-surface-and-wiring]
