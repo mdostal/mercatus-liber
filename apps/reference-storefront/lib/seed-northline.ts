@@ -1,8 +1,12 @@
+import { randomUUID } from "node:crypto";
+import type { AdvertisingService } from "@mercatus-liber/advertising";
+import type { BundlesService } from "@mercatus-liber/bundles";
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
 import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 import type { PromotionsService } from "@mercatus-liber/promotions";
+import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 
 /**
@@ -42,6 +46,23 @@ import type { ServiceAreaService } from "@mercatus-liber/service-areas";
  * deliberate area-subset pattern (not every new service in every area)
  * matching the original's "premium services in fewer markets, safety/core
  * services everywhere" logic.
+ *
+ * "make the store feel real" pass: Northline had real catalog breadth but
+ * none of the merchandising depth lib/seed.ts's print-shop demo already
+ * exercises -- zero promotions, zero bundles, zero curated recommendation
+ * rules, zero marketing campaigns, and zero subcategories. This pass adds
+ * all 5, each using the exact same already-built, already-tested framework
+ * capability print-shop's seed proves out (DEMO_SUBCATEGORIES for real
+ * parent/child categories via marketingCatalog.createCategory's parentId,
+ * seedInstallBundle for a real cumulative-tier Bundle, seedRecommendations
+ * for real cross-sell RecommendationRules, seedAdvertising for a real
+ * Campaign, seedPromotions for a real redeemable coupon code) -- adapted to
+ * Northline's own real services rather than copied verbatim from seed.ts.
+ * All 4 are optional trailing params on seedNorthlineDemo (bundles,
+ * recommendations, advertising joining the existing promotions param),
+ * guarded the same `if (dep) await seedX(...)` way seedCatalog already
+ * guards its own optional deps -- a caller that doesn't pass one keeps
+ * working unchanged.
  */
 
 /** One priced SKU variant of a service (the "package" identifying attribute value). Mirrors lib/seed.ts's SERVICE_DEMO_SKUS single-variant convention (identifyingAttributeKeys: ["package"]), just applied once per tier instead of once per product -- each tier is its own catalog.generateSkus call with its own price, so a "flat" service is simply a service with exactly one tier. */
@@ -96,6 +117,64 @@ const DEMO_CATEGORIES: DemoCategory[] = [
     slug: "smart-home-automation",
     title: "Smart Home & Automation",
     description: "Thermostats, locks, and the smart-home basics that make a house feel modern.",
+  },
+];
+
+/**
+ * "make the store feel real" pass: real subcategories under 2 of the 4
+ * top-level categories -- the other 2 (Security & Cameras, Networking &
+ * Fiber) are left as-is, proving a category can legitimately have zero
+ * children, same as every category did before this pass. `serviceSlugs`
+ * assigns each subcategory's real existing DEMO_SERVICES slugs IN ADDITION
+ * TO (never instead of) that service's existing top-level parent-category
+ * assignment -- the same many-to-many product<->category pattern
+ * lib/seed.ts's "Embroidered Fleece Hoodie" (assigned to both "embroidery"
+ * and "apparel") already proves, just applied across a parent/child pair
+ * instead of two unrelated top-level categories.
+ */
+interface DemoSubcategory {
+  slug: string;
+  title: string;
+  description: string;
+  parentSlug: string;
+  serviceSlugs: string[];
+}
+
+const DEMO_SUBCATEGORIES: DemoSubcategory[] = [
+  {
+    slug: "tv-mounting",
+    title: "TV Mounting",
+    description: "Flat-panel, outdoor, and relocated TV mounts, plus the cable concealment that finishes the job.",
+    parentSlug: "tv-home-theater",
+    serviceSlugs: ["tv-wall-mounting", "outdoor-tv-installation", "tv-mount-relocation", "tv-cable-concealment"],
+  },
+  {
+    slug: "home-theater-audio",
+    title: "Home Theater & Audio",
+    description: "Full home theater builds, projector and screen installs, in-wall speakers, and the gear that runs them.",
+    parentSlug: "tv-home-theater",
+    serviceSlugs: [
+      "home-theater-setup",
+      "projector-screen-installation",
+      "soundbar-subwoofer-installation",
+      "in-wall-speaker-installation",
+      "av-rack-equipment-setup",
+      "universal-remote-control-programming",
+    ],
+  },
+  {
+    slug: "smart-lighting-access",
+    title: "Smart Lighting & Access",
+    description: "Smart switches, locks, garage door openers, and motorized shades that control who gets in and how a room lights up.",
+    parentSlug: "smart-home-automation",
+    serviceSlugs: ["smart-lighting-install", "smart-lock-install", "smart-garage-door-opener-install", "smart-blinds-shades-install"],
+  },
+  {
+    slug: "whole-home-automation",
+    title: "Whole-Home Automation",
+    description: "Thermostats, automation hubs, multi-room audio, and smoke/CO monitoring that tie a whole house together.",
+    parentSlug: "smart-home-automation",
+    serviceSlugs: ["smart-thermostat-install", "smart-hub-automation-setup", "whole-home-audio-install", "smart-smoke-co-detector-install"],
   },
 ];
 
@@ -518,6 +597,147 @@ const DEMO_SERVICE_AREAS = [
   },
 ];
 
+/**
+ * "make the store feel real" pass: Northline's one real, memorable,
+ * on-brand promo code -- 15% off any cart, no minimum, no coupon-code
+ * lookup required elsewhere in this file since seedAdvertising's campaign
+ * copy below references this exact same constant, so the advertised
+ * discount and the redeemable code can never drift out of sync.
+ */
+const NORTHLINE_PROMO_CODE = "NORTHLINE15";
+
+/**
+ * Seeds Northline's one real cart-scope percentage promotion (the
+ * promotions-real-demo-data pattern lib/seed.ts's own seedCatalog already
+ * threads an optional PromotionsService through, just never exercised by
+ * this file until now) -- 15% off any cart, real code required
+ * (code !== null, mirrors admin-mutation-guard.test.ts's coupon-style
+ * promotions, not print-shop-02's auto-applied product-scope example),
+ * `targetSkuIds: []` because a cart-scope promotion discounts the whole
+ * cart rather than specific SKUs, and no minCartAmount/startsAt/endsAt/
+ * usageLimit constraint -- a genuinely unconditional storewide code, not an
+ * artificially gated one.
+ */
+async function seedPromotions(promotions: PromotionsService): Promise<void> {
+  await promotions.createPromotion({
+    code: NORTHLINE_PROMO_CODE,
+    kind: "percentage",
+    scope: "cart",
+    value: 15,
+    currency: "USD",
+    targetSkuIds: [],
+    minCartAmount: null,
+    startsAt: null,
+    endsAt: null,
+    usageLimit: null,
+  });
+}
+
+/**
+ * Northline's own version of lib/seed.ts's seedServiceBundle (the bundle-04
+ * acceptance demo's 3-tier cumulative-SKU shape) -- but reuses 3 real,
+ * already-seeded single-tier Northline services as the tiers' SKUs instead
+ * of creating new service-demo-only SKUs, since a natural real-world upsell
+ * chain already exists in DEMO_SERVICES: mount the TV, then optionally
+ * conceal the cables, then optionally add a soundbar. Each tier's skuIds is
+ * the correct CUMULATIVE set (tier 2 includes tier 1's SKU, tier 3 includes
+ * tier 2's), same as seedServiceBundle's own tiers. Bundle is attached to
+ * the base "TV Wall Mounting" product, per createBundle's own contract that
+ * a bundle's productId is the base product it's rendered from on the PDP.
+ */
+async function seedInstallBundle(
+  bundles: BundlesService,
+  productIdBySlug: Map<string, string>,
+  skuIdsBySlug: Map<string, string[]>,
+): Promise<void> {
+  const mountProductId = productIdBySlug.get("tv-wall-mounting");
+  const mountSkuId = skuIdsBySlug.get("tv-wall-mounting")?.[0];
+  const concealmentSkuId = skuIdsBySlug.get("tv-cable-concealment")?.[0];
+  const soundbarSkuId = skuIdsBySlug.get("soundbar-subwoofer-installation")?.[0];
+  if (!mountProductId || !mountSkuId || !concealmentSkuId || !soundbarSkuId) return;
+
+  await bundles.createBundle({
+    productId: mountProductId,
+    title: "TV Mount Install Packages",
+    tiers: [
+      { id: randomUUID(), label: "Mount Only", skuIds: [mountSkuId] },
+      { id: randomUUID(), label: "+ Cable Concealment", skuIds: [mountSkuId, concealmentSkuId] },
+      { id: randomUUID(), label: "+ Soundbar Setup", skuIds: [mountSkuId, concealmentSkuId, soundbarSkuId] },
+    ],
+  });
+}
+
+/**
+ * Northline's own version of lib/seed.ts's seedRecommendations -- 2 real,
+ * curated cross-sell rules (rather than print-shop's 1) between services
+ * that already exist in DEMO_SERVICES, placement "both" so each satisfies
+ * both the PDP and cart resolution paths (see
+ * resolvePdpRecommendations/resolveCartRecommendations in
+ * components/recommendation-shelf.tsx): TV Wall Mounting -> TV Cable
+ * Concealment (a mount install that skips concealment is the single most
+ * common upsell miss in this business) and Whole-Home WiFi Mesh
+ * Installation -> Smart Hub & Automation Scene Setup (a mesh network is the
+ * real prerequisite most homeowners don't realize they need before their
+ * smart-home automations become reliable).
+ */
+async function seedRecommendations(recommendations: RecommendationsService, productIdBySlug: Map<string, string>): Promise<void> {
+  const mountId = productIdBySlug.get("tv-wall-mounting");
+  const concealmentId = productIdBySlug.get("tv-cable-concealment");
+  const meshId = productIdBySlug.get("whole-home-wifi-mesh-install");
+  const hubId = productIdBySlug.get("smart-hub-automation-setup");
+
+  if (mountId && concealmentId) {
+    await recommendations.createRule({
+      sourceProductId: mountId,
+      label: "Customers also add",
+      placement: "both",
+      targetProductIds: [concealmentId],
+    });
+  }
+  if (meshId && hubId) {
+    await recommendations.createRule({
+      sourceProductId: meshId,
+      label: "Frequently paired with",
+      placement: "both",
+      targetProductIds: [hubId],
+    });
+  }
+}
+
+/**
+ * Northline's own version of lib/seed.ts's seedAdvertising -- one real,
+ * untargeted, active Campaign with 2 creatives (proving weighted-random
+ * rotation is wired the same way print-shop's does), both referencing the
+ * real NORTHLINE_PROMO_CODE seeded above -- never advertising a discount
+ * that isn't backed by a real, redeemable code.
+ */
+async function seedAdvertising(advertising: AdvertisingService): Promise<void> {
+  await advertising.createCampaign({
+    name: "Northline Fall Install Special",
+    startsAt: null,
+    endsAt: null,
+    targeting: { serviceAreaId: null, pageSlug: null },
+    creatives: [
+      {
+        id: randomUUID(),
+        headline: "Save 15% on Any Installation",
+        body: `Enter code ${NORTHLINE_PROMO_CODE} at checkout to save 15% on any installation, from a single TV mount to a full smart-home overhaul.`,
+        imageUrl: null,
+        linkHref: "/demo/northline/category/tv-home-theater",
+        weight: 1,
+      },
+      {
+        id: randomUUID(),
+        headline: "New: Whole-Home WiFi Mesh Installs",
+        body: `Dead zones, gone. Book a whole-home WiFi mesh install and use code ${NORTHLINE_PROMO_CODE} for 15% off.`,
+        imageUrl: null,
+        linkHref: "/demo/northline/products/whole-home-wifi-mesh-install",
+        weight: 1,
+      },
+    ],
+  });
+}
+
 export async function seedNorthlineDemo(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -525,6 +745,9 @@ export async function seedNorthlineDemo(
   serviceAreas: ServiceAreaService,
   inventory: InventoryAdapter,
   promotions?: PromotionsService,
+  bundles?: BundlesService,
+  recommendations?: RecommendationsService,
+  advertising?: AdvertisingService,
 ): Promise<void> {
   const categoryIdBySlug = new Map<string, string>();
   for (const category of DEMO_CATEGORIES) {
@@ -544,6 +767,11 @@ export async function seedNorthlineDemo(
   );
 
   const productIdBySlug = new Map<string, string>();
+  // "make the store feel real" pass: tracks every service's real generated
+  // SKU ids (in tier order) so seedInstallBundle below can build a real
+  // cumulative-tier Bundle out of 3 already-seeded services' actual SKUs,
+  // never a second, duplicate set of SKUs.
+  const skuIdsBySlug = new Map<string, string[]>();
   for (const service of DEMO_SERVICES) {
     const product = await catalog.createProduct({
       slug: service.slug,
@@ -555,6 +783,7 @@ export async function seedNorthlineDemo(
     productIdBySlug.set(service.slug, product.id);
     await catalog.publishProduct(product.id);
 
+    const skuIds: string[] = [];
     for (const tier of service.tiers) {
       const skus = await catalog.generateSkus(product.id, { package: [tier.package] }, { amount: tier.priceCents, currency: "USD" });
       // Real bug found post-deployment: inventory's own catalog.sku.created
@@ -568,14 +797,37 @@ export async function seedNorthlineDemo(
       // for "always bookable," not a real physical stock count.
       for (const sku of skus) {
         await inventory.setStock(sku.id, 999);
+        skuIds.push(sku.id);
       }
     }
+    skuIdsBySlug.set(service.slug, skuIds);
 
     const categoryId = categoryIdBySlug.get(service.categorySlug);
     if (categoryId) await marketingCatalog.assignProductToCategory(product.id, categoryId);
 
     for (const areaIndex of service.areaIndices) {
       await serviceAreas.assignProductToServiceArea(product.id, areas[areaIndex]!.id);
+    }
+  }
+
+  // "make the store feel real" pass: real subcategories under 2 of the 4
+  // top-level categories (see DEMO_SUBCATEGORIES's doc comment) -- each
+  // subcategory's real services keep their existing top-level category
+  // assignment above AND additionally get assigned here, proving the same
+  // many-to-many product<->category pattern lib/seed.ts's shared-category
+  // products already prove.
+  for (const subcategory of DEMO_SUBCATEGORIES) {
+    const parentId = categoryIdBySlug.get(subcategory.parentSlug);
+    if (!parentId) continue;
+    const createdSubcategory = await marketingCatalog.createCategory({
+      slug: subcategory.slug,
+      title: subcategory.title,
+      description: subcategory.description,
+      parentId,
+    });
+    for (const serviceSlug of subcategory.serviceSlugs) {
+      const productId = productIdBySlug.get(serviceSlug);
+      if (productId) await marketingCatalog.assignProductToCategory(productId, createdSubcategory.id);
     }
   }
 
@@ -627,4 +879,14 @@ export async function seedNorthlineDemo(
     });
     await cms.publishPage(locationPage.id);
   }
+
+  // "make the store feel real" pass: 4 more optional, guarded merchandising
+  // passes, same `if (dep) await seedX(...)` shape lib/seed.ts's own
+  // seedCatalog already uses for its own optional bundles/recommendations/
+  // advertising/promotions deps -- a caller that doesn't pass one of these
+  // (e.g. most test files) keeps working exactly as before.
+  if (promotions) await seedPromotions(promotions);
+  if (bundles) await seedInstallBundle(bundles, productIdBySlug, skuIdsBySlug);
+  if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
+  if (advertising) await seedAdvertising(advertising);
 }

@@ -13,8 +13,12 @@
  * actually assigned to.
  */
 import { createCommerceToolHandlers } from "@mercatus-liber/ai-interface";
+import { createAdvertisingService, createInMemoryCampaignRepository } from "@mercatus-liber/advertising";
+import { createBundlesService, createInMemoryBundleRepository } from "@mercatus-liber/bundles";
 import { createCartService, createInMemoryCartRepository } from "@mercatus-liber/cart";
 import { createCheckoutOrdersService, createInMemoryOrderRepository } from "@mercatus-liber/checkout-orders";
+import { createInMemoryPromotionRepository, createPromotionsService } from "@mercatus-liber/promotions";
+import { createInMemoryRecommendationRepository, createRecommendationsService } from "@mercatus-liber/recommendations";
 import { createInMemoryIndex, registerCatalogSearchSync } from "@mercatus-liber/search";
 import { describe, expect, it } from "vitest";
 import { seedCatalog } from "../lib/seed.js";
@@ -93,24 +97,43 @@ describe("Northline demo seed (epic 15b public demo)", () => {
     expect(mountingAreas).toHaveLength(8);
   });
 
-  it("has exactly 4 real categories, each with at least 1 real product assigned, none empty", async () => {
+  it("has 4 real top-level categories and 4 real subcategories under 2 of them (\"make the store feel real\" pass), each with at least 1 real product assigned, none empty", async () => {
     const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
     await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
     const categories = await marketingCatalog.listCategories();
-    expect(categories.map((c) => c.slug).sort()).toEqual(["networking-fiber", "security-cameras", "smart-home-automation", "tv-home-theater"]);
+    expect(categories.map((c) => c.slug).sort()).toEqual(
+      [
+        "networking-fiber",
+        "security-cameras",
+        "smart-home-automation",
+        "tv-home-theater",
+        // "make the store feel real" pass's 4 real subcategories -- 2 under
+        // tv-home-theater, 2 under smart-home-automation. Security & Cameras
+        // and Networking & Fiber are left with no subcategories, proving a
+        // category can legitimately have zero children.
+        "home-theater-audio",
+        "smart-lighting-access",
+        "tv-mounting",
+        "whole-home-automation",
+      ].sort(),
+    );
 
     for (const category of categories) {
       const productIds = await marketingCatalog.listProductIdsInCategory(category.id);
-      expect(productIds.length).toBeGreaterThanOrEqual(1);
+      expect(productIds.length, `expected ${category.slug} to have at least 1 real product`).toBeGreaterThanOrEqual(1);
     }
 
-    // Every product lands in exactly one of the 4 categories -- nothing left
-    // uncategorized, nothing double-booked.
+    // Every product lands in its real top-level category, plus its real
+    // subcategory when its top-level category has one ("make the store feel
+    // real" pass's many-to-many parent+child assignment) -- nothing left
+    // uncategorized, and nothing lands in a subcategory without also still
+    // carrying its original top-level parent assignment.
     const products = await catalog.listProducts({ status: "active" });
     for (const product of products) {
       const productCategories = await marketingCatalog.listCategoriesForProduct(product.id);
-      expect(productCategories).toHaveLength(1);
+      const hasRealSubcategory = productCategories.some((c) => c.parentId !== null);
+      expect(productCategories).toHaveLength(hasRealSubcategory ? 2 : 1);
     }
   });
 
@@ -244,6 +267,88 @@ describe("Northline demo seed (epic 15b public demo)", () => {
 
     const productResult = (await handlers.get_product!({ slug: "fiber-internet-install" })) as { product: { title: string } };
     expect(productResult.product.title).toBe("Fiber Internet Installation");
+  });
+
+  it("\"make the store feel real\" pass: real subcategories, a real promotion, a real cumulative-tier bundle, real recommendation rules, and a real campaign", async () => {
+    const { events, catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
+    // promotions subscribes to the real EventBus at construction time (its
+    // checkout.order.paid -> redemption-count listener), so it needs the
+    // same real, already-constructed bus the other services share -- same
+    // wiring shape as admin-mutation-guard.test.ts and
+    // bundle-promotion-integration.test.ts.
+    const promotions = createPromotionsService({ repository: createInMemoryPromotionRepository(), events });
+    const bundles = createBundlesService({ repository: createInMemoryBundleRepository(), skuLookup: catalog });
+    const recommendations = createRecommendationsService({ repository: createInMemoryRecommendationRepository() });
+    const advertising = createAdvertisingService({ repository: createInMemoryCampaignRepository() });
+
+    await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory, promotions, bundles, recommendations, advertising);
+
+    // Subcategories: TV & Home Theater and Smart Home & Automation each
+    // real split into 2 real subcategories, each with real products, and
+    // the demo's "Shop by" rendering (app/demo/[demoSlug]/category/[slug]/
+    // page.tsx) depends on listChildCategories(parentId) returning them.
+    const tvHomeTheater = await marketingCatalog.getCategoryBySlug("tv-home-theater");
+    expect(tvHomeTheater).not.toBeNull();
+    const tvHomeTheaterChildren = await marketingCatalog.listChildCategories(tvHomeTheater!.id);
+    expect(tvHomeTheaterChildren.map((c) => c.slug).sort()).toEqual(["home-theater-audio", "tv-mounting"]);
+
+    const smartHome = await marketingCatalog.getCategoryBySlug("smart-home-automation");
+    expect(smartHome).not.toBeNull();
+    const smartHomeChildren = await marketingCatalog.listChildCategories(smartHome!.id);
+    expect(smartHomeChildren.map((c) => c.slug).sort()).toEqual(["smart-lighting-access", "whole-home-automation"]);
+
+    // Categories with no subcategories (this pass's design: not every
+    // category needs one) keep zero children.
+    const securityCameras = await marketingCatalog.getCategoryBySlug("security-cameras");
+    expect(await marketingCatalog.listChildCategories(securityCameras!.id)).toHaveLength(0);
+
+    // Promotion: a real, redeemable, unconditional 15%-off cart code.
+    const allPromotions = await promotions.listPromotions();
+    expect(allPromotions).toHaveLength(1);
+    expect(allPromotions[0]).toMatchObject({ code: "NORTHLINE15", kind: "percentage", scope: "cart", value: 15, status: "active" });
+
+    // Bundle: a real 3-tier cumulative bundle attached to TV Wall Mounting,
+    // reusing TV Wall Mounting / TV Cable Concealment / Soundbar & Wireless
+    // Subwoofer Setup's real, already-seeded SKUs -- never a second,
+    // duplicate SKU set.
+    const mountProduct = (await catalog.listProducts({ status: "active" })).find((p) => p.slug === "tv-wall-mounting")!;
+    const concealmentProduct = (await catalog.listProducts({ status: "active" })).find((p) => p.slug === "tv-cable-concealment")!;
+    const soundbarProduct = (await catalog.listProducts({ status: "active" })).find((p) => p.slug === "soundbar-subwoofer-installation")!;
+    const mountSku = (await catalog.listSkusByProduct(mountProduct.id))[0]!;
+    const concealmentSku = (await catalog.listSkusByProduct(concealmentProduct.id))[0]!;
+    const soundbarSku = (await catalog.listSkusByProduct(soundbarProduct.id))[0]!;
+
+    const allBundles = await bundles.listBundles();
+    expect(allBundles).toHaveLength(1);
+    const bundle = allBundles[0]!;
+    expect(bundle.productId).toBe(mountProduct.id);
+    expect(bundle.tiers).toHaveLength(3);
+    expect(bundle.tiers[0]!.skuIds).toEqual([mountSku.id]);
+    expect(bundle.tiers[1]!.skuIds).toEqual([mountSku.id, concealmentSku.id]);
+    expect(bundle.tiers[2]!.skuIds).toEqual([mountSku.id, concealmentSku.id, soundbarSku.id]);
+
+    // Recommendations: 2 real curated cross-sell rules between real,
+    // already-seeded services.
+    const meshProduct = (await catalog.listProducts({ status: "active" })).find((p) => p.slug === "whole-home-wifi-mesh-install")!;
+    const hubProduct = (await catalog.listProducts({ status: "active" })).find((p) => p.slug === "smart-hub-automation-setup")!;
+
+    const mountRules = await recommendations.getRecommendationsForProduct(mountProduct.id);
+    expect(mountRules).toHaveLength(1);
+    expect(mountRules[0]!.targetProductIds).toEqual([concealmentProduct.id]);
+
+    const meshRules = await recommendations.getRecommendationsForProduct(meshProduct.id);
+    expect(meshRules).toHaveLength(1);
+    expect(meshRules[0]!.targetProductIds).toEqual([hubProduct.id]);
+
+    // Advertising: one real campaign whose creative copy references the
+    // exact same real, redeemable NORTHLINE15 code seeded above -- never an
+    // advertised discount without a backing code.
+    const allCampaigns = await advertising.listCampaigns();
+    expect(allCampaigns).toHaveLength(1);
+    expect(allCampaigns[0]!.creatives.length).toBeGreaterThanOrEqual(1);
+    for (const creative of allCampaigns[0]!.creatives) {
+      expect(creative.body).toContain("NORTHLINE15");
+    }
   });
 
   it("DEMO_BRAND unset (default) still seeds the print-shop catalog -- zero regression", async () => {
