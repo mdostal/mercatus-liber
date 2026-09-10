@@ -1,8 +1,12 @@
+import { randomUUID } from "node:crypto";
+import type { AdvertisingService } from "@mercatus-liber/advertising";
+import type { BundlesService } from "@mercatus-liber/bundles";
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
 import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 import type { PromotionsService } from "@mercatus-liber/promotions";
+import type { RecommendationsService } from "@mercatus-liber/recommendations";
 
 /**
  * Epic demo-store-plant-shop's third public demo: "Broadleaf & Co.", an
@@ -63,6 +67,72 @@ const DEMO_CATEGORIES: DemoCategory[] = [
     description: "Hand-poured soy candles and botanical room sprays, made in small batches close to home.",
   },
 ];
+
+/**
+ * real-store-depth epic: real subcategories under 2 of the 5 top-level
+ * categories above -- these naturally split further the way a real
+ * small-batch shop's own nav would (a "Plants" landing page with dozens of
+ * SKUs genuinely benefits from an easy-care/statement split; "Ceramics &
+ * Planters" genuinely splits into things-you-plant-in and
+ * things-you-drink-or-eat-from). `parentSlug` must be one of
+ * DEMO_CATEGORIES's own slugs above. Each subcategory is assigned to its
+ * real products IN ADDITION TO (not instead of) that product's existing
+ * top-level category assignment from DEMO_PRODUCTS -- see
+ * app/demo/[demoSlug]/category/[slug]/page.tsx's real "Shop by:" child-
+ * category nav and real parent breadcrumb, both already built and wired to
+ * marketingCatalog.listChildCategories/getCategory, so seeding a real
+ * parentId here is the only thing needed to light both up.
+ */
+interface DemoSubcategory {
+  slug: string;
+  title: string;
+  description: string;
+  parentSlug: string;
+  /** Real DEMO_PRODUCTS slugs to additionally assign to this subcategory. */
+  productSlugs: string[];
+}
+
+const DEMO_SUBCATEGORIES: DemoSubcategory[] = [
+  {
+    slug: "easy-care-houseplants",
+    title: "Easy-Care Houseplants",
+    description: "Forgiving, low-fuss houseplants that shrug off a missed watering or a dim corner.",
+    parentSlug: "plants",
+    productSlugs: ["trailing-pothos", "snake-plant", "zz-plant", "chinese-money-plant"],
+  },
+  {
+    slug: "statement-plants",
+    title: "Statement Plants",
+    description: "Big, dramatic floor plants built to anchor a room.",
+    parentSlug: "plants",
+    productSlugs: ["fiddle-leaf-fig", "monstera-deliciosa", "rubber-plant"],
+  },
+  {
+    slug: "planters-vases",
+    title: "Planters & Vases",
+    description: "Hand-thrown planters and vases for real living plants and cut stems.",
+    parentSlug: "ceramics-planters",
+    productSlugs: ["speckled-ceramic-planter", "terracotta-hanging-planter", "bud-vase-trio", "carved-stoneware-vase"],
+  },
+  {
+    slug: "mugs-tableware",
+    title: "Mugs & Tableware",
+    description: "Hand-thrown mugs, bowls, and dishes for everyday use at the table.",
+    parentSlug: "ceramics-planters",
+    productSlugs: ["stoneware-mug-set", "reactive-glaze-serving-bowl", "ceramic-trinket-dish-set"],
+  },
+];
+
+/**
+ * real-store-depth epic: one real, redeemable, on-brand cart-scope coupon --
+ * 15% off the whole order, no minimum, no expiry, unlimited redemptions
+ * (a simple always-on promo, the same shape a genuine small shop would run
+ * indefinitely). Referenced by exact code below by seedMarketingCampaign's
+ * creative copy, so the ad on the home page and the actual redeemable
+ * promotion can never drift out of sync with each other.
+ */
+const BLOOM_PROMO_CODE = "BLOOM15";
+const BLOOM_PROMO_PERCENT_OFF = 15;
 
 /**
  * One priced tier of a variant product (mirrors lib/seed-northline.ts's
@@ -506,12 +576,176 @@ const DEMO_PRODUCTS: DemoProduct[] = [
   },
 ];
 
+/**
+ * real-store-depth epic: seeds DEMO_SUBCATEGORIES (above) as real child
+ * categories under their real parent, then additionally assigns each
+ * listed real product to its real subcategory -- on top of, never instead
+ * of, that product's existing top-level assignment from the main product
+ * loop in seedBroadleafDemo. A subcategory whose parentSlug doesn't
+ * resolve (shouldn't happen -- DEMO_CATEGORIES always seeds first) is
+ * silently skipped, same defensive shape as the top-level category lookup
+ * in the main product loop below.
+ */
+async function seedSubcategories(
+  marketingCatalog: MarketingCatalogService,
+  categoryIdBySlug: Map<string, string>,
+  productIdBySlug: Map<string, string>,
+): Promise<void> {
+  for (const subcategory of DEMO_SUBCATEGORIES) {
+    const parentId = categoryIdBySlug.get(subcategory.parentSlug);
+    if (!parentId) continue;
+
+    const created = await marketingCatalog.createCategory({
+      slug: subcategory.slug,
+      title: subcategory.title,
+      description: subcategory.description,
+      parentId,
+    });
+
+    for (const productSlug of subcategory.productSlugs) {
+      const productId = productIdBySlug.get(productSlug);
+      if (productId) await marketingCatalog.assignProductToCategory(productId, created.id);
+    }
+  }
+}
+
+/**
+ * real-store-depth epic: the one real, redeemable BLOOM_PROMO_CODE coupon
+ * (see its own doc comment above) -- cart-scope, percentage-off,
+ * targetSkuIds empty (a cart-wide discount, not restricted to specific
+ * SKUs), no minimum/expiry/usage-limit gates. Mirrors
+ * CreatePromotionInput's real shape from @mercatus-liber/promotions.
+ */
+async function seedPromotions(promotions: PromotionsService): Promise<void> {
+  await promotions.createPromotion({
+    code: BLOOM_PROMO_CODE,
+    kind: "percentage",
+    scope: "cart",
+    value: BLOOM_PROMO_PERCENT_OFF,
+    currency: "USD",
+    targetSkuIds: [],
+    minCartAmount: null,
+    startsAt: null,
+    endsAt: null,
+    usageLimit: null,
+  });
+}
+
+/**
+ * real-store-depth epic: one real "starter kit" Bundle attached to the
+ * Trailing Pothos's small (4") SKU, with 3 real CUMULATIVE tiers --
+ * mirrors lib/seed.ts's seedServiceBundle pattern exactly (tier N's
+ * skuIds always contains tier N-1's skuIds plus one more real SKU). Tier 1
+ * is the plant alone; tier 2 adds the Speckled Ceramic Planter it ships
+ * best in; tier 3 adds a Fig & Cedar Soy Candle (travel tin) as a real
+ * small gift-with-purchase add-on. `skuIdByProductAndSize` is populated by
+ * the main product loop in seedBroadleafDemo below, keyed
+ * "<product slug>::<tier size>".
+ */
+async function seedStarterBundle(
+  bundles: BundlesService,
+  productIdBySlug: Map<string, string>,
+  skuIdByProductAndSize: Map<string, string>,
+): Promise<void> {
+  const pothosProductId = productIdBySlug.get("trailing-pothos");
+  const pothosSmallSkuId = skuIdByProductAndSize.get("trailing-pothos::small-4in");
+  const planterSkuId = skuIdByProductAndSize.get("speckled-ceramic-planter::6in");
+  const candleSkuId = skuIdByProductAndSize.get("fig-cedar-soy-candle::travel-tin");
+  if (!pothosProductId || !pothosSmallSkuId || !planterSkuId || !candleSkuId) return;
+
+  await bundles.createBundle({
+    productId: pothosProductId,
+    title: "Trailing Pothos Starter Kit",
+    tiers: [
+      { id: randomUUID(), label: "Plant Only", skuIds: [pothosSmallSkuId] },
+      { id: randomUUID(), label: "+ Speckled Ceramic Planter", skuIds: [pothosSmallSkuId, planterSkuId] },
+      {
+        id: randomUUID(),
+        label: "+ Fig & Cedar Candle (Travel Tin)",
+        skuIds: [pothosSmallSkuId, planterSkuId, candleSkuId],
+      },
+    ],
+  });
+}
+
+/**
+ * real-store-depth epic: 2 real, curated cross-sell pairings between
+ * products already in DEMO_PRODUCTS -- placement "both" so each satisfies
+ * both the PDP and cart resolution paths (see
+ * components/recommendation-shelf.tsx), mirroring lib/seed.ts's
+ * seedRecommendations exactly.
+ */
+async function seedRecommendations(
+  recommendations: RecommendationsService,
+  productIdBySlug: Map<string, string>,
+): Promise<void> {
+  const monsteraId = productIdBySlug.get("monstera-deliciosa");
+  const planterId = productIdBySlug.get("speckled-ceramic-planter");
+  if (monsteraId && planterId) {
+    await recommendations.createRule({
+      sourceProductId: monsteraId,
+      label: "Pairs well with",
+      placement: "both",
+      targetProductIds: [planterId],
+    });
+  }
+
+  const candleId = productIdBySlug.get("fig-cedar-soy-candle");
+  const printId = productIdBySlug.get("botanical-print");
+  if (candleId && printId) {
+    await recommendations.createRule({
+      sourceProductId: candleId,
+      label: "Customers also bought",
+      placement: "both",
+      targetProductIds: [printId],
+    });
+  }
+}
+
+/**
+ * real-store-depth epic: one real, untargeted, active Campaign whose
+ * creative copy references the real, redeemable BLOOM_PROMO_CODE seeded by
+ * seedPromotions above -- never advertises a discount that isn't backed by
+ * a real code. Mirrors lib/seed.ts's seedAdvertising shape (2 creatives,
+ * weighted-random rotation). Resolved on the home page via the "ad-slot"
+ * CMS section seedBroadleafDemo adds to the home page's sections below.
+ */
+async function seedMarketingCampaign(advertising: AdvertisingService): Promise<void> {
+  await advertising.createCampaign({
+    name: "Broadleaf Bloom Sale",
+    startsAt: null,
+    endsAt: null,
+    targeting: { serviceAreaId: null, pageSlug: null },
+    creatives: [
+      {
+        id: randomUUID(),
+        headline: `Save ${BLOOM_PROMO_PERCENT_OFF}% -- Enter Code ${BLOOM_PROMO_CODE}`,
+        body: `Enter code ${BLOOM_PROMO_CODE} at checkout to save ${BLOOM_PROMO_PERCENT_OFF}% on your order -- plants, ceramics, textiles, paper goods, and candles, all included.`,
+        imageUrl: null,
+        linkHref: "/demo/broadleaf/category/plants",
+        weight: 1,
+      },
+      {
+        id: randomUUID(),
+        headline: "New: Trailing Pothos Starter Kit",
+        body: "Bundle a Trailing Pothos with a hand-thrown planter and a Fig & Cedar candle -- everything you need in one order.",
+        imageUrl: null,
+        linkHref: "/demo/broadleaf/products/trailing-pothos",
+        weight: 1,
+      },
+    ],
+  });
+}
+
 export async function seedBroadleafDemo(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
   cms: CmsService,
   inventory: InventoryAdapter,
   promotions?: PromotionsService,
+  bundles?: BundlesService,
+  recommendations?: RecommendationsService,
+  advertising?: AdvertisingService,
 ): Promise<void> {
   const categoryIdBySlug = new Map<string, string>();
   for (const category of DEMO_CATEGORIES) {
@@ -525,6 +759,11 @@ export async function seedBroadleafDemo(
   }
 
   const productIdBySlug = new Map<string, string>();
+  // "<product slug>::<tier size>" -> that tier's real SKU id -- populated
+  // below as each tier's single-value generateSkus call resolves, read by
+  // seedStarterBundle above to build the Trailing Pothos Starter Kit's
+  // cumulative tiers out of real SKUs rather than fabricated ids.
+  const skuIdByProductAndSize = new Map<string, string>();
   for (const demo of DEMO_PRODUCTS) {
     const product = await catalog.createProduct({
       slug: demo.slug,
@@ -540,12 +779,15 @@ export async function seedBroadleafDemo(
       const skus = await catalog.generateSkus(product.id, { size: [tier.size] }, { amount: tier.priceCents, currency: "USD" });
       for (const sku of skus) {
         await inventory.setStock(sku.id, tier.stockUnits ?? DEFAULT_STOCK_UNITS);
+        skuIdByProductAndSize.set(`${demo.slug}::${tier.size}`, sku.id);
       }
     }
 
     const categoryId = categoryIdBySlug.get(demo.categorySlug);
     if (categoryId) await marketingCatalog.assignProductToCategory(product.id, categoryId);
   }
+
+  await seedSubcategories(marketingCatalog, categoryIdBySlug, productIdBySlug);
 
   // Slug MUST be "home" -- app/page.tsx looks up a fixed "home" slug
   // regardless of which brand's seed is active (each seed runs against its
@@ -579,7 +821,22 @@ export async function seedBroadleafDemo(
           ].filter((id): id is string => Boolean(id)),
         },
       },
+      {
+        // real-store-depth epic: renders via components/cms-sections.tsx's
+        // AdSlot, resolved against pageSlug="home" (see
+        // components/home-standard-grid.tsx) -- picks up the untargeted
+        // "Broadleaf Bloom Sale" campaign seeded by seedMarketingCampaign
+        // below when `advertising` is provided; renders nothing otherwise
+        // (AdSlot's own documented no-op behavior).
+        componentType: "ad-slot",
+        config: {},
+      },
     ],
   });
   await cms.publishPage(home.id);
+
+  if (promotions) await seedPromotions(promotions);
+  if (bundles) await seedStarterBundle(bundles, productIdBySlug, skuIdByProductAndSize);
+  if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
+  if (advertising) await seedMarketingCampaign(advertising);
 }
