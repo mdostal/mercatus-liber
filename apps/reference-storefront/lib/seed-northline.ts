@@ -2,6 +2,7 @@ import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
 import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
+import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 
 /**
@@ -523,6 +524,7 @@ export async function seedNorthlineDemo(
   cms: CmsService,
   serviceAreas: ServiceAreaService,
   inventory: InventoryAdapter,
+  promotions?: PromotionsService,
 ): Promise<void> {
   const categoryIdBySlug = new Map<string, string>();
   for (const category of DEMO_CATEGORIES) {

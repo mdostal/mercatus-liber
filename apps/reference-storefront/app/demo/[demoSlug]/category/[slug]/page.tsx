@@ -56,6 +56,19 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
   const category = await marketingCatalog.getCategoryBySlug(slug);
   if (!category) notFound();
 
+  // real-store-depth epic: listChildCategories/parentId already existed as
+  // a real, tested MarketingCatalogService capability (see its own doc
+  // comment: "Pass null for top-level categories") but no demo had ever
+  // seeded a non-top-level category, so no page ever called it. Additive --
+  // a category with no children (every category before this epic) renders
+  // exactly as before; a top-level category WITH real subcategories now
+  // shows a "Shop by" link list, and a subcategory page now shows its real
+  // parent in the breadcrumb instead of going straight to Home.
+  const [childCategories, parentCategory] = await Promise.all([
+    marketingCatalog.listChildCategories(category.id),
+    category.parentId ? marketingCatalog.getCategory(category.parentId) : Promise.resolve(null),
+  ]);
+
   const productIds = await marketingCatalog.listProductIdsInCategory(category.id);
   const products = (await Promise.all(productIds.map((id) => catalog.getProduct(id)))).filter(
     (p): p is NonNullable<typeof p> => p !== null,
@@ -94,12 +107,19 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
     media: ImageAdapter;
   }> = (templateKey && CATEGORY_TEMPLATES[templateKey as keyof typeof CATEGORY_TEMPLATES]) || CategoryStandardGrid;
 
-  // seo-02: real BreadcrumbList JSON-LD (Home -> Category), matching the
-  // real nav hierarchy -- design-discussion.md §2c.
-  const breadcrumbItems: BreadcrumbItem[] = [
-    { name: "Home", url: canonicalUrl(`/demo/${demoSlug}`) },
-    { name: category.title, url: canonicalUrl(`/demo/${demoSlug}/category/${category.slug}`) },
-  ];
+  // seo-02: real BreadcrumbList JSON-LD (Home -> [Parent ->] Category),
+  // matching the real nav hierarchy -- design-discussion.md §2c. The
+  // parent hop is additive: every category without a real seeded parent
+  // (every category before this epic) still gets exactly the original
+  // 2-item Home -> Category trail.
+  const breadcrumbItems: BreadcrumbItem[] = [{ name: "Home", url: canonicalUrl(`/demo/${demoSlug}`) }];
+  if (parentCategory) {
+    breadcrumbItems.push({
+      name: parentCategory.title,
+      url: canonicalUrl(`/demo/${demoSlug}/category/${parentCategory.slug}`),
+    });
+  }
+  breadcrumbItems.push({ name: category.title, url: canonicalUrl(`/demo/${demoSlug}/category/${category.slug}`) });
 
   return (
     <main style={{ padding: "var(--space-sm, 16px)" }}>
@@ -107,6 +127,35 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
       <InteractionTracker eventName="category_viewed" properties={{ categoryId: category.id, slug: category.slug }} />
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{category.title}</h1>
       <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>{category.description}</p>
+      {childCategories.length > 0 && (
+        <nav
+          aria-label="Subcategories"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "var(--space-xs, 8px)",
+            margin: "var(--space-sm, 16px) 0",
+          }}
+        >
+          <span style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>Shop by:</span>
+          {childCategories.map((child) => (
+            <a
+              key={child.id}
+              href={`/demo/${demoSlug}/category/${child.slug}`}
+              style={{
+                border: "1px solid var(--color-border, #e5e5e5)",
+                borderRadius: "var(--radius)",
+                padding: "var(--space-xs, 4px) var(--space-sm, 12px)",
+                color: "var(--color-text)",
+                textDecoration: "none",
+                fontSize: "var(--font-size-body, 1rem)",
+              }}
+            >
+              {child.title}
+            </a>
+          ))}
+        </nav>
+      )}
       <Template demoSlug={demoSlug} products={products} specsByProductId={specsByProductId} media={media} />
     </main>
   );

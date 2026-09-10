@@ -4,6 +4,7 @@ import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
 import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
+import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 import { seedCatalog } from "./seed";
@@ -64,6 +65,8 @@ export interface DemoSeedDependencies {
   bundles: BundlesService;
   recommendations: RecommendationsService;
   advertising: AdvertisingService;
+  /** promotions-real-demo-data epic: additive -- a seed fn that doesn't destructure this keeps working unchanged, same as any other dep here a given demo doesn't use. */
+  promotions: PromotionsService;
 }
 
 export type DemoSeedFn = (deps: DemoSeedDependencies) => Promise<void>;
@@ -113,6 +116,7 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
         deps.bundles,
         deps.recommendations,
         deps.advertising,
+        deps.promotions,
       ),
   },
   northline: {
@@ -125,7 +129,8 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
     // finally actually applying its own existing bundle by default (design-
     // discussion.md §1c).
     defaultThemeKey: "northline",
-    seed: (deps) => seedNorthlineDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.serviceAreas, deps.inventory),
+    seed: (deps) =>
+      seedNorthlineDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.serviceAreas, deps.inventory, deps.promotions),
   },
   broadleaf: {
     slug: "broadleaf",
@@ -137,6 +142,6 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
     // fit for a colorful, eclectic craft-market identity (design-
     // discussion.md §1d).
     defaultThemeKey: "vibrant",
-    seed: (deps) => seedBroadleafDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.inventory),
+    seed: (deps) => seedBroadleafDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.inventory, deps.promotions),
   },
 };

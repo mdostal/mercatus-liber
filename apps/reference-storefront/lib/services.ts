@@ -758,6 +758,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     bundles,
     recommendations,
     advertising,
+    promotions,
   });
 
   return {
