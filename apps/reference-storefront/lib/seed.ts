@@ -636,6 +636,82 @@ async function seedCategories(marketingCatalog: MarketingCatalogService): Promis
   ]);
 }
 
+/**
+ * demo-store-catalog-depth (category-depth follow-up): every category above
+ * is top-level (parentId: null) -- real subcategory support
+ * (MarketingCatalogService.listChildCategories(parentId)/Category.parentId)
+ * has existed and been tested since it was built, but no demo had ever
+ * actually seeded a non-top-level category, so
+ * app/demo/[demoSlug]/category/[slug]/page.tsx's real "Shop by:" subcategory
+ * link list and parent-breadcrumb crumb (both already wired, see that file)
+ * had nothing to render. "Apparel" and "Drinkware" are the two existing
+ * top-level categories that naturally split further for this print shop.
+ * Each subcategory assignment below is made IN ADDITION TO the product's
+ * existing top-level parent-category assignment from the seedCatalog loops
+ * above -- never a replacement -- so a product ends up in BOTH its
+ * subcategory and its parent category: browsing the parent still shows
+ * everything (see marketing-catalog-search.test.ts's exact apparel/embroidery
+ * counts, unchanged by this function) while the new subcategory page narrows
+ * it down to a real, specific subset.
+ */
+async function seedSubcategories(
+  marketingCatalog: MarketingCatalogService,
+  categoryIdBySlug: Map<string, string>,
+  productIdBySlug: Map<string, string>,
+): Promise<void> {
+  const assignToSubcategory = async (subcategoryId: string, productSlugs: string[]): Promise<void> => {
+    for (const productSlug of productSlugs) {
+      const productId = productIdBySlug.get(productSlug);
+      if (productId) await marketingCatalog.assignProductToCategory(productId, subcategoryId);
+    }
+  };
+
+  const apparelId = categoryIdBySlug.get("apparel");
+  if (apparelId) {
+    const hoodiesSweatshirts = await marketingCatalog.createCategory({
+      slug: "hoodies-sweatshirts",
+      title: "Hoodies & Sweatshirts",
+      description: "Heavyweight fleece pullovers and crewnecks, embroidered or screen-printed to order.",
+      parentId: apparelId,
+    });
+    await assignToSubcategory(hoodiesSweatshirts.id, [
+      "embroidered-fleece-hoodie",
+      "embroidered-quarter-zip-pullover",
+      "screen-printed-crewneck-sweatshirt",
+    ]);
+
+    const tShirtsTees = await marketingCatalog.createCategory({
+      slug: "t-shirts-tees",
+      title: "T-Shirts & Tees",
+      description: "Ringspun cotton crewneck tees, embroidered on the chest to order for adults and kids alike.",
+      parentId: apparelId,
+    });
+    await assignToSubcategory(tShirtsTees.id, ["embroidered-cotton-tee", "kids-embroidered-tee"]);
+  }
+
+  const drinkwareId = categoryIdBySlug.get("drinkware");
+  if (drinkwareId) {
+    const mugs = await marketingCatalog.createCategory({
+      slug: "mugs",
+      title: "Mugs",
+      description: "Ceramic and enamel camp mugs, full-color printed edge-to-edge with your own text, photo, or design.",
+      parentId: drinkwareId,
+    });
+    await assignToSubcategory(mugs.id, ["custom-printed-ceramic-mug", "custom-printed-enamel-camp-mug"]);
+
+    const tumblersBottles = await marketingCatalog.createCategory({
+      slug: "tumblers-bottles",
+      title: "Tumblers & Bottles",
+      description: "Insulated stainless steel tumblers and water bottles built for travel, hot or cold.",
+      parentId: drinkwareId,
+    });
+    await assignToSubcategory(tumblersBottles.id, [
+      "custom-printed-travel-tumbler",
+      "custom-printed-insulated-water-bottle",
+    ]);
+  }
+}
+
 /** Seeds a CMS-authored home page (hero banner + category spot) and one live marketing/campaign page with a curated mini-catalog. */
 async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string>): Promise<void> {
   const home = await cms.createPage({
@@ -794,8 +870,13 @@ async function seedAdvertising(advertising: AdvertisingService, targetedServiceA
     creatives: [
       {
         id: randomUUID(),
-        headline: "The Print Shop Sale -- 20% Off Everything",
-        body: "Embroidery, custom coasters, apparel, and drinkware -- all personalized to order, all on sale this week only.",
+        headline: "The Print Shop Sale -- 15% Off Everything",
+        // Backed by a real, redeemable promotion (see seedPromotions/
+        // PROMO_CODE below) -- this creative used to advertise a discount no
+        // demo had ever actually seeded, so a shopper had nothing to type
+        // into the cart page's real "Coupon code" field. Now it does, and
+        // the stated percentage matches the code's real value exactly.
+        body: `Embroidery, custom coasters, apparel, and drinkware -- all personalized to order. Enter code ${PROMO_CODE} at checkout to save 15% on your whole order.`,
         imageUrl: null,
         linkHref: "/demo/print-shop/category/embroidery",
         weight: 1,
@@ -828,6 +909,45 @@ async function seedAdvertising(advertising: AdvertisingService, targetedServiceA
         weight: 1,
       },
     ],
+  });
+}
+
+/**
+ * The one real, redeemable coupon code for this demo -- referenced both by
+ * seedPromotions below (the actual PromotionsService record) and by
+ * seedAdvertising's "Print Shop Sale" creative body copy above, so the ad's
+ * marketing claim and the checkout-time discount it promises are always the
+ * same code/percentage, never two independent hardcoded strings that could
+ * drift apart. An embroidery-shop-on-brand name -- short, memorable, and
+ * typeable into the cart page's real "Coupon code" field.
+ */
+const PROMO_CODE = "STITCH15";
+
+/**
+ * demo-store-promotions-depth: @mercatus-liber/promotions'
+ * PromotionsService.createPromotion is fully wired into checkout's real
+ * pricing/discount computation and the cart page's "Coupon code" field (see
+ * components/cart-standard.tsx and friends), but no demo had ever seeded an
+ * actual redeemable code, so a visitor had nothing real to type in. This
+ * seeds exactly one: a simple, broadly-demoable 15%-off-everything cart-wide
+ * discount (scope: "cart", targetSkuIds: [] -- product-scope promotions only
+ * matter when demoing a single-SKU markdown, not the case here), no minimum
+ * cart amount (a shopper can add literally anything and try the code), no
+ * start/end window (active immediately, never expires), and no usage limit
+ * (unlimited redemptions, right for an always-on demo).
+ */
+async function seedPromotions(promotions: PromotionsService): Promise<void> {
+  await promotions.createPromotion({
+    code: PROMO_CODE,
+    kind: "percentage",
+    scope: "cart",
+    value: 15,
+    currency: "USD",
+    targetSkuIds: [],
+    minCartAmount: null,
+    startsAt: null,
+    endsAt: null,
+    usageLimit: null,
   });
 }
 
@@ -906,10 +1026,12 @@ export async function seedCatalog(
     }
   }
 
+  await seedSubcategories(marketingCatalog, categoryIdBySlug, productIdBySlug);
   await seedCmsPages(cms, productIdBySlug);
   let portlandServiceAreaId: string | undefined;
   if (serviceAreas) portlandServiceAreaId = await seedServiceAreas(serviceAreas, cms, productIdBySlug);
   if (bundles) await seedServiceBundle(catalog, inventory, bundles);
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
   if (advertising) await seedAdvertising(advertising, portlandServiceAreaId);
+  if (promotions) await seedPromotions(promotions);
 }
