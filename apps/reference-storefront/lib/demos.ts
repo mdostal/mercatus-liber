@@ -130,7 +130,17 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
     // discussion.md §1c).
     defaultThemeKey: "northline",
     seed: (deps) =>
-      seedNorthlineDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.serviceAreas, deps.inventory, deps.promotions),
+      seedNorthlineDemo(
+        deps.catalog,
+        deps.marketingCatalog,
+        deps.cms,
+        deps.serviceAreas,
+        deps.inventory,
+        deps.promotions,
+        deps.bundles,
+        deps.recommendations,
+        deps.advertising,
+      ),
   },
   broadleaf: {
     slug: "broadleaf",
@@ -142,6 +152,16 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
     // fit for a colorful, eclectic craft-market identity (design-
     // discussion.md §1d).
     defaultThemeKey: "vibrant",
-    seed: (deps) => seedBroadleafDemo(deps.catalog, deps.marketingCatalog, deps.cms, deps.inventory, deps.promotions),
+    seed: (deps) =>
+      seedBroadleafDemo(
+        deps.catalog,
+        deps.marketingCatalog,
+        deps.cms,
+        deps.inventory,
+        deps.promotions,
+        deps.bundles,
+        deps.recommendations,
+        deps.advertising,
+      ),
   },
 };
