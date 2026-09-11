@@ -57,6 +57,7 @@ import {
 import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter } from "@mercatus-liber/inventory";
 import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
 import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
+import { createInMemoryReviewRepository, createReviewsService, type ReviewsService } from "@mercatus-liber/reviews";
 import {
   createInMemoryRecommendationRepository,
   createRecommendationsService,
@@ -139,6 +140,7 @@ export interface Services {
   plugins: PluginRegistry;
   orderNotificationPlugin: OrderNotificationPlugin;
   promotions: PromotionsService;
+  reviews: ReviewsService;
   bundles: BundlesService;
   recommendations: RecommendationsService;
   advertising: AdvertisingService;
@@ -397,6 +399,14 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
 
   const promotions = createPromotionsService({
     repository: createInMemoryPromotionRepository(),
+    events,
+  });
+
+  // bare-basics epic: product reviews/star ratings -- a real moderation
+  // queue (submit -> pending -> admin publishes/rejects), never
+  // auto-published. See @mercatus-liber/reviews's own doc comment.
+  const reviews = createReviewsService({
+    repository: createInMemoryReviewRepository(),
     events,
   });
 
@@ -759,6 +769,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     recommendations,
     advertising,
     promotions,
+    reviews,
   });
 
   return {
@@ -779,6 +790,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     plugins,
     orderNotificationPlugin,
     promotions,
+    reviews,
     bundles,
     recommendations,
     advertising,

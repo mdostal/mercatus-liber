@@ -7,6 +7,7 @@ import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
+import type { ReviewsService } from "@mercatus-liber/reviews";
 
 /**
  * Epic demo-store-plant-shop's third public demo: "Broadleaf & Co.", an
@@ -746,6 +747,7 @@ export async function seedBroadleafDemo(
   bundles?: BundlesService,
   recommendations?: RecommendationsService,
   advertising?: AdvertisingService,
+  reviews?: ReviewsService,
 ): Promise<void> {
   const categoryIdBySlug = new Map<string, string>();
   for (const category of DEMO_CATEGORIES) {

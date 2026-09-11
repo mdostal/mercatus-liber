@@ -6,6 +6,7 @@ import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
+import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 import { seedCatalog } from "./seed";
 import { seedBroadleafDemo } from "./seed-broadleaf";
@@ -67,6 +68,8 @@ export interface DemoSeedDependencies {
   advertising: AdvertisingService;
   /** promotions-real-demo-data epic: additive -- a seed fn that doesn't destructure this keeps working unchanged, same as any other dep here a given demo doesn't use. */
   promotions: PromotionsService;
+  /** bare-basics epic: additive, same posture as promotions above. */
+  reviews: ReviewsService;
 }
 
 export type DemoSeedFn = (deps: DemoSeedDependencies) => Promise<void>;
@@ -117,6 +120,7 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
         deps.recommendations,
         deps.advertising,
         deps.promotions,
+        deps.reviews,
       ),
   },
   northline: {
@@ -140,6 +144,7 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
         deps.bundles,
         deps.recommendations,
         deps.advertising,
+        deps.reviews,
       ),
   },
   broadleaf: {
@@ -162,6 +167,7 @@ export const DEMO_REGISTRY: Record<DemoSlug, DemoDefinition> = {
         deps.bundles,
         deps.recommendations,
         deps.advertising,
+        deps.reviews,
       ),
   },
 };
