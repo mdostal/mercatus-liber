@@ -739,6 +739,231 @@ async function seedAdvertising(advertising: AdvertisingService): Promise<void> {
   });
 }
 
+/**
+ * One real review, seeded via the real submitReview -> (optionally)
+ * moderateReview round trip -- never written straight into a repository,
+ * so this exercises the exact same public-submission-then-moderation path
+ * a real shopper and a real admin would.
+ */
+interface DemoReview {
+  serviceSlug: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+  authorName: string;
+  title: string;
+  body: string;
+  verifiedPurchase: boolean;
+  /** "published" moderates the review immediately after submission; "pending" deliberately leaves it un-moderated so /admin/reviews has real queue work to show. */
+  outcome: "published" | "pending";
+}
+
+/**
+ * @mercatus-liber/reviews epic: real, varied, service-specific reviews for
+ * 7 of Northline's 31 real services, spread across all 4 categories and
+ * favoring the services most likely to get clicked in a demo (TV Wall
+ * Mounting, Whole-Home WiFi Mesh Installation, Security System &
+ * Monitoring Installation). Every review reads like real post-installation
+ * homeowner feedback tied to that specific service's actual scope of
+ * work -- never generic "great service" filler -- and rating is genuinely
+ * mixed (3s and 4s with real, fair, service-specific criticism sit
+ * alongside the 5s) so the store doesn't read as fake. 3 reviews across
+ * the whole set are deliberately left "pending" (submitted, never
+ * moderated) so the real /admin/reviews moderation queue -- packages/
+ * reviews's real submitReview -> pending -> admin-publish -> visible-on-PDP
+ * round trip -- has real, visible work to demonstrate; the other 14 are
+ * moderated "published" immediately after submission, same as a real
+ * admin clearing their queue.
+ */
+const DEMO_REVIEWS: DemoReview[] = [
+  // -- TV Wall Mounting (TV & Home Theater) --
+  {
+    serviceSlug: "tv-wall-mounting",
+    rating: 5,
+    authorName: "Marcus Alvarez",
+    title: "Perfectly flush over the fireplace, cables totally hidden",
+    body: "Mounted our 65\" over a brick-veneer fireplace. The installer used a low-profile tilting bracket and ran an in-wall cable channel down to the cabinet below, so there's not a single visible wire. Whole job took under 90 minutes and he double-checked the level twice before packing up.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "tv-wall-mounting",
+    rating: 4,
+    authorName: "Priya Chandran",
+    title: "Great mount, just ran over the scheduled window",
+    body: "The mount itself is rock solid and the cable concealment looks factory-clean. My only knock is the crew showed up about 40 minutes after the window closed -- turned out our wall was plaster-and-lath so they needed extra time to find studs and use the right anchors, which I appreciated in hindsight, but a heads-up call would've been nice.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "tv-wall-mounting",
+    rating: 5,
+    authorName: "Doug Fenwick",
+    title: "Booked this for my parents, they're thrilled",
+    body: "Bought this as a gift for my parents' new place since I don't live nearby. Northline coordinated the whole thing over the phone with my mom, showed up on time, and mounted their TV above the console exactly where she wanted it. She sent me a photo the same afternoon.",
+    verifiedPurchase: false,
+    outcome: "published",
+  },
+
+  // -- Home Theater Setup (TV & Home Theater) --
+  {
+    serviceSlug: "home-theater-setup",
+    rating: 5,
+    authorName: "Jordan Blackwell",
+    title: "Premium tier's second calibration pass made a real difference",
+    body: "Went with the premium package for the in-wall speaker wiring, and it was worth it -- no visible runs anywhere in the room. The installer did a first calibration pass, listened critically from the couch, then adjusted crossover and levels again before he called it done. The 5.1 sound is noticeably tighter than when I tried to eyeball it myself years ago.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "home-theater-setup",
+    rating: 4,
+    authorName: "Marisol Vega",
+    title: "Sound is excellent, remote missed one input",
+    body: "Essentials package covered our 5.1 setup and receiver exactly as described, and everything sounds great. Only issue is the universal remote never got programmed for our Blu-ray player's input, so we still have to grab a second remote for that one device. Everything else works from the single remote.",
+    verifiedPurchase: true,
+    outcome: "pending",
+  },
+
+  // -- Security System & Monitoring Installation (Security & Cameras) --
+  {
+    serviceSlug: "security-system-monitoring-install",
+    rating: 5,
+    authorName: "Angela Petrov",
+    title: "Advanced tier's glass-break sensors are impressively sensitive",
+    body: "We went with the advanced motion-and-glass-break package after a break-in two houses down. The panel, door/window sensors, and glass-break detectors all paired cleanly with the monitoring service, and the installer walked us through arming/disarming and a test alert before he left. Genuinely feels like full-perimeter coverage now, not just a sensor on the front door.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "security-system-monitoring-install",
+    rating: 4,
+    authorName: "Tom Reyes",
+    title: "Solid basic-sensors install, app pairing needed a follow-up call",
+    body: "The physical install -- door and window sensors wired into the panel -- was clean and fast. The monitoring-service app pairing hiccuped on my end (wrong account email on my side, to be fair), and it took one phone call to Northline support the next day to get it sorted. Once paired, everything works exactly as advertised.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "security-system-monitoring-install",
+    rating: 5,
+    authorName: "Linda Cho",
+    title: "Compared three companies, glad we went with Northline",
+    body: "I read through a handful of reviews and got quotes from two other installers before booking. Northline's tech was the only one who actually explained where each sensor was going and why, instead of just running through a checklist. Basic-sensors package covers every entry point in our ranch-style house.",
+    verifiedPurchase: false,
+    outcome: "published",
+  },
+
+  // -- Whole-Home WiFi Mesh Installation (Networking & Fiber) --
+  {
+    serviceSlug: "whole-home-wifi-mesh-install",
+    rating: 5,
+    authorName: "Renata Kowalski",
+    title: "6-node install finally killed our basement and garage dead zones",
+    body: "Our old single router never made it past the stairs. The 6-node package put nodes in the basement office and the detached garage, wired-backhauled where he could run cable and wireless where he couldn't. Speed test in the garage now hits nearly the same numbers as standing next to the router. Worth every node.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "whole-home-wifi-mesh-install",
+    rating: 3,
+    authorName: "Ben Okafor",
+    title: "Big improvement overall, but one back bedroom is still weak",
+    body: "Coverage is way better than our old router almost everywhere in the house -- kitchen, living room, and both upstairs bedrooms are all solid now. The back bedroom over the garage is still noticeably weaker, and the installer's fix was a 5th node at extra cost rather than something included in the 4-node package. Feels like the house should've been sized for 5 nodes from the start, not upsold after the fact.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "whole-home-wifi-mesh-install",
+    rating: 5,
+    authorName: "Sam Wu",
+    title: "2-node was plenty for our townhouse",
+    body: "Upgraded from a decade-old router that could barely hold a Zoom call upstairs. The 2-node kit was correctly sized for our townhouse's square footage -- installer placed one node centrally on the main floor and one upstairs, and the WiFi app shows full bars in every room now, including the finished attic.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+
+  // -- Video Doorbell Installation (Security & Cameras) --
+  {
+    serviceSlug: "video-doorbell-install",
+    rating: 5,
+    authorName: "Harold Nakashima",
+    title: "Reused our existing wiring, video quality is sharp",
+    body: "We already had a wired doorbell chime, and the installer confirmed the existing wiring could power the new video doorbell instead of going the battery route. Picture quality on the app is noticeably sharper than the video doorbell we had before, and motion alerts are catching real activity instead of every passing car.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "video-doorbell-install",
+    rating: 5,
+    authorName: "Nina Castellano",
+    title: "Battery unit installed in under 30 minutes",
+    body: "Went battery-powered since we don't have existing doorbell wiring. Installer had it mounted, angled, and paired to the app in under half an hour, and showed me how to adjust the motion zones so it stops alerting on the sidewalk across the street.",
+    verifiedPurchase: false,
+    outcome: "pending",
+  },
+
+  // -- Smart Thermostat Installation (Smart Home & Automation) --
+  {
+    serviceSlug: "smart-thermostat-install",
+    rating: 5,
+    authorName: "Kevin Marsh",
+    title: "Solved our C-wire problem, old dial thermostat is finally gone",
+    body: "Our 1990s dial thermostat had no C-wire, which I knew would be an issue going in. The installer used a compatibility adapter instead of trying to fish new wire through finished walls, and the smart thermostat has been rock solid since. App scheduling paired with our HVAC system without a hitch.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "smart-thermostat-install",
+    rating: 4,
+    authorName: "Elise Granger",
+    title: "Install was fast, app took some hand-holding",
+    body: "The physical swap and HVAC pairing were done in about 20 minutes. The scheduling app itself is not the most intuitive thing I've used, but the installer walked me through setting up a weekday/weekend schedule before he left, which made it click. Wish he'd left a quick-reference sheet for when I inevitably forget.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+
+  // -- Smart Hub & Automation Scene Setup (Smart Home & Automation) --
+  {
+    serviceSlug: "smart-hub-automation-setup",
+    rating: 5,
+    authorName: "Owen Fitzgerald",
+    title: "\"Good Night\" and \"Away\" scenes work exactly as promised",
+    body: "Had a hub and a handful of smart bulbs and plugs I'd never gotten around to actually automating. The installer paired everything to the hub and built out Good Night, Away, and Movie Time scenes with the exact triggers I described. Hitting one button now locks in the whole house instead of me tapping through four different apps.",
+    verifiedPurchase: true,
+    outcome: "published",
+  },
+  {
+    serviceSlug: "smart-hub-automation-setup",
+    rating: 3,
+    authorName: "Rachel Tam",
+    title: "Hub setup is solid, but the lock automation still needs a manual trigger",
+    body: "Lighting and thermostat scenes both fire reliably on schedule. The one automation that hasn't worked as expected is our smart lock -- it's supposed to auto-lock as part of the Away scene, but it only shows up as a suggestion in the app rather than actually triggering, so I still have to lock it myself. Following up with Northline to see if that's a hub setting or a lock-firmware issue.",
+    verifiedPurchase: true,
+    outcome: "pending",
+  },
+];
+
+async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string, string>): Promise<void> {
+  for (const demoReview of DEMO_REVIEWS) {
+    const productId = productIdBySlug.get(demoReview.serviceSlug);
+    if (!productId) continue;
+
+    const review = await reviews.submitReview({
+      productId,
+      rating: demoReview.rating,
+      authorName: demoReview.authorName,
+      title: demoReview.title,
+      body: demoReview.body,
+      verifiedPurchase: demoReview.verifiedPurchase,
+    });
+
+    if (demoReview.outcome === "published") {
+      await reviews.moderateReview(review.id, "published");
+    }
+    // "pending" outcomes are left exactly as submitReview created them --
+    // real, visible, un-moderated work for /admin/reviews's queue.
+  }
+}
+
 export async function seedNorthlineDemo(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -891,4 +1116,5 @@ export async function seedNorthlineDemo(
   if (bundles) await seedInstallBundle(bundles, productIdBySlug, skuIdsBySlug);
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
   if (advertising) await seedAdvertising(advertising);
+  if (reviews) await seedReviews(reviews, productIdBySlug);
 }
