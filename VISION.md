@@ -29,8 +29,8 @@ blow-by-blow ledger this summarizes.
    working, demonstrable increment — not "the database layer" followed six months later by "the
    UI layer." A slice isn't done until it's live-verified against a real running server.
 3. **Small core, big community surface.** The framework's own packages stay narrowly scoped to
-   what genuinely needs to be shared infrastructure. Everything else — reviews, loyalty,
-   subscriptions, marketplace-channel sync, print-on-demand routing, and dozens of features
+   what genuinely needs to be shared infrastructure. Everything else — loyalty,
+   subscriptions, marketplace-channel sync, and dozens of features
    listed below — is designed to be a plugin or adapter someone else can build, using the same
    contract pattern the core itself uses internally. The plugin subsystem (see `docs/subsystems/12-plugins.md`)
    and the event bus exist specifically so this is possible without forking the core.
@@ -118,9 +118,24 @@ full detail on every item below; only backlog epic 48 remains genuinely open):
   (`mercatus-liber-docs`), wired into `commerce.mdostal.com`'s `NEXT_PUBLIC_DOCS_URL` in
   production, closing epic 33's original disclosed deployment gap.
 
-**In progress** — nothing is genuinely mid-build right now. The backlog is drained down to the
-open community invitation further down, plus one logged, real, not-yet-started fix:
+**In progress:**
 
+- **Product reviews & star ratings** (backlog epic 49) — **2026-09-11: reverses this document's
+  own earlier "community-plugin territory" call on reviews**, on explicit user direction ("we
+  have BARE BASICS that are necessary for any site -- reviews... build all of that"). A new
+  `@mercatus-liber/reviews` subsystem with a real moderation queue (every submitted review starts
+  `"pending"`; only an explicit admin `moderateReview` call makes it publicly visible) shipped
+  first (commit `3370c16`); PDP display, the admin moderation page, and the public submission form
+  are being wired next, followed by real per-store review content.
+- **Storefront views / multi-catalog demonstration** (backlog epic 50) — explicit user ask to show
+  the framework can run a Caterpillar-style split site, a shared-inventory/two-different-
+  storefronts pairing, and a Wayfair-style multi-brand tenancy, all as real, reusable patterns —
+  not yet designed; likely needs a real planning pass before it's built.
+- **A battery of new adapters** — a Postgres-backed inventory (IMS) alternate (epic 51), and
+  MongoDB/Convex persistence adapters (epics 52–53) proving the persistence interface holds up
+  against genuinely different database paradigms, not just Postgres-vs-SQLite. Buildable now
+  without any external account; live-verification against a real account is a separate, later
+  step (see epic 56 / the "Provider Setup Checklist" artifact).
 - **Demo-seed idempotency** (backlog epic 48) — a real gap surfaced by epic 39's live persistence
   verification, and confirmed worse on a fuller audit than first logged: within one running
   process repeated seed calls are memoized and safe, but an actual **process restart** against a
@@ -129,6 +144,10 @@ open community invitation further down, plus one logged, real, not-yet-started f
   demos stay healthy), since every demo's seed function creates products unconditionally instead
   of checking first. Harmless under the in-memory default (production's current state — real
   persistence isn't enabled on `commerce.mdostal.com` yet); a real blocker the moment it is.
+
+**Deliberately deferred, not forgotten:** per-store onboarding/landing pages and the framework's
+own `/brand` visual-identity pass (backlog epics 54–55) are sequenced *after* the items above —
+explicit user call (2026-09-11): "once we have all these things, we can start to show it off."
 
 ## Wanted, not started — the community plugin frontier
 
@@ -141,7 +160,6 @@ start.
 
 | Feature | What it does | Why it's not core | Contribution shape |
 |---|---|---|---|
-| Product reviews / UGC | Star ratings, written reviews, photo/video review content on PDPs | Every platform treats this as an add-on app, not core commerce logic | New subsystem + adapter contract (e.g. wrapping a hosted reviews API, or a self-hosted default) |
 | Wishlist | Save-for-later across sessions/devices | Orthogonal to the core purchase loop | Small subsystem, cart-adjacent |
 | Backorder / pre-order | Sell out-of-stock items with an expected ship date | Extension of inventory, not a new purchase primitive | Extends `inventory`'s existing contract |
 | Gift cards & store credit | Purchasable/redeemable stored-value codes | A payment-adjacent primitive most platforms bolt on separately | New subsystem, adapter-shaped like `promotions` |
