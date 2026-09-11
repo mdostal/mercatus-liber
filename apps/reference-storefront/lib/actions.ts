@@ -16,6 +16,7 @@ import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising"
 import type { ComponentInstance, PageType } from "@mercatus-liber/cms";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
 import type { CreateRuleInput } from "@mercatus-liber/recommendations";
+import type { NewStorefrontViewInput } from "@mercatus-liber/storefront-views";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
 import { readCouponCode, setCouponCode } from "./coupon-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
@@ -828,4 +829,65 @@ export async function rejectReviewAction(formData: FormData): Promise<void> {
   const { reviews } = await getServicesForDemo(demoSlug);
   await reviews.moderateReview(id, "rejected");
   revalidatePath(`/demo/${demoSlug}/admin/reviews`);
+}
+
+/**
+ * storefront-views-and-multi-catalog epic: parses the storefront-views admin
+ * form's fields, shared shape with every other admin form in this file --
+ * categoryIds is a single comma-separated text field, same split+trim+
+ * filter-empty convention as parsePromotionFormData's targetSkuIds above.
+ * `demoSlug` is intentionally not included in the returned input -- callers
+ * (createStorefrontViewAction below) already have their own real, validated
+ * DemoSlug from requireDemoSlug, so it's threaded through separately rather
+ * than re-derived from this untyped form value.
+ */
+function parseStorefrontViewFormData(formData: FormData): Omit<NewStorefrontViewInput, "demoSlug"> {
+  const categoryIds = String(formData.get("categoryIds") ?? "")
+    .split(",")
+    .map((categoryId) => categoryId.trim())
+    .filter((categoryId) => categoryId.length > 0);
+  const themeKey = String(formData.get("themeKey") ?? "").trim();
+  const startsAt = String(formData.get("startsAt") ?? "").trim();
+  const endsAt = String(formData.get("endsAt") ?? "").trim();
+
+  return {
+    slug: String(formData.get("slug") ?? "").trim(),
+    name: String(formData.get("name") ?? "").trim(),
+    heroHeadline: String(formData.get("heroHeadline") ?? "").trim(),
+    heroSubheadline: String(formData.get("heroSubheadline") ?? "").trim(),
+    categoryIds,
+    themeKey: themeKey.length > 0 ? themeKey : undefined,
+    isDefaultOverride: formData.get("isDefaultOverride") === "on",
+    startsAt: startsAt.length > 0 ? new Date(startsAt).toISOString() : null,
+    endsAt: endsAt.length > 0 ? new Date(endsAt).toISOString() : null,
+  };
+}
+
+export async function createStorefrontViewAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const { storefrontViews } = await getServicesForDemo(demoSlug);
+  await storefrontViews.createView({ demoSlug, ...parseStorefrontViewFormData(formData) });
+  revalidatePath(`/demo/${demoSlug}/admin/storefront-views`);
+  redirect(`/demo/${demoSlug}/admin/storefront-views`);
+}
+
+/** draft -> active. Admin-gated, same shape as publishCmsPageAction above -- no redirect, this stays on the admin list page it was submitted from. */
+export async function publishStorefrontViewAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const id = String(formData.get("id"));
+  const { storefrontViews } = await getServicesForDemo(demoSlug);
+  await storefrontViews.publishView(id);
+  revalidatePath(`/demo/${demoSlug}/admin/storefront-views`);
+}
+
+/** A terminal state, not a delete -- see StorefrontView.status's own doc comment in packages/storefront-views/src/types.ts. Admin-gated, no redirect. */
+export async function archiveStorefrontViewAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const id = String(formData.get("id"));
+  const { storefrontViews } = await getServicesForDemo(demoSlug);
+  await storefrontViews.archiveView(id);
+  revalidatePath(`/demo/${demoSlug}/admin/storefront-views`);
 }
