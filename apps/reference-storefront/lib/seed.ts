@@ -1154,6 +1154,49 @@ const DEMO_REVIEWS_BY_SLUG: Record<string, DemoReview[]> = {
 };
 
 /**
+ * storefront-views: The Print Shop's second, permanent storefront -- same
+ * real catalog as /demo/print-shop, curated and pitched to a genuinely
+ * different buyer. The normal home sells one-off personalized gifts to
+ * individual shoppers; this one pitches the exact same embroidery/print
+ * shop to office managers and HR/events buyers sourcing branded swag for a
+ * whole team -- onboarding kits, holiday gifts, trade-show giveaways.
+ * categoryIds is a genuine curated subset (3 of the store's 5 real
+ * categories): Embroidery (logo polos/caps embroidered to order -- the
+ * classic corporate-swag SKU), Apparel (hoodies/tees for team uniforms and
+ * onboarding boxes), and Drinkware (mugs/tumblers for desk gifts and swag
+ * bags) -- deliberately leaving out Custom Coasters and Stickers & Patches,
+ * which read as one-off home-decor/personal-gift items rather than
+ * something an office buyer orders 50 of at once. themeKey "datasheet" (a
+ * precision/technical-grid look, see packages/theming/src/theme-bundles.ts)
+ * gives this storefront a genuinely distinct, more professional visual
+ * identity from the normal retail home's default theme, reinforcing that
+ * it's a different storefront, not just a filtered nav. isDefaultOverride
+ * is false -- this lives permanently alongside the normal home at its own
+ * /demo/print-shop/site/corporate-bulk route, never replacing it (contrast
+ * with lib/seed-broadleaf.ts's time-boxed isDefaultOverride:true takeover).
+ */
+async function seedStorefrontViews(storefrontViews: StorefrontViewsService, categoryIdBySlug: Map<string, string>): Promise<void> {
+  const categoryIds = ["embroidery", "apparel", "drinkware"]
+    .map((slug) => categoryIdBySlug.get(slug))
+    .filter((id): id is string => Boolean(id));
+
+  const created = await storefrontViews.createView({
+    demoSlug: "print-shop",
+    slug: "corporate-bulk",
+    name: "Corporate & Bulk Orders",
+    heroHeadline: "Branded swag for your whole team, embroidered to order",
+    heroSubheadline:
+      "From onboarding-kit polos to holiday gift mugs, we embroider and print your logo on real apparel and drinkware at bulk-order pricing -- the same shop, the same in-house stitching, just built for office managers and events teams ordering 25, 50, or 500 at a time.",
+    categoryIds,
+    themeKey: "datasheet",
+    isDefaultOverride: false,
+    startsAt: null,
+    endsAt: null,
+  });
+  await storefrontViews.publishView(created.id);
+}
+
+/**
  * Seeds every review in DEMO_REVIEWS_BY_SLUG above against its real product
  * id (via productIdBySlug -- the same product-id lookup pattern
  * seedRecommendations/seedAdvertising already use), submitting each one
@@ -1184,7 +1227,7 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
   }
 }
 
-/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. `recommendations` is optional too -- most test files don't need the rec-04 acceptance demo (one curated RecommendationRule); see seedRecommendations. `advertising` is optional too -- most test files don't need the ad-04 acceptance demo (1-2 Campaigns); see seedAdvertising. `reviews` is optional too -- most test files don't need the reviews-depth demo (real seeded review content across 6 products); see seedReviews. */
+/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. `recommendations` is optional too -- most test files don't need the rec-04 acceptance demo (one curated RecommendationRule); see seedRecommendations. `advertising` is optional too -- most test files don't need the ad-04 acceptance demo (1-2 Campaigns); see seedAdvertising. `reviews` is optional too -- most test files don't need the reviews-depth demo (real seeded review content across 6 products); see seedReviews. `storefrontViews` is optional too -- most test files don't need the storefront-views demo (one real, permanent "Corporate & Bulk Orders" second storefront curated from this same catalog); see seedStorefrontViews. */
 export async function seedCatalog(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -1270,4 +1313,5 @@ export async function seedCatalog(
   if (advertising) await seedAdvertising(advertising, portlandServiceAreaId);
   if (promotions) await seedPromotions(promotions);
   if (reviews) await seedReviews(reviews, productIdBySlug);
+  if (storefrontViews) await seedStorefrontViews(storefrontViews, categoryIdBySlug);
 }
