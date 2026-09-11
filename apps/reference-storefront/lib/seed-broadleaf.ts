@@ -960,6 +960,74 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
   }
 }
 
+/**
+ * storefront-views epic (package commit a9ff7b3, routing/admin commit
+ * ade957f): ONE real, time-boxed seasonal takeover of Broadleaf & Co.'s own
+ * home page -- an "Autumn Harvest & Gift Guide" microsite built with
+ * isDefaultOverride: true, the "swap over your current site for an event"
+ * pattern (contrast lib/seed.ts's and lib/seed-northline.ts's permanent,
+ * side-by-side isDefaultOverride: false storefronts -- a different pattern
+ * entirely, never combined with this one). While its window is open,
+ * getActiveDefaultOverride replaces Broadleaf's normal seeded home page at
+ * /demo/broadleaf with this view's curated autumn/gift angle; once the
+ * window closes it reverts to the normal home page automatically on the
+ * very next request, with zero manual action needed (re-evaluated fresh
+ * every time, never cached/stamped -- see
+ * packages/storefront-views/src/service.ts's isViewLive/
+ * getActiveDefaultOverride doc comments).
+ *
+ * Curates 3 of Broadleaf's 5 real top-level categories that genuinely read
+ * as an autumn gift guide: Plants (a living gift, and the
+ * fiddle-leaf-fig/monstera-deliciosa "statement plant" tier reads as a real
+ * holiday centerpiece), Paper & Ephemera (wrapping-paper-set,
+ * seed-paper-gift-tags, and letterpress-stationery-set are literally
+ * gift-wrapping and card-giving goods), and Candles & Home Fragrance
+ * (fig-cedar-soy-candle and beeswax-taper-candles are cozy-season staples).
+ * Ceramics & Planters and Textiles & Fiber Arts are real categories too but
+ * don't carry the same "gift guide" throughline, so this curated view
+ * leaves them out on purpose -- the normal home page still surfaces every
+ * category once the window closes.
+ *
+ * themeKey "editorial" (packages/theming/src/theme-bundles.ts's "Slow
+ * Catalog" bundle -- warm ivory/terracotta artisan-market palette) gives
+ * the takeover a distinct seasonal visual identity instead of just
+ * reshuffling the same "classic" look under different copy.
+ *
+ * Dates: a real, plausible early-October-through-late-November window, the
+ * kind of span a small shop would actually run a harvest/gift-guide
+ * microsite -- chosen on its own merits, NOT widened or shifted to be
+ * "live" as of this seed's own authoring date (2026-09-11). publishView is
+ * mandatory (a draft view is never live regardless of its window);
+ * getActiveDefaultOverride only ever returns this view when it's both
+ * "active" and currently inside [startsAt, endsAt).
+ */
+async function seedStorefrontViews(
+  storefrontViews: StorefrontViewsService,
+  categoryIdBySlug: Map<string, string>,
+): Promise<void> {
+  const categoryIds = [
+    categoryIdBySlug.get("plants"),
+    categoryIdBySlug.get("paper-ephemera"),
+    categoryIdBySlug.get("candles-home-fragrance"),
+  ].filter((id): id is string => Boolean(id));
+  if (categoryIds.length === 0) return;
+
+  const created = await storefrontViews.createView({
+    demoSlug: "broadleaf",
+    slug: "autumn-gift-guide",
+    name: "Autumn Harvest & Gift Guide",
+    heroHeadline: "The Autumn Harvest & Gift Guide",
+    heroSubheadline:
+      "Statement plants for the mantel, hand-wrapped paper goods, and fig & cedar candles for the first cold evenings -- our curated picks for gifting (or keeping) this harvest season.",
+    categoryIds,
+    themeKey: "editorial",
+    isDefaultOverride: true,
+    startsAt: "2026-10-01T00:00:00Z",
+    endsAt: "2026-11-30T00:00:00Z",
+  });
+  await storefrontViews.publishView(created.id);
+}
+
 export async function seedBroadleafDemo(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -1065,4 +1133,5 @@ export async function seedBroadleafDemo(
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
   if (advertising) await seedMarketingCampaign(advertising);
   if (reviews) await seedReviews(reviews, productIdBySlug);
+  if (storefrontViews) await seedStorefrontViews(storefrontViews, categoryIdBySlug);
 }
