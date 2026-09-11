@@ -738,6 +738,227 @@ async function seedMarketingCampaign(advertising: AdvertisingService): Promise<v
   });
 }
 
+/**
+ * reviews epic (package commit 3370c16, UI commit 0cdd2e7): real, varied
+ * review content for a representative spread of Broadleaf's real products
+ * -- one plant per plant subcategory (Trailing Pothos for easy-care,
+ * Monstera Deliciosa for statement), the planter it's recommended to ship
+ * in (speckled-ceramic-planter, see seedStarterBundle above), one textile,
+ * one paper good, and the candle already advertised on the home page --
+ * spanning all 5 top-level DEMO_CATEGORIES so every category has real
+ * reviewable content, weighted toward the products most likely to get
+ * clicked in a demo walkthrough.
+ *
+ * Ratings are a real, honest mix, not a wall of 5 stars -- Marcus Webb,
+ * Renata Voss, Ben Okafor, and Priya Anand leave fair 4-star reviews with
+ * a specific, real nit, and Grace Lindqvist's and Diane Ostrowski's 3-star
+ * reviews carry real, specific criticism (a glaze flaw, yellowed leaves
+ * after a slow shipment) rather than vague complaints. Author names,
+ * scents, glazes, and care notes all reference each product's own real
+ * DEMO_PRODUCTS description above rather than generic praise.
+ */
+interface DemoReview {
+  productSlug: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+  authorName: string;
+  title: string;
+  body: string;
+  verifiedPurchase: boolean;
+  /**
+   * false leaves this review "pending" -- unmoderated -- on purpose, so
+   * /admin/reviews's real moderation queue (Publish/Reject actions) has
+   * real, visible work to demonstrate rather than an empty inbox. Exactly
+   * 3 of the reviews below are left pending; every other one is published
+   * immediately by seedReviews below.
+   */
+  publish: boolean;
+}
+
+const DEMO_REVIEWS: DemoReview[] = [
+  // -- Plants ---------------------------------------------------------------
+  {
+    productSlug: "trailing-pothos",
+    rating: 5,
+    authorName: "Sarah Chen",
+    title: "Trailing beautifully over my kitchen shelf already",
+    body: "Bought the medium 6-inch pot for a floating shelf above my sink and it's already sending out new vines after three weeks. Heart-shaped leaves have great variegation, more cream than I expected in a good way. Forgives me forgetting to water it on busy weeks, exactly as advertised.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "trailing-pothos",
+    rating: 4,
+    authorName: "Marcus Webb",
+    title: "Healthy plant, but the small pot is genuinely small",
+    body: "The small 4-inch pot arrived healthy with no damaged leaves, but it's more of a rooted cutting than a mature trailing plant -- if you're picturing a full vine out of the box, size up to the medium. Two months later it's filled in nicely and I'm happy with it.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "trailing-pothos",
+    rating: 3,
+    authorName: "Diane Ostrowski",
+    title: "Arrived a little worse for wear, but recovering",
+    body: "Two leaves had yellowed and the soil was bone dry when it arrived, which makes me think it sat in a warehouse or truck longer than it should have. I trimmed the yellow leaves and gave it a good soak, and two weeks in it looks like it's turned the corner. Wanted to leave an honest review of the unboxing experience rather than just the plant itself.",
+    verifiedPurchase: true,
+    publish: false,
+  },
+  {
+    productSlug: "monstera-deliciosa",
+    rating: 5,
+    authorName: "Jordan Ashby",
+    title: "Already splitting on the newest leaf",
+    body: "Ordered the large 10-inch and it showed up with a sturdy, well-shaped stem instead of the leggy single-vine look I've gotten from other online plant orders. Put my own moss pole behind it the day it arrived and it's already gripping on and pushing a new leaf with visible fenestration starting.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "monstera-deliciosa",
+    rating: 4,
+    authorName: "Renata Voss",
+    title: "Gorgeous plant, one small shipping ding",
+    body: "The medium 6-inch Monstera is beautiful and clearly well cared-for before it shipped, but one of the larger leaves had a small tear along the edge, probably from shifting in the box. Doesn't affect the plant's health and new growth already looks perfect -- just mentioning it for anyone who wants a flawless first impression.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "monstera-deliciosa",
+    rating: 5,
+    authorName: "Tobias Lund",
+    title: "Fast grower, worth the price",
+    body: "Picked this up as a gift for my partner's office and had it shipped straight there, so I haven't seen it in person, but she sends me a photo of a new leaf every couple of weeks now. Sounds like exactly the vigorous grower the listing promised.",
+    verifiedPurchase: false,
+    publish: false,
+  },
+
+  // -- Ceramics & Planters ----------------------------------------------------
+  {
+    productSlug: "speckled-ceramic-planter",
+    rating: 5,
+    authorName: "Helen Ruiz",
+    title: "The speckle glaze is even better in person",
+    body: "I've bought a lot of mass-produced planters trying to get this warm, freckled stoneware look and none of them came close. The drainage hole and matching saucer are both genuinely functional, not just decorative, and mine has a lovely uneven glaze pool near the base that makes it obviously handmade.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "speckled-ceramic-planter",
+    rating: 3,
+    authorName: "Grace Lindqvist",
+    title: "Beautiful piece, but one edge had a small glaze flaw",
+    body: "The color and shape are exactly what I wanted for my pothos, and I understand each piece is thrown individually so some variation is expected. That said, there's a small rough patch along one edge where the glaze didn't fully cover, and for the price I was hoping for a bit more consistency. Still using it, just being honest.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "speckled-ceramic-planter",
+    rating: 4,
+    authorName: "Wen Zhao",
+    title: "Sturdy and well-packed",
+    body: "Arrived wrapped in about four layers of packing paper with zero chips, which after a couple of pottery-in-the-mail horror stories from other shops was a relief. Glaze reads a touch more brown than the product photo suggested, but it's a good honest stoneware planter and it's already got my snake plant in it.",
+    verifiedPurchase: true,
+    publish: false,
+  },
+
+  // -- Textiles & Fiber Arts --------------------------------------------------
+  {
+    productSlug: "handwoven-wall-hanging",
+    rating: 5,
+    authorName: "Odalys Ferreira",
+    title: "Centerpiece of my reading nook now",
+    body: "The cream and rust tones are richer in person than the photos show, and the driftwood dowel gives it real weight and presence on the wall instead of looking flimsy. You can see the weaving technique change across the piece, which makes it feel like a genuine handmade textile instead of a mass-produced tapestry.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "handwoven-wall-hanging",
+    rating: 4,
+    authorName: "Ben Okafor",
+    title: "Lovely weave, ships a bit wrinkled",
+    body: "Weaving quality is excellent and the rust tones pop against my white wall exactly like I hoped. It did arrive a little creased from being folded in the shipping box, and it took about two days hanging before the fibers relaxed and fell naturally. Worth the wait.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+
+  // -- Paper & Ephemera ---------------------------------------------------------
+  {
+    productSlug: "botanical-print",
+    rating: 5,
+    authorName: "Camille Duarte",
+    title: "Framed it and it looks like an antique botanical study",
+    body: "The ink linework is crisp and the cotton paper has a nice soft texture you can actually feel, not just see. It arrived perfectly flat in a rigid mailer like promised, no creases or corner dings, and slid straight into a standard 11x14 frame without trimming.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "botanical-print",
+    rating: 5,
+    authorName: "Aaron Micklewait",
+    title: "Gift that got immediately hung on the wall",
+    body: "Ordered this for my mother-in-law, who's into botanical illustration, and she had it framed within the week. Print quality holds up close -- the fine linework doesn't look dotted or pixelated the way some giclee prints do.",
+    verifiedPurchase: false,
+    publish: true,
+  },
+
+  // -- Candles & Home Fragrance -------------------------------------------------
+  {
+    productSlug: "fig-cedar-soy-candle",
+    rating: 5,
+    authorName: "Nadia Solberg",
+    title: "Fig and cedar without being overpowering",
+    body: "Got the standard jar and it burns clean with barely any soot on the glass, and the cotton wick stays centered the whole way down. Fig comes through first and the cedar settles in underneath once it's been burning a while -- not one of those candles that just smells like air freshener.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "fig-cedar-soy-candle",
+    rating: 4,
+    authorName: "Priya Anand",
+    title: "Great scent, burn time ran a little short",
+    body: "The scent throw is genuinely good, fills my living room without being cloying, and the fig-cedar combo is unusual in the best way. My standard jar burned closer to 32 hours than the roughly 40 hours listed, though I may have let the wax pool unevenly on the first burn, which I know affects total burn time.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+  {
+    productSlug: "fig-cedar-soy-candle",
+    rating: 5,
+    authorName: "Levi Fitzgerald",
+    title: "Perfect travel tin for a weekend away",
+    body: "Bought the travel tin for a cabin trip and it filled a small room easily in about twenty minutes. The cedar note is stronger in the tin than I expected from the description, which I liked -- reads a little more woodsy than the standard jar.",
+    verifiedPurchase: true,
+    publish: true,
+  },
+];
+
+/**
+ * reviews epic: submits every DEMO_REVIEWS entry via the real
+ * reviews.submitReview path (each lands "pending", exactly like a real
+ * shopper's submission), then immediately reviews.moderateReview(...,
+ * "published") for every entry except the 3 marked `publish: false` above,
+ * which are left pending on purpose so /admin/reviews's real moderation
+ * queue has real work to show. A productSlug that doesn't resolve in
+ * productIdBySlug (shouldn't happen -- DEMO_REVIEWS only references real
+ * DEMO_PRODUCTS slugs seeded earlier in seedBroadleafDemo) is silently
+ * skipped, same defensive shape as the other seedX helpers above.
+ */
+async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string, string>): Promise<void> {
+  for (const demo of DEMO_REVIEWS) {
+    const productId = productIdBySlug.get(demo.productSlug);
+    if (!productId) continue;
+
+    const review = await reviews.submitReview({
+      productId,
+      rating: demo.rating,
+      authorName: demo.authorName,
+      title: demo.title,
+      body: demo.body,
+      verifiedPurchase: demo.verifiedPurchase,
+    });
+
+    if (demo.publish) await reviews.moderateReview(review.id, "published");
+  }
+}
+
 export async function seedBroadleafDemo(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -841,4 +1062,5 @@ export async function seedBroadleafDemo(
   if (bundles) await seedStarterBundle(bundles, productIdBySlug, skuIdByProductAndSize);
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
   if (advertising) await seedMarketingCampaign(advertising);
+  if (reviews) await seedReviews(reviews, productIdBySlug);
 }
