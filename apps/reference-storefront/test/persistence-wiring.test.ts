@@ -2,16 +2,19 @@
  * backup-restore-01: covers the persistence env-var wiring acceptance
  * criteria in .pHive/epics/data-backup-restore-and-adapter-portability/
  * stories/backup-restore-01-persistence-wiring-and-backup-restore.yaml for
- * lib/services.ts's `persistence` branch. Same "mock the concrete adapter,
- * keep everything downstream real" shape as cms-persistence-wiring.test.ts's
- * Sanity mock: no real reachable Postgres instance is assumed here, so
- * createPostgresAdapter is mocked to record the pg Pool config it's
- * constructed with and to return a real, working in-memory-SQLite-backed
- * adapter under the hood, so the rest of buildServices() (which seeds real
- * catalog data during construction) runs completely unmodified. pg's own
- * `Pool` constructor is mocked too, purely to capture the connection config
- * passed to it without needing a real network-capable Pool instance --
- * pg.Pool itself is not exercised, just recorded.
+ * lib/services.ts's `persistence` branch, plus (ims-postgres-alternate
+ * epic) its sibling `inventory` branch, which shares the same DATABASE_URL/
+ * pg.Pool. Same "mock the concrete adapter, keep everything downstream
+ * real" shape as cms-persistence-wiring.test.ts's Sanity mock: no real
+ * reachable Postgres instance is assumed here, so both
+ * createPostgresAdapter (catalog) and createPostgresInventoryAdapter
+ * (inventory) are mocked to record the pg Pool they're each constructed
+ * with and to return a real, working in-memory-backed adapter under the
+ * hood, so the rest of buildServices() (which seeds real catalog data
+ * during construction) runs completely unmodified. pg's own `Pool`
+ * constructor is mocked too, purely to capture the connection config passed
+ * to it without needing a real network-capable Pool instance -- pg.Pool
+ * itself is not exercised, just recorded.
  *
  * The real, reachable-Postgres path is separately verified (not mocked) in
  * test/persistence-postgres-live.test.ts, which is skipped unless a real
@@ -24,6 +27,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const createPostgresAdapterMock = vi.fn();
+const createPostgresInventoryAdapterMock = vi.fn();
 const poolConfigs: unknown[] = [];
 
 vi.mock("@mercatus-liber/adapter-postgres", async () => {
@@ -32,6 +36,22 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
     createPostgresAdapter: async (pool: unknown) => {
       createPostgresAdapterMock(pool);
       return createSqliteAdapter(":memory:");
+    },
+  };
+});
+
+// ims-postgres-alternate epic: services.ts's inventory branch also calls
+// out to a real Postgres-backed adapter now, sharing the same mocked
+// (config-capture-only, non-functional) pg.Pool instance -- mocked here the
+// same "record what it's called with, return a real working adapter under
+// the hood" way as adapter-postgres above, so buildServices() keeps running
+// completely unmodified downstream.
+vi.mock("@mercatus-liber/adapter-postgres-inventory", async () => {
+  const { createInMemoryInventoryAdapter } = await import("@mercatus-liber/inventory");
+  return {
+    createPostgresInventoryAdapter: async (pool: unknown) => {
+      createPostgresInventoryAdapterMock(pool);
+      return createInMemoryInventoryAdapter();
     },
   };
 });
@@ -50,6 +70,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
   createPostgresAdapterMock.mockClear();
+  createPostgresInventoryAdapterMock.mockClear();
   poolConfigs.length = 0;
 });
 
@@ -63,6 +84,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
     const services = await getServicesForDemo("print-shop");
 
     expect(createPostgresAdapterMock).not.toHaveBeenCalled();
+    expect(createPostgresInventoryAdapterMock).not.toHaveBeenCalled();
     // Still fully functional off the in-memory default -- the seeded demo
     // catalog is there, same as before this story.
     expect((await services.catalog.listProducts()).length).toBeGreaterThan(0);
@@ -81,6 +103,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
       const services = await getServicesForDemo("print-shop");
 
       expect(createPostgresAdapterMock).not.toHaveBeenCalled();
+      expect(createPostgresInventoryAdapterMock).not.toHaveBeenCalled();
       expect(fs.existsSync(sqliteFilePath)).toBe(true);
       expect((await services.catalog.listProducts()).length).toBeGreaterThan(0);
     } finally {
@@ -97,6 +120,10 @@ describe("Persistence wiring (lib/services.ts)", () => {
     const services = await getServicesForDemo("print-shop");
 
     expect(createPostgresAdapterMock).toHaveBeenCalledTimes(1);
+    expect(createPostgresInventoryAdapterMock).toHaveBeenCalledTimes(1);
+    // Both real Postgres-backed adapters share the exact same pool
+    // instance -- one Pool constructed from DATABASE_URL, not two.
+    expect(createPostgresAdapterMock.mock.calls[0]![0]).toBe(createPostgresInventoryAdapterMock.mock.calls[0]![0]);
     expect(poolConfigs).toEqual([{ connectionString: "postgres://user:pass@localhost:5432/db" }]);
     expect(fs.existsSync("/tmp/should-not-be-used-services-test.db")).toBe(false);
     // The mocked Postgres adapter is still a real, working adapter under

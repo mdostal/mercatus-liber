@@ -260,7 +260,38 @@ function mediaInfo(): AdapterInfo {
 }
 
 /**
- * Returns exactly seven entries describing this instance's actual adapter
+ * Mirrors services.ts's own `inventory` branch exactly (ims-postgres-
+ * alternate epic): createInMemoryInventoryAdapter() (@mercatus-liber/
+ * inventory) is always the default; DATABASE_URL set and truthy
+ * additionally swaps in the real Postgres-backed InventoryAdapter
+ * (@mercatus-liber/adapter-postgres-inventory), sharing the exact same
+ * connection pool catalog persistence already opened for that URL -- not a
+ * second, independent env-var check that happens to agree.
+ */
+function inventoryInfo(): AdapterInfo {
+  if (!process.env.DATABASE_URL) {
+    return {
+      subsystem: "Inventory",
+      adapter: "In-memory (reference default)",
+      detail:
+        "DATABASE_URL is not set -- createInMemoryInventoryAdapter() (packages/inventory), a deliberately " +
+        "valid, fully-functional default in this app's own posture, not an error state",
+      status: "active",
+    };
+  }
+
+  return {
+    subsystem: "Inventory",
+    adapter: "Postgres",
+    detail:
+      "DATABASE_URL is set -- createPostgresInventoryAdapter() (packages/adapter-postgres-inventory), " +
+      "sharing the same connection pool catalog persistence already opened for this URL",
+    status: "active",
+  };
+}
+
+/**
+ * Returns exactly eight entries describing this instance's actual adapter
  * wiring, computed fresh from process.env on every call.
  */
 export function getAdapterInfo(): AdapterInfo[] {
@@ -272,5 +303,6 @@ export function getAdapterInfo(): AdapterInfo[] {
     fulfillmentInfo(),
     shippingInfo(),
     mediaInfo(),
+    inventoryInfo(),
   ];
 }

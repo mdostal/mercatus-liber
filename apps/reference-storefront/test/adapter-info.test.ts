@@ -27,7 +27,7 @@ describe("getAdapterInfo", () => {
     vi.stubEnv("CLOUDINARY_CLOUD_NAME", "");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(7);
+    expect(info).toHaveLength(8);
 
     const persistence = info.find((e) => e.subsystem === "Persistence (catalog)")!;
     expect(persistence.status).toBe("active");
@@ -62,6 +62,10 @@ describe("getAdapterInfo", () => {
     const media = info.find((e) => e.subsystem === "Image CDN")!;
     expect(media.adapter).toBe("Passthrough (no transform)");
     expect(media.status).toBe("active");
+
+    const inventory = info.find((e) => e.subsystem === "Inventory")!;
+    expect(inventory.adapter).toBe("In-memory (reference default)");
+    expect(inventory.status).toBe("active");
   });
 
   it("reports file-backed SQLite as active, naming the exact path, when SQLITE_FILE_PATH is truthy and DATABASE_URL is unset", () => {
@@ -212,7 +216,7 @@ describe("getAdapterInfo", () => {
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(7);
+    expect(info).toHaveLength(8);
     expect(info.map((e) => e.subsystem)).toEqual([
       "Persistence (catalog)",
       "CMS",
@@ -221,7 +225,11 @@ describe("getAdapterInfo", () => {
       "Fulfillment",
       "Shipping",
       "Image CDN",
+      "Inventory",
     ]);
+    // DATABASE_URL is set (real-shaped) in this test -- inventory should
+    // report the real Postgres adapter, not the in-memory default.
+    expect(info.find((e) => e.subsystem === "Inventory")?.adapter).toBe("Postgres");
     // Persistence and CMS are always "active" (every one of their 2-3
     // states is a valid, functional configuration) -- same as every other
     // row now that payments' unset-key state is a real sandbox adapter

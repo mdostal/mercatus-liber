@@ -55,6 +55,7 @@ import {
   type BiMetricsAdapter,
 } from "@mercatus-liber/internal-bi";
 import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter } from "@mercatus-liber/inventory";
+import { createPostgresInventoryAdapter } from "@mercatus-liber/adapter-postgres-inventory";
 import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
 import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
 import { createInMemoryReviewRepository, createReviewsService, type ReviewsService } from "@mercatus-liber/reviews";
@@ -370,8 +371,14 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // the pg.Pool from DATABASE_URL, mirroring
   // packages/create-store/src/scaffold.ts's generated services.ts wiring
   // for the same adapter.
-  const persistence = process.env.DATABASE_URL
-    ? await createPostgresAdapter(new Pool({ connectionString: process.env.DATABASE_URL }))
+  // ims-postgres-alternate epic: hoisted (not constructed inline anymore)
+  // so the real Postgres-backed InventoryAdapter below can share this exact
+  // same connection pool instead of opening a second one against the same
+  // database -- both are real uses of the one DATABASE_URL a deployment
+  // configures, not two independent env-var checks that happen to agree.
+  const pgPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : null;
+  const persistence = pgPool
+    ? await createPostgresAdapter(pgPool)
     : process.env.SQLITE_FILE_PATH
       ? createSqliteAdapter(process.env.SQLITE_FILE_PATH)
       : createSqliteAdapter(":memory:");
@@ -542,7 +549,14 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // `checkout` structurally satisfies inventory's OrderLookup interface too.
   // Registered before seeding so seeded SKUs get their catalog.sku.created
   // init-at-0 handler fired, then seed.ts sets real stock afterward.
-  const inventory = createInMemoryInventoryAdapter();
+  // ims-postgres-alternate epic: a real second InventoryAdapter
+  // implementation, reusing the same pgPool DATABASE_URL already set up
+  // catalog persistence -- same "env var truthy picks the real adapter,
+  // else a harmless local default" shape as every other adapter branch in
+  // this function. Unconfigured (the in-memory default) is not a degraded
+  // state; a merchant who hasn't turned on real Postgres yet gets the exact
+  // same behavior this app has always had.
+  const inventory = pgPool ? await createPostgresInventoryAdapter(pgPool) : createInMemoryInventoryAdapter();
   registerInventorySync({ events, inventory, orders: checkout });
 
   // internal-bi (subsystem 20) -- structural shims bridge checkout/catalog/

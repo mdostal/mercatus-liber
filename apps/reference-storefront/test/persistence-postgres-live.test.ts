@@ -35,7 +35,7 @@ describe.skipIf(!LIVE_POSTGRES_URL)(
       if (!LIVE_POSTGRES_URL) return;
       // Clean up so repeated runs against the same long-lived instance start fresh.
       const pool = new Pool({ connectionString: LIVE_POSTGRES_URL });
-      await pool.query("DROP TABLE IF EXISTS product_attributes, skus, products CASCADE");
+      await pool.query("DROP TABLE IF EXISTS product_attributes, skus, products, stock_levels CASCADE");
       await pool.end();
     });
 
@@ -62,6 +62,15 @@ describe.skipIf(!LIVE_POSTGRES_URL)(
         const row = await verifyPool.query("SELECT slug, title FROM products WHERE id = $1", [first.id]);
         expect(row.rows[0]?.slug).toBe(first.slug);
         expect(row.rows[0]?.title).toBe(first.title);
+        // ims-postgres-alternate epic: independent verification that
+        // inventory is ALSO genuinely landing in real Postgres, not just
+        // catalog -- seed.ts calls inventory.setStock for every SKU it
+        // creates, so a real stock_levels row should exist for the first
+        // product's own SKU(s).
+        const skus = await services.catalog.listSkusByProduct(first.id);
+        expect(skus.length).toBeGreaterThan(0);
+        const stockRow = await verifyPool.query("SELECT on_hand FROM stock_levels WHERE sku_id = $1", [skus[0]!.id]);
+        expect(stockRow.rows[0]?.on_hand).toBeGreaterThan(0);
       } finally {
         await verifyPool.end();
       }

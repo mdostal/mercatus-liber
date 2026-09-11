@@ -1,0 +1,34 @@
+{
+  "name": "@mercatus-liber/adapter-postgres-inventory",
+  "version": "0.1.0",
+  "description": "A real second InventoryAdapter implementation (ims-postgres-alternate epic), backed by Postgres -- proves subsystem 11's own doc comment true (\"an external-IMS adapter is the same interface with a different implementation proxying to a real system\") with a genuine second backend, not just the one in-memory default @mercatus-liber/inventory ships. Public surface is exactly InventoryAdapter -- no pg-specific type leaks out. Reuses the exact same DATABASE_URL/pg.Pool infrastructure @mercatus-liber/adapter-postgres already proved out for catalog persistence, so this needs no new external account beyond whatever Postgres/Supabase connection a deployment already has. Depends on @mercatus-liber/core (StockLevel/InventoryAdapter live in @mercatus-liber/inventory, referenced structurally) and @mercatus-liber/inventory for the interface it implements.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/inventory": "workspace:*",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/pg": "^8.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
