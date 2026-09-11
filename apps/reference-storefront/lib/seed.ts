@@ -952,7 +952,238 @@ async function seedPromotions(promotions: PromotionsService): Promise<void> {
   });
 }
 
-/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. `recommendations` is optional too -- most test files don't need the rec-04 acceptance demo (one curated RecommendationRule); see seedRecommendations. `advertising` is optional too -- most test files don't need the ad-04 acceptance demo (1-2 Campaigns); see seedAdvertising. */
+interface DemoReview {
+  rating: 1 | 2 | 3 | 4 | 5;
+  authorName: string;
+  title: string;
+  body: string;
+  verifiedPurchase: boolean;
+  /** false leaves this review "pending" in the real /admin/reviews moderation queue instead of immediately moderating it to "published" -- see seedReviews below. */
+  publish: boolean;
+}
+
+/**
+ * demo-store-reviews-depth: @mercatus-liber/reviews ships a full PDP star-
+ * rating summary and review list, a public "Write a review" form, and a real
+ * /admin/reviews moderation queue with Publish/Reject actions, but no demo
+ * had ever seeded a single review -- every product read as an empty "no
+ * reviews yet" state. This seeds real, product-specific review content
+ * across 6 real print-shop products spanning all 5 categories (Embroidery
+ * x2, Custom Coasters, Apparel, Drinkware, Stickers & Patches), chosen to
+ * favor the products most likely to be clicked in a demo (the tote bag and
+ * dad cap are the ad-04/rec-04 acceptance demo's own featured pair -- see
+ * seedRecommendations/seedAdvertising above). Ratings are a real mix, not a
+ * wall of 5 stars: several reviews below are honest 3s and 4s with specific,
+ * fair criticism (slow shipping, a color that ran slightly differently than
+ * pictured, an inconsistency in a hand-finished batch) alongside the
+ * positive ones, and verifiedPurchase is mostly true with a couple of guest-
+ * style false reviews mixed in. Most reviews are moderated straight to
+ * "published" below so the storefront has real content to browse; exactly 3
+ * reviews across the whole set are flagged publish: false so the real
+ * /admin/reviews moderation queue has real, visible pending work to
+ * demonstrate too -- those read exactly like a published review (a real
+ * author, real product-specific detail), the only difference being that an
+ * admin hasn't acted on them yet.
+ */
+const DEMO_REVIEWS_BY_SLUG: Record<string, DemoReview[]> = {
+  "embroidered-canvas-tote": [
+    {
+      rating: 5,
+      authorName: "Marisol Vega",
+      title: "Exactly what I hoped for",
+      body: "Ordered this with my daughter's initials stitched on the front and the embroidery came out crisp and perfectly centered. The 12oz canvas feels genuinely heavyweight -- this isn't a flimsy tote that'll sag after a few grocery runs, and the stitched handles feel like they'll hold up for years.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 5,
+      authorName: "Dan Petrelli",
+      title: "Great anniversary gift",
+      body: "Had them embroider my wife's initials plus our wedding date on the natural canvas and she loves it. The stitching is tight and even, no loose threads anywhere, and it's roomy enough to actually use as a real bag, not just a shelf decoration.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 4,
+      authorName: "Ellen Kowalski",
+      title: "Beautiful embroidery, slow to arrive",
+      body: "The custom text embroidery itself is flawless and the canvas is exactly as heavyweight as described. My only complaint is that it took nearly two weeks longer than the estimate to ship, which was frustrating since I needed it for a specific date. Worth the wait for the quality, just plan ahead.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 5,
+      authorName: "Priya N.",
+      title: "Perfect birthday gift",
+      body: "Bought this as a guest checkout for my sister's birthday with a small custom monogram. The natural canvas color is lovely in person and the reinforced handles feel sturdy even loaded down with books.",
+      verifiedPurchase: false,
+      publish: false,
+    },
+  ],
+  "embroidered-dad-cap": [
+    {
+      rating: 5,
+      authorName: "Tom Bradley",
+      title: "Fits great, clean stitching",
+      body: "Got my initials embroidered front and center and the placement is exactly where I asked for it. The khaki twill is a nice weight, not too stiff, and the brass buckle strap adjusts easily to fit my head without the cap looking baggy in back.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 3,
+      authorName: "Rachel Simmons",
+      title: "Great embroidery, so-so strap hardware",
+      body: "The embroidered text came out sharp and exactly as I designed it -- no complaints there. But the adjustable brass buckle strap feels noticeably flimsier than the ones on my other dad caps, and I'm a little worried it'll wear out faster than the rest of the hat.",
+      verifiedPurchase: true,
+      publish: false,
+    },
+    {
+      rating: 5,
+      authorName: "Chris O.",
+      title: "Bought as a Father's Day gift",
+      body: "Ordered as a guest and had my dad's initials embroidered on the front. Unstructured, low-profile fit that he says is more comfortable than his other caps, and the khaki color matches everything.",
+      verifiedPurchase: false,
+      publish: true,
+    },
+  ],
+  "monogram-stoneware-coaster-set": [
+    {
+      rating: 5,
+      authorName: "Angela Cho",
+      title: "Etching is crisp and the cork backing doesn't slide",
+      body: "Had our family monogram laser-etched onto all four coasters and the detail held up even on the small script font I chose. They're genuinely absorbent too -- no more condensation rings on the coffee table -- and the cork backing keeps them from sliding around like our old set did.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 4,
+      authorName: "Marcus Webb",
+      title: "Gorgeous, but check the cork alignment",
+      body: "The stoneware itself is beautiful and the monogram etching is precise and legible. Two of the four coasters in my set had slightly uneven cork backing that keeps them from sitting perfectly flat on a glass table -- minor, but noticeable if you're picky about that sort of thing.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 5,
+      authorName: "Sam R.",
+      title: "Nice kraft gift box too",
+      body: "Ordered as a guest for a housewarming gift. The kraft gift box packaging made it feel like a real present, not just a shipped product, and the slate-gray stoneware looks great on a wood table.",
+      verifiedPurchase: false,
+      publish: true,
+    },
+  ],
+  "embroidered-fleece-hoodie": [
+    {
+      rating: 5,
+      authorName: "Jordan Lee",
+      title: "Warm and the embroidery placement is perfect",
+      body: "The 8.5oz fleece is genuinely midweight -- warm enough for fall mornings without feeling bulky -- and the left-chest embroidery came out exactly the size and placement I asked for. The kangaroo pocket is deep enough to actually use.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 5,
+      authorName: "Nina Alvarez",
+      title: "True to size, great quality",
+      body: "Ordered a medium and it fits like my usual medium hoodies, no need to size up. Had a small custom design embroidered on the chest and the stitch quality is tight with no puckering in the fabric around it.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 3,
+      authorName: "Bethany Cruz",
+      title: "Color ran a bit different than pictured",
+      body: "The embroidery quality itself is excellent -- clean lines, no loose threads. But the heather-gray I received reads noticeably darker and more charcoal than the photo on the site, and it took almost three weeks to arrive. I'd still order again, just wanted to flag the color difference for anyone picky about matching a specific shade.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+  ],
+  "custom-printed-ceramic-mug": [
+    {
+      rating: 5,
+      authorName: "Harold Jennings",
+      title: "Print is still sharp after months of dishwasher use",
+      body: "Uploaded a photo for a full edge-to-edge print and it came out vibrant with real detail, not the washed-out result I was half expecting. It's been through the dishwasher probably fifty times now and the print hasn't faded or scratched at all.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 4,
+      authorName: "Louisa Ferreira",
+      title: "Vibrant print, just watch your photo cropping",
+      body: "The 11oz mug arrived exactly as described, glossy white with a genuinely full edge-to-edge print, and the colors are vivid. My uploaded photo got cropped a bit tighter around the edges than I expected though, so a couple of faces near the border got cut off. Worth previewing carefully before ordering.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 5,
+      authorName: "Kevin T.",
+      title: "Great teacher-appreciation gift",
+      body: "Ordered several of these as a guest for a group teacher gift with a custom class photo on each one. All came out consistent and the microwave-safe glaze means they're actually useful, not just decorative.",
+      verifiedPurchase: false,
+      publish: true,
+    },
+  ],
+  "custom-vinyl-sticker-sheet": [
+    {
+      rating: 5,
+      authorName: "Talia Munroe",
+      title: "Survived a full summer on my water bottle",
+      body: "Cut my small logo design onto the matte vinyl sheet and stuck one on my water bottle back in June. It's been through the dishwasher and left in a hot car more times than I'd like to admit, and it still hasn't peeled, faded, or cracked.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 5,
+      authorName: "Owen Fitzgerald",
+      title: "Laptop sticker held up through daily use",
+      body: "Weatherproof matte finish is no joke -- mine's been stuck to my laptop lid for months of being tossed in a backpack and it still looks brand new, no lifting at the corners. The cut lines around my custom text are clean and precise.",
+      verifiedPurchase: true,
+      publish: true,
+    },
+    {
+      rating: 4,
+      authorName: "Devon Park",
+      title: "Good quality, colors a touch more muted than the preview",
+      body: "The vinyl itself cuts and sticks great -- no complaints about durability so far. The printed colors came out a little more muted in person than they looked in the online design preview, so if you're using a bright, saturated design I'd expect a slightly softer result.",
+      verifiedPurchase: false,
+      publish: false,
+    },
+  ],
+};
+
+/**
+ * Seeds every review in DEMO_REVIEWS_BY_SLUG above against its real product
+ * id (via productIdBySlug -- the same product-id lookup pattern
+ * seedRecommendations/seedAdvertising already use), submitting each one
+ * through the real ReviewsService.submitReview (landing "pending", exactly
+ * like a real shopper's submission) and then, for every review flagged
+ * publish: true, immediately moderating it to "published" via the real
+ * ReviewsService.moderateReview -- the same two-step submit-then-moderate
+ * path app/admin/reviews' real Publish action drives. Silently skips any
+ * slug not present in productIdBySlug (e.g. when seeding against a partial
+ * test catalog).
+ */
+async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string, string>): Promise<void> {
+  for (const [slug, productReviews] of Object.entries(DEMO_REVIEWS_BY_SLUG)) {
+    const productId = productIdBySlug.get(slug);
+    if (!productId) continue;
+
+    for (const demo of productReviews) {
+      const review = await reviews.submitReview({
+        productId,
+        rating: demo.rating,
+        authorName: demo.authorName,
+        title: demo.title,
+        body: demo.body,
+        verifiedPurchase: demo.verifiedPurchase,
+      });
+      if (demo.publish) await reviews.moderateReview(review.id, "published");
+    }
+  }
+}
+
+/** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. `recommendations` is optional too -- most test files don't need the rec-04 acceptance demo (one curated RecommendationRule); see seedRecommendations. `advertising` is optional too -- most test files don't need the ad-04 acceptance demo (1-2 Campaigns); see seedAdvertising. `reviews` is optional too -- most test files don't need the reviews-depth demo (real seeded review content across 6 products); see seedReviews. */
 export async function seedCatalog(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -1036,4 +1267,5 @@ export async function seedCatalog(
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
   if (advertising) await seedAdvertising(advertising, portlandServiceAreaId);
   if (promotions) await seedPromotions(promotions);
+  if (reviews) await seedReviews(reviews, productIdBySlug);
 }
