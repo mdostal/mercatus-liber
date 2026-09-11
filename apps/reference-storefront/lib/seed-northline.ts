@@ -8,6 +8,7 @@ import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog"
 import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
+import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 
 /**
@@ -975,6 +976,7 @@ export async function seedNorthlineDemo(
   recommendations?: RecommendationsService,
   advertising?: AdvertisingService,
   reviews?: ReviewsService,
+  storefrontViews?: StorefrontViewsService,
 ): Promise<void> {
   const categoryIdBySlug = new Map<string, string>();
   for (const category of DEMO_CATEGORIES) {

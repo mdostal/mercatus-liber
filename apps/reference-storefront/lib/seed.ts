@@ -8,6 +8,7 @@ import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog"
 import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
+import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
 
 interface DemoProduct {
@@ -1195,6 +1196,7 @@ export async function seedCatalog(
   advertising?: AdvertisingService,
   promotions?: PromotionsService,
   reviews?: ReviewsService,
+  storefrontViews?: StorefrontViewsService,
 ): Promise<void> {
   const categoryIdBySlug = await seedCategories(marketingCatalog);
   const productIdBySlug = new Map<string, string>();

@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/storefront-views",
+  "version": "0.1.0",
+  "description": "Storefront views (storefront-views-and-multi-catalog epic): a named, curated presentation layer over ONE store's already-real catalog -- a category subset, its own hero copy, an optional theme override -- addressable at its own route without duplicating catalog/cart/checkout/PDP/PLP logic. Depends on @mercatus-liber/core only, referencing categoryIds/demoSlug by bare string ids, the same structural-dependency posture as @mercatus-liber/promotions/recommendations/reviews. Three real patterns this makes possible with the SAME mechanism: (1) a permanent second storefront over a shared catalog (a 'parts counter' split, or two differently-curated storefronts over one inventory); (2) a time-boxed campaign takeover (getActiveDefaultOverride considers real startsAt/endsAt against the current time, so a seasonal microsite becomes the store's default home page for its real window and automatically reverts after -- no manual revert action needed); (3) multiple fully separate brands/catalogs is already what this repo's own multi-demo routing provides (each demo store is its own isolated catalog instance) and needs no new code here.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

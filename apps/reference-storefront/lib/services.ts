@@ -59,6 +59,11 @@ import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotifica
 import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
 import { createInMemoryReviewRepository, createReviewsService, type ReviewsService } from "@mercatus-liber/reviews";
 import {
+  createInMemoryStorefrontViewRepository,
+  createStorefrontViewsService,
+  type StorefrontViewsService,
+} from "@mercatus-liber/storefront-views";
+import {
   createInMemoryRecommendationRepository,
   createRecommendationsService,
   type RecommendationsService,
@@ -141,6 +146,7 @@ export interface Services {
   orderNotificationPlugin: OrderNotificationPlugin;
   promotions: PromotionsService;
   reviews: ReviewsService;
+  storefrontViews: StorefrontViewsService;
   bundles: BundlesService;
   recommendations: RecommendationsService;
   advertising: AdvertisingService;
@@ -408,6 +414,17 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   const reviews = createReviewsService({
     repository: createInMemoryReviewRepository(),
     events,
+  });
+
+  // storefront-views-and-multi-catalog epic: a curated presentation layer
+  // over this store's own already-real catalog. See
+  // @mercatus-liber/storefront-views's own doc comment for the 3 real
+  // patterns this makes possible (a permanent second storefront over a
+  // shared catalog, a time-boxed campaign takeover, and -- needing zero new
+  // code here -- the multi-brand pattern this repo's own multi-demo
+  // routing already provides).
+  const storefrontViews = createStorefrontViewsService({
+    repository: createInMemoryStorefrontViewRepository(),
   });
 
   // checkout's PricingAdjustment (per design-discussion.md §3) carries only
@@ -770,6 +787,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     advertising,
     promotions,
     reviews,
+    storefrontViews,
   });
 
   return {
@@ -791,6 +809,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     orderNotificationPlugin,
     promotions,
     reviews,
+    storefrontViews,
     bundles,
     recommendations,
     advertising,

@@ -47,6 +47,7 @@
     "@mercatus-liber/reviews": "workspace:*",
     "@mercatus-liber/search": "workspace:*",
     "@mercatus-liber/service-areas": "workspace:*",
+    "@mercatus-liber/storefront-views": "workspace:*",
     "@mercatus-liber/shipping": "workspace:*",
     "@mercatus-liber/theming": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
