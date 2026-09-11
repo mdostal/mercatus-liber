@@ -775,3 +775,57 @@ export async function markFulfillmentLineShippedAction(formData: FormData): Prom
   });
   revalidatePath(`/demo/${demoSlug}/admin/orders`);
 }
+
+/**
+ * bare-basics epic: the real shopper-facing review submission action --
+ * deliberately public/no requireAdminPermission call, unlike every mutation
+ * action above it in this file. Writing a review isn't an admin capability;
+ * every submitted review starts "pending" per ReviewsService.submitReview's
+ * own contract (see packages/reviews/src/service.ts) and only becomes
+ * visible after a real moderation action (publishReviewAction below). The
+ * rating is validated (a real integer 1-5), not silently clamped -- a
+ * caller-facing mistake here should be loud, matching this file's other
+ * strict-validation actions (e.g. parseCmsPageType). No redirect() here,
+ * same convention as updateCartItemQuantityAction: this form posts from the
+ * PDP and should leave the shopper exactly where they were. The product's
+ * own slug isn't in scope here (only its id), so this revalidates the whole
+ * demo's layout rather than one specific PDP path -- broad but safe, same
+ * pattern setThemeAction already uses for a similarly cross-cutting
+ * revalidation.
+ */
+export async function submitReviewAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  const productId = String(formData.get("productId") ?? "").trim();
+  const ratingRaw = Number(formData.get("rating"));
+  if (!Number.isInteger(ratingRaw) || ratingRaw < 1 || ratingRaw > 5) {
+    throw new Error(`Invalid rating: must be a whole number 1-5, got ${JSON.stringify(formData.get("rating"))}`);
+  }
+  const rating = ratingRaw as 1 | 2 | 3 | 4 | 5;
+  const authorName = String(formData.get("authorName") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+
+  const { reviews } = await getServicesForDemo(demoSlug);
+  await reviews.submitReview({ productId, rating, authorName, title, body });
+  revalidatePath(`/demo/${demoSlug}`, "layout");
+}
+
+/** Admin-gated: pending -> published, the real moderation action that makes a review visible on the PDP. */
+export async function publishReviewAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const id = String(formData.get("id"));
+  const { reviews } = await getServicesForDemo(demoSlug);
+  await reviews.moderateReview(id, "published");
+  revalidatePath(`/demo/${demoSlug}/admin/reviews`);
+}
+
+/** Admin-gated: pending -> rejected (or published -> rejected), a terminal moderation outcome -- see Review.status's own doc comment in packages/reviews/src/types.ts. */
+export async function rejectReviewAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const id = String(formData.get("id"));
+  const { reviews } = await getServicesForDemo(demoSlug);
+  await reviews.moderateReview(id, "rejected");
+  revalidatePath(`/demo/${demoSlug}/admin/reviews`);
+}

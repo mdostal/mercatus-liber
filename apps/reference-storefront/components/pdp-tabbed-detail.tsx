@@ -1,6 +1,12 @@
 import type { PdpViewModel } from "@mercatus-liber/pdp";
-import { addToCartAction } from "../lib/actions";
+import { addToCartAction, submitReviewAction } from "../lib/actions";
 import type { DemoSlug } from "../lib/demos";
+
+/** "★★★★☆"-style rendering of a rating (rounded to the nearest whole star -- ratings/averages are never fractional stars, only a real computed nearest-integer glyph count). */
+function ratingStars(value: number): string {
+  const rounded = Math.max(0, Math.min(5, Math.round(value)));
+  return "★".repeat(rounded) + "☆".repeat(5 - rounded);
+}
 
 /**
  * The "pdp.tabbed-detail" template component. This is the app-layer
@@ -19,6 +25,8 @@ export function PdpTabbedDetail({
   themeKey,
   imageUrl,
   imageAlt,
+  ratingSummary = null,
+  reviews = [],
 }: {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
@@ -46,6 +54,10 @@ export function PdpTabbedDetail({
    */
   imageUrl?: string | null;
   imageAlt?: string | null;
+  /** bare-basics epic: additive/optional -- computed fresh by the page via ReviewsService.getRatingSummary. `null`/undefined or a 0 count renders nothing (never a fake "0 reviews" line) -- byte-for-byte what this template rendered before this field existed. */
+  ratingSummary?: { average: number; count: number; distribution: Record<number, number> } | null;
+  /** bare-basics epic: additive/optional -- the product's real published reviews (ReviewsService.listPublishedReviewsForProduct). An empty array renders the "no reviews yet" empty state, never a fabricated review. */
+  reviews?: { id: string; rating: number; authorName: string; title: string; body: string; createdAt: string }[];
 }) {
   const { product, skus } = viewModel;
   const isMaximalist = themeKey === "maximalist";
@@ -67,6 +79,13 @@ export function PdpTabbedDetail({
         />
       )}
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{product.title}</h1>
+
+      {ratingSummary && ratingSummary.count > 0 && (
+        <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+          <span style={{ color: "var(--color-primary)" }}>{ratingStars(ratingSummary.average)}</span>{" "}
+          {ratingSummary.average.toFixed(1)} ({ratingSummary.count} review{ratingSummary.count === 1 ? "" : "s"})
+        </p>
+      )}
 
       <details open>
         <summary style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Description</summary>
@@ -127,6 +146,86 @@ export function PdpTabbedDetail({
             </button>
           </form>
         ))}
+      </details>
+
+      <details open style={{ marginTop: "var(--space-md, 24px)" }}>
+        <summary style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Reviews</summary>
+        {reviews.length > 0 ? (
+          reviews.map((review) => (
+            <div
+              key={review.id}
+              style={{
+                borderTop: "1px solid var(--color-border, #e5e5e5)",
+                paddingTop: "var(--space-xs, 8px)",
+                marginTop: "var(--space-xs, 8px)",
+              }}
+            >
+              <div style={{ color: "var(--color-primary)" }}>{ratingStars(review.rating)}</div>
+              <strong style={{ fontSize: "var(--font-size-body, 1rem)" }}>{review.title}</strong>
+              <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+                {review.authorName} -- {review.createdAt}
+              </div>
+              <p style={{ fontSize: "var(--font-size-body, 1rem)" }}>{review.body}</p>
+            </div>
+          ))
+        ) : (
+          <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+            No reviews yet -- be the first.
+          </p>
+        )}
+      </details>
+
+      <details open style={{ marginTop: "var(--space-md, 24px)" }}>
+        <summary style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Write a review</summary>
+        <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+          Reviews are moderated before appearing publicly.
+        </p>
+        <form action={submitReviewAction}>
+          <input type="hidden" name="demoSlug" value={demoSlug} />
+          <input type="hidden" name="productId" value={product.id} />
+          <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
+            <label htmlFor="review-rating" style={{ fontSize: "var(--font-size-body, 1rem)" }}>
+              Rating
+            </label>{" "}
+            <select id="review-rating" name="rating" defaultValue={5}>
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
+            <label htmlFor="review-authorName" style={{ display: "block", fontSize: "var(--font-size-body, 1rem)" }}>
+              Name
+            </label>
+            <input id="review-authorName" type="text" name="authorName" required style={{ width: "100%", maxWidth: 360 }} />
+          </div>
+          <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
+            <label htmlFor="review-title" style={{ display: "block", fontSize: "var(--font-size-body, 1rem)" }}>
+              Title
+            </label>
+            <input id="review-title" type="text" name="title" required style={{ width: "100%", maxWidth: 360 }} />
+          </div>
+          <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
+            <label htmlFor="review-body" style={{ display: "block", fontSize: "var(--font-size-body, 1rem)" }}>
+              Review
+            </label>
+            <textarea id="review-body" name="body" required style={{ width: "100%", maxWidth: 480 }} rows={4} />
+          </div>
+          <button
+            type="submit"
+            style={{
+              background: "var(--color-primary)",
+              color: "var(--color-background)",
+              borderRadius: "var(--radius)",
+              border: "none",
+              padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+            }}
+          >
+            Submit review
+          </button>
+        </form>
       </details>
     </main>
   );

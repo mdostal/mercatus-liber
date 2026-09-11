@@ -133,7 +133,7 @@ export default async function ProductPage({
   const { demoSlug, slug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { template } = await searchParams;
-  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog, media } = await getServicesForDemo(demoSlug);
+  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog, media, reviews } = await getServicesForDemo(demoSlug);
 
   // Explicit ?template= always wins; otherwise fall back to the active
   // theme's PDP choice (a per-request, per-call override -- never mutates
@@ -199,6 +199,16 @@ export default async function ProductPage({
     viewModel.product.id,
   );
 
+  // bare-basics epic: reviews is deliberately NOT part of pdp's view model,
+  // same "app composes multiple services" pattern as stock/bundles/
+  // recommendations above. getRatingSummary is always computed fresh (never
+  // cached/stale -- see ReviewsService.getRatingSummary's own doc comment)
+  // and returns a real zero-count summary for an unreviewed product, never
+  // undefined -- every PDP template below only renders the rating line when
+  // `ratingSummary.count > 0`.
+  const ratingSummary = await reviews.getRatingSummary(viewModel.product.id);
+  const publishedReviews = await reviews.listPublishedReviewsForProduct(viewModel.product.id);
+
   // seo-02: real Product + BreadcrumbList JSON-LD, built from data already
   // resolved above (viewModel, stockBySkuId) plus one real new lookup this
   // page didn't previously make (the product's real assigned category, for
@@ -223,6 +233,19 @@ export default async function ProductPage({
     url: productUrl,
     ...(offers ? { offers } : {}),
     ...(productImages && productImages.length > 0 ? { image: productImages } : {}),
+    // bare-basics epic: schema.org's real, documented AggregateRating shape
+    // (https://schema.org/AggregateRating) -- only ever emitted when this
+    // product has at least one real published review; never a fabricated
+    // rating for an unreviewed product.
+    ...(ratingSummary.count > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: ratingSummary.average,
+            reviewCount: ratingSummary.count,
+          },
+        }
+      : {}),
   };
 
   const productCategories = await marketingCatalog.listCategoriesForProduct(viewModel.product.id);
@@ -263,6 +286,14 @@ export default async function ProductPage({
         // field existed.
         imageUrl={imageUrl}
         imageAlt={imageAlt}
+        // bare-basics epic: additive/optional, see pdp-tabbed-detail.tsx's
+        // ratingSummary/reviews doc comment -- a zero-count summary and an
+        // empty reviews array render byte-for-byte what each template
+        // rendered before this feature existed (no rating line, "no reviews
+        // yet" state, and the write-a-review form -- which was always
+        // absent before this task).
+        ratingSummary={ratingSummary}
+        reviews={publishedReviews}
       />
       {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </>

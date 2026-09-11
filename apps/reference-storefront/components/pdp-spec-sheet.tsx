@@ -1,7 +1,13 @@
 import type { PdpViewModel } from "@mercatus-liber/pdp";
-import { addToCartAction } from "../lib/actions";
+import { addToCartAction, submitReviewAction } from "../lib/actions";
 import type { DemoSlug } from "../lib/demos";
 import { DS_ATOMS_CSS, DS_FONT_MONO } from "./datasheet-styles";
+
+/** "★★★★☆"-style rendering of a rating (rounded to the nearest whole star), same convention as pdp-tabbed-detail.tsx's own ratingStars. */
+function ratingStars(value: number): string {
+  const rounded = Math.max(0, Math.min(5, Math.round(value)));
+  return "★".repeat(rounded) + "☆".repeat(5 - rounded);
+}
 
 /**
  * The "pdp.spec-sheet" template -- the real "Datasheet Storefront" PDP,
@@ -35,6 +41,8 @@ export function PdpSpecSheet({
   customizable = false,
   imageUrl,
   imageAlt,
+  ratingSummary = null,
+  reviews = [],
 }: {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
@@ -44,6 +52,10 @@ export function PdpSpecSheet({
   /** image-cdn epic: same additive/optional resolved-photo props as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   imageUrl?: string | null;
   imageAlt?: string | null;
+  /** bare-basics epic: same additive/optional rating-summary prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
+  ratingSummary?: { average: number; count: number; distribution: Record<number, number> } | null;
+  /** bare-basics epic: same additive/optional published-reviews prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
+  reviews?: { id: string; rating: number; authorName: string; title: string; body: string; createdAt: string }[];
 }) {
   const { product, skus } = viewModel;
 
@@ -160,6 +172,21 @@ export function PdpSpecSheet({
           width: 100%;
           max-width: 320px;
         }
+        .ds-rating { font-family: ${DS_FONT_MONO}; font-size: 12.5px; color: var(--color-accent, #5A6170); }
+        .ds-rating-stars { color: var(--color-primary, #C8460A); }
+        .ds-reviews { margin-top: 24px; border: 1px solid var(--color-border, #D2D7E0); padding: clamp(20px, 3vw, 32px); background: #FFFFFF; }
+        .ds-review { padding: 12px 0; border-top: 1px solid var(--color-border, #D2D7E0); }
+        .ds-review:first-of-type { border-top: none; padding-top: 0; }
+        .ds-review-meta { font-family: ${DS_FONT_MONO}; font-size: 11px; color: var(--color-accent, #5A6170); text-transform: uppercase; letter-spacing: 0.04em; }
+        .ds-review-body { font-size: 13.5px; color: var(--color-text, #12151B); line-height: 1.6; margin-top: 6px; }
+        .ds-review-form label { display: block; font-family: ${DS_FONT_MONO}; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-accent, #5A6170); margin-top: 12px; margin-bottom: 4px; }
+        .ds-review-form input[type="text"], .ds-review-form select, .ds-review-form textarea {
+          font-family: var(--font-family, sans-serif);
+          border: 1px solid var(--color-muted, #AAB1BF);
+          padding: 6px 8px;
+          width: 100%;
+          max-width: 420px;
+        }
         @media (max-width: 860px) { .ds-pdp-grid { grid-template-columns: 1fr; } }
       `}</style>
 
@@ -191,6 +218,13 @@ export function PdpSpecSheet({
             </span>
             <span className={`ds-stock-badge${anyInStock ? "" : " out"}`}>{anyInStock ? "In stock" : "Out of stock"}</span>
           </div>
+
+          {ratingSummary && ratingSummary.count > 0 && (
+            <div className="ds-rating">
+              <span className="ds-rating-stars">{ratingStars(ratingSummary.average)}</span>{" "}
+              {ratingSummary.average.toFixed(1)} ({ratingSummary.count} review{ratingSummary.count === 1 ? "" : "s"})
+            </div>
+          )}
 
           <p className="ds-pdp-desc">{product.description}</p>
 
@@ -242,6 +276,51 @@ export function PdpSpecSheet({
               </button>
             </form>
           ))}
+        </div>
+      </div>
+
+      <div className="ds-reviews">
+        <div className="ds-dh">Reviews</div>
+        {reviews.length > 0 ? (
+          reviews.map((review) => (
+            <div key={review.id} className="ds-review">
+              <span className="ds-rating-stars">{ratingStars(review.rating)}</span>
+              <div className="ds-review-meta">
+                {review.title} -- {review.authorName} -- {review.createdAt}
+              </div>
+              <p className="ds-review-body">{review.body}</p>
+            </div>
+          ))
+        ) : (
+          <p className="ds-review-meta">No reviews yet -- be the first.</p>
+        )}
+
+        <div className="ds-review-form">
+          <div className="ds-dh" style={{ marginTop: 20 }}>
+            Write a review
+          </div>
+          <p className="ds-review-meta">Reviews are moderated before appearing publicly.</p>
+          <form action={submitReviewAction}>
+            <input type="hidden" name="demoSlug" value={demoSlug} />
+            <input type="hidden" name="productId" value={product.id} />
+            <label htmlFor="review-rating">Rating</label>
+            <select id="review-rating" name="rating" defaultValue={5}>
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <label htmlFor="review-authorName">Name</label>
+            <input id="review-authorName" type="text" name="authorName" required />
+            <label htmlFor="review-title">Title</label>
+            <input id="review-title" type="text" name="title" required />
+            <label htmlFor="review-body">Review</label>
+            <textarea id="review-body" name="body" required rows={4} />
+            <button type="submit" className="ds-btn ds-btn-accent" style={{ marginTop: 12 }}>
+              Submit review
+            </button>
+          </form>
         </div>
       </div>
     </div>

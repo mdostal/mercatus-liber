@@ -1,7 +1,16 @@
 import type { PdpViewModel } from "@mercatus-liber/pdp";
-import { addToCartAction } from "../lib/actions";
+import { addToCartAction, submitReviewAction } from "../lib/actions";
 import type { DemoSlug } from "../lib/demos";
 import { readActiveThemeBundle } from "../lib/theme-cookie";
+
+/** "★★★★☆"-style rendering of a rating (rounded to the nearest whole star), same convention as pdp-tabbed-detail.tsx's own ratingStars. */
+function ratingStars(value: number): string {
+  const rounded = Math.max(0, Math.min(5, Math.round(value)));
+  return "★".repeat(rounded) + "☆".repeat(5 - rounded);
+}
+
+type PdpReviewSummary = { average: number; count: number; distribution: Record<number, number> };
+type PdpReview = { id: string; rating: number; authorName: string; title: string; body: string; createdAt: string };
 
 type PdpLongScrollProps = {
   demoSlug: DemoSlug;
@@ -13,6 +22,10 @@ type PdpLongScrollProps = {
   /** image-cdn epic: same additive/optional resolved-photo props as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   imageUrl?: string | null;
   imageAlt?: string | null;
+  /** bare-basics epic: same additive/optional rating-summary prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
+  ratingSummary?: PdpReviewSummary | null;
+  /** bare-basics epic: same additive/optional published-reviews prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
+  reviews?: PdpReview[];
 };
 
 /**
@@ -40,6 +53,8 @@ export async function PdpLongScroll({
   customizable = false,
   imageUrl = null,
   imageAlt = null,
+  ratingSummary = null,
+  reviews = [],
 }: PdpLongScrollProps) {
   const activeTheme = await readActiveThemeBundle(demoSlug);
   if (activeTheme.key === "editorial") {
@@ -51,6 +66,8 @@ export async function PdpLongScroll({
         customizable={customizable}
         imageUrl={imageUrl}
         imageAlt={imageAlt}
+        ratingSummary={ratingSummary}
+        reviews={reviews}
       />
     );
   }
@@ -73,6 +90,13 @@ export async function PdpLongScroll({
         />
       )}
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{product.title}</h1>
+
+      {ratingSummary && ratingSummary.count > 0 && (
+        <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+          <span style={{ color: "var(--color-primary)" }}>{ratingStars(ratingSummary.average)}</span>{" "}
+          {ratingSummary.average.toFixed(1)} ({ratingSummary.count} review{ratingSummary.count === 1 ? "" : "s"})
+        </p>
+      )}
 
       <p style={{ fontSize: "var(--font-size-body, 1rem)" }}>{product.description}</p>
 
@@ -139,6 +163,82 @@ export async function PdpLongScroll({
           </button>
         </form>
       ))}
+
+      <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Reviews</h2>
+      {reviews.length > 0 ? (
+        reviews.map((review) => (
+          <div
+            key={review.id}
+            style={{
+              borderTop: "1px solid var(--color-border, #e5e5e5)",
+              paddingTop: "var(--space-xs, 8px)",
+              marginTop: "var(--space-xs, 8px)",
+            }}
+          >
+            <div style={{ color: "var(--color-primary)" }}>{ratingStars(review.rating)}</div>
+            <strong style={{ fontSize: "var(--font-size-body, 1rem)" }}>{review.title}</strong>
+            <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+              {review.authorName} -- {review.createdAt}
+            </div>
+            <p style={{ fontSize: "var(--font-size-body, 1rem)" }}>{review.body}</p>
+          </div>
+        ))
+      ) : (
+        <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+          No reviews yet -- be the first.
+        </p>
+      )}
+
+      <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Write a review</h2>
+      <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+        Reviews are moderated before appearing publicly.
+      </p>
+      <form action={submitReviewAction}>
+        <input type="hidden" name="demoSlug" value={demoSlug} />
+        <input type="hidden" name="productId" value={product.id} />
+        <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
+          <label htmlFor="review-rating" style={{ fontSize: "var(--font-size-body, 1rem)" }}>
+            Rating
+          </label>{" "}
+          <select id="review-rating" name="rating" defaultValue={5}>
+            {[5, 4, 3, 2, 1].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
+          <label htmlFor="review-authorName" style={{ display: "block", fontSize: "var(--font-size-body, 1rem)" }}>
+            Name
+          </label>
+          <input id="review-authorName" type="text" name="authorName" required style={{ width: "100%", maxWidth: 360 }} />
+        </div>
+        <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
+          <label htmlFor="review-title" style={{ display: "block", fontSize: "var(--font-size-body, 1rem)" }}>
+            Title
+          </label>
+          <input id="review-title" type="text" name="title" required style={{ width: "100%", maxWidth: 360 }} />
+        </div>
+        <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
+          <label htmlFor="review-body" style={{ display: "block", fontSize: "var(--font-size-body, 1rem)" }}>
+            Review
+          </label>
+          <textarea id="review-body" name="body" required style={{ width: "100%", maxWidth: 480 }} rows={4} />
+        </div>
+        <button
+          type="submit"
+          style={{
+            background: "var(--color-primary)",
+            color: "var(--color-background)",
+            borderRadius: "var(--radius)",
+            border: "none",
+            padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+          }}
+        >
+          Submit review
+        </button>
+      </form>
     </main>
   );
 }
@@ -162,6 +262,8 @@ function EditorialPdpLongScroll({
   customizable,
   imageUrl,
   imageAlt,
+  ratingSummary,
+  reviews,
 }: Required<Omit<PdpLongScrollProps, "viewModel">> & { viewModel: PdpViewModel }) {
   const { product, skus, optionValues } = viewModel;
   const firstWord = product.description.trim().slice(0, 1);
@@ -195,6 +297,16 @@ function EditorialPdpLongScroll({
         .ed-personalize-input { width: 100%; max-width: 360px; margin-top: .3rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .5rem .65rem; font-family: var(--font-family); }
         .ed-btn-add { margin-top: 1.25rem; display: inline-flex; align-self: flex-start; background: var(--color-primary); color: var(--color-background); border: 1px solid var(--color-primary); border-radius: var(--radius); font-family: var(--font-family); font-weight: 700; font-size: .92rem; letter-spacing: .02em; padding: .85rem 1.75rem; cursor: pointer; }
         .ed-btn-add:hover { filter: brightness(0.9); }
+        .ed-rating { margin-top: .5rem; font-family: var(--font-family); color: var(--color-muted, #55493A); font-size: .95rem; }
+        .ed-rating-stars { color: var(--color-primary); }
+        .ed-reviews { margin-top: 3rem; border-top: 1px solid var(--color-border, #DACFAF); padding-top: 1.5rem; }
+        .ed-reviews-title { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: 1.4rem; }
+        .ed-review { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--color-border, #DACFAF); }
+        .ed-review:first-of-type { border-top: none; }
+        .ed-review-meta { font-family: var(--font-family); color: var(--color-muted, #7A6C58); font-size: .85rem; }
+        .ed-review-body { font-family: var(--font-family); font-size: .98rem; line-height: 1.6; margin-top: .3rem; }
+        .ed-review-form label { display: block; margin-top: .75rem; font-family: var(--font-family); font-size: .85rem; color: var(--color-muted, #7A6C58); }
+        .ed-review-form input[type="text"], .ed-review-form select, .ed-review-form textarea { width: 100%; max-width: 420px; margin-top: .3rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .5rem .65rem; font-family: var(--font-family); }
         @media (max-width: 900px) {
           .ed-pdp-layout { grid-template-columns: 1fr; }
         }
@@ -211,6 +323,13 @@ function EditorialPdpLongScroll({
 
         <div>
           <h1 className="ed-pdp-title">{product.title}</h1>
+
+          {ratingSummary && ratingSummary.count > 0 && (
+            <p className="ed-rating">
+              <span className="ed-rating-stars">{ratingStars(ratingSummary.average)}</span>{" "}
+              {ratingSummary.average.toFixed(1)} ({ratingSummary.count} review{ratingSummary.count === 1 ? "" : "s"})
+            </p>
+          )}
 
           {optionValues.length > 0 && (
             <div className="ed-pdp-options">
@@ -273,6 +392,49 @@ function EditorialPdpLongScroll({
               </form>
             );
           })}
+        </div>
+      </div>
+
+      <div className="ed-reviews">
+        <h2 className="ed-reviews-title">Reviews</h2>
+        {reviews.length > 0 ? (
+          reviews.map((review) => (
+            <div key={review.id} className="ed-review">
+              <span className="ed-rating-stars">{ratingStars(review.rating)}</span>
+              <div className="ed-review-meta">
+                <strong>{review.title}</strong> -- {review.authorName} -- {review.createdAt}
+              </div>
+              <p className="ed-review-body">{review.body}</p>
+            </div>
+          ))
+        ) : (
+          <p className="ed-review-meta">No reviews yet -- be the first.</p>
+        )}
+
+        <div className="ed-review-form">
+          <h2 className="ed-reviews-title">Write a review</h2>
+          <p className="ed-review-meta">Reviews are moderated before appearing publicly.</p>
+          <form action={submitReviewAction}>
+            <input type="hidden" name="demoSlug" value={demoSlug} />
+            <input type="hidden" name="productId" value={product.id} />
+            <label htmlFor="review-rating">Rating</label>
+            <select id="review-rating" name="rating" defaultValue={5}>
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <label htmlFor="review-authorName">Name</label>
+            <input id="review-authorName" type="text" name="authorName" required />
+            <label htmlFor="review-title">Title</label>
+            <input id="review-title" type="text" name="title" required />
+            <label htmlFor="review-body">Review</label>
+            <textarea id="review-body" name="body" required rows={4} />
+            <button type="submit" className="ed-btn-add">
+              Submit review
+            </button>
+          </form>
         </div>
       </div>
     </main>
