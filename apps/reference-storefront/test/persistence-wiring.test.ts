@@ -63,6 +63,21 @@ vi.mock("@mercatus-liber/adapter-mongodb", async () => {
   };
 });
 
+// adapter-convex epic: same posture as the MongoDB mock above --
+// connectConvexAdapter itself constructs a real Convex client, so the
+// whole function is mocked, recording the deployment URL it was called
+// with. No live Convex project is assumed here.
+const connectConvexAdapterMock = vi.fn();
+vi.mock("@mercatus-liber/adapter-convex", async () => {
+  const { createSqliteAdapter } = await import("@mercatus-liber/adapter-sqlite");
+  return {
+    connectConvexAdapter: async (convexUrl: string) => {
+      connectConvexAdapterMock(convexUrl);
+      return createSqliteAdapter(":memory:");
+    },
+  };
+});
+
 vi.mock("@mercatus-liber/adapter-postgres-inventory", async () => {
   const { createInMemoryInventoryAdapter } = await import("@mercatus-liber/inventory");
   return {
@@ -89,6 +104,7 @@ afterEach(() => {
   createPostgresAdapterMock.mockClear();
   createPostgresInventoryAdapterMock.mockClear();
   connectMongoAdapterMock.mockClear();
+  connectConvexAdapterMock.mockClear();
   poolConfigs.length = 0;
 });
 
@@ -177,5 +193,36 @@ describe("Persistence wiring (lib/services.ts)", () => {
 
     expect(createPostgresAdapterMock).toHaveBeenCalledTimes(1);
     expect(connectMongoAdapterMock).not.toHaveBeenCalled();
+  });
+
+  it("constructs a Convex adapter via CONVEX_URL when set and neither DATABASE_URL nor MONGODB_URL is set", async () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("MONGODB_URL", "");
+    vi.stubEnv("CONVEX_URL", "https://my-deployment-123.convex.cloud");
+    vi.stubEnv("SQLITE_FILE_PATH", "/tmp/should-not-be-used-convex-test.db");
+    vi.resetModules();
+
+    const { getServicesForDemo } = await import("../lib/services.js");
+    const services = await getServicesForDemo("print-shop");
+
+    expect(createPostgresAdapterMock).not.toHaveBeenCalled();
+    expect(connectMongoAdapterMock).not.toHaveBeenCalled();
+    expect(connectConvexAdapterMock).toHaveBeenCalledTimes(1);
+    expect(connectConvexAdapterMock).toHaveBeenCalledWith("https://my-deployment-123.convex.cloud");
+    expect(fs.existsSync("/tmp/should-not-be-used-convex-test.db")).toBe(false);
+    expect((await services.catalog.listProducts()).length).toBeGreaterThan(0);
+  });
+
+  it("MONGODB_URL wins over CONVEX_URL when both are set (and DATABASE_URL is not)", async () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/shop");
+    vi.stubEnv("CONVEX_URL", "https://my-deployment-123.convex.cloud");
+    vi.resetModules();
+
+    const { getServicesForDemo } = await import("../lib/services.js");
+    await getServicesForDemo("print-shop");
+
+    expect(connectMongoAdapterMock).toHaveBeenCalledTimes(1);
+    expect(connectConvexAdapterMock).not.toHaveBeenCalled();
   });
 });

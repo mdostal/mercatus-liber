@@ -57,6 +57,7 @@ import {
 import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter } from "@mercatus-liber/inventory";
 import { createPostgresInventoryAdapter } from "@mercatus-liber/adapter-postgres-inventory";
 import { connectMongoAdapter } from "@mercatus-liber/adapter-mongodb";
+import { connectConvexAdapter } from "@mercatus-liber/adapter-convex";
 import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
 import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
 import { createInMemoryReviewRepository, createReviewsService, type ReviewsService } from "@mercatus-liber/reviews";
@@ -386,13 +387,22 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // Pool(...)` above.
   const mongo =
     !pgPool && process.env.MONGODB_URL ? await connectMongoAdapter(process.env.MONGODB_URL) : null;
+  // adapter-convex epic: same "only checked when nothing higher-priority
+  // is already set" shape as mongo above -- CONVEX_URL is the least
+  // preferred of the 3 real external backends here only because it's the
+  // newest/least battle-tested in this codebase, not a statement about
+  // Convex itself.
+  const convexAdapter =
+    !pgPool && !mongo && process.env.CONVEX_URL ? await connectConvexAdapter(process.env.CONVEX_URL) : null;
   const persistence = pgPool
     ? await createPostgresAdapter(pgPool)
     : mongo
       ? mongo.adapter
-      : process.env.SQLITE_FILE_PATH
-        ? createSqliteAdapter(process.env.SQLITE_FILE_PATH)
-        : createSqliteAdapter(":memory:");
+      : convexAdapter
+        ? convexAdapter
+        : process.env.SQLITE_FILE_PATH
+          ? createSqliteAdapter(process.env.SQLITE_FILE_PATH)
+          : createSqliteAdapter(":memory:");
   const catalog = createCatalogService({ persistence, events });
 
   const cart = createCartService({

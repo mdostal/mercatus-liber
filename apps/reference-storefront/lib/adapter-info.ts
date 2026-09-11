@@ -54,6 +54,18 @@ function persistenceInfo(): AdapterInfo {
     };
   }
 
+  if (process.env.CONVEX_URL) {
+    return {
+      subsystem: "Persistence (catalog)",
+      adapter: "Convex",
+      detail:
+        "CONVEX_URL is set (and DATABASE_URL/MONGODB_URL are not) -- connectConvexAdapter() " +
+        "(packages/adapter-convex), calling the real functions in that package's convex-functions/ " +
+        "directory once deployed to your own Convex project",
+      status: "active",
+    };
+  }
+
   if (process.env.SQLITE_FILE_PATH) {
     return {
       subsystem: "Persistence (catalog)",

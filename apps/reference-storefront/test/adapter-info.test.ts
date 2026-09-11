@@ -19,6 +19,8 @@ describe("getAdapterInfo", () => {
     vi.stubEnv("POSTHOG_API_KEY", "");
     vi.stubEnv("SANITY_PROJECT_ID", "");
     vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("MONGODB_URL", "");
+    vi.stubEnv("CONVEX_URL", "");
     vi.stubEnv("SQLITE_FILE_PATH", "");
     vi.stubEnv("PRINTFUL_API_TOKEN", "");
     vi.stubEnv("PRINTIFY_API_TOKEN", "");
@@ -94,6 +96,25 @@ describe("getAdapterInfo", () => {
 
     const persistence = getAdapterInfo().find((e) => e.subsystem === "Persistence (catalog)")!;
     expect(persistence.adapter).toBe("Postgres");
+  });
+
+  it("reports Convex as active when CONVEX_URL is truthy and neither DATABASE_URL nor MONGODB_URL is set", () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("MONGODB_URL", "");
+    vi.stubEnv("CONVEX_URL", "https://my-deployment-123.convex.cloud");
+
+    const persistence = getAdapterInfo().find((e) => e.subsystem === "Persistence (catalog)")!;
+    expect(persistence.status).toBe("active");
+    expect(persistence.adapter).toBe("Convex");
+  });
+
+  it("MONGODB_URL wins over CONVEX_URL when both are set (and DATABASE_URL is not)", () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/shop");
+    vi.stubEnv("CONVEX_URL", "https://my-deployment-123.convex.cloud");
+
+    const persistence = getAdapterInfo().find((e) => e.subsystem === "Persistence (catalog)")!;
+    expect(persistence.adapter).toBe("MongoDB");
   });
 
   it("reports Postgres as active when DATABASE_URL is truthy, taking priority over SQLITE_FILE_PATH", () => {

@@ -1,0 +1,34 @@
+{
+  "name": "@mercatus-liber/adapter-convex",
+  "version": "0.1.0",
+  "description": "A real fourth reference persistence adapter (adapter-convex epic), backed by Convex -- implements @mercatus-liber/core's CatalogPersistenceAdapter interface against a real-time, TypeScript-native reactive backend, the furthest storage paradigm from adapter-sqlite/adapter-postgres/adapter-mongodb named in this project's own roadmap. Structurally different from this repo's other adapters: Convex requires real server-side query/mutation functions deployed to YOUR OWN Convex project (there is no generic 'run arbitrary queries against any deployment' client) -- this package ships that real function source in convex-functions/ (copy into your project, `npx convex dev`/`deploy`) plus a client (createConvexAdapter/connectConvexAdapter) that calls those functions by name via Convex's own real, documented makeFunctionReference mechanism (no codegen needed on this repo's side). No live Convex account exists in this environment -- built and unit-tested for real correctness against a structurally-typed fake client double (same honest-disclosure posture as adapter-shippo/adapter-printful/adapter-printify/adapter-mongodb before their first live credential).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "convex-functions"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*",
+    "convex": "^1.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}
