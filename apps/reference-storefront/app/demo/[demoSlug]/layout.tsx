@@ -169,7 +169,18 @@ export default async function DemoLayout({
   // override (undefined for the 7 pre-existing bundles, which don't define
   // one, so resolveTemplate falls back to its own first-registered-template
   // default, "nav.top-bar" -- see packages/theming/src/service.ts).
-  const { theming } = await getServicesForDemo(demoSlug);
+  const { theming, storefrontViews } = await getServicesForDemo(demoSlug);
+  // storefront-views-and-multi-catalog epic: a real, live-data-driven
+  // discoverability fix -- a permanent second storefront (isDefaultOverride:
+  // false) has no other real entry point anywhere in the app besides
+  // knowing its exact /site/<slug> URL. Only ever lists PUBLISHED,
+  // non-default-override views (a takeover view IS the home page while
+  // live, so it needs no separate link; a draft view isn't real yet) --
+  // empty for every demo with none seeded, so this is a no-op today for
+  // any store that hasn't adopted the feature.
+  const discoverableViews = (await storefrontViews.listViews(demoSlug)).filter(
+    (view) => view.status === "active" && !view.isDefaultOverride,
+  );
   const navTemplateKey = theming.resolveTemplate("nav", activeTheme.defaultTemplatesByPageType.nav);
   const NavChrome: ComponentType<NavChromeProps> =
     (navTemplateKey && NAV_TEMPLATES[navTemplateKey as keyof typeof NAV_TEMPLATES]) || NavTopBar;
@@ -286,6 +297,18 @@ export default async function DemoLayout({
           <a href="/architecture" style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}>
             How this works &rarr;
           </a>
+          {discoverableViews.map((view) => (
+            <span key={view.id}>
+              {" "}
+              &middot;{" "}
+              <a
+                href={`/demo/${demoSlug}/site/${view.slug}`}
+                style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}
+              >
+                Also see: {view.name} &rarr;
+              </a>
+            </span>
+          ))}
         </div>
         <NavChrome
           demoSlug={demoSlug}
