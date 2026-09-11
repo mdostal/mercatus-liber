@@ -45,6 +45,15 @@ function persistenceInfo(): AdapterInfo {
     };
   }
 
+  if (process.env.MONGODB_URL) {
+    return {
+      subsystem: "Persistence (catalog)",
+      adapter: "MongoDB",
+      detail: "MONGODB_URL is set (and DATABASE_URL is not) -- connectMongoAdapter() (packages/adapter-mongodb)",
+      status: "active",
+    };
+  }
+
   if (process.env.SQLITE_FILE_PATH) {
     return {
       subsystem: "Persistence (catalog)",

@@ -56,6 +56,7 @@ import {
 } from "@mercatus-liber/internal-bi";
 import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter } from "@mercatus-liber/inventory";
 import { createPostgresInventoryAdapter } from "@mercatus-liber/adapter-postgres-inventory";
+import { connectMongoAdapter } from "@mercatus-liber/adapter-mongodb";
 import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
 import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
 import { createInMemoryReviewRepository, createReviewsService, type ReviewsService } from "@mercatus-liber/reviews";
@@ -377,11 +378,21 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // database -- both are real uses of the one DATABASE_URL a deployment
   // configures, not two independent env-var checks that happen to agree.
   const pgPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : null;
+  // adapter-mongodb epic: MONGODB_URL is checked only when DATABASE_URL
+  // isn't set -- a deployment picks ONE real external catalog backend, not
+  // a priority race between two. Kept a distinct step (not folded into the
+  // ternary chain below) since connectMongoAdapter is async and itself
+  // constructs the real MongoClient, unlike pgPool's synchronous `new
+  // Pool(...)` above.
+  const mongo =
+    !pgPool && process.env.MONGODB_URL ? await connectMongoAdapter(process.env.MONGODB_URL) : null;
   const persistence = pgPool
     ? await createPostgresAdapter(pgPool)
-    : process.env.SQLITE_FILE_PATH
-      ? createSqliteAdapter(process.env.SQLITE_FILE_PATH)
-      : createSqliteAdapter(":memory:");
+    : mongo
+      ? mongo.adapter
+      : process.env.SQLITE_FILE_PATH
+        ? createSqliteAdapter(process.env.SQLITE_FILE_PATH)
+        : createSqliteAdapter(":memory:");
   const catalog = createCatalogService({ persistence, events });
 
   const cart = createCartService({

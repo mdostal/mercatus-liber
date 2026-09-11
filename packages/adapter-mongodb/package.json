@@ -1,0 +1,33 @@
+{
+  "name": "@mercatus-liber/adapter-mongodb",
+  "version": "0.1.0",
+  "description": "A real third reference persistence adapter (adapter-mongodb epic), backed by MongoDB -- implements @mercatus-liber/core's CatalogPersistenceAdapter interface with a genuinely different storage paradigm from adapter-sqlite/adapter-postgres (a document store, not a relational/SQL engine), proving the interface doesn't secretly assume rows-and-columns. Public surface is exactly CatalogPersistenceAdapter -- no MongoDB-specific type leaks out. Built against the official `mongodb` Node.js driver's real, current API (confirmed via research, not assumed -- MongoClient/db().collection()/findOne/find/updateOne with upsert). No live MongoDB account exists in this environment -- built and unit-tested for real correctness against a structurally-typed fake Db double (same honest-disclosure posture as adapter-shippo/adapter-printful/adapter-printify before their first live credential).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*",
+    "mongodb": "^7.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

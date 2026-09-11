@@ -79,6 +79,23 @@ describe("getAdapterInfo", () => {
     expect(persistence.detail).not.toMatch(/ephemeral/i);
   });
 
+  it("reports MongoDB as active when MONGODB_URL is truthy and DATABASE_URL is unset", () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/shop");
+
+    const persistence = getAdapterInfo().find((e) => e.subsystem === "Persistence (catalog)")!;
+    expect(persistence.status).toBe("active");
+    expect(persistence.adapter).toBe("MongoDB");
+  });
+
+  it("DATABASE_URL wins over MONGODB_URL when both are set -- a deployment picks one real backend, not a race", () => {
+    vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
+    vi.stubEnv("MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/shop");
+
+    const persistence = getAdapterInfo().find((e) => e.subsystem === "Persistence (catalog)")!;
+    expect(persistence.adapter).toBe("Postgres");
+  });
+
   it("reports Postgres as active when DATABASE_URL is truthy, taking priority over SQLITE_FILE_PATH", () => {
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
     vi.stubEnv("SQLITE_FILE_PATH", "/data/should-not-be-used.db");

@@ -46,6 +46,23 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
 // same "record what it's called with, return a real working adapter under
 // the hood" way as adapter-postgres above, so buildServices() keeps running
 // completely unmodified downstream.
+// adapter-mongodb epic: same "mock the concrete adapter, keep everything
+// downstream real" shape -- no live MongoDB instance is assumed here
+// either. connectMongoAdapter itself constructs a real MongoClient, so the
+// whole function is mocked (not just a Pool-like construction arg the way
+// the two Postgres mocks above are), recording the connection string it
+// was called with.
+const connectMongoAdapterMock = vi.fn();
+vi.mock("@mercatus-liber/adapter-mongodb", async () => {
+  const { createSqliteAdapter } = await import("@mercatus-liber/adapter-sqlite");
+  return {
+    connectMongoAdapter: async (connectionString: string) => {
+      connectMongoAdapterMock(connectionString);
+      return { adapter: createSqliteAdapter(":memory:"), close: async () => {} };
+    },
+  };
+});
+
 vi.mock("@mercatus-liber/adapter-postgres-inventory", async () => {
   const { createInMemoryInventoryAdapter } = await import("@mercatus-liber/inventory");
   return {
@@ -71,6 +88,7 @@ afterEach(() => {
   vi.resetModules();
   createPostgresAdapterMock.mockClear();
   createPostgresInventoryAdapterMock.mockClear();
+  connectMongoAdapterMock.mockClear();
   poolConfigs.length = 0;
 });
 
@@ -129,5 +147,35 @@ describe("Persistence wiring (lib/services.ts)", () => {
     // The mocked Postgres adapter is still a real, working adapter under
     // the hood -- seeding proceeds normally.
     expect((await services.catalog.listProducts()).length).toBeGreaterThan(0);
+  });
+
+  it("constructs a MongoDB adapter via MONGODB_URL when set and DATABASE_URL is unset", async () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/shop");
+    vi.stubEnv("SQLITE_FILE_PATH", "/tmp/should-not-be-used-mongo-test.db");
+    vi.resetModules();
+
+    const { getServicesForDemo } = await import("../lib/services.js");
+    const services = await getServicesForDemo("print-shop");
+
+    expect(createPostgresAdapterMock).not.toHaveBeenCalled();
+    expect(connectMongoAdapterMock).toHaveBeenCalledTimes(1);
+    expect(connectMongoAdapterMock).toHaveBeenCalledWith("mongodb+srv://user:pass@cluster0.mongodb.net/shop");
+    expect(fs.existsSync("/tmp/should-not-be-used-mongo-test.db")).toBe(false);
+    // The mocked Mongo adapter is still a real, working adapter under the
+    // hood -- seeding proceeds normally.
+    expect((await services.catalog.listProducts()).length).toBeGreaterThan(0);
+  });
+
+  it("DATABASE_URL wins over MONGODB_URL when both are set -- a deployment picks one real backend, not a race", async () => {
+    vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
+    vi.stubEnv("MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/shop");
+    vi.resetModules();
+
+    const { getServicesForDemo } = await import("../lib/services.js");
+    await getServicesForDemo("print-shop");
+
+    expect(createPostgresAdapterMock).toHaveBeenCalledTimes(1);
+    expect(connectMongoAdapterMock).not.toHaveBeenCalled();
   });
 });
