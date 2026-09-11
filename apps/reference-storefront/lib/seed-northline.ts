@@ -965,6 +965,61 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
   }
 }
 
+/**
+ * @mercatus-liber/storefront-views' real "Caterpillar parts-counter" demo:
+ * Northline sells the exact same install catalog to two genuinely different
+ * buyers -- a homeowner booking one job at a time (the normal /demo/northline
+ * storefront seeded above) and a property manager, HOA, or builder booking
+ * the same services across many units or a whole build at once. That second
+ * buyer doesn't shop the same way: they don't care about outdoor patio TVs
+ * or in-wall speaker runs, they care about the install types that repeat
+ * identically unit-to-unit -- security/access, networking, and the smart-home
+ * basics a unit needs before it can be leased or sold -- and they care about
+ * scheduling consistency across a whole property, not one homeowner's living
+ * room. This is a PERMANENT second storefront at its own
+ * /demo/northline/site/commercial route (isDefaultOverride: false), living
+ * alongside the normal home forever, not a takeover of it -- the opposite
+ * shape from seed-broadleaf.ts's time-boxed seasonal isDefaultOverride: true
+ * campaign and lib/seed.ts's own permanent-second-storefront pattern for
+ * print-shop.
+ *
+ * categoryIds curates 3 of Northline's 4 real top-level categories --
+ * Security & Cameras, Networking & Fiber, and Smart Home & Automation, the
+ * three that genuinely repeat unit-to-unit across a property (access
+ * control, reliable connectivity, and the smart-thermostat/lock basics a
+ * leasing agent lists in every unit). TV & Home Theater is deliberately left
+ * out: it's the one category that's genuinely homeowner-personal (mount
+ * height, room layout, a specific family's home theater taste) rather than
+ * a standardized across-unit install, so it stays exclusive to the
+ * residential storefront instead of being force-included here.
+ *
+ * themeKey: "datasheet" -- its real spec-sheet/blueprint-bar visual identity
+ * (see packages/theming/src/theme-bundles.ts) reads as precise and
+ * technical, which genuinely fits a B2B buyer evaluating scope-of-work more
+ * than it fits a homeowner browsing TV mounts.
+ */
+async function seedStorefrontViews(storefrontViews: StorefrontViewsService, categoryIdBySlug: Map<string, string>): Promise<void> {
+  const categoryIds = ["security-cameras", "networking-fiber", "smart-home-automation"]
+    .map((slug) => categoryIdBySlug.get(slug))
+    .filter((id): id is string => Boolean(id));
+  if (categoryIds.length === 0) return;
+
+  const created = await storefrontViews.createView({
+    demoSlug: "northline",
+    slug: "commercial",
+    name: "Northline Commercial & Multi-Unit Installs",
+    heroHeadline: "One install partner for every unit on your property",
+    heroSubheadline:
+      "Security, networking, and smart-home installs standardized across your whole portfolio -- one point of contact, one scheduling process, and the same install quality in unit 1 and unit 100. Built for property managers, HOAs, and builders, not one-off homeowner bookings.",
+    categoryIds,
+    themeKey: "datasheet",
+    isDefaultOverride: false,
+    startsAt: null,
+    endsAt: null,
+  });
+  await storefrontViews.publishView(created.id);
+}
+
 export async function seedNorthlineDemo(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -1119,4 +1174,5 @@ export async function seedNorthlineDemo(
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
   if (advertising) await seedAdvertising(advertising);
   if (reviews) await seedReviews(reviews, productIdBySlug);
+  if (storefrontViews) await seedStorefrontViews(storefrontViews, categoryIdBySlug);
 }
