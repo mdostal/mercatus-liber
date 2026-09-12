@@ -11,7 +11,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import { upsertCategory, upsertProduct } from "./idempotent-seed.js";
+import { upsertCategory, upsertProduct } from "./idempotent-seed";
 
 interface DemoProduct {
   slug: string;
