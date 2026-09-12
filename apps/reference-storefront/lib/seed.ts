@@ -3,6 +3,7 @@ import type { AdvertisingService } from "@mercatus-liber/advertising";
 import type { BundlesService } from "@mercatus-liber/bundles";
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { CmsService } from "@mercatus-liber/cms";
+import type { Sku } from "@mercatus-liber/core";
 import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 import type { PromotionsService } from "@mercatus-liber/promotions";
@@ -10,6 +11,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
+import { upsertCategory, upsertProduct } from "./idempotent-seed.js";
 
 interface DemoProduct {
   slug: string;
@@ -545,20 +547,30 @@ async function createServiceDemoSku(
   inventory: InventoryAdapter,
   demo: ServiceDemoSku,
 ): Promise<{ productId: string; skuId: string }> {
-  const product = await catalog.createProduct({
+  const { product, isNew } = await upsertProduct(catalog, {
     slug: demo.slug,
     title: demo.title,
     description: demo.description,
     identifyingAttributeKeys: ["package"],
   });
   await catalog.publishProduct(product.id);
-  const skus = await catalog.generateSkus(
-    product.id,
-    { package: ["standard"] },
-    { amount: demo.priceCents, currency: "USD" },
-  );
-  const sku = skus[0]!;
-  await inventory.setStock(sku.id, demo.stockUnits);
+  let sku: Sku;
+  if (isNew) {
+    const skus = await catalog.generateSkus(
+      product.id,
+      { package: ["standard"] },
+      { amount: demo.priceCents, currency: "USD" },
+    );
+    sku = skus[0]!;
+    await inventory.setStock(sku.id, demo.stockUnits);
+  } else {
+    // Product already existed (a re-run against real shared persistence) --
+    // its SKU was already generated/stocked the first time, so reuse it
+    // instead of calling generateSkus again (which would silently duplicate
+    // SKUs for this product -- see upsertProduct's isNew doc comment).
+    const existingSkus = await catalog.listSkusByProduct(product.id);
+    sku = existingSkus[0]!;
+  }
   return { productId: product.id, skuId: sku.id };
 }
 
@@ -598,31 +610,31 @@ async function seedServiceBundle(catalog: CatalogService, inventory: InventoryAd
  * embroidery/print shop, not a bolt-on catch-all.
  */
 async function seedCategories(marketingCatalog: MarketingCatalogService): Promise<Map<string, string>> {
-  const embroidery = await marketingCatalog.createCategory({
+  const embroidery = await upsertCategory(marketingCatalog, {
     slug: "embroidery",
     title: "Embroidery",
     description: "Totes, caps, and more, embroidered to order with your own text or a small custom design.",
     parentId: null,
   });
-  const customCoasters = await marketingCatalog.createCategory({
+  const customCoasters = await upsertCategory(marketingCatalog, {
     slug: "custom-coasters",
     title: "Custom Coasters",
     description: "Stoneware and cork-backed coaster sets, from a monogrammed custom order to our standard in-house prints.",
     parentId: null,
   });
-  const apparel = await marketingCatalog.createCategory({
+  const apparel = await upsertCategory(marketingCatalog, {
     slug: "apparel",
     title: "Apparel",
     description: "Hoodies and tees, embroidered on the chest with your own text or design.",
     parentId: null,
   });
-  const drinkware = await marketingCatalog.createCategory({
+  const drinkware = await upsertCategory(marketingCatalog, {
     slug: "drinkware",
     title: "Drinkware",
     description: "Mugs and tumblers, custom-printed with your own text, photo, or design.",
     parentId: null,
   });
-  const stickersPatches = await marketingCatalog.createCategory({
+  const stickersPatches = await upsertCategory(marketingCatalog, {
     slug: "stickers-patches",
     title: "Stickers & Patches",
     description: "Embroidered and woven patches, plus vinyl stickers -- custom-cut to order or ready to ship as-is.",
@@ -670,7 +682,7 @@ async function seedSubcategories(
 
   const apparelId = categoryIdBySlug.get("apparel");
   if (apparelId) {
-    const hoodiesSweatshirts = await marketingCatalog.createCategory({
+    const hoodiesSweatshirts = await upsertCategory(marketingCatalog, {
       slug: "hoodies-sweatshirts",
       title: "Hoodies & Sweatshirts",
       description: "Heavyweight fleece pullovers and crewnecks, embroidered or screen-printed to order.",
@@ -682,7 +694,7 @@ async function seedSubcategories(
       "screen-printed-crewneck-sweatshirt",
     ]);
 
-    const tShirtsTees = await marketingCatalog.createCategory({
+    const tShirtsTees = await upsertCategory(marketingCatalog, {
       slug: "t-shirts-tees",
       title: "T-Shirts & Tees",
       description: "Ringspun cotton crewneck tees, embroidered on the chest to order for adults and kids alike.",
@@ -693,7 +705,7 @@ async function seedSubcategories(
 
   const drinkwareId = categoryIdBySlug.get("drinkware");
   if (drinkwareId) {
-    const mugs = await marketingCatalog.createCategory({
+    const mugs = await upsertCategory(marketingCatalog, {
       slug: "mugs",
       title: "Mugs",
       description: "Ceramic and enamel camp mugs, full-color printed edge-to-edge with your own text, photo, or design.",
@@ -701,7 +713,7 @@ async function seedSubcategories(
     });
     await assignToSubcategory(mugs.id, ["custom-printed-ceramic-mug", "custom-printed-enamel-camp-mug"]);
 
-    const tumblersBottles = await marketingCatalog.createCategory({
+    const tumblersBottles = await upsertCategory(marketingCatalog, {
       slug: "tumblers-bottles",
       title: "Tumblers & Bottles",
       description: "Insulated stainless steel tumblers and water bottles built for travel, hot or cold.",
@@ -1261,7 +1273,7 @@ export async function seedCatalog(
   const productIdBySlug = new Map<string, string>();
 
   for (const demo of DEMO_PRODUCTS) {
-    const product = await catalog.createProduct({
+    const { product, isNew } = await upsertProduct(catalog, {
       slug: demo.slug,
       title: demo.title,
       description: demo.description,
@@ -1270,15 +1282,17 @@ export async function seedCatalog(
     });
     productIdBySlug.set(demo.slug, product.id);
     await catalog.publishProduct(product.id);
-    const skus = await catalog.generateSkus(
-      product.id,
-      { color: [demo.color], size: [demo.size] },
-      { amount: demo.priceCents, currency: "USD" },
-    );
-    // catalog.sku.created already initialized each SKU at onHand=0 via the
-    // inventory subscriber -- this sets the real seeded stock level.
-    for (const sku of skus) {
-      await inventory.setStock(sku.id, demo.stockUnits);
+    if (isNew) {
+      const skus = await catalog.generateSkus(
+        product.id,
+        { color: [demo.color], size: [demo.size] },
+        { amount: demo.priceCents, currency: "USD" },
+      );
+      // catalog.sku.created already initialized each SKU at onHand=0 via the
+      // inventory subscriber -- this sets the real seeded stock level.
+      for (const sku of skus) {
+        await inventory.setStock(sku.id, demo.stockUnits);
+      }
     }
 
     for (const categorySlug of demo.categorySlugs) {
@@ -1291,7 +1305,7 @@ export async function seedCatalog(
   // one generateSkus call per tier so each tier gets its own real
   // price/stock, mirroring lib/seed-broadleaf.ts's Trailing Pothos pattern.
   for (const demo of DEMO_VARIANT_PRODUCTS) {
-    const product = await catalog.createProduct({
+    const { product, isNew } = await upsertProduct(catalog, {
       slug: demo.slug,
       title: demo.title,
       description: demo.description,
@@ -1301,16 +1315,18 @@ export async function seedCatalog(
     productIdBySlug.set(demo.slug, product.id);
     await catalog.publishProduct(product.id);
 
-    for (const tier of demo.tiers) {
-      const skus = await catalog.generateSkus(
-        product.id,
-        { color: [demo.color], size: [tier.size] },
-        { amount: tier.priceCents, currency: "USD" },
-      );
-      // catalog.sku.created already initialized each SKU at onHand=0 via the
-      // inventory subscriber -- this sets the real seeded stock level.
-      for (const sku of skus) {
-        await inventory.setStock(sku.id, tier.stockUnits);
+    if (isNew) {
+      for (const tier of demo.tiers) {
+        const skus = await catalog.generateSkus(
+          product.id,
+          { color: [demo.color], size: [tier.size] },
+          { amount: tier.priceCents, currency: "USD" },
+        );
+        // catalog.sku.created already initialized each SKU at onHand=0 via
+        // the inventory subscriber -- this sets the real seeded stock level.
+        for (const sku of skus) {
+          await inventory.setStock(sku.id, tier.stockUnits);
+        }
       }
     }
 
