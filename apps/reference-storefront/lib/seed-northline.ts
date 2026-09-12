@@ -10,6 +10,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
+import { upsertCategory, upsertProduct } from "./idempotent-seed";
 
 /**
  * Epic 15b's public demo: "Northline Home Tech", a fictional smart-home
@@ -1035,7 +1036,7 @@ export async function seedNorthlineDemo(
 ): Promise<void> {
   const categoryIdBySlug = new Map<string, string>();
   for (const category of DEMO_CATEGORIES) {
-    const created = await marketingCatalog.createCategory({
+    const created = await upsertCategory(marketingCatalog, {
       slug: category.slug,
       title: category.title,
       description: category.description,
@@ -1057,7 +1058,7 @@ export async function seedNorthlineDemo(
   // never a second, duplicate set of SKUs.
   const skuIdsBySlug = new Map<string, string[]>();
   for (const service of DEMO_SERVICES) {
-    const product = await catalog.createProduct({
+    const { product, isNew } = await upsertProduct(catalog, {
       slug: service.slug,
       title: service.title,
       description: service.description,
@@ -1068,20 +1069,22 @@ export async function seedNorthlineDemo(
     await catalog.publishProduct(product.id);
 
     const skuIds: string[] = [];
-    for (const tier of service.tiers) {
-      const skus = await catalog.generateSkus(product.id, { package: [tier.package] }, { amount: tier.priceCents, currency: "USD" });
-      // Real bug found post-deployment: inventory's own catalog.sku.created
-      // subscriber (packages/inventory/src/subscriber.ts) unconditionally
-      // sets every new SKU's stock to a real, tracked 0 the instant it's
-      // created -- there is no "untracked, always available" state for a
-      // SKU that's never had setStock called after creation, contrary to
-      // this file's own prior (incorrect) assumption. Matches the existing
-      // convention for service-style SKUs already used in lib/seed.ts's
-      // SERVICE_DEMO_SKUS (stockUnits: 999) -- a large sentinel standing in
-      // for "always bookable," not a real physical stock count.
-      for (const sku of skus) {
-        await inventory.setStock(sku.id, 999);
-        skuIds.push(sku.id);
+    if (isNew) {
+      for (const tier of service.tiers) {
+        const skus = await catalog.generateSkus(product.id, { package: [tier.package] }, { amount: tier.priceCents, currency: "USD" });
+        // Real bug found post-deployment: inventory's own catalog.sku.created
+        // subscriber (packages/inventory/src/subscriber.ts) unconditionally
+        // sets every new SKU's stock to a real, tracked 0 the instant it's
+        // created -- there is no "untracked, always available" state for a
+        // SKU that's never had setStock called after creation, contrary to
+        // this file's own prior (incorrect) assumption. Matches the existing
+        // convention for service-style SKUs already used in lib/seed.ts's
+        // SERVICE_DEMO_SKUS (stockUnits: 999) -- a large sentinel standing in
+        // for "always bookable," not a real physical stock count.
+        for (const sku of skus) {
+          await inventory.setStock(sku.id, 999);
+          skuIds.push(sku.id);
+        }
       }
     }
     skuIdsBySlug.set(service.slug, skuIds);
@@ -1103,7 +1106,7 @@ export async function seedNorthlineDemo(
   for (const subcategory of DEMO_SUBCATEGORIES) {
     const parentId = categoryIdBySlug.get(subcategory.parentSlug);
     if (!parentId) continue;
-    const createdSubcategory = await marketingCatalog.createCategory({
+    const createdSubcategory = await upsertCategory(marketingCatalog, {
       slug: subcategory.slug,
       title: subcategory.title,
       description: subcategory.description,
