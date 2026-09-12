@@ -9,6 +9,7 @@ import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
+import { upsertCategory, upsertProduct } from "./idempotent-seed";
 
 /**
  * Epic demo-store-plant-shop's third public demo: "Broadleaf & Co.", an
@@ -597,7 +598,7 @@ async function seedSubcategories(
     const parentId = categoryIdBySlug.get(subcategory.parentSlug);
     if (!parentId) continue;
 
-    const created = await marketingCatalog.createCategory({
+    const created = await upsertCategory(marketingCatalog, {
       slug: subcategory.slug,
       title: subcategory.title,
       description: subcategory.description,
@@ -1042,7 +1043,7 @@ export async function seedBroadleafDemo(
 ): Promise<void> {
   const categoryIdBySlug = new Map<string, string>();
   for (const category of DEMO_CATEGORIES) {
-    const created = await marketingCatalog.createCategory({
+    const created = await upsertCategory(marketingCatalog, {
       slug: category.slug,
       title: category.title,
       description: category.description,
@@ -1058,7 +1059,7 @@ export async function seedBroadleafDemo(
   // cumulative tiers out of real SKUs rather than fabricated ids.
   const skuIdByProductAndSize = new Map<string, string>();
   for (const demo of DEMO_PRODUCTS) {
-    const product = await catalog.createProduct({
+    const { product, isNew } = await upsertProduct(catalog, {
       slug: demo.slug,
       title: demo.title,
       description: demo.description,
@@ -1068,11 +1069,24 @@ export async function seedBroadleafDemo(
     productIdBySlug.set(demo.slug, product.id);
     await catalog.publishProduct(product.id);
 
-    for (const tier of demo.tiers) {
-      const skus = await catalog.generateSkus(product.id, { size: [tier.size] }, { amount: tier.priceCents, currency: "USD" });
-      for (const sku of skus) {
-        await inventory.setStock(sku.id, tier.stockUnits ?? DEFAULT_STOCK_UNITS);
-        skuIdByProductAndSize.set(`${demo.slug}::${tier.size}`, sku.id);
+    if (isNew) {
+      for (const tier of demo.tiers) {
+        const skus = await catalog.generateSkus(product.id, { size: [tier.size] }, { amount: tier.priceCents, currency: "USD" });
+        for (const sku of skus) {
+          await inventory.setStock(sku.id, tier.stockUnits ?? DEFAULT_STOCK_UNITS);
+          skuIdByProductAndSize.set(`${demo.slug}::${tier.size}`, sku.id);
+        }
+      }
+    } else {
+      // Product already existed (a re-run against real shared persistence) --
+      // its SKUs were already generated/stocked the first time, so reuse
+      // them instead of calling generateSkus again (which would silently
+      // duplicate SKUs for this product -- see upsertProduct's isNew doc
+      // comment). seedStarterBundle below still needs these SKU ids.
+      const existingSkus = await catalog.listSkusByProduct(product.id);
+      for (const sku of existingSkus) {
+        const size = sku.identifyingAttributes.find((attr) => attr.key === "size")?.value;
+        if (typeof size === "string") skuIdByProductAndSize.set(`${demo.slug}::${size}`, sku.id);
       }
     }
 
