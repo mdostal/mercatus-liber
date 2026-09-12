@@ -378,7 +378,16 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // same connection pool instead of opening a second one against the same
   // database -- both are real uses of the one DATABASE_URL a deployment
   // configures, not two independent env-var checks that happen to agree.
-  const pgPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : null;
+  // Real production incident, confirmed live: a serverless deployment (each
+  // cold start opening its OWN Pool) against Supabase's Supavisor pooler
+  // hit `EMAXCONNSESSION: max clients reached in session mode` with the
+  // node-postgres default max of 10 per Pool -- many concurrent instances
+  // each holding up to 10 connections exhausts a shared pooler fast. max: 1
+  // is the documented safe default for serverless (node-postgres's own
+  // pool-sizing guide); this also requires DATABASE_URL to point at
+  // Supavisor's transaction-mode port (6543), not session-mode (5432),
+  // which is Supabase's own documented recommendation for serverless.
+  const pgPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 1 }) : null;
   // adapter-mongodb epic: MONGODB_URL is checked only when DATABASE_URL
   // isn't set -- a deployment picks ONE real external catalog backend, not
   // a priority race between two. Kept a distinct step (not folded into the
