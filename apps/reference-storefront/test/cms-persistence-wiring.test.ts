@@ -45,7 +45,7 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
     // The CMS service itself is still fully functional off the in-memory
     // fallback -- the default seed's home page is there, same as before
     // this epic.
-    expect(await services.cms.getPageBySlug("home")).not.toBeNull();
+    expect(await services.cms.getPageBySlug("home-print-shop")).not.toBeNull();
   });
 
   it("constructs createSanityAdapter with env-derived config when SANITY_PROJECT_ID is set", async () => {

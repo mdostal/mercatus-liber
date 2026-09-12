@@ -1082,13 +1082,13 @@ export async function seedBroadleafDemo(
 
   await seedSubcategories(marketingCatalog, categoryIdBySlug, productIdBySlug);
 
-  // Slug MUST be "home" -- app/page.tsx looks up a fixed "home" slug
-  // regardless of which brand's seed is active (each seed runs against its
-  // own fresh in-memory DB, so there's no collision between brands). See
-  // lib/seed-northline.ts's identical comment.
+  // **Correction, found while wiring real shared-backend credentials**: see
+  // lib/seed.ts's/lib/seed-northline.ts's identical correction -- namespaced
+  // per-store instead of the bare literal "home", which would silently
+  // collide across all 3 demos under a real SHARED external CMS backend.
   const home = await cms.createPage({
     pageType: "home",
-    slug: "home",
+    slug: "home-broadleaf",
     title: "Broadleaf & Co.",
     sections: [
       {

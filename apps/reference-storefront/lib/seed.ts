@@ -714,11 +714,27 @@ async function seedSubcategories(
   }
 }
 
-/** Seeds a CMS-authored home page (hero banner + category spot) and one live marketing/campaign page with a curated mini-catalog. */
+/**
+ * Seeds a CMS-authored home page (hero banner + category spot) and one live
+ * marketing/campaign page with a curated mini-catalog.
+ *
+ * **Correction, found while wiring real shared-backend credentials**: this
+ * page's slug used to be the bare literal "home", on the documented
+ * assumption that "each seed runs against its own fresh in-memory DB, so
+ * there's no collision between brands" -- true for the in-memory default,
+ * but false the moment a real SHARED external CMS backend (e.g. Sanity) is
+ * configured, since all 3 demo stores' seed functions then write into the
+ * SAME dataset and each demo would silently clobber the others' home page.
+ * Namespaced per-store ("home-print-shop") instead -- harmless for the
+ * in-memory default (each demo's own Map-backed instance never saw the
+ * other stores' data anyway) and now also correct under a shared backend.
+ * app/demo/[demoSlug]/page.tsx's lookup uses the matching `home-${demoSlug}`
+ * slug.
+ */
 async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string>): Promise<void> {
   const home = await cms.createPage({
     pageType: "home",
-    slug: "home",
+    slug: "home-print-shop",
     title: "Home",
     sections: [
       {

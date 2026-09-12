@@ -12,7 +12,7 @@ describe("seeded CMS pages", () => {
     const { catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
     await seedCatalog(catalog, marketingCatalog, cms, inventory);
 
-    const home = await cms.getPageBySlug("home");
+    const home = await cms.getPageBySlug("home-print-shop");
     expect(home).not.toBeNull();
     expect(home?.status).toBe("published");
     // ad-slot added by epic 23 (advertising) -- see lib/seed.ts's seedCmsPages.

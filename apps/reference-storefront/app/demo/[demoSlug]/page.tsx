@@ -41,9 +41,16 @@ export default async function DemoHomePage({ params }: { params: Promise<{ demoS
   const baseTheme = await readActiveThemeBundle(demoSlug);
   const activeOverride = await storefrontViews.getActiveDefaultOverride(demoSlug);
 
+  // real-provider-verification epic: namespaced per-demo ("home-print-shop"
+  // etc, not the bare literal "home" every seed function used to write) --
+  // see lib/seed.ts's own doc comment on this same correction. Harmless
+  // under the in-memory default; correct now under a real SHARED external
+  // CMS backend too, where all 3 demos' seed functions write into the same
+  // dataset and would otherwise silently clobber each other's home page.
+  const homeSlug = `home-${demoSlug}`;
   let sections: ComponentInstance[];
   let activeTheme = baseTheme;
-  let trackedSlug = "home";
+  let trackedSlug = homeSlug;
 
   if (activeOverride) {
     const viewSections = await buildViewSections({ marketingCatalog }, activeOverride, baseTheme);
@@ -51,11 +58,11 @@ export default async function DemoHomePage({ params }: { params: Promise<{ demoS
     activeTheme = viewSections.theme;
     trackedSlug = `site/${activeOverride.slug}`;
   } else {
-    const home = await cms.getPageBySlug("home");
+    const home = await cms.getPageBySlug(homeSlug);
     if (!home) {
       return (
         <main>
-          <InteractionTracker eventName="page_viewed" properties={{ slug: "home" }} />
+          <InteractionTracker eventName="page_viewed" properties={{ slug: homeSlug }} />
           <h1>Home</h1>
           <p>We're still setting up the shop -- check back soon.</p>
         </main>

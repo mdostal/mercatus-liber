@@ -1115,12 +1115,17 @@ export async function seedNorthlineDemo(
     }
   }
 
-  // Slug MUST be "home" -- app/page.tsx looks up a fixed "home" slug
-  // regardless of which brand's seed is active (each seed runs against its
-  // own fresh in-memory DB, so there's no collision between brands).
+  // **Correction, found while wiring real shared-backend credentials**:
+  // this used to be the bare literal "home" ("app/page.tsx looks up a fixed
+  // 'home' slug regardless of which brand's seed is active, each seed runs
+  // against its own fresh in-memory DB, so there's no collision between
+  // brands") -- true only for the in-memory default; a real SHARED external
+  // CMS backend (e.g. Sanity) has all 3 demos writing into the same
+  // dataset, so this would silently clobber the other stores' home pages.
+  // Namespaced per-store instead; see lib/seed.ts's identical correction.
   const home = await cms.createPage({
     pageType: "home",
-    slug: "home",
+    slug: "home-northline",
     title: "Northline Home Tech",
     sections: [
       {

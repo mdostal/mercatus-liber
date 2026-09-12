@@ -159,7 +159,7 @@ describe("Northline demo seed (epic 15b public demo)", () => {
     const { catalog, marketingCatalog, cms, inventory, serviceAreas } = buildTestCatalogServices();
     await seedNorthlineDemo(catalog, marketingCatalog, cms, serviceAreas, inventory);
 
-    const home = await cms.getPageBySlug("home");
+    const home = await cms.getPageBySlug("home-northline");
     expect(home?.status).toBe("published");
     expect(home?.sections[0]).toMatchObject({ componentType: "hero-banner", config: { headline: "Northline Home Tech" } });
 
