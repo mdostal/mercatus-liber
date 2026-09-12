@@ -42,7 +42,27 @@ export function pageToPageDoc(page: Page): SanityPageDoc {
   };
 }
 
-/** meta._id is deterministically pageId -- a marketing page has exactly one meta record, so pageId IS the natural key. */
+/**
+ * **Correction, found live against a real Sanity dataset for the first
+ * time**: this doc's `_id` used to be the bare `pageId` itself, on the
+ * assumption that "a marketing page has exactly one meta record, so pageId
+ * IS the natural key" -- true as a LOGICAL key, but Sanity's own `_id`
+ * namespace is global across every `_type` in a dataset, not scoped per
+ * type the way a relational table's own primary key is. Since the PAGE
+ * document (`SanityPageDoc`, `_type: "page"`) ALSO uses that exact same
+ * `pageId` string as its own `_id` (see `pageToPageDoc` above), the two
+ * documents collided on identity -- the second `createOrReplace` call
+ * failed with a real, confirmed Sanity error ("document \"<id>\": immutable
+ * attribute \"_type\" may not be modified"), since Sanity refuses to let an
+ * existing document change type. Prefixed instead (`marketingMetaDocId`
+ * below) -- still deterministically derived from pageId (so `getByPageId`
+ * stays a direct `_id` lookup, never a query), but now genuinely distinct
+ * from the page document's own `_id`.
+ */
+export function marketingMetaDocId(pageId: string): string {
+  return `marketingPageMeta.${pageId}`;
+}
+
 export interface SanityMarketingMetaDoc {
   _id: string;
   _type: typeof MARKETING_META_DOC_TYPE;
@@ -65,7 +85,7 @@ export function metaDocToMeta(doc: SanityMarketingMetaDoc): MarketingPageMeta {
 
 export function metaToMetaDoc(meta: MarketingPageMeta): SanityMarketingMetaDoc {
   return {
-    _id: meta.pageId,
+    _id: marketingMetaDocId(meta.pageId),
     _type: MARKETING_META_DOC_TYPE,
     pageId: meta.pageId,
     campaignName: meta.campaignName,

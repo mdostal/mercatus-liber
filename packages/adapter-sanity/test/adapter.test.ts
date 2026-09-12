@@ -103,6 +103,20 @@ describe("createSanityAdapter", () => {
       await adapter.marketingMeta.save({ ...meta, campaignName: "Fall Sale 2026 (extended)" });
       expect((await adapter.marketingMeta.getByPageId("page-2"))?.campaignName).toBe("Fall Sale 2026 (extended)");
     });
+
+    it("real regression: saving a marketing page's PAGE doc and its META doc for the SAME pageId never collides, exactly the real cms.createMarketingPage() sequence -- confirmed broken live against a real Sanity dataset before marketingMetaDocId existed (both docs used to share the bare pageId as their own Sanity _id, and Sanity rejects a createOrReplace that would change an existing document's _type)", async () => {
+      const marketingPage: Page = { ...home, id: "page-2", slug: "fall-sale", pageType: "marketing" };
+
+      // The exact real order @mercatus-liber/cms's createMarketingPage
+      // calls these two repositories in.
+      await adapter.pages.save(marketingPage);
+      await expect(adapter.marketingMeta.save(meta)).resolves.toBeUndefined();
+
+      // Both are independently real and retrievable afterward -- neither
+      // silently overwrote or corrupted the other.
+      expect(await adapter.pages.get("page-2")).toEqual(marketingPage);
+      expect(await adapter.marketingMeta.getByPageId("page-2")).toEqual(meta);
+    });
   });
 
   it("exposes only the CmsPersistenceAdapter interface -- no Sanity-specific member leaks through", () => {

@@ -2,6 +2,7 @@ import type { CmsPersistenceAdapter, MarketingPageMetaRepository, PageRepository
 import { createSanityClient, type SanityAdapterConfig } from "./sanity-client.js";
 import {
   MARKETING_META_DOC_TYPE,
+  marketingMetaDocId,
   metaDocToMeta,
   metaToMetaDoc,
   PAGE_DOC_TYPE,
@@ -59,7 +60,7 @@ export function createSanityAdapter(config: SanityAdapterConfig): CmsPersistence
     async getByPageId(pageId) {
       const doc = await client.query<SanityMarketingMetaDoc | null>(
         `*[_type == "${MARKETING_META_DOC_TYPE}" && _id == $id][0]`,
-        { id: pageId },
+        { id: marketingMetaDocId(pageId) },
       );
       return doc ? metaDocToMeta(doc) : null;
     },

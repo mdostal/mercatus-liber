@@ -13,8 +13,25 @@ import { MARKETING_META_DOC_TYPE, PAGE_DOC_TYPE } from "../src/mapping.js";
  * project is a documented follow-up, not fabricated here.
  */
 export function createFakeSanityFetch(): typeof fetch {
-  const pages = new Map<string, SanityPageDoc>();
-  const metas = new Map<string, SanityMarketingMetaDoc>();
+  // **Correction, found live against a real Sanity dataset**: this used to
+  // be two SEPARATE Maps (pages/metas), which let a page doc and a meta doc
+  // share the same `_id` string with zero conflict -- not how real Sanity
+  // works (a dataset's `_id` namespace is global across every `_type`, not
+  // scoped per type), and exactly why this fake never caught a real bug
+  // (marketingMetaDocId's predecessor reused the bare pageId as the meta
+  // doc's own `_id`, colliding with the page doc's own `_id` -- see
+  // mapping.ts's own doc comment). One shared Map now, keyed by `_id`
+  // alone, with the same real immutable-`_type`-on-replace check Sanity's
+  // own API enforces (confirmed via the real error this bug produced
+  // against a live project: `document "<id>": immutable attribute "_type"
+  // may not be modified`).
+  const docs = new Map<string, SanityPageDoc | SanityMarketingMetaDoc>();
+  const pages = {
+    values: () => [...docs.values()].filter((d): d is SanityPageDoc => d._type === PAGE_DOC_TYPE),
+  };
+  const metas = {
+    values: () => [...docs.values()].filter((d): d is SanityMarketingMetaDoc => d._type === MARKETING_META_DOC_TYPE),
+  };
 
   const fakeFetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(String(input));
@@ -53,8 +70,18 @@ export function createFakeSanityFetch(): typeof fetch {
     for (const mutation of body.mutations) {
       const doc = mutation.createOrReplace;
       if (!doc) continue;
-      if (doc._type === PAGE_DOC_TYPE) pages.set(doc._id, doc);
-      else if (doc._type === MARKETING_META_DOC_TYPE) metas.set(doc._id, doc);
+      const existing = docs.get(doc._id);
+      if (existing && existing._type !== doc._type) {
+        // Real, confirmed Sanity behavior (not assumed) -- a createOrReplace
+        // that would change an existing document's _type is rejected, via
+        // the same {error: {description}} response-body shape (never a
+        // thrown/network-level error) sanity-client.ts's real mutate()
+        // already checks for.
+        return respond({
+          error: { description: `transaction failed: document "${doc._id}": immutable attribute "_type" may not be modified` },
+        });
+      }
+      docs.set(doc._id, doc);
     }
     return respond({ results: [] });
   };
