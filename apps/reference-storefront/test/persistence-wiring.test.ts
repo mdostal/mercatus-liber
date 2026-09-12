@@ -158,7 +158,10 @@ describe("Persistence wiring (lib/services.ts)", () => {
     // Both real Postgres-backed adapters share the exact same pool
     // instance -- one Pool constructed from DATABASE_URL, not two.
     expect(createPostgresAdapterMock.mock.calls[0]![0]).toBe(createPostgresInventoryAdapterMock.mock.calls[0]![0]);
-    expect(poolConfigs).toEqual([{ connectionString: "postgres://user:pass@localhost:5432/db" }]);
+    // max: 1 -- real production fix, confirmed necessary live (Supavisor's
+    // EMAXCONNSESSION under real serverless concurrency); see services.ts's
+    // own doc comment at the pgPool construction site.
+    expect(poolConfigs).toEqual([{ connectionString: "postgres://user:pass@localhost:5432/db", max: 1 }]);
     expect(fs.existsSync("/tmp/should-not-be-used-services-test.db")).toBe(false);
     // The mocked Postgres adapter is still a real, working adapter under
     // the hood -- seeding proceeds normally.

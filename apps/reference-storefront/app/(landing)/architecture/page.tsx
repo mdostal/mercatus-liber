@@ -36,6 +36,19 @@ export const metadata: Metadata = {
  * alternate adapter packages that exist in this repo even though only one per
  * subsystem is active at a time here.
  */
+// Real bug, found live in production: this page's whole premise is "this
+// deployment's real, live adapter wiring right now" (see doc comment above
+// and this page's own metadata description), but with no dynamic API call
+// Next.js has no signal that it needs per-request rendering -- it silently
+// prerenders once at BUILD time instead, baking in whatever process.env
+// looked like during that build. Confirmed live: a `vercel --prod --force`
+// redeploy (bypassing every build cache) still showed stale adapter status
+// after DATABASE_URL/POSTHOG_API_KEY were added purely as env-var changes
+// with no source-file diff to force a genuine rebuild-with-new-env. Dynamic
+// routes (lib/services.ts's buildServices) were never affected -- they
+// already read process.env fresh per-request by construction.
+export const dynamic = "force-dynamic";
+
 export default function ArchitecturePage() {
   const adapters = getAdapterInfo();
 
