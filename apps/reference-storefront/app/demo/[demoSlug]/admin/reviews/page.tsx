@@ -1,8 +1,15 @@
+import type { CatalogService } from "@mercatus-liber/catalog";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isDemoSlug } from "../../../../../lib/demos";
 import { publishReviewAction, rejectReviewAction } from "../../../../../lib/actions";
 import { getServicesForDemo } from "../../../../../lib/services";
+
+/** productId -> "Title (/products/slug)" for real product-name display in the moderation queue -- returns the raw id itself for a deleted/unknown product rather than throwing. */
+async function resolveProductLabel(catalog: CatalogService, productId: string): Promise<{ title: string; slug: string | null }> {
+  const product = await catalog.getProduct(productId);
+  return product ? { title: product.title, slug: product.slug } : { title: productId, slug: null };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +21,14 @@ function ratingStars(rating: number): string {
 export default async function AdminReviewsPage({ params }: { params: Promise<{ demoSlug: string }> }) {
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const { reviews } = await getServicesForDemo(demoSlug);
+  const { reviews, catalog } = await getServicesForDemo(demoSlug);
   // No filter -- the admin queue shows every status (pending/published/rejected) so an
   // admin can see the full moderation history, not just what's still awaiting action.
   const allReviews = await reviews.listAllForModeration();
+  const productLabels = new Map<string, { title: string; slug: string | null }>();
+  for (const productId of new Set(allReviews.map((r) => r.productId))) {
+    productLabels.set(productId, await resolveProductLabel(catalog, productId));
+  }
 
   return (
     <main>
@@ -38,9 +49,17 @@ export default async function AdminReviewsPage({ params }: { params: Promise<{ d
           </tr>
         </thead>
         <tbody>
-          {allReviews.map((review) => (
+          {allReviews.map((review) => {
+            const label = productLabels.get(review.productId)!;
+            return (
             <tr key={review.id}>
-              <td>{review.productId}</td>
+              <td>
+                {label.slug ? (
+                  <Link href={`/demo/${demoSlug}/products/${label.slug}`}>{label.title}</Link>
+                ) : (
+                  label.title
+                )}
+              </td>
               <td>
                 {ratingStars(review.rating)} {review.rating}/5
               </td>
@@ -66,7 +85,8 @@ export default async function AdminReviewsPage({ params }: { params: Promise<{ d
                 ) : null}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </main>
