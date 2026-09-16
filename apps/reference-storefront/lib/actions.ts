@@ -22,6 +22,7 @@ import { getOrCreateCartId, readCartId } from "./cart-cookie";
 import { readCouponCode, setCouponCode } from "./coupon-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
 import { isDemoSlug, type DemoSlug } from "./demos";
+import { resetDemoData } from "./reset-demo-data";
 import { getServicesForDemo } from "./services";
 import { themeCookieName } from "./theme-cookie";
 
@@ -897,4 +898,42 @@ export async function archiveStorefrontViewAction(formData: FormData): Promise<v
   const { storefrontViews } = await getServicesForDemo(demoSlug);
   await storefrontViews.archiveView(id);
   revalidatePath(`/demo/${demoSlug}/admin/storefront-views`);
+}
+
+/**
+ * data-reset-and-safety epic: the single most destructive action in this
+ * whole file -- resets ONE demo store's real persisted data back to its
+ * canonical seeded state. Follows the EXACT convention
+ * updateAdminUserRoleAction (admin-auth-04) established for this file's one
+ * other owner-only action: `requireDemoSlug(formData)` first, then
+ * `requireAdminPermission(demoSlug, "reset_demo_data")` as the literal first
+ * permission check (owner-only -- see packages/admin-auth/src/
+ * permissions.ts), THEN this action's own extra gate on top of that: a real
+ * typed-confirmation check, case-sensitive exact match against the demo's
+ * own real slug (GitHub's "type the repo name to delete" precedent) --
+ * checked only after authorization, so an unauthorized caller learns
+ * nothing about whether their guess would have matched.
+ *
+ * The actual scoped-delete plan (which tables, how each is safely
+ * attributed to exactly this one demo under the real shared-Postgres-
+ * database deployment, and which rows are a documented, deliberate gap) is
+ * lib/reset-demo-data.ts's own responsibility -- see that module's header
+ * comment for the full scoping audit. This action also evicts (inside
+ * resetDemoData itself) this demo's cached service graph, so the very next
+ * request cold-starts and re-seeds from scratch via that demo's own
+ * already-idempotent seed function.
+ */
+export async function resetDemoDataAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "reset_demo_data");
+
+  const confirmSlug = String(formData.get("confirmSlug") ?? "");
+  if (confirmSlug !== demoSlug) {
+    throw new Error(
+      `Typed confirmation did not match this demo's slug -- expected exactly ${JSON.stringify(demoSlug)}, got ${JSON.stringify(confirmSlug)}. No data was deleted.`,
+    );
+  }
+
+  await resetDemoData(demoSlug);
+  revalidatePath(`/demo/${demoSlug}`, "layout");
 }

@@ -1044,3 +1044,22 @@ export function getServicesForDemo(demoSlug: DemoSlug): Promise<Services> {
   }
   return promise;
 }
+
+/**
+ * data-reset-and-safety epic: called by resetDemoDataAction (lib/actions.ts,
+ * via lib/reset-demo-data.ts) immediately after a real, scoped database
+ * reset has completed for `demoSlug` -- evicts that one demo's memoized
+ * service graph (including its already-open pgPool/mongoClient/sqliteDb
+ * handles and its already-completed seed) from `servicesByDemo`, so the
+ * very next `getServicesForDemo(demoSlug)` call cold-starts `buildServices`
+ * again from scratch and re-runs that demo's own idempotent seed function
+ * against the now-empty tables, exactly like a fresh serverless cold start
+ * would. Deliberately narrow: evicts only this one demo's entry, never
+ * touching the other two demos' already-built, already-warm service graphs
+ * (each is its own independent Map entry -- see getServicesForDemo's own
+ * doc comment on why the whole graph, not just seed data, is duplicated per
+ * demo). A no-op if this demo was never built yet (nothing to evict).
+ */
+export function evictServicesForDemo(demoSlug: DemoSlug): void {
+  servicesByDemo.delete(demoSlug);
+}

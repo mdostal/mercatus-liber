@@ -25,6 +25,18 @@ export default async function AdminSettingsPage({ params }: { params: Promise<{ 
         <Link href={`/demo/${demoSlug}/admin/settings/users`}>Manage admin users</Link>
       </p>
 
+      {/*
+        data-reset-and-safety epic: same "reachable to anyone but owner-gated
+        at the destination page + server action" posture as the users link
+        immediately above (admin-auth-04's own precedent) -- the real
+        owner-only check lives in this page's own AdminResetDemoDataPage
+        render AND resetDemoDataAction's requireAdminPermission call, not
+        here.
+      */}
+      <p>
+        <Link href={`/demo/${demoSlug}/admin/settings/reset`}>Reset demo data</Link>
+      </p>
+
       <table style={{ borderCollapse: "collapse", width: "100%" }}>
         <thead>
           <tr>
