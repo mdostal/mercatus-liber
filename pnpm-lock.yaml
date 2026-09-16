@@ -284,6 +284,9 @@ importers:
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../core
+      '@mercatus-liber/marketing-catalog':
+        specifier: workspace:*
+        version: link:../marketing-catalog
       convex:
         specifier: ^1.45.0
         version: 1.45.0(@clerk/react@6.15.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
@@ -303,6 +306,9 @@ importers:
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../core
+      '@mercatus-liber/marketing-catalog':
+        specifier: workspace:*
+        version: link:../marketing-catalog
       mongodb:
         specifier: ^7.6.0
         version: 7.6.0
@@ -322,6 +328,9 @@ importers:
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../core
+      '@mercatus-liber/marketing-catalog':
+        specifier: workspace:*
+        version: link:../marketing-catalog
       pg:
         specifier: ^8.23.0
         version: 8.23.0
