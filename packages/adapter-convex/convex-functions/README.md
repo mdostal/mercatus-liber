@@ -11,8 +11,9 @@ this repo (adapter-postgres, adapter-sqlite, adapter-mongodb), not an
 oversight.
 
 So this directory ships the actual, real, correct Convex function source
-`@mercatus-liber/adapter-convex`'s client (`createConvexAdapter`) calls by
-name -- copy these 4 files verbatim into your own Convex project's
+`@mercatus-liber/adapter-convex`'s client (`createConvexAdapter`,
+`createConvexCategoryRepository`, `createConvexProductCategoryRepository`)
+calls by name -- copy these 6 files verbatim into your own Convex project's
 `convex/` directory, then run `npx convex dev` (or `npx convex deploy` for
 production) to deploy them. Once deployed, `createConvexAdapter` (given
 your deployment's real `CONVEX_URL`) works against them with zero further
@@ -25,11 +26,12 @@ code changes.
    this is a real, one-time, browser-based login/project-creation step only
    you can do, same as this repo's published Provider Setup Checklist
    discloses for Supabase/Clerk/Sanity).
-2. Copy `schema.ts`, `products.ts`, `skus.ts`, `attributes.ts` from this
-   directory into your project's `convex/` folder.
+2. Copy `schema.ts`, `products.ts`, `skus.ts`, `attributes.ts`,
+   `categories.ts`, `productCategories.ts` from this directory into your
+   project's `convex/` folder.
 3. `npx convex dev` (development) or `npx convex deploy` (production) --
    Convex's own CLI generates `convex/_generated/server.ts`/`api.ts` against
-   these files at that point; they do not exist, and these 4 files will not
+   these files at that point; they do not exist, and these 6 files will not
    typecheck, until you do this.
 4. Set `CONVEX_URL` to your deployment's real HTTP API URL (shown by the
    CLI after deploying, and in your Convex dashboard -- looks like
@@ -42,8 +44,11 @@ not a plain string this framework's own `Product.id` (a UUID this
 framework generates itself) can be substituted for. Every table below
 instead stores our own id in a real, indexed `externalId` field and is
 always queried by that index, never by Convex's internal `_id` -- the
-adapter maps `externalId` back to `Product.id`/`Sku.id` on every read. This
-is a normal, real pattern for wrapping an external system whose own
-primary-key type you don't control (the same reason this framework's other
-adapters use `TEXT PRIMARY KEY id` columns rather than each database's own
-auto-increment/native-id feature).
+adapter maps `externalId` back to `Product.id`/`Sku.id`/`Category.id` on
+every read. This is a normal, real pattern for wrapping an external system
+whose own primary-key type you don't control (the same reason this
+framework's other adapters use `TEXT PRIMARY KEY id` columns rather than
+each database's own auto-increment/native-id feature). The
+`productCategoryAssignments` table is the one exception -- it's a pure
+many-to-many join row, so its `productId`/`categoryId` fields are already
+this framework's own real ids, not a Convex `_id` needing a mapping at all.
