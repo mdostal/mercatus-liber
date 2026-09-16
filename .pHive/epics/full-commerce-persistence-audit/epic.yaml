@@ -1,0 +1,71 @@
+name: full-commerce-persistence-audit
+title: Full commerce persistence -- real Catalog entity, 12 more persisted subsystems, real reset-to-demo-dataset
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+
+stories:
+  - id: fcp-01-catalog-entity
+    title: Real Catalog entity + ProductCatalogRepository (many-to-many), Postgres + SQLite
+    complexity: high
+    depends_on: []
+  - id: fcp-02-cart
+    title: Real Cart persistence, Postgres + SQLite
+    complexity: medium
+    depends_on: []
+  - id: fcp-03-orders
+    title: Real Order persistence, Postgres + SQLite
+    complexity: high
+    depends_on: []
+  - id: fcp-04-accounts
+    title: Real CustomerProfile persistence, Postgres + SQLite
+    complexity: medium
+    depends_on: []
+  - id: fcp-05-promotions
+    title: Real Promotion persistence, Postgres + SQLite
+    complexity: medium
+    depends_on: []
+  - id: fcp-06-reviews
+    title: Real Review persistence, Postgres + SQLite
+    complexity: medium
+    depends_on: []
+  - id: fcp-07-storefront-views
+    title: Real StorefrontView persistence, Postgres + SQLite
+    complexity: medium
+    depends_on: []
+  - id: fcp-08-bundles
+    title: Real Bundle persistence, Postgres + SQLite
+    complexity: medium
+    depends_on: []
+  - id: fcp-09-recommendations
+    title: Real RecommendationRule persistence, Postgres + SQLite
+    complexity: low
+    depends_on: []
+  - id: fcp-10-advertising
+    title: Real Campaign persistence, Postgres + SQLite
+    complexity: medium
+    depends_on: []
+  - id: fcp-11-service-areas
+    title: Real ServiceArea + ServiceAreaProductRepository persistence, Postgres + SQLite
+    complexity: medium
+    depends_on: []
+  - id: fcp-12-internal-bi
+    title: Real BiEventLog persistence, Postgres + SQLite
+    complexity: low
+    depends_on: []
+  - id: fcp-13-fulfillment-routing
+    title: Real FulfillmentRoutingRepository persistence, Postgres + SQLite
+    complexity: low
+    depends_on: []
+  - id: fcp-14-services-wiring
+    title: Wire all 13 new repositories into services.ts, seed real Catalog records
+    complexity: high
+    depends_on: [fcp-01-catalog-entity, fcp-02-cart, fcp-03-orders, fcp-04-accounts, fcp-05-promotions, fcp-06-reviews, fcp-07-storefront-views, fcp-08-bundles, fcp-09-recommendations, fcp-10-advertising, fcp-11-service-areas, fcp-12-internal-bi, fcp-13-fulfillment-routing]
+  - id: fcp-15-reset-to-demo-dataset
+    title: Real, owner-only reset-to-demo-dataset admin action
+    complexity: high
+    depends_on: [fcp-14-services-wiring]
+  - id: fcp-16-live-verification
+    title: Full monorepo check + live verification against real Supabase Postgres
+    complexity: medium
+    depends_on: [fcp-15-reset-to-demo-dataset]
