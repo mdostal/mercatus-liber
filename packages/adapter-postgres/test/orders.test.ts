@@ -263,4 +263,46 @@ describe("createPostgresOrderRepository", () => {
     expect(found?.paymentSessionId).toBe("pay-sess-1");
     expect(await orders.listAll()).toHaveLength(1); // upsert, not a duplicate row
   });
+
+  it("save REPLACES an order's line items on a second call -- it does not accumulate them", async () => {
+    const threeItems: Order = {
+      ...baseOrder,
+      items: [
+        { skuId: "sku-a", quantity: 1, priceAtPurchase: { amount: 100, currency: "USD" } },
+        { skuId: "sku-b", quantity: 1, priceAtPurchase: { amount: 200, currency: "USD" } },
+        { skuId: "sku-c", quantity: 1, priceAtPurchase: { amount: 300, currency: "USD" } },
+      ],
+    };
+    await orders.save(threeItems);
+
+    const oneItem: Order = {
+      ...baseOrder,
+      items: [{ skuId: "sku-b", quantity: 1, priceAtPurchase: { amount: 200, currency: "USD" } }],
+    };
+    await orders.save(oneItem);
+
+    const found = await orders.get("order-1");
+    expect(found?.items).toEqual(oneItem.items);
+    expect(found?.items).toHaveLength(1);
+  });
+
+  it("a failed write leaves a previously-saved order in its prior state (rollback proof, mirroring cart's own load-bearing test)", async () => {
+    // Save order-1 successfully first.
+    await orders.save(baseOrder);
+
+    // Attempt to save a DIFFERENT order (order-2) whose idempotencyKey
+    // collides with order-1's -- the fake pool's UNIQUE(idempotency_key)
+    // simulation (see createFakeOrdersPool's INSERT handler above) throws,
+    // exactly like a real Postgres UNIQUE constraint violation would. The
+    // whole write is a single INSERT ... ON CONFLICT statement, so Postgres
+    // itself guarantees nothing was applied when it throws -- no app-level
+    // BEGIN/COMMIT/ROLLBACK is needed for this property to hold.
+    const clashing: Order = { ...baseOrder, id: "order-2", idempotencyKey: baseOrder.idempotencyKey };
+    await expect(orders.save(clashing)).rejects.toThrow(/unique constraint/);
+
+    // order-1 must be exactly as it was before the failed write attempt.
+    expect(await orders.get("order-1")).toEqual(baseOrder);
+    // order-2 must never have been written at all.
+    expect(await orders.get("order-2")).toBeNull();
+  });
 });
