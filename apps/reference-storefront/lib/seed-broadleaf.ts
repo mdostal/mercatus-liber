@@ -9,7 +9,7 @@ import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
-import { upsertCatalog, upsertCategory, upsertProduct } from "./idempotent-seed";
+import { upsertCatalog, upsertCategory, upsertProduct, upsertStorefrontView } from "./idempotent-seed";
 
 /**
  * Epic demo-store-plant-shop's third public demo: "Broadleaf & Co.", an
@@ -1013,7 +1013,7 @@ async function seedStorefrontViews(
   ].filter((id): id is string => Boolean(id));
   if (categoryIds.length === 0) return;
 
-  const created = await storefrontViews.createView({
+  const created = await upsertStorefrontView(storefrontViews, {
     demoSlug: "broadleaf",
     slug: "autumn-gift-guide",
     name: "Autumn Harvest & Gift Guide",

@@ -11,7 +11,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import { upsertCatalog, upsertCategory, upsertProduct } from "./idempotent-seed";
+import { upsertCatalog, upsertCategory, upsertProduct, upsertServiceArea, upsertStorefrontView } from "./idempotent-seed";
 
 interface DemoProduct {
   slug: string;
@@ -814,21 +814,21 @@ async function seedServiceAreas(
   cms: CmsService,
   productIdBySlug: Map<string, string>,
 ): Promise<string> {
-  const portland = await serviceAreas.createServiceArea({
+  const portland = await upsertServiceArea(serviceAreas, {
     slug: "portland-or",
     name: "Portland, OR",
     region: "Pacific Northwest",
     description: "Local pickup and delivery for Portland-area customers.",
     phone: "(555) 555-0110",
   });
-  const austin = await serviceAreas.createServiceArea({
+  const austin = await upsertServiceArea(serviceAreas, {
     slug: "austin-tx",
     name: "Austin, TX",
     region: "Texas",
     description: "Local pickup and delivery for the Austin area.",
     phone: "(555) 555-0120",
   });
-  const chicago = await serviceAreas.createServiceArea({
+  const chicago = await upsertServiceArea(serviceAreas, {
     slug: "chicago-il",
     name: "Chicago, IL",
     region: "Midwest",
@@ -1222,7 +1222,7 @@ async function seedStorefrontViews(storefrontViews: StorefrontViewsService, cate
     .map((slug) => categoryIdBySlug.get(slug))
     .filter((id): id is string => Boolean(id));
 
-  const created = await storefrontViews.createView({
+  const created = await upsertStorefrontView(storefrontViews, {
     demoSlug: "print-shop",
     slug: "corporate-bulk",
     name: "Corporate & Bulk Orders",

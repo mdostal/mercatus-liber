@@ -10,7 +10,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import { upsertCatalog, upsertCategory, upsertProduct } from "./idempotent-seed";
+import { upsertCatalog, upsertCategory, upsertProduct, upsertServiceArea, upsertStorefrontView } from "./idempotent-seed";
 
 /**
  * Epic 15b's public demo: "Northline Home Tech", a fictional smart-home
@@ -1005,7 +1005,7 @@ async function seedStorefrontViews(storefrontViews: StorefrontViewsService, cate
     .filter((id): id is string => Boolean(id));
   if (categoryIds.length === 0) return;
 
-  const created = await storefrontViews.createView({
+  const created = await upsertStorefrontView(storefrontViews, {
     demoSlug: "northline",
     slug: "commercial",
     name: "Northline Commercial & Multi-Unit Installs",
@@ -1065,7 +1065,7 @@ export async function seedNorthlineDemo(
 
   const areas = await Promise.all(
     DEMO_SERVICE_AREAS.map((area) =>
-      serviceAreas.createServiceArea({ slug: area.slug, name: area.name, region: area.region, description: `Local installation service for ${area.name}.`, phone: area.phone }),
+      upsertServiceArea(serviceAreas, { slug: area.slug, name: area.name, region: area.region, description: `Local installation service for ${area.name}.`, phone: area.phone }),
     ),
   );
 

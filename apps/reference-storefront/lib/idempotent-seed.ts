@@ -1,6 +1,8 @@
 import type { Catalog, CatalogService, NewCatalogInput, NewProductInput } from "@mercatus-liber/catalog";
 import type { Category, MarketingCatalogService, NewCategoryInput } from "@mercatus-liber/marketing-catalog";
 import type { Product } from "@mercatus-liber/core";
+import type { NewServiceAreaInput, ServiceArea, ServiceAreaService } from "@mercatus-liber/service-areas";
+import type { NewStorefrontViewInput, StorefrontView, StorefrontViewsService } from "@mercatus-liber/storefront-views";
 
 /**
  * demo-seed-idempotency epic (48): real fix, found live and confirmed
@@ -66,4 +68,50 @@ export async function upsertCatalog(catalog: CatalogService, input: NewCatalogIn
   const existing = await catalog.getCatalogBySlug(input.slug);
   if (existing) return existing;
   return catalog.createCatalog(input);
+}
+
+/**
+ * data-reset-and-safety epic: a real, live-database bug found while
+ * verifying resetDemoDataAction's reseed path -- unlike upsertProduct/
+ * upsertCategory/upsertCatalog above, `seed.ts`'s and `seed-northline.ts`'s
+ * own service-area seeding called `serviceAreas.createServiceArea` directly
+ * (no idempotent-by-slug guard), which always mints a fresh random id (see
+ * @mercatus-liber/service-areas' `createServiceArea`) -- so a second seed
+ * pass against an already-seeded shared database (a real Vercel serverless
+ * cold start, or this epic's own reset-and-reseed flow) hits a real
+ * `service_areas_slug_key` UNIQUE constraint violation and crashes,
+ * unhandled, exactly like demo-seed-idempotency (epic 48) already fixed for
+ * products/categories/catalogs (see this file's own header comment on that
+ * epic). Same fix, same idempotent-by-slug precedent, extended to the one
+ * entity that had been missed.
+ */
+export async function upsertServiceArea(
+  serviceAreas: ServiceAreaService,
+  input: NewServiceAreaInput,
+): Promise<ServiceArea> {
+  const existing = await serviceAreas.getServiceAreaBySlug(input.slug);
+  if (existing) return existing;
+  return serviceAreas.createServiceArea(input);
+}
+
+/**
+ * data-reset-and-safety epic: the same real, live-database idempotency bug
+ * as upsertServiceArea above, found in the same verification pass, for the
+ * same reason -- all 3 demos' `seedStorefrontViews`-equivalent functions
+ * called `storefrontViews.createView` directly (no idempotent-by-slug
+ * guard), which always mints a fresh random id (see
+ * @mercatus-liber/storefront-views' own `createView`), so a second seed
+ * pass against an already-seeded shared database hits a real
+ * `UNIQUE (demo_slug, slug)` constraint violation and crashes. Scoped by
+ * BOTH `demoSlug` and `slug` (via `getViewBySlug`), matching that table's
+ * own compound uniqueness -- unlike every other upsert* helper in this
+ * file, which only needs a bare slug.
+ */
+export async function upsertStorefrontView(
+  storefrontViews: StorefrontViewsService,
+  input: NewStorefrontViewInput,
+): Promise<StorefrontView> {
+  const existing = await storefrontViews.getViewBySlug(input.demoSlug, input.slug);
+  if (existing) return existing;
+  return storefrontViews.createView(input);
 }
