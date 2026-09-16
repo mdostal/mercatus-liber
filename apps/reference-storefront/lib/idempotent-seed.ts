@@ -1,4 +1,4 @@
-import type { CatalogService, NewProductInput } from "@mercatus-liber/catalog";
+import type { Catalog, CatalogService, NewCatalogInput, NewProductInput } from "@mercatus-liber/catalog";
 import type { Category, MarketingCatalogService, NewCategoryInput } from "@mercatus-liber/marketing-catalog";
 import type { Product } from "@mercatus-liber/core";
 
@@ -50,4 +50,20 @@ export async function upsertCategory(marketingCatalog: MarketingCatalogService, 
   const existing = await marketingCatalog.getCategoryBySlug(input.slug);
   if (existing) return existing;
   return marketingCatalog.createCategory(input);
+}
+
+/**
+ * full-commerce-persistence-audit epic: same idempotent-by-slug precedent as
+ * upsertCategory above, for the real, named Catalog entity each demo store
+ * gets exactly one of (see @mercatus-liber/catalog's catalog-entity.ts doc
+ * comment). Every one of a demo's real seeded products is assigned to this
+ * one Catalog via CatalogService.assignProductToCatalog -- assignment itself
+ * is separately idempotent (a Set/ON CONFLICT DO NOTHING under the hood, see
+ * each ProductCatalogRepository implementation), so callers don't need an
+ * isNew signal the way upsertProduct's callers do.
+ */
+export async function upsertCatalog(catalog: CatalogService, input: NewCatalogInput): Promise<Catalog> {
+  const existing = await catalog.getCatalogBySlug(input.slug);
+  if (existing) return existing;
+  return catalog.createCatalog(input);
 }

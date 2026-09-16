@@ -11,7 +11,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import { upsertCategory, upsertProduct } from "./idempotent-seed";
+import { upsertCatalog, upsertCategory, upsertProduct } from "./idempotent-seed";
 
 interface DemoProduct {
   slug: string;
@@ -1255,6 +1255,28 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
   }
 }
 
+/**
+ * full-commerce-persistence-audit epic: the print-shop demo's exactly-one
+ * real, named Catalog entity (see @mercatus-liber/catalog's catalog-entity.ts
+ * doc comment) -- every real product seeded above (DEMO_PRODUCTS +
+ * DEMO_VARIANT_PRODUCTS, via productIdBySlug) is assigned to it. Idempotent
+ * via upsertCatalog (checks getCatalogBySlug first, same precedent as
+ * upsertCategory); assignProductToCatalog is separately idempotent too (see
+ * upsertCatalog's own doc comment), so this can run unconditionally on every
+ * seed call, re-run or not.
+ */
+async function seedRealCatalog(catalog: CatalogService, productIdBySlug: Map<string, string>): Promise<void> {
+  const printShopCatalog = await upsertCatalog(catalog, {
+    slug: "the-print-shop",
+    name: "The Print Shop",
+    description:
+      "Custom embroidery, coasters, apparel, and drinkware -- small-batch print and stitch goods made to order.",
+  });
+  for (const productId of productIdBySlug.values()) {
+    await catalog.assignProductToCatalog(productId, printShopCatalog.id);
+  }
+}
+
 /** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. `recommendations` is optional too -- most test files don't need the rec-04 acceptance demo (one curated RecommendationRule); see seedRecommendations. `advertising` is optional too -- most test files don't need the ad-04 acceptance demo (1-2 Campaigns); see seedAdvertising. `reviews` is optional too -- most test files don't need the reviews-depth demo (real seeded review content across 6 products); see seedReviews. `storefrontViews` is optional too -- most test files don't need the storefront-views demo (one real, permanent "Corporate & Bulk Orders" second storefront curated from this same catalog); see seedStorefrontViews. */
 export async function seedCatalog(
   catalog: CatalogService,
@@ -1336,6 +1358,7 @@ export async function seedCatalog(
     }
   }
 
+  await seedRealCatalog(catalog, productIdBySlug);
   await seedSubcategories(marketingCatalog, categoryIdBySlug, productIdBySlug);
   await seedCmsPages(cms, productIdBySlug);
   let portlandServiceAreaId: string | undefined;

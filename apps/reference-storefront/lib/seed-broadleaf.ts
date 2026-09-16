@@ -9,7 +9,7 @@ import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
-import { upsertCategory, upsertProduct } from "./idempotent-seed";
+import { upsertCatalog, upsertCategory, upsertProduct } from "./idempotent-seed";
 
 /**
  * Epic demo-store-plant-shop's third public demo: "Broadleaf & Co.", an
@@ -1029,6 +1029,24 @@ async function seedStorefrontViews(
   await storefrontViews.publishView(created.id);
 }
 
+/**
+ * full-commerce-persistence-audit epic: Broadleaf & Co.'s exactly-one real,
+ * named Catalog entity (see lib/seed.ts's seedRealCatalog doc comment for the
+ * full pattern this mirrors) -- every real product seeded above (via
+ * productIdBySlug) is assigned to it.
+ */
+async function seedRealCatalog(catalog: CatalogService, productIdBySlug: Map<string, string>): Promise<void> {
+  const broadleafCatalog = await upsertCatalog(catalog, {
+    slug: "broadleaf-and-co",
+    name: "Broadleaf & Co.",
+    description:
+      "An eclectic artisan marketplace for houseplants, ceramics & planters, hand-woven textiles, and letterpress paper goods.",
+  });
+  for (const productId of productIdBySlug.values()) {
+    await catalog.assignProductToCatalog(productId, broadleafCatalog.id);
+  }
+}
+
 export async function seedBroadleafDemo(
   catalog: CatalogService,
   marketingCatalog: MarketingCatalogService,
@@ -1142,6 +1160,7 @@ export async function seedBroadleafDemo(
   });
   await cms.publishPage(home.id);
 
+  await seedRealCatalog(catalog, productIdBySlug);
   if (promotions) await seedPromotions(promotions);
   if (bundles) await seedStarterBundle(bundles, productIdBySlug, skuIdByProductAndSize);
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
