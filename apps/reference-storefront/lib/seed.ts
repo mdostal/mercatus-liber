@@ -583,10 +583,24 @@ async function createServiceDemoSku(
  * design-discussion.md §0) using this repo's own print-shop-branded demo
  * data -- the ATT recreation repo itself is never read or touched.
  */
-async function seedServiceBundle(catalog: CatalogService, inventory: InventoryAdapter, bundles: BundlesService): Promise<void> {
+async function seedServiceBundle(
+  catalog: CatalogService,
+  inventory: InventoryAdapter,
+  bundles: BundlesService,
+  productIdBySlug: Map<string, string>,
+): Promise<void> {
   const install = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.install);
   const proSetup = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.proSetup);
   const overhaul = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.overhaul);
+  // Real, purchasable products (own SKU, price, stock) -- register them so
+  // seedRealCatalog (called after this, once every product exists) assigns
+  // them to the store's real Catalog too, not just DEMO_PRODUCTS/
+  // DEMO_VARIANT_PRODUCTS. Previously missed: seedRealCatalog used to run
+  // BEFORE this function, so these 3 products were silently never assigned
+  // to any catalog -- a real gap, found via a live-database audit.
+  productIdBySlug.set(SERVICE_DEMO_SKUS.install.slug, install.productId);
+  productIdBySlug.set(SERVICE_DEMO_SKUS.proSetup.slug, proSetup.productId);
+  productIdBySlug.set(SERVICE_DEMO_SKUS.overhaul.slug, overhaul.productId);
 
   await bundles.createBundle({
     productId: install.productId,
@@ -1358,15 +1372,18 @@ export async function seedCatalog(
     }
   }
 
-  await seedRealCatalog(catalog, productIdBySlug);
   await seedSubcategories(marketingCatalog, categoryIdBySlug, productIdBySlug);
   await seedCmsPages(cms, productIdBySlug);
   let portlandServiceAreaId: string | undefined;
   if (serviceAreas) portlandServiceAreaId = await seedServiceAreas(serviceAreas, cms, productIdBySlug);
-  if (bundles) await seedServiceBundle(catalog, inventory, bundles);
+  if (bundles) await seedServiceBundle(catalog, inventory, bundles, productIdBySlug);
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
   if (advertising) await seedAdvertising(advertising, portlandServiceAreaId);
   if (promotions) await seedPromotions(promotions);
   if (reviews) await seedReviews(reviews, productIdBySlug);
   if (storefrontViews) await seedStorefrontViews(storefrontViews, categoryIdBySlug);
+  // Runs last so every real product -- including bundle-04's service SKUs,
+  // registered into productIdBySlug just above -- is assigned to the real
+  // Catalog, not just DEMO_PRODUCTS/DEMO_VARIANT_PRODUCTS.
+  await seedRealCatalog(catalog, productIdBySlug);
 }
