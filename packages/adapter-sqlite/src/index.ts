@@ -13,6 +13,14 @@ import type {
 } from "@mercatus-liber/core";
 import { SCHEMA_SQL } from "./schema.js";
 
+export {
+  createSqliteCategoryRepository,
+  createSqliteProductCategoryRepository,
+  type Category,
+  type CategoryRepository,
+  type ProductCategoryRepository,
+} from "./categories.js";
+
 interface ProductRow {
   id: string;
   slug: string;
