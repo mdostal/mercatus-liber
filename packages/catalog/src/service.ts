@@ -11,7 +11,15 @@ import type {
   Sku,
 } from "@mercatus-liber/core";
 import { randomUUID } from "node:crypto";
+import { CatalogNotFoundError, DuplicateCatalogSlugError } from "./catalog-entity.js";
+import type { Catalog, CatalogRepository, ProductCatalogRepository } from "./catalog-entity.js";
 import { attributesKey, cartesianProduct } from "./variant-utils.js";
+
+export interface NewCatalogInput {
+  slug: string;
+  name: string;
+  description: string;
+}
 
 export interface NewProductInput {
   slug: string;
@@ -74,6 +82,23 @@ export interface CatalogService {
   setAttribute(attribute: ProductAttribute): Promise<void>;
   listAttributes(productId: string): Promise<ProductAttribute[]>;
   removeAttribute(productId: string, key: string): Promise<void>;
+
+  /**
+   * Real, named, addressable Catalog entity -- many-to-many with Product
+   * (see catalog-entity.ts's doc comment). A product could belong to more
+   * than one catalog.
+   */
+  createCatalog(input: NewCatalogInput): Promise<Catalog>;
+  getCatalog(id: string): Promise<Catalog | null>;
+  getCatalogBySlug(slug: string): Promise<Catalog | null>;
+  listCatalogs(): Promise<Catalog[]>;
+
+  assignProductToCatalog(productId: string, catalogId: string): Promise<void>;
+  unassignProductFromCatalog(productId: string, catalogId: string): Promise<void>;
+  listCatalogIdsForProduct(productId: string): Promise<string[]>;
+  listProductIdsInCatalog(catalogId: string): Promise<string[]>;
+  /** Resolves catalog-assignment ids through this same service's getProduct, filtering out nulls -- the same compose-lookups idiom used throughout this repo (e.g. the reference storefront's listProductIdsInCategory -> Promise.all(ids.map(getProduct)) -> filter-null). */
+  listProductsInCatalog(catalogId: string): Promise<Product[]>;
 }
 
 function assertIdentifyingKeysMatch(product: Product, attrs: IdentifyingAttribute[]): void {
@@ -93,8 +118,16 @@ function assertIdentifyingKeysMatch(product: Product, attrs: IdentifyingAttribut
 export function createCatalogService(deps: {
   persistence: CatalogPersistenceAdapter;
   events: EventBus;
+  catalogs: CatalogRepository;
+  productCatalogs: ProductCatalogRepository;
 }): CatalogService {
-  const { persistence, events } = deps;
+  const { persistence, events, catalogs, productCatalogs } = deps;
+
+  async function requireCatalog(id: string): Promise<Catalog> {
+    const catalog = await catalogs.get(id);
+    if (!catalog) throw new CatalogNotFoundError(id);
+    return catalog;
+  }
 
   async function requireProduct(id: string): Promise<Product> {
     const product = await persistence.products.get(id);
@@ -224,6 +257,55 @@ export function createCatalogService(deps: {
     async removeAttribute(productId, key) {
       await persistence.attributes.remove(productId, key);
       await events.publish("catalog.attribute.removed", { productId, key });
+    },
+
+    async createCatalog(input) {
+      const existing = await catalogs.getBySlug(input.slug);
+      if (existing) throw new DuplicateCatalogSlugError(input.slug);
+      const catalog: Catalog = {
+        id: randomUUID(),
+        slug: input.slug,
+        name: input.name,
+        description: input.description,
+        createdAt: new Date().toISOString(),
+      };
+      await catalogs.save(catalog);
+      return catalog;
+    },
+
+    async getCatalog(id) {
+      return catalogs.get(id);
+    },
+
+    async getCatalogBySlug(slug) {
+      return catalogs.getBySlug(slug);
+    },
+
+    async listCatalogs() {
+      return catalogs.list();
+    },
+
+    async assignProductToCatalog(productId, catalogId) {
+      await requireCatalog(catalogId);
+      await productCatalogs.assign(productId, catalogId);
+    },
+
+    async unassignProductFromCatalog(productId, catalogId) {
+      await productCatalogs.unassign(productId, catalogId);
+    },
+
+    async listCatalogIdsForProduct(productId) {
+      return productCatalogs.listCatalogIdsForProduct(productId);
+    },
+
+    async listProductIdsInCatalog(catalogId) {
+      return productCatalogs.listProductIdsInCatalog(catalogId);
+    },
+
+    async listProductsInCatalog(catalogId) {
+      const productIds = await productCatalogs.listProductIdsInCatalog(catalogId);
+      const found = await Promise.all(productIds.map((id) => persistence.products.get(id)));
+      return found.filter((p): p is Product => p !== null);
     },
   };
 }

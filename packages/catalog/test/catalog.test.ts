@@ -1,6 +1,12 @@
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
 import { beforeEach, describe, expect, it } from "vitest";
+import {
+  CatalogNotFoundError,
+  DuplicateCatalogSlugError,
+  createInMemoryCatalogRepository,
+  createInMemoryProductCatalogRepository,
+} from "../src/catalog-entity.js";
 import { createCatalogService, InvalidIdentifyingAttributesError, ProductNotFoundError } from "../src/service.js";
 import { attributesKey, cartesianProduct } from "../src/variant-utils.js";
 
@@ -49,7 +55,12 @@ describe("catalog service", () => {
       });
     }
     const persistence = createSqliteAdapter(":memory:");
-    catalog = createCatalogService({ persistence, events });
+    catalog = createCatalogService({
+      persistence,
+      events,
+      catalogs: createInMemoryCatalogRepository(),
+      productCatalogs: createInMemoryProductCatalogRepository(),
+    });
   });
 
   it("creates a product as draft and publishes catalog.product.created", async () => {
@@ -217,6 +228,170 @@ describe("catalog service", () => {
         event: "catalog.attribute.removed",
         payload: { productId: product.id, key: "materials" },
       });
+    });
+  });
+
+  describe("Catalog entity (real, named, many-to-many with Product)", () => {
+    it("creates, gets, gets by slug, and lists catalogs -- a save/round-trip", async () => {
+      const created = await catalog.createCatalog({
+        slug: "print-shop",
+        name: "Print Shop",
+        description: "The print-shop demo store's catalog.",
+      });
+      expect(created.id).toBeTruthy();
+      expect(created.createdAt).toBeTruthy();
+
+      expect(await catalog.getCatalog(created.id)).toEqual(created);
+      expect(await catalog.getCatalogBySlug("print-shop")).toEqual(created);
+      expect(await catalog.getCatalog("missing")).toBeNull();
+      expect(await catalog.getCatalogBySlug("missing")).toBeNull();
+
+      const second = await catalog.createCatalog({
+        slug: "northline",
+        name: "Northline",
+        description: "The northline demo store's catalog.",
+      });
+      const listed = await catalog.listCatalogs();
+      expect(listed).toHaveLength(2);
+      expect(listed.map((c) => c.id).sort()).toEqual([created.id, second.id].sort());
+    });
+
+    it("assigns a product to a catalog and lists both directions", async () => {
+      const printShop = await catalog.createCatalog({
+        slug: "print-shop-2",
+        name: "Print Shop",
+        description: "d",
+      });
+      const product = await catalog.createProduct({
+        slug: "widget",
+        title: "Widget",
+        description: "d",
+        identifyingAttributeKeys: [],
+      });
+
+      await catalog.assignProductToCatalog(product.id, printShop.id);
+      expect(await catalog.listCatalogIdsForProduct(product.id)).toEqual([printShop.id]);
+      expect(await catalog.listProductIdsInCatalog(printShop.id)).toEqual([product.id]);
+    });
+
+    it("supports a product in more than one catalog (real many-to-many)", async () => {
+      const catalogA = await catalog.createCatalog({ slug: "catalog-a", name: "A", description: "d" });
+      const catalogB = await catalog.createCatalog({ slug: "catalog-b", name: "B", description: "d" });
+      const product = await catalog.createProduct({
+        slug: "widget2",
+        title: "Widget 2",
+        description: "d",
+        identifyingAttributeKeys: [],
+      });
+
+      await catalog.assignProductToCatalog(product.id, catalogA.id);
+      await catalog.assignProductToCatalog(product.id, catalogB.id);
+
+      expect(await catalog.listCatalogIdsForProduct(product.id)).toEqual(
+        expect.arrayContaining([catalogA.id, catalogB.id]),
+      );
+    });
+
+    it("assign is idempotent -- assigning the same pair twice doesn't duplicate", async () => {
+      const printShop = await catalog.createCatalog({ slug: "print-shop-3", name: "P", description: "d" });
+      const product = await catalog.createProduct({
+        slug: "widget3",
+        title: "Widget 3",
+        description: "d",
+        identifyingAttributeKeys: [],
+      });
+
+      await catalog.assignProductToCatalog(product.id, printShop.id);
+      await catalog.assignProductToCatalog(product.id, printShop.id);
+      expect(await catalog.listCatalogIdsForProduct(product.id)).toEqual([printShop.id]);
+    });
+
+    it("unassign removes exactly the given pair", async () => {
+      const catalogA = await catalog.createCatalog({ slug: "catalog-a2", name: "A", description: "d" });
+      const catalogB = await catalog.createCatalog({ slug: "catalog-b2", name: "B", description: "d" });
+      const product = await catalog.createProduct({
+        slug: "widget4",
+        title: "Widget 4",
+        description: "d",
+        identifyingAttributeKeys: [],
+      });
+
+      await catalog.assignProductToCatalog(product.id, catalogA.id);
+      await catalog.assignProductToCatalog(product.id, catalogB.id);
+      await catalog.unassignProductFromCatalog(product.id, catalogA.id);
+
+      expect(await catalog.listCatalogIdsForProduct(product.id)).toEqual([catalogB.id]);
+    });
+
+    it("returns an empty array for a product/catalog with no assignments", async () => {
+      expect(await catalog.listCatalogIdsForProduct("missing")).toEqual([]);
+      expect(await catalog.listProductIdsInCatalog("missing")).toEqual([]);
+    });
+
+    it("rejects createCatalog when the slug is already taken by another catalog", async () => {
+      await catalog.createCatalog({ slug: "dup-slug", name: "First", description: "d" });
+      await expect(
+        catalog.createCatalog({ slug: "dup-slug", name: "Second", description: "d" }),
+      ).rejects.toThrow(DuplicateCatalogSlugError);
+      expect(await catalog.listCatalogs()).toHaveLength(1);
+    });
+
+    it("rejects assignProductToCatalog for a catalog id that doesn't exist", async () => {
+      const product = await catalog.createProduct({
+        slug: "widget5",
+        title: "Widget 5",
+        description: "d",
+        identifyingAttributeKeys: [],
+      });
+      await expect(catalog.assignProductToCatalog(product.id, "missing-catalog")).rejects.toThrow(
+        CatalogNotFoundError,
+      );
+    });
+
+    it("listProductsInCatalog resolves real Products via the catalog's own getProduct, not just ids", async () => {
+      const printShop = await catalog.createCatalog({ slug: "print-shop-4", name: "Print Shop", description: "d" });
+      const widget = await catalog.createProduct({
+        slug: "widget6",
+        title: "Widget 6",
+        description: "d",
+        identifyingAttributeKeys: [],
+      });
+      const gadget = await catalog.createProduct({
+        slug: "gadget",
+        title: "Gadget",
+        description: "d",
+        identifyingAttributeKeys: [],
+      });
+
+      await catalog.assignProductToCatalog(widget.id, printShop.id);
+      await catalog.assignProductToCatalog(gadget.id, printShop.id);
+
+      const products = await catalog.listProductsInCatalog(printShop.id);
+      expect(products).toEqual(expect.arrayContaining([widget, gadget]));
+      expect(products).toHaveLength(2);
+    });
+
+    it("listProductsInCatalog resolves a product genuinely assigned to two catalogs at once", async () => {
+      const catalogA = await catalog.createCatalog({ slug: "catalog-a3", name: "A", description: "d" });
+      const catalogB = await catalog.createCatalog({ slug: "catalog-b3", name: "B", description: "d" });
+      const shared = await catalog.createProduct({
+        slug: "shared-widget",
+        title: "Shared Widget",
+        description: "d",
+        identifyingAttributeKeys: [],
+      });
+
+      await catalog.assignProductToCatalog(shared.id, catalogA.id);
+      await catalog.assignProductToCatalog(shared.id, catalogB.id);
+
+      expect(await catalog.listProductsInCatalog(catalogA.id)).toEqual([shared]);
+      expect(await catalog.listProductsInCatalog(catalogB.id)).toEqual([shared]);
+    });
+
+    it("listProductsInCatalog filters out assignments whose product no longer exists", async () => {
+      const printShop = await catalog.createCatalog({ slug: "print-shop-5", name: "Print Shop", description: "d" });
+      await catalog.assignProductToCatalog("ghost-product-id", printShop.id);
+      expect(await catalog.listProductsInCatalog(printShop.id)).toEqual([]);
     });
   });
 });
