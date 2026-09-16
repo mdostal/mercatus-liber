@@ -1,0 +1,51 @@
+name: full-commerce-persistence-audit
+title: Real persistence for every commerce subsystem + a real Catalog entity + reset-to-demo-dataset
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+
+stories:
+  - id: fcpa-01-catalog-entity
+    title: Real Catalog entity (packages/catalog) -- products genuinely assigned to a named catalog with real metadata
+    complexity: high
+    depends_on: []
+  - id: fcpa-02-cart
+    title: Real Postgres cart persistence
+    complexity: medium
+    depends_on: []
+  - id: fcpa-03-orders
+    title: Real Postgres order persistence -- the commercial core
+    complexity: high
+    depends_on: []
+  - id: fcpa-04-accounts
+    title: Real Postgres customer-account persistence
+    complexity: low
+    depends_on: []
+  - id: fcpa-05-promotions-reviews
+    title: Real Postgres persistence for promotions + reviews
+    complexity: medium
+    depends_on: []
+  - id: fcpa-06-storefront-views-bundles
+    title: Real Postgres persistence for storefront views + bundles
+    complexity: medium
+    depends_on: []
+  - id: fcpa-07-recommendations-advertising
+    title: Real Postgres persistence for recommendations + advertising
+    complexity: medium
+    depends_on: []
+  - id: fcpa-08-service-areas-bi-fulfillment
+    title: Real Postgres persistence for service areas + internal-bi event log + fulfillment routing
+    complexity: medium
+    depends_on: []
+  - id: fcpa-09-consolidation
+    title: Consolidate all 8 parallel stories -- schema.ts/index.ts re-exports, services.ts wiring, real seed data for every subsystem across all 3 demos
+    complexity: high
+    depends_on: [fcpa-01-catalog-entity, fcpa-02-cart, fcpa-03-orders, fcpa-04-accounts, fcpa-05-promotions-reviews, fcpa-06-storefront-views-bundles, fcpa-07-recommendations-advertising, fcpa-08-service-areas-bi-fulfillment]
+  - id: fcpa-10-reset-demo-dataset
+    title: Real, owner-only, typed-confirmation reset-to-demo-dataset admin action
+    complexity: high
+    depends_on: [fcpa-09-consolidation]
+  - id: fcpa-11-live-verification
+    title: Full monorepo check + live verification across all 3 demos, including a real reset-and-reseed proof
+    complexity: medium
+    depends_on: [fcpa-10-reset-demo-dataset]

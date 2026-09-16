@@ -8,33 +8,46 @@ import {
 } from "../src/index.js";
 import type { AdminAction, AdminRole } from "../src/index.js";
 
-const ACTIONS: AdminAction[] = ["view", "mutate", "manage_users"];
+const ACTIONS: AdminAction[] = ["view", "mutate", "manage_users", "reset_demo_data"];
 
 describe("hasPermission", () => {
-  it("owner: all three actions return true", () => {
+  it("owner: all four actions return true", () => {
     for (const action of ACTIONS) {
       expect(hasPermission("owner", action)).toBe(true);
     }
   });
 
-  it("admin: view and mutate return true, manage_users returns false", () => {
+  it("admin: view and mutate return true, manage_users and reset_demo_data return false", () => {
     expect(hasPermission("admin", "view")).toBe(true);
     expect(hasPermission("admin", "mutate")).toBe(true);
     expect(hasPermission("admin", "manage_users")).toBe(false);
+    expect(hasPermission("admin", "reset_demo_data")).toBe(false);
   });
 
-  it("viewer: view returns true, mutate and manage_users return false", () => {
+  it("viewer: view returns true, mutate/manage_users/reset_demo_data return false", () => {
     expect(hasPermission("viewer", "view")).toBe(true);
     expect(hasPermission("viewer", "mutate")).toBe(false);
     expect(hasPermission("viewer", "manage_users")).toBe(false);
+    expect(hasPermission("viewer", "reset_demo_data")).toBe(false);
   });
 
-  // Full 3x3 matrix, not just the acceptance-criteria subset above.
-  it("covers all 9 role/action combinations exactly", () => {
+  /**
+   * data-reset-and-safety epic: "reset_demo_data" is owner-only, same as
+   * "manage_users" -- a real precedent this test asserts explicitly rather
+   * than just implicitly via the full matrix below.
+   */
+  it("reset_demo_data is owner-only, exactly like manage_users", () => {
+    expect(hasPermission("owner", "reset_demo_data")).toBe(true);
+    expect(hasPermission("admin", "reset_demo_data")).toBe(false);
+    expect(hasPermission("viewer", "reset_demo_data")).toBe(false);
+  });
+
+  // Full 3x4 matrix, not just the acceptance-criteria subset above.
+  it("covers all 12 role/action combinations exactly", () => {
     const expected: Record<AdminRole, Record<AdminAction, boolean>> = {
-      owner: { view: true, mutate: true, manage_users: true },
-      admin: { view: true, mutate: true, manage_users: false },
-      viewer: { view: true, mutate: false, manage_users: false },
+      owner: { view: true, mutate: true, manage_users: true, reset_demo_data: true },
+      admin: { view: true, mutate: true, manage_users: false, reset_demo_data: false },
+      viewer: { view: true, mutate: false, manage_users: false, reset_demo_data: false },
     };
     for (const role of Object.keys(expected) as AdminRole[]) {
       for (const action of ACTIONS) {

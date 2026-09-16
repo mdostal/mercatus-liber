@@ -5,5 +5,21 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [{ "path": "../core" }, { "path": "../marketing-catalog" }]
+  "references": [
+    { "path": "../account" },
+    { "path": "../advertising" },
+    { "path": "../bundles" },
+    { "path": "../cart" },
+    { "path": "../catalog" },
+    { "path": "../checkout-orders" },
+    { "path": "../core" },
+    { "path": "../fulfillment" },
+    { "path": "../internal-bi" },
+    { "path": "../marketing-catalog" },
+    { "path": "../promotions" },
+    { "path": "../recommendations" },
+    { "path": "../reviews" },
+    { "path": "../service-areas" },
+    { "path": "../storefront-views" }
+  ]
 }

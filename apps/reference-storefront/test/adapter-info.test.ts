@@ -29,7 +29,7 @@ describe("getAdapterInfo", () => {
     vi.stubEnv("CLOUDINARY_CLOUD_NAME", "");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(8);
+    expect(info).toHaveLength(21);
 
     const persistence = info.find((e) => e.subsystem === "Persistence (catalog)")!;
     expect(persistence.status).toBe("active");
@@ -68,6 +68,56 @@ describe("getAdapterInfo", () => {
     const inventory = info.find((e) => e.subsystem === "Inventory")!;
     expect(inventory.adapter).toBe("In-memory (reference default)");
     expect(inventory.status).toBe("active");
+
+    // full-commerce-persistence-audit epic: the 13 newly-wired subsystems
+    // all default to their in-memory reference implementation when this
+    // demo doesn't resolve to Postgres, same posture as Inventory above.
+    for (const subsystem of [
+      "Catalog (named entity)",
+      "Cart",
+      "Orders (checkout)",
+      "Customer profiles (account)",
+      "Promotions",
+      "Reviews",
+      "Storefront views",
+      "Bundles",
+      "Recommendations",
+      "Advertising (campaigns)",
+      "Service areas",
+      "Internal BI event log",
+      "Fulfillment routing",
+    ]) {
+      const row = info.find((e) => e.subsystem === subsystem)!;
+      expect(row, `expected a row for subsystem ${subsystem}`).toBeDefined();
+      expect(row.adapter).toBe("In-memory (reference default)");
+      expect(row.status).toBe("active");
+    }
+  });
+
+  it("reports Postgres for all 13 newly-wired subsystems when DATABASE_URL is truthy", () => {
+    vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
+
+    const info = getAdapterInfo();
+    for (const subsystem of [
+      "Catalog (named entity)",
+      "Cart",
+      "Orders (checkout)",
+      "Customer profiles (account)",
+      "Promotions",
+      "Reviews",
+      "Storefront views",
+      "Bundles",
+      "Recommendations",
+      "Advertising (campaigns)",
+      "Service areas",
+      "Internal BI event log",
+      "Fulfillment routing",
+    ]) {
+      const row = info.find((e) => e.subsystem === subsystem)!;
+      expect(row, `expected a row for subsystem ${subsystem}`).toBeDefined();
+      expect(row.adapter).toBe("Postgres");
+      expect(row.status).toBe("active");
+    }
   });
 
   it("reports file-backed SQLite as active, naming the exact path, when SQLITE_FILE_PATH is truthy and DATABASE_URL is unset", () => {
@@ -248,13 +298,13 @@ describe("getAdapterInfo", () => {
     expect(after.detail).toMatch(/test/i);
   });
 
-  it("always returns exactly six entries in the same subsystem order, persistence and CMS always active regardless of env", () => {
+  it("always returns exactly twenty-one entries in the same subsystem order, persistence and CMS always active regardless of env", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_live_xyz");
     vi.stubEnv("POSTHOG_API_KEY", "phc_xyz");
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
 
     const info = getAdapterInfo();
-    expect(info).toHaveLength(8);
+    expect(info).toHaveLength(21);
     expect(info.map((e) => e.subsystem)).toEqual([
       "Persistence (catalog)",
       "CMS",
@@ -264,6 +314,19 @@ describe("getAdapterInfo", () => {
       "Shipping",
       "Image CDN",
       "Inventory",
+      "Catalog (named entity)",
+      "Cart",
+      "Orders (checkout)",
+      "Customer profiles (account)",
+      "Promotions",
+      "Reviews",
+      "Storefront views",
+      "Bundles",
+      "Recommendations",
+      "Advertising (campaigns)",
+      "Service areas",
+      "Internal BI event log",
+      "Fulfillment routing",
     ]);
     // DATABASE_URL is set (real-shaped) in this test -- inventory should
     // report the real Postgres adapter, not the in-memory default.
@@ -312,8 +375,22 @@ describe("getAdapterInfo", () => {
     it("calling with no demoSlug at all still returns a complete, non-crashing AdapterInfo[] (the /architecture no-arg fallback case)", () => {
       vi.stubEnv("DATABASE_URL", "");
       const info = getAdapterInfo();
-      expect(info).toHaveLength(8);
+      expect(info).toHaveLength(21);
       expect(info.find((e) => e.subsystem === "Persistence (catalog)")).toBeDefined();
+    });
+
+    it("the 13 newly-wired subsystems follow Persistence/Inventory per-demo too -- Postgres for a demo resolving to Postgres, in-memory otherwise", () => {
+      vi.stubEnv("DATABASE_URL", "");
+      vi.stubEnv("PRINT_SHOP_DATABASE_URL", "postgres://user:pass@localhost:5432/db");
+      vi.stubEnv("BROADLEAF_CONVEX_URL", "https://kindhearted-corgi-798.convex.cloud");
+
+      const printShopInfo = getAdapterInfo("print-shop");
+      const broadleafInfo = getAdapterInfo("broadleaf");
+
+      for (const subsystem of ["Catalog (named entity)", "Cart", "Fulfillment routing"]) {
+        expect(printShopInfo.find((e) => e.subsystem === subsystem)?.adapter).toBe("Postgres");
+        expect(broadleafInfo.find((e) => e.subsystem === subsystem)?.adapter).toBe("In-memory (reference default)");
+      }
     });
   });
 });

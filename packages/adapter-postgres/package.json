@@ -22,8 +22,21 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@mercatus-liber/account": "workspace:*",
+    "@mercatus-liber/advertising": "workspace:*",
+    "@mercatus-liber/bundles": "workspace:*",
+    "@mercatus-liber/cart": "workspace:*",
+    "@mercatus-liber/catalog": "workspace:*",
+    "@mercatus-liber/checkout-orders": "workspace:*",
     "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/fulfillment": "workspace:*",
+    "@mercatus-liber/internal-bi": "workspace:*",
     "@mercatus-liber/marketing-catalog": "workspace:*",
+    "@mercatus-liber/promotions": "workspace:*",
+    "@mercatus-liber/recommendations": "workspace:*",
+    "@mercatus-liber/reviews": "workspace:*",
+    "@mercatus-liber/service-areas": "workspace:*",
+    "@mercatus-liber/storefront-views": "workspace:*",
     "pg": "^8.23.0"
   },
   "devDependencies": {

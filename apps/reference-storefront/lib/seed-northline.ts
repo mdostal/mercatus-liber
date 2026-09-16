@@ -10,7 +10,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import { upsertCategory, upsertProduct } from "./idempotent-seed";
+import { upsertCatalog, upsertCategory, upsertProduct, upsertServiceArea, upsertStorefrontView } from "./idempotent-seed";
 
 /**
  * Epic 15b's public demo: "Northline Home Tech", a fictional smart-home
@@ -1005,7 +1005,7 @@ async function seedStorefrontViews(storefrontViews: StorefrontViewsService, cate
     .filter((id): id is string => Boolean(id));
   if (categoryIds.length === 0) return;
 
-  const created = await storefrontViews.createView({
+  const created = await upsertStorefrontView(storefrontViews, {
     demoSlug: "northline",
     slug: "commercial",
     name: "Northline Commercial & Multi-Unit Installs",
@@ -1019,6 +1019,24 @@ async function seedStorefrontViews(storefrontViews: StorefrontViewsService, cate
     endsAt: null,
   });
   await storefrontViews.publishView(created.id);
+}
+
+/**
+ * full-commerce-persistence-audit epic: Northline's exactly-one real, named
+ * Catalog entity (see lib/seed.ts's seedRealCatalog doc comment for the full
+ * pattern this mirrors) -- every real service product seeded above (via
+ * productIdBySlug) is assigned to it.
+ */
+async function seedRealCatalog(catalog: CatalogService, productIdBySlug: Map<string, string>): Promise<void> {
+  const northlineCatalog = await upsertCatalog(catalog, {
+    slug: "northline-home-tech",
+    name: "Northline Home Tech",
+    description:
+      "TV mounting, home theater, security cameras, networking, and smart home automation -- installed by Northline Home Tech.",
+  });
+  for (const productId of productIdBySlug.values()) {
+    await catalog.assignProductToCatalog(productId, northlineCatalog.id);
+  }
 }
 
 export async function seedNorthlineDemo(
@@ -1047,7 +1065,7 @@ export async function seedNorthlineDemo(
 
   const areas = await Promise.all(
     DEMO_SERVICE_AREAS.map((area) =>
-      serviceAreas.createServiceArea({ slug: area.slug, name: area.name, region: area.region, description: `Local installation service for ${area.name}.`, phone: area.phone }),
+      upsertServiceArea(serviceAreas, { slug: area.slug, name: area.name, region: area.region, description: `Local installation service for ${area.name}.`, phone: area.phone }),
     ),
   );
 
@@ -1177,6 +1195,7 @@ export async function seedNorthlineDemo(
   // seedCatalog already uses for its own optional bundles/recommendations/
   // advertising/promotions deps -- a caller that doesn't pass one of these
   // (e.g. most test files) keeps working exactly as before.
+  await seedRealCatalog(catalog, productIdBySlug);
   if (promotions) await seedPromotions(promotions);
   if (bundles) await seedInstallBundle(bundles, productIdBySlug, skuIdsBySlug);
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);

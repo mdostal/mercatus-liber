@@ -1,6 +1,11 @@
 /** Shared test wiring -- the catalog/marketing-catalog/cms/inventory combo every test file in this suite needs, kept in one place to avoid drift as more services get added. */
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
-import { createCatalogService, type CatalogService } from "@mercatus-liber/catalog";
+import {
+  createCatalogService,
+  createInMemoryCatalogRepository,
+  createInMemoryProductCatalogRepository,
+  type CatalogService,
+} from "@mercatus-liber/catalog";
 import {
   createCmsService,
   createComponentRegistry,
@@ -42,7 +47,12 @@ export function buildTestCatalogServices(
   orders: OrderLookup = { getOrder: async () => null },
 ): TestCatalogServices {
   const persistence = createSqliteAdapter(":memory:");
-  const catalog = createCatalogService({ persistence, events });
+  const catalog = createCatalogService({
+    persistence,
+    events,
+    catalogs: createInMemoryCatalogRepository(),
+    productCatalogs: createInMemoryProductCatalogRepository(),
+  });
   const marketingCatalog = createMarketingCatalogService({
     categories: createInMemoryCategoryRepository(),
     assignments: createInMemoryProductCategoryRepository(),

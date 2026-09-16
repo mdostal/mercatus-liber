@@ -11,7 +11,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import { upsertCategory, upsertProduct } from "./idempotent-seed";
+import { upsertCatalog, upsertCategory, upsertProduct, upsertServiceArea, upsertStorefrontView } from "./idempotent-seed";
 
 interface DemoProduct {
   slug: string;
@@ -583,10 +583,24 @@ async function createServiceDemoSku(
  * design-discussion.md §0) using this repo's own print-shop-branded demo
  * data -- the ATT recreation repo itself is never read or touched.
  */
-async function seedServiceBundle(catalog: CatalogService, inventory: InventoryAdapter, bundles: BundlesService): Promise<void> {
+async function seedServiceBundle(
+  catalog: CatalogService,
+  inventory: InventoryAdapter,
+  bundles: BundlesService,
+  productIdBySlug: Map<string, string>,
+): Promise<void> {
   const install = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.install);
   const proSetup = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.proSetup);
   const overhaul = await createServiceDemoSku(catalog, inventory, SERVICE_DEMO_SKUS.overhaul);
+  // Real, purchasable products (own SKU, price, stock) -- register them so
+  // seedRealCatalog (called after this, once every product exists) assigns
+  // them to the store's real Catalog too, not just DEMO_PRODUCTS/
+  // DEMO_VARIANT_PRODUCTS. Previously missed: seedRealCatalog used to run
+  // BEFORE this function, so these 3 products were silently never assigned
+  // to any catalog -- a real gap, found via a live-database audit.
+  productIdBySlug.set(SERVICE_DEMO_SKUS.install.slug, install.productId);
+  productIdBySlug.set(SERVICE_DEMO_SKUS.proSetup.slug, proSetup.productId);
+  productIdBySlug.set(SERVICE_DEMO_SKUS.overhaul.slug, overhaul.productId);
 
   await bundles.createBundle({
     productId: install.productId,
@@ -800,21 +814,21 @@ async function seedServiceAreas(
   cms: CmsService,
   productIdBySlug: Map<string, string>,
 ): Promise<string> {
-  const portland = await serviceAreas.createServiceArea({
+  const portland = await upsertServiceArea(serviceAreas, {
     slug: "portland-or",
     name: "Portland, OR",
     region: "Pacific Northwest",
     description: "Local pickup and delivery for Portland-area customers.",
     phone: "(555) 555-0110",
   });
-  const austin = await serviceAreas.createServiceArea({
+  const austin = await upsertServiceArea(serviceAreas, {
     slug: "austin-tx",
     name: "Austin, TX",
     region: "Texas",
     description: "Local pickup and delivery for the Austin area.",
     phone: "(555) 555-0120",
   });
-  const chicago = await serviceAreas.createServiceArea({
+  const chicago = await upsertServiceArea(serviceAreas, {
     slug: "chicago-il",
     name: "Chicago, IL",
     region: "Midwest",
@@ -1208,7 +1222,7 @@ async function seedStorefrontViews(storefrontViews: StorefrontViewsService, cate
     .map((slug) => categoryIdBySlug.get(slug))
     .filter((id): id is string => Boolean(id));
 
-  const created = await storefrontViews.createView({
+  const created = await upsertStorefrontView(storefrontViews, {
     demoSlug: "print-shop",
     slug: "corporate-bulk",
     name: "Corporate & Bulk Orders",
@@ -1252,6 +1266,28 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
       });
       if (demo.publish) await reviews.moderateReview(review.id, "published");
     }
+  }
+}
+
+/**
+ * full-commerce-persistence-audit epic: the print-shop demo's exactly-one
+ * real, named Catalog entity (see @mercatus-liber/catalog's catalog-entity.ts
+ * doc comment) -- every real product seeded above (DEMO_PRODUCTS +
+ * DEMO_VARIANT_PRODUCTS, via productIdBySlug) is assigned to it. Idempotent
+ * via upsertCatalog (checks getCatalogBySlug first, same precedent as
+ * upsertCategory); assignProductToCatalog is separately idempotent too (see
+ * upsertCatalog's own doc comment), so this can run unconditionally on every
+ * seed call, re-run or not.
+ */
+async function seedRealCatalog(catalog: CatalogService, productIdBySlug: Map<string, string>): Promise<void> {
+  const printShopCatalog = await upsertCatalog(catalog, {
+    slug: "the-print-shop",
+    name: "The Print Shop",
+    description:
+      "Custom embroidery, coasters, apparel, and drinkware -- small-batch print and stitch goods made to order.",
+  });
+  for (const productId of productIdBySlug.values()) {
+    await catalog.assignProductToCatalog(productId, printShopCatalog.id);
   }
 }
 
@@ -1340,10 +1376,14 @@ export async function seedCatalog(
   await seedCmsPages(cms, productIdBySlug);
   let portlandServiceAreaId: string | undefined;
   if (serviceAreas) portlandServiceAreaId = await seedServiceAreas(serviceAreas, cms, productIdBySlug);
-  if (bundles) await seedServiceBundle(catalog, inventory, bundles);
+  if (bundles) await seedServiceBundle(catalog, inventory, bundles, productIdBySlug);
   if (recommendations) await seedRecommendations(recommendations, productIdBySlug);
   if (advertising) await seedAdvertising(advertising, portlandServiceAreaId);
   if (promotions) await seedPromotions(promotions);
   if (reviews) await seedReviews(reviews, productIdBySlug);
   if (storefrontViews) await seedStorefrontViews(storefrontViews, categoryIdBySlug);
+  // Runs last so every real product -- including bundle-04's service SKUs,
+  // registered into productIdBySlug just above -- is assigned to the real
+  // Catalog, not just DEMO_PRODUCTS/DEMO_VARIANT_PRODUCTS.
+  await seedRealCatalog(catalog, productIdBySlug);
 }
