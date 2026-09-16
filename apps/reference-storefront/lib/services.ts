@@ -1,13 +1,22 @@
 import { cookies } from "next/headers";
 import { createAccountService, createInMemoryCustomerProfileRepository, type AccountService } from "@mercatus-liber/account";
 import { createClerkAdminAuthAdapter } from "@mercatus-liber/adapter-clerk";
-import { createPostgresAdapter } from "@mercatus-liber/adapter-postgres";
+import {
+  createPostgresAdapter,
+  createPostgresCategoryRepository,
+  createPostgresProductCategoryRepository,
+} from "@mercatus-liber/adapter-postgres";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createCloudinaryFetchAdapter } from "@mercatus-liber/adapter-cloudinary";
 import { createShippoShippingAdapter } from "@mercatus-liber/adapter-shippo";
-import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
+import {
+  createSqliteAdapterFromDb,
+  createSqliteCategoryRepository,
+  createSqliteProductCategoryRepository,
+  openSqliteDb,
+} from "@mercatus-liber/adapter-sqlite";
 import { ADMIN_DEV_SESSION_COOKIE, createDefaultAdminAuthAdapter, type AdminAuthAdapter } from "@mercatus-liber/admin-auth";
 import {
   createAdvertisingService,
@@ -56,8 +65,18 @@ import {
 } from "@mercatus-liber/internal-bi";
 import { createInMemoryInventoryAdapter, registerInventorySync, type InventoryAdapter } from "@mercatus-liber/inventory";
 import { createPostgresInventoryAdapter } from "@mercatus-liber/adapter-postgres-inventory";
-import { connectMongoAdapter } from "@mercatus-liber/adapter-mongodb";
-import { connectConvexAdapter } from "@mercatus-liber/adapter-convex";
+import {
+  createMongoAdapter,
+  createMongoCategoryRepository,
+  createMongoProductCategoryRepository,
+  type DbLike as MongoDbLike,
+} from "@mercatus-liber/adapter-mongodb";
+import {
+  connectConvexAdapter,
+  connectConvexCategoryRepository,
+  connectConvexProductCategoryRepository,
+} from "@mercatus-liber/adapter-convex";
+import { MongoClient } from "mongodb";
 import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
 import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
 import { createInMemoryReviewRepository, createReviewsService, type ReviewsService } from "@mercatus-liber/reviews";
@@ -282,6 +301,57 @@ function createDevAdminAuthAdapter(): AdminAuthAdapter {
 
 const servicesByDemo = new Map<DemoSlug, Promise<Services>>();
 
+/**
+ * per-demo-backend-diversity epic: `print-shop` -> `PRINT_SHOP`,
+ * `northline` -> `NORTHLINE`, `broadleaf` -> `BROADLEAF` -- the per-demo
+ * env-var override prefix, derived from the route's own real demoSlug, not
+ * a hardcoded map (so a future demo needs zero code changes here).
+ */
+export function demoEnvPrefix(demoSlug: DemoSlug): string {
+  return demoSlug.toUpperCase().replace(/-/g, "_");
+}
+
+interface DemoPersistenceEnv {
+  databaseUrl: string | undefined;
+  mongodbUrl: string | undefined;
+  convexUrl: string | undefined;
+  sqliteFilePath: string | undefined;
+}
+
+/**
+ * Resolves this ONE demo's real persistence backend choice. Real design
+ * decision (see .pHive/epics/per-demo-backend-diversity/docs/
+ * design-discussion.md §2a for the full reasoning, confirmed with the user
+ * at the design sign-off gate): once ANY `<PREFIX>_*` var is set for this
+ * demo, resolution uses ONLY this demo's own 4 vars (falling to in-memory
+ * if none of ITS OWN 4 are set) -- it does NOT fall back per-field to the
+ * global vars. A naive per-field fallback has a real bug: if northline only
+ * sets `NORTHLINE_MONGODB_URL`, falling back to the *global* `DATABASE_URL`
+ * for its unset `NORTHLINE_DATABASE_URL` would mean northline resolves to
+ * the global Postgres URL and never reaches Mongo at all, since Postgres
+ * still wins the priority chain below. A demo with ZERO per-demo vars set
+ * behaves byte-for-byte as before this epic (falls through to the global
+ * chain) -- fully backward compatible for any deployment that never adopts
+ * per-demo vars.
+ */
+export function resolveDemoPersistenceEnv(demoSlug: DemoSlug): DemoPersistenceEnv {
+  const prefix = demoEnvPrefix(demoSlug);
+  const perDemo: DemoPersistenceEnv = {
+    databaseUrl: process.env[`${prefix}_DATABASE_URL`],
+    mongodbUrl: process.env[`${prefix}_MONGODB_URL`],
+    convexUrl: process.env[`${prefix}_CONVEX_URL`],
+    sqliteFilePath: process.env[`${prefix}_SQLITE_FILE_PATH`],
+  };
+  const hasOverride = Object.values(perDemo).some(Boolean);
+  if (hasOverride) return perDemo;
+  return {
+    databaseUrl: process.env.DATABASE_URL,
+    mongodbUrl: process.env.MONGODB_URL,
+    convexUrl: process.env.CONVEX_URL,
+    sqliteFilePath: process.env.SQLITE_FILE_PATH,
+  };
+}
+
 async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   const events = createInMemoryEventBus();
 
@@ -373,46 +443,97 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // the pg.Pool from DATABASE_URL, mirroring
   // packages/create-store/src/scaffold.ts's generated services.ts wiring
   // for the same adapter.
+  // per-demo-backend-diversity epic: resolved per THIS demo (see
+  // resolveDemoPersistenceEnv's own doc comment) -- print-shop, northline,
+  // and broadleaf can each genuinely run a different real backend
+  // simultaneously, provable live at /architecture and each demo's own
+  // /start page, not just one global choice forced onto all 3 stores.
+  const demoPersistenceEnv = resolveDemoPersistenceEnv(demoSlug);
   // ims-postgres-alternate epic: hoisted (not constructed inline anymore)
   // so the real Postgres-backed InventoryAdapter below can share this exact
   // same connection pool instead of opening a second one against the same
-  // database -- both are real uses of the one DATABASE_URL a deployment
-  // configures, not two independent env-var checks that happen to agree.
-  // Real production incident, confirmed live: a serverless deployment (each
-  // cold start opening its OWN Pool) against Supabase's Supavisor pooler
-  // hit `EMAXCONNSESSION: max clients reached in session mode` with the
+  // database -- both are real uses of the one resolved databaseUrl, not two
+  // independent env-var checks that happen to agree. Real production
+  // incident, confirmed live: a serverless deployment (each cold start
+  // opening its OWN Pool) against Supabase's Supavisor pooler hit
+  // `EMAXCONNSESSION: max clients reached in session mode` with the
   // node-postgres default max of 10 per Pool -- many concurrent instances
   // each holding up to 10 connections exhausts a shared pooler fast. max: 1
   // is the documented safe default for serverless (node-postgres's own
   // pool-sizing guide); this also requires DATABASE_URL to point at
   // Supavisor's transaction-mode port (6543), not session-mode (5432),
   // which is Supabase's own documented recommendation for serverless.
-  const pgPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 1 }) : null;
+  const pgPool = demoPersistenceEnv.databaseUrl
+    ? new Pool({ connectionString: demoPersistenceEnv.databaseUrl, max: 1 })
+    : null;
   // adapter-mongodb epic: MONGODB_URL is checked only when DATABASE_URL
-  // isn't set -- a deployment picks ONE real external catalog backend, not
-  // a priority race between two. Kept a distinct step (not folded into the
-  // ternary chain below) since connectMongoAdapter is async and itself
-  // constructs the real MongoClient, unlike pgPool's synchronous `new
-  // Pool(...)` above.
-  const mongo =
-    !pgPool && process.env.MONGODB_URL ? await connectMongoAdapter(process.env.MONGODB_URL) : null;
+  // isn't set for this demo -- a demo picks ONE real external catalog
+  // backend, not a priority race between two. A real MongoClient (not
+  // connectMongoAdapter's own internal one) is constructed here so its `db`
+  // can be shared with createMongoCategoryRepository/
+  // createMongoProductCategoryRepository below, the same connection-sharing
+  // principle as pgPool -- confirmed necessary via real research this
+  // session: MongoDB's connection model is TCP/pooled like Postgres, not
+  // stateless like Convex's HTTP client, so a second independent MongoClient
+  // per demo build would double real connection usage for no reason.
+  const mongoClient = !pgPool && demoPersistenceEnv.mongodbUrl
+    ? new MongoClient(demoPersistenceEnv.mongodbUrl, { maxPoolSize: 5, maxIdleTimeMS: 60000 })
+    : null;
+  if (mongoClient) await mongoClient.connect();
+  const mongoDb = mongoClient ? (mongoClient.db() as unknown as MongoDbLike) : null;
   // adapter-convex epic: same "only checked when nothing higher-priority
   // is already set" shape as mongo above -- CONVEX_URL is the least
   // preferred of the 3 real external backends here only because it's the
   // newest/least battle-tested in this codebase, not a statement about
-  // Convex itself.
-  const convexAdapter =
-    !pgPool && !mongo && process.env.CONVEX_URL ? await connectConvexAdapter(process.env.CONVEX_URL) : null;
+  // Convex itself. Convex's ConvexHttpClient is a stateless HTTP client
+  // (confirmed via research, docs.convex.dev), not a pooled TCP connection
+  // -- no equivalent sharing concern to pgPool/mongoClient above, so the
+  // catalog and category repositories below each just call their own
+  // independent connect* helper.
+  const convexUrl = !pgPool && !mongoDb ? demoPersistenceEnv.convexUrl : undefined;
+  const convexAdapter = convexUrl ? await connectConvexAdapter(convexUrl) : null;
+  // SQLite (file or :memory:) db handle, opened once and shared with the
+  // category repositories below, the same sharing principle as pgPool/
+  // mongoDb -- only actually opened when nothing higher-priority resolved.
+  const sqliteDb =
+    !pgPool && !mongoDb && !convexAdapter
+      ? openSqliteDb(demoPersistenceEnv.sqliteFilePath ?? ":memory:")
+      : null;
   const persistence = pgPool
     ? await createPostgresAdapter(pgPool)
-    : mongo
-      ? mongo.adapter
+    : mongoDb
+      ? await createMongoAdapter(mongoDb)
       : convexAdapter
         ? convexAdapter
-        : process.env.SQLITE_FILE_PATH
-          ? createSqliteAdapter(process.env.SQLITE_FILE_PATH)
-          : createSqliteAdapter(":memory:");
+        : createSqliteAdapterFromDb(sqliteDb!);
   const catalog = createCatalogService({ persistence, events });
+
+  // per-demo-backend-diversity epic: categories/product-category assignments
+  // now genuinely persist to whichever real backend this demo resolved
+  // above, sharing the SAME connection as `persistence` (pgPool/mongoDb/
+  // sqliteDb) rather than a second independently-chosen backend -- the
+  // marketing catalog is built FROM this store's real product/SKU data, not
+  // a parallel in-memory set (explicit user correction at this epic's design
+  // sign-off gate). Falls to the in-memory reference implementation only
+  // when nothing above resolved (matches the in-memory-`persistence` case).
+  const categoryRepository = pgPool
+    ? createPostgresCategoryRepository(pgPool)
+    : mongoDb
+      ? await createMongoCategoryRepository(mongoDb)
+      : convexUrl
+        ? await connectConvexCategoryRepository(convexUrl)
+        : sqliteDb
+          ? createSqliteCategoryRepository(sqliteDb)
+          : createInMemoryCategoryRepository();
+  const productCategoryRepository = pgPool
+    ? createPostgresProductCategoryRepository(pgPool)
+    : mongoDb
+      ? createMongoProductCategoryRepository(mongoDb)
+      : convexUrl
+        ? await connectConvexProductCategoryRepository(convexUrl)
+        : sqliteDb
+          ? createSqliteProductCategoryRepository(sqliteDb)
+          : createInMemoryProductCategoryRepository();
 
   const cart = createCartService({
     repository: createInMemoryCartRepository(),
@@ -534,8 +655,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   });
 
   const marketingCatalog = createMarketingCatalogService({
-    categories: createInMemoryCategoryRepository(),
-    assignments: createInMemoryProductCategoryRepository(),
+    categories: categoryRepository,
+    assignments: productCategoryRepository,
     attributes: catalog,
   });
 
