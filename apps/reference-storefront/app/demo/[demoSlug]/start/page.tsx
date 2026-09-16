@@ -117,7 +117,7 @@ export default async function StartHerePage({ params }: { params: Promise<{ demo
   const allPromotions = await promotions.listPromotions();
   const activeCodes = allPromotions.filter((promo) => promo.code && promo.status === "active");
 
-  const adapters = getAdapterInfo();
+  const adapters = getAdapterInfo(demoSlug);
   const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
   const adminDevPassword = process.env.ADMIN_DEV_PASSWORD ?? null;
   // real-provider-verification epic: publishing the OWNER password here was

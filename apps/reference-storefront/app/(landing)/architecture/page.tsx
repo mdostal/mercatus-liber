@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getAdapterInfo } from "../../../lib/adapter-info";
 import { canonicalUrl } from "../../../lib/site-url";
+import { DEMO_REGISTRY, DEMO_SLUGS } from "../../../lib/demos";
 
 export const metadata: Metadata = {
   title: "Architecture & Adapters",
@@ -16,25 +17,30 @@ export const metadata: Metadata = {
  * the integration and architecture decisions are and how we make adapters so
  * you can use and choose any of the frameworks without changing the core."
  *
- * Two halves, both grounded in real code rather than marketing claims:
+ * Three parts, all grounded in real code rather than marketing claims:
  *
  * 1. A live table from lib/adapter-info.ts's getAdapterInfo() -- computed
  *    fresh from process.env on every request, mirroring lib/services.ts's own
  *    env-reading branches exactly (see that module's own doc comment). This
  *    is genuinely what THIS running deployment chose, not a static claim.
- * 2. A concrete walkthrough of the payments adapter as the flagship example
+ * 2. A per-demo persistence/inventory breakdown (per-demo-backend-diversity
+ *    epic) -- unlike every other row above, catalog persistence and
+ *    inventory are demo-aware, not process-wide: print-shop, northline, and
+ *    broadleaf can each genuinely resolve to a different real database.
+ *    This table proves it live, one row per real demo slug.
+ * 3. A concrete walkthrough of the payments adapter as the flagship example
  *    of the swap pattern (packages/payments/src/types.ts's PaymentAdapter
  *    interface, packages/payments/src/stripe-adapter.ts, and the sandbox
  *    adapter's own doc comment in packages/payments/src/sandbox-adapter.ts)
  *    -- a real second, fully-working implementation that swaps in with zero
  *    changes to checkout-orders, cart, or catalog code.
  *
- * Honesty constraint from the story brief: in this one deployment, all 3 demo
- * stores share the same adapter wiring (env-var-driven, process-wide) -- this
- * page never claims or implies each store uses a different backend. What's
- * demonstrated instead is that the *interface* is swappable, proven by real
- * alternate adapter packages that exist in this repo even though only one per
- * subsystem is active at a time here.
+ * Honesty constraint, UPDATED from the original story brief: that brief said
+ * all 3 demo stores share the same adapter wiring process-wide, with no
+ * per-store divergence -- true for every OTHER subsystem below (CMS,
+ * payments, analytics, fulfillment, shipping, media), but no longer true for
+ * persistence/inventory specifically, which genuinely differ per demo now.
+ * This page states that distinction explicitly rather than papering over it.
  */
 // Real bug, found live in production: this page's whole premise is "this
 // deployment's real, live adapter wiring right now" (see doc comment above
@@ -50,7 +56,19 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default function ArchitecturePage() {
-  const adapters = getAdapterInfo();
+  // Persistence/Inventory rendered separately below (per-demo, section 2) --
+  // every other row here is genuinely process-wide/shared, so a single
+  // no-arg call (falling back to the first registered demo internally, per
+  // getAdapterInfo's own doc comment) is correct for THIS table.
+  const sharedAdapters = getAdapterInfo().filter(
+    (row) => row.subsystem !== "Persistence (catalog)" && row.subsystem !== "Inventory",
+  );
+  const perDemoRows = DEMO_SLUGS.map((slug) => {
+    const [persistence, inventory] = getAdapterInfo(slug).filter(
+      (row) => row.subsystem === "Persistence (catalog)" || row.subsystem === "Inventory",
+    );
+    return { slug, displayName: DEMO_REGISTRY[slug].displayName, persistence: persistence!, inventory: inventory! };
+  });
 
   return (
     <div className="ml-shell mla-page">
@@ -76,7 +94,8 @@ export default function ArchitecturePage() {
           <code>lib/adapter-info.ts</code>&rsquo;s <code>getAdapterInfo()</code>) &mdash; not a static claim.
           <strong> All three demo stores on this deployment (print-shop, northline, broadleaf) share this
           exact wiring</strong>, since it&rsquo;s process-wide, not per-store: a real merchant configures these
-          env vars once for their own deployment.
+          env vars once for their own deployment. (Persistence and Inventory are the two exceptions &mdash;
+          see the per-demo table right below.)
         </p>
         <div className="mla-table-wrap">
           <table className="mla-table">
@@ -88,13 +107,47 @@ export default function ArchitecturePage() {
               </tr>
             </thead>
             <tbody>
-              {adapters.map((row) => (
+              {sharedAdapters.map((row) => (
                 <tr key={row.subsystem}>
                   <td className="mla-subsystem">{row.subsystem}</td>
                   <td>
                     <span className="mla-badge">{row.adapter}</span>
                   </td>
                   <td className="mla-detail">{row.detail}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mla-section">
+        <h2>Persistence &amp; inventory, per demo store</h2>
+        <p className="mla-lede">
+          Unlike every subsystem above, catalog persistence (and the inventory it shares a connection with)
+          is resolved separately per demo store (per-demo-backend-diversity epic) &mdash; each store can
+          genuinely run a different real database, not one process-wide choice. This table proves it live,
+          computed fresh per demo on every request.
+        </p>
+        <div className="mla-table-wrap">
+          <table className="mla-table">
+            <thead>
+              <tr>
+                <th>Store</th>
+                <th>Persistence</th>
+                <th>Inventory</th>
+              </tr>
+            </thead>
+            <tbody>
+              {perDemoRows.map((row) => (
+                <tr key={row.slug}>
+                  <td className="mla-subsystem">{row.displayName}</td>
+                  <td>
+                    <span className="mla-badge">{row.persistence.adapter}</span>
+                  </td>
+                  <td>
+                    <span className="mla-badge">{row.inventory.adapter}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>

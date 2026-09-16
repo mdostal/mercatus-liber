@@ -276,4 +276,44 @@ describe("getAdapterInfo", () => {
     expect(info[0]!.status).toBe("active");
     expect(info[1]!.status).toBe("active");
   });
+
+  describe("per-demo-backend-diversity: demo-aware Persistence/Inventory", () => {
+    it("two demos with different per-demo overrides report genuinely different Persistence adapters", () => {
+      vi.stubEnv("DATABASE_URL", "");
+      vi.stubEnv("PRINT_SHOP_DATABASE_URL", "postgres://user:pass@localhost:5432/db");
+      vi.stubEnv("NORTHLINE_MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/northline");
+
+      const printShop = getAdapterInfo("print-shop").find((e) => e.subsystem === "Persistence (catalog)")!;
+      const northline = getAdapterInfo("northline").find((e) => e.subsystem === "Persistence (catalog)")!;
+
+      expect(printShop.adapter).toBe("Postgres");
+      expect(northline.adapter).toBe("MongoDB");
+    });
+
+    it("a demo with no per-demo override falls back to the global chain, same as before this epic", () => {
+      vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
+
+      const broadleaf = getAdapterInfo("broadleaf").find((e) => e.subsystem === "Persistence (catalog)")!;
+      expect(broadleaf.adapter).toBe("Postgres");
+    });
+
+    it("Inventory follows Persistence per-demo -- Postgres for a demo resolving to Postgres, in-memory otherwise", () => {
+      vi.stubEnv("DATABASE_URL", "");
+      vi.stubEnv("PRINT_SHOP_DATABASE_URL", "postgres://user:pass@localhost:5432/db");
+      vi.stubEnv("BROADLEAF_CONVEX_URL", "https://kindhearted-corgi-798.convex.cloud");
+
+      const printShopInventory = getAdapterInfo("print-shop").find((e) => e.subsystem === "Inventory")!;
+      const broadleafInventory = getAdapterInfo("broadleaf").find((e) => e.subsystem === "Inventory")!;
+
+      expect(printShopInventory.adapter).toBe("Postgres");
+      expect(broadleafInventory.adapter).toBe("In-memory (reference default)");
+    });
+
+    it("calling with no demoSlug at all still returns a complete, non-crashing AdapterInfo[] (the /architecture no-arg fallback case)", () => {
+      vi.stubEnv("DATABASE_URL", "");
+      const info = getAdapterInfo();
+      expect(info).toHaveLength(8);
+      expect(info.find((e) => e.subsystem === "Persistence (catalog)")).toBeDefined();
+    });
+  });
 });
