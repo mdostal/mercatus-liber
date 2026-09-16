@@ -2,33 +2,29 @@
  * Real, table-backed CampaignRepository coverage (see this package's
  * src/advertising.ts) -- @mercatus-liber/advertising's CampaignRepository
  * was in-memory-only across every adapter, including Postgres, until now.
- *
- * Uses its OWN local fake Postgres Pool double, deliberately not the shared
- * test/fake-pool.ts -- this file is self-contained per this package's
- * file-isolation convention while multiple persistence subsystems land in
- * parallel (see accounts.test.ts for the same convention). starts_at/
- * ends_at are real TIMESTAMPTZ columns in Postgres, so this double mimics
- * the driver's own behavior of handing back a Date for a non-null value
- * (src/advertising.ts's rowToCampaign normalizes that back to an ISO
- * string) while passing null through untouched.
+ * Per the file-isolation rule for concurrently-developed adapter-postgres
+ * subsystems, this file defines its OWN local fake Postgres Pool double
+ * (not the shared test/fake-pool.ts) recognizing exactly the fixed set of
+ * SQL statements src/advertising.ts issues -- same style/rationale as
+ * test/fake-pool.ts's header comment, scoped to just this table.
  */
 import type { Campaign } from "@mercatus-liber/advertising";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createPostgresCampaignRepository } from "../src/advertising.js";
 
-interface FakeRow {
+interface FakeCampaignRow {
   [key: string]: unknown;
 }
 
 interface FakePool {
-  query<T = FakeRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }>;
+  query<T = FakeCampaignRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }>;
 }
 
 function createFakeAdvertisingPool(): FakePool {
-  const campaigns = new Map<string, FakeRow>();
+  const campaigns = new Map<string, FakeCampaignRow>();
 
   return {
-    async query<T = FakeRow>(text: string, values: unknown[] = []): Promise<{ rows: T[] }> {
+    async query<T = FakeCampaignRow>(text: string, values: unknown[] = []): Promise<{ rows: T[] }> {
       const sql = text.trim();
 
       if (sql.includes("CREATE TABLE")) {
@@ -39,43 +35,28 @@ function createFakeAdvertisingPool(): FakePool {
         const row = campaigns.get(values[0] as string);
         return { rows: (row ? [row] : []) as T[] };
       }
-
       if (sql === "SELECT * FROM campaigns") {
         return { rows: [...campaigns.values()] as T[] };
       }
-
       if (sql.startsWith("INSERT INTO campaigns")) {
-        const [
-          id,
-          name,
-          status,
-          startsAt,
-          endsAt,
-          targetingServiceAreaId,
-          targetingPageSlug,
-          creatives,
-        ] = values as [
+        const [id, name, status, startsAt, endsAt, targeting, creatives] = values as [
           string,
           string,
           string,
           string | null,
           string | null,
-          string | null,
-          string | null,
+          string,
           string,
         ];
         campaigns.set(id, {
           id,
           name,
           status,
-          // Real TIMESTAMPTZ -- the pg driver hands back a Date for a
-          // non-null value, and null straight through for a null one.
-          starts_at: startsAt === null ? null : new Date(startsAt),
-          ends_at: endsAt === null ? null : new Date(endsAt),
-          targeting_service_area_id: targetingServiceAreaId,
-          targeting_page_slug: targetingPageSlug,
+          starts_at: startsAt,
+          ends_at: endsAt,
           // Real Postgres auto-parses a JSONB column back into a JS value
           // for the driver -- mirrored here.
+          targeting: JSON.parse(targeting),
           creatives: JSON.parse(creatives),
         });
         return { rows: [] };
@@ -95,51 +76,56 @@ describe("createPostgresCampaignRepository", () => {
     campaigns = createPostgresCampaignRepository(pool as never);
   });
 
-  const summerSale: Campaign = {
+  const springSale: Campaign = {
     id: "camp-1",
-    name: "Summer Sale",
+    name: "Spring Sale",
     status: "active",
-    startsAt: "2026-06-01T00:00:00.000Z",
-    endsAt: "2026-08-31T23:59:59.000Z",
-    targeting: { serviceAreaId: "area-west", pageSlug: "home" },
+    startsAt: "2026-03-01T00:00:00.000Z",
+    endsAt: "2026-03-31T23:59:59.000Z",
+    targeting: { serviceAreaId: "area-1", pageSlug: "home" },
     creatives: [
       {
-        id: "creative-1",
-        headline: "Summer Sale is here",
-        body: "Up to 30% off select items.",
-        imageUrl: "https://example.com/summer.png",
-        linkHref: "/sale/summer",
+        id: "cr-1",
+        headline: "Spring is here",
+        body: "20% off everything.",
+        imageUrl: "https://cdn.example.com/spring.png",
+        linkHref: "/sale/spring",
+        weight: 3,
+      },
+      {
+        id: "cr-2",
+        headline: "Last chance",
+        body: "Ends soon.",
+        imageUrl: null,
+        linkHref: "/sale/spring",
         weight: 1,
       },
     ],
   };
 
-  it("saves and retrieves a campaign by id", async () => {
-    await campaigns.save(summerSale);
-    expect(await campaigns.get("camp-1")).toEqual(summerSale);
+  it("saves and retrieves a campaign by id, round-tripping 2+ creatives with different weights and a null imageUrl", async () => {
+    await campaigns.save(springSale);
+    const found = await campaigns.get("camp-1");
+    expect(found).toEqual(springSale);
+    expect(found?.creatives).toHaveLength(2);
+    expect(found?.creatives[0].weight).toBe(3);
+    expect(found?.creatives[1].weight).toBe(1);
+    expect(found?.creatives[1].imageUrl).toBeNull();
   });
 
   it("returns null for a missing campaign", async () => {
     expect(await campaigns.get("missing")).toBeNull();
   });
 
-  it("lists every campaign", async () => {
-    await campaigns.save(summerSale);
-    await campaigns.save({ ...summerSale, id: "camp-2", name: "Winter Sale" });
-    expect(await campaigns.list()).toHaveLength(2);
-  });
-
-  it("upserts on save with the same id (ON CONFLICT DO UPDATE)", async () => {
-    await campaigns.save(summerSale);
-    await campaigns.save({ ...summerSale, status: "inactive" });
+  it("round-trips real targeting with both fields set", async () => {
+    await campaigns.save(springSale);
     const found = await campaigns.get("camp-1");
-    expect(found?.status).toBe("inactive");
-    expect(await campaigns.list()).toHaveLength(1);
+    expect(found?.targeting).toEqual({ serviceAreaId: "area-1", pageSlug: "home" });
   });
 
-  it("round-trips null targeting fields for an untargeted campaign", async () => {
+  it("round-trips untargeted campaigns -- both targeting fields null", async () => {
     const untargeted: Campaign = {
-      ...summerSale,
+      ...springSale,
       id: "camp-untargeted",
       targeting: { serviceAreaId: null, pageSlug: null },
     };
@@ -148,41 +134,61 @@ describe("createPostgresCampaignRepository", () => {
     expect(found?.targeting).toEqual({ serviceAreaId: null, pageSlug: null });
   });
 
-  it("round-trips null startsAt/endsAt for a campaign with no active date range", async () => {
-    const openEnded: Campaign = { ...summerSale, id: "camp-open-ended", startsAt: null, endsAt: null };
-    await campaigns.save(openEnded);
-    const found = await campaigns.get("camp-open-ended");
+  it("round-trips a real startsAt/endsAt window", async () => {
+    await campaigns.save(springSale);
+    const found = await campaigns.get("camp-1");
+    expect(found?.startsAt).toBe("2026-03-01T00:00:00.000Z");
+    expect(found?.endsAt).toBe("2026-03-31T23:59:59.000Z");
+  });
+
+  it("round-trips both startsAt and endsAt as null, not undefined", async () => {
+    const alwaysOn: Campaign = { ...springSale, id: "camp-always-on", startsAt: null, endsAt: null };
+    await campaigns.save(alwaysOn);
+    const found = await campaigns.get("camp-always-on");
     expect(found?.startsAt).toBeNull();
     expect(found?.endsAt).toBeNull();
   });
 
-  it("round-trips a multi-creative campaign's creatives array, including each creative's own null imageUrl", async () => {
-    const multiCreative: Campaign = {
-      ...summerSale,
-      id: "camp-multi",
+  it("lists every campaign", async () => {
+    await campaigns.save(springSale);
+    await campaigns.save({ ...springSale, id: "camp-2", name: "Summer Sale" });
+    const found = await campaigns.list();
+    expect(found).toHaveLength(2);
+    expect(found.map((c) => c.id).sort()).toEqual(["camp-1", "camp-2"]);
+  });
+
+  it("returns an empty array when no campaigns exist", async () => {
+    expect(await campaigns.list()).toEqual([]);
+  });
+
+  it("updates an existing campaign via resave (status active -> inactive)", async () => {
+    await campaigns.save(springSale);
+    await campaigns.save({ ...springSale, status: "inactive" });
+    const found = await campaigns.get("camp-1");
+    expect(found?.status).toBe("inactive");
+    expect(await campaigns.list()).toHaveLength(1);
+  });
+
+  it("updates an existing campaign via resave, adding a creative (ON CONFLICT DO UPDATE)", async () => {
+    await campaigns.save(springSale);
+    const withNewCreative = {
+      ...springSale,
       creatives: [
+        ...springSale.creatives,
         {
-          id: "creative-a",
-          headline: "Headline A",
-          body: "Body A",
-          imageUrl: "https://example.com/a.png",
-          linkHref: "/a",
-          weight: 2,
-        },
-        {
-          id: "creative-b",
-          headline: "Headline B",
-          body: "Body B",
+          id: "cr-3",
+          headline: "One more thing",
+          body: "New creative added.",
           imageUrl: null,
-          linkHref: "/b",
-          weight: 1,
+          linkHref: "/sale/spring/new",
+          weight: 2,
         },
       ],
     };
-    await campaigns.save(multiCreative);
-    const found = await campaigns.get("camp-multi");
-    expect(found?.creatives).toHaveLength(2);
-    expect(found?.creatives).toEqual(multiCreative.creatives);
-    expect(found?.creatives[1]?.imageUrl).toBeNull();
+    await campaigns.save(withNewCreative);
+    const found = await campaigns.get("camp-1");
+    expect(found?.creatives).toHaveLength(3);
+    expect(found?.creatives[2].id).toBe("cr-3");
+    expect(await campaigns.list()).toHaveLength(1);
   });
 });
