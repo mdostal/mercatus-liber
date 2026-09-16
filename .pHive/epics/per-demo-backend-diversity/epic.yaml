@@ -1,0 +1,35 @@
+name: per-demo-backend-diversity
+title: Per-demo backend diversity -- 3 real, different databases live simultaneously, with real persisted categories
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+
+stories:
+  - id: pdb-01-postgres-categories
+    title: Real CategoryRepository/ProductCategoryRepository for adapter-postgres
+    complexity: medium
+    depends_on: []
+  - id: pdb-02-sqlite-categories
+    title: Real CategoryRepository/ProductCategoryRepository for adapter-sqlite
+    complexity: medium
+    depends_on: []
+  - id: pdb-03-mongodb-categories
+    title: Real CategoryRepository/ProductCategoryRepository for adapter-mongodb
+    complexity: medium
+    depends_on: []
+  - id: pdb-04-convex-categories
+    title: Real CategoryRepository/ProductCategoryRepository for adapter-convex, deployed live
+    complexity: high
+    depends_on: []
+  - id: pdb-05-services-wiring
+    title: Per-demo persistence resolver + marketingCatalog rewired to the same per-demo backend
+    complexity: high
+    depends_on: [pdb-01-postgres-categories, pdb-02-sqlite-categories, pdb-03-mongodb-categories, pdb-04-convex-categories]
+  - id: pdb-06-adapter-info-reporting
+    title: /architecture and /start become demo-aware for persistence
+    complexity: low
+    depends_on: [pdb-05-services-wiring]
+  - id: pdb-07-live-verification
+    title: Live verification across all 3 demos + real cold-start-reseed idempotency proof
+    complexity: medium
+    depends_on: [pdb-06-adapter-info-reporting]
