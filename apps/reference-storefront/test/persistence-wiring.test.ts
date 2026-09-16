@@ -39,11 +39,59 @@ const createPostgresInventoryAdapterMock = vi.fn();
 const poolConfigs: unknown[] = [];
 const mongoClientConfigs: unknown[] = [];
 
+// full-commerce-persistence-audit epic: one recorder mock per newly-wired
+// Postgres-backed repository (13 subsystems + the 2 new Catalog-entity
+// repositories), same "record what pool it's called with" shape as
+// createPostgresCategoryRepositoryMock/createPostgresProductCategoryRepositoryMock
+// above -- lets the new test cases below assert both that DATABASE_URL wires
+// every one of them to the SAME shared pool, and that omitting DATABASE_URL
+// leaves every one of them uncalled (in-memory fallback instead).
+const createPostgresCatalogRepositoryMock = vi.fn();
+const createPostgresProductCatalogRepositoryMock = vi.fn();
+const createPostgresCartRepositoryMock = vi.fn();
+const createPostgresOrderRepositoryMock = vi.fn();
+const createPostgresCustomerProfileRepositoryMock = vi.fn();
+const createPostgresPromotionRepositoryMock = vi.fn();
+const createPostgresReviewRepositoryMock = vi.fn();
+const createPostgresStorefrontViewRepositoryMock = vi.fn();
+const createPostgresBundleRepositoryMock = vi.fn();
+const createPostgresRecommendationRepositoryMock = vi.fn();
+const createPostgresCampaignRepositoryMock = vi.fn();
+const createPostgresServiceAreaRepositoryMock = vi.fn();
+const createPostgresServiceAreaProductRepositoryMock = vi.fn();
+const createPostgresBiEventLogRepositoryMock = vi.fn();
+const createPostgresFulfillmentRoutingRepositoryMock = vi.fn();
+
 vi.mock("@mercatus-liber/adapter-postgres", async () => {
   const { createSqliteAdapter } = await import("@mercatus-liber/adapter-sqlite");
   const { createInMemoryCategoryRepository, createInMemoryProductCategoryRepository } = await import(
     "@mercatus-liber/marketing-catalog"
   );
+  // full-commerce-persistence-audit epic: this test file only exercises
+  // backend-SELECTION logic (which real function gets called for which
+  // demo), never repository correctness -- each of the 13 new subsystems
+  // below already has its own dedicated, real-database-verified test suite
+  // in packages/adapter-postgres/test/. These mocks are plain passthroughs
+  // to each subsystem's own real in-memory reference implementation, same
+  // "record what it's called with, return a real working adapter under the
+  // hood" shape as the two pre-existing category mocks above.
+  const { createInMemoryCatalogRepository, createInMemoryProductCatalogRepository } = await import(
+    "@mercatus-liber/catalog"
+  );
+  const { createInMemoryCartRepository } = await import("@mercatus-liber/cart");
+  const { createInMemoryOrderRepository } = await import("@mercatus-liber/checkout-orders");
+  const { createInMemoryCustomerProfileRepository } = await import("@mercatus-liber/account");
+  const { createInMemoryPromotionRepository } = await import("@mercatus-liber/promotions");
+  const { createInMemoryReviewRepository } = await import("@mercatus-liber/reviews");
+  const { createInMemoryStorefrontViewRepository } = await import("@mercatus-liber/storefront-views");
+  const { createInMemoryBundleRepository } = await import("@mercatus-liber/bundles");
+  const { createInMemoryRecommendationRepository } = await import("@mercatus-liber/recommendations");
+  const { createInMemoryCampaignRepository } = await import("@mercatus-liber/advertising");
+  const { createInMemoryServiceAreaRepository, createInMemoryServiceAreaProductRepository } = await import(
+    "@mercatus-liber/service-areas"
+  );
+  const { createInMemoryBiEventLogRepository } = await import("@mercatus-liber/internal-bi");
+  const { createInMemoryFulfillmentRoutingRepository } = await import("@mercatus-liber/fulfillment");
   return {
     createPostgresAdapter: async (pool: unknown) => {
       createPostgresAdapterMock(pool);
@@ -56,6 +104,66 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
     createPostgresProductCategoryRepository: (pool: unknown) => {
       createPostgresProductCategoryRepositoryMock(pool);
       return createInMemoryProductCategoryRepository();
+    },
+    createPostgresCatalogRepository: (pool: unknown) => {
+      createPostgresCatalogRepositoryMock(pool);
+      return createInMemoryCatalogRepository();
+    },
+    createPostgresProductCatalogRepository: (pool: unknown) => {
+      createPostgresProductCatalogRepositoryMock(pool);
+      return createInMemoryProductCatalogRepository();
+    },
+    createPostgresCartRepository: (pool: unknown) => {
+      createPostgresCartRepositoryMock(pool);
+      return createInMemoryCartRepository();
+    },
+    createPostgresOrderRepository: (pool: unknown) => {
+      createPostgresOrderRepositoryMock(pool);
+      return createInMemoryOrderRepository();
+    },
+    createPostgresCustomerProfileRepository: (pool: unknown) => {
+      createPostgresCustomerProfileRepositoryMock(pool);
+      return createInMemoryCustomerProfileRepository();
+    },
+    createPostgresPromotionRepository: (pool: unknown) => {
+      createPostgresPromotionRepositoryMock(pool);
+      return createInMemoryPromotionRepository();
+    },
+    createPostgresReviewRepository: (pool: unknown) => {
+      createPostgresReviewRepositoryMock(pool);
+      return createInMemoryReviewRepository();
+    },
+    createPostgresStorefrontViewRepository: (pool: unknown) => {
+      createPostgresStorefrontViewRepositoryMock(pool);
+      return createInMemoryStorefrontViewRepository();
+    },
+    createPostgresBundleRepository: (pool: unknown) => {
+      createPostgresBundleRepositoryMock(pool);
+      return createInMemoryBundleRepository();
+    },
+    createPostgresRecommendationRepository: (pool: unknown) => {
+      createPostgresRecommendationRepositoryMock(pool);
+      return createInMemoryRecommendationRepository();
+    },
+    createPostgresCampaignRepository: (pool: unknown) => {
+      createPostgresCampaignRepositoryMock(pool);
+      return createInMemoryCampaignRepository();
+    },
+    createPostgresServiceAreaRepository: (pool: unknown) => {
+      createPostgresServiceAreaRepositoryMock(pool);
+      return createInMemoryServiceAreaRepository();
+    },
+    createPostgresServiceAreaProductRepository: (pool: unknown) => {
+      createPostgresServiceAreaProductRepositoryMock(pool);
+      return createInMemoryServiceAreaProductRepository();
+    },
+    createPostgresBiEventLogRepository: async (pool: unknown) => {
+      createPostgresBiEventLogRepositoryMock(pool);
+      return createInMemoryBiEventLogRepository();
+    },
+    createPostgresFulfillmentRoutingRepository: (pool: unknown) => {
+      createPostgresFulfillmentRoutingRepositoryMock(pool);
+      return createInMemoryFulfillmentRoutingRepository();
     },
   };
 });
@@ -174,6 +282,21 @@ afterEach(() => {
   createPostgresCategoryRepositoryMock.mockClear();
   createPostgresProductCategoryRepositoryMock.mockClear();
   createPostgresInventoryAdapterMock.mockClear();
+  createPostgresCatalogRepositoryMock.mockClear();
+  createPostgresProductCatalogRepositoryMock.mockClear();
+  createPostgresCartRepositoryMock.mockClear();
+  createPostgresOrderRepositoryMock.mockClear();
+  createPostgresCustomerProfileRepositoryMock.mockClear();
+  createPostgresPromotionRepositoryMock.mockClear();
+  createPostgresReviewRepositoryMock.mockClear();
+  createPostgresStorefrontViewRepositoryMock.mockClear();
+  createPostgresBundleRepositoryMock.mockClear();
+  createPostgresRecommendationRepositoryMock.mockClear();
+  createPostgresCampaignRepositoryMock.mockClear();
+  createPostgresServiceAreaRepositoryMock.mockClear();
+  createPostgresServiceAreaProductRepositoryMock.mockClear();
+  createPostgresBiEventLogRepositoryMock.mockClear();
+  createPostgresFulfillmentRoutingRepositoryMock.mockClear();
   createMongoAdapterMock.mockClear();
   createMongoCategoryRepositoryMock.mockClear();
   createMongoProductCategoryRepositoryMock.mockClear();
@@ -247,6 +370,87 @@ describe("Persistence wiring (lib/services.ts)", () => {
     // The mocked Postgres adapter is still a real, working adapter under
     // the hood -- seeding proceeds normally.
     expect((await services.catalog.listProducts()).length).toBeGreaterThan(0);
+  });
+
+  // full-commerce-persistence-audit epic: the 13 subsystems newly wired onto
+  // real Postgres persistence (plus the Catalog entity's own 2 repositories)
+  // -- same "env var truthy picks the real adapter, sharing the SAME pool
+  // instance every other Postgres-backed repository in this demo's build
+  // already uses" pattern this file already covers for categories/inventory
+  // above, extended here to every remaining repository lib/services.ts's
+  // buildServices() now wires.
+  it("wires every newly-added subsystem (Catalog entity, cart, orders, customer profiles, promotions, reviews, storefront views, bundles, recommendations, advertising, service areas, BI event log, fulfillment routing) to real Postgres when DATABASE_URL is set, all sharing the same pool", async () => {
+    vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
+    vi.resetModules();
+
+    const { getServicesForDemo } = await import("../lib/services.js");
+    const services = await getServicesForDemo("print-shop");
+
+    const pool = createPostgresAdapterMock.mock.calls[0]![0];
+    const newSubsystemMocks = [
+      createPostgresCatalogRepositoryMock,
+      createPostgresProductCatalogRepositoryMock,
+      createPostgresCartRepositoryMock,
+      createPostgresOrderRepositoryMock,
+      createPostgresCustomerProfileRepositoryMock,
+      createPostgresPromotionRepositoryMock,
+      createPostgresReviewRepositoryMock,
+      createPostgresStorefrontViewRepositoryMock,
+      createPostgresBundleRepositoryMock,
+      createPostgresRecommendationRepositoryMock,
+      createPostgresCampaignRepositoryMock,
+      createPostgresServiceAreaRepositoryMock,
+      createPostgresServiceAreaProductRepositoryMock,
+      createPostgresBiEventLogRepositoryMock,
+      createPostgresFulfillmentRoutingRepositoryMock,
+    ];
+    for (const mock of newSubsystemMocks) {
+      expect(mock).toHaveBeenCalledTimes(1);
+      expect(mock.mock.calls[0]![0]).toBe(pool);
+    }
+    // Still fully functional off the (mocked, in-memory-backed-under-the-
+    // hood) Postgres adapters -- seeding proceeds normally end to end,
+    // including the new real Catalog entity (see lib/seed.ts's
+    // seedRealCatalog).
+    expect((await services.catalog.listProducts()).length).toBeGreaterThan(0);
+    const printShopCatalog = await services.catalog.getCatalogBySlug("the-print-shop");
+    expect(printShopCatalog).not.toBeNull();
+    expect((await services.catalog.listProductsInCatalog(printShopCatalog!.id)).length).toBeGreaterThan(0);
+  });
+
+  it("keeps every newly-added subsystem on the in-memory reference default when no persistence backend is configured", async () => {
+    vi.stubEnv("DATABASE_URL", "");
+    vi.stubEnv("SQLITE_FILE_PATH", "");
+    vi.resetModules();
+
+    const { getServicesForDemo } = await import("../lib/services.js");
+    const services = await getServicesForDemo("print-shop");
+
+    const newSubsystemMocks = [
+      createPostgresCatalogRepositoryMock,
+      createPostgresProductCatalogRepositoryMock,
+      createPostgresCartRepositoryMock,
+      createPostgresOrderRepositoryMock,
+      createPostgresCustomerProfileRepositoryMock,
+      createPostgresPromotionRepositoryMock,
+      createPostgresReviewRepositoryMock,
+      createPostgresStorefrontViewRepositoryMock,
+      createPostgresBundleRepositoryMock,
+      createPostgresRecommendationRepositoryMock,
+      createPostgresCampaignRepositoryMock,
+      createPostgresServiceAreaRepositoryMock,
+      createPostgresServiceAreaProductRepositoryMock,
+      createPostgresBiEventLogRepositoryMock,
+      createPostgresFulfillmentRoutingRepositoryMock,
+    ];
+    for (const mock of newSubsystemMocks) {
+      expect(mock).not.toHaveBeenCalled();
+    }
+    // Still fully functional off the real in-memory reference
+    // implementations -- the seeded Catalog entity is there too.
+    const printShopCatalog = await services.catalog.getCatalogBySlug("the-print-shop");
+    expect(printShopCatalog).not.toBeNull();
+    expect((await services.catalog.listProductsInCatalog(printShopCatalog!.id)).length).toBeGreaterThan(0);
   });
 
   it("constructs a MongoDB adapter via MONGODB_URL when set and DATABASE_URL is unset, and categories share the same db", async () => {

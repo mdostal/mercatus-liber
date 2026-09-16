@@ -5,6 +5,21 @@ import {
   createPostgresAdapter,
   createPostgresCategoryRepository,
   createPostgresProductCategoryRepository,
+  createPostgresCatalogRepository,
+  createPostgresProductCatalogRepository,
+  createPostgresCartRepository,
+  createPostgresOrderRepository,
+  createPostgresCustomerProfileRepository,
+  createPostgresPromotionRepository,
+  createPostgresReviewRepository,
+  createPostgresStorefrontViewRepository,
+  createPostgresBundleRepository,
+  createPostgresRecommendationRepository,
+  createPostgresCampaignRepository,
+  createPostgresServiceAreaRepository,
+  createPostgresServiceAreaProductRepository,
+  createPostgresBiEventLogRepository,
+  createPostgresFulfillmentRoutingRepository,
 } from "@mercatus-liber/adapter-postgres";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
@@ -35,7 +50,12 @@ import {
 } from "@mercatus-liber/analytics";
 import { createBundlesService, createInMemoryBundleRepository, type BundlesService } from "@mercatus-liber/bundles";
 import { createCartService, createInMemoryCartRepository, type CartService } from "@mercatus-liber/cart";
-import { createCatalogService, type CatalogService } from "@mercatus-liber/catalog";
+import {
+  createCatalogService,
+  createInMemoryCatalogRepository,
+  createInMemoryProductCatalogRepository,
+  type CatalogService,
+} from "@mercatus-liber/catalog";
 import {
   createCmsService,
   createComponentRegistry,
@@ -506,7 +526,17 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       : convexAdapter
         ? convexAdapter
         : createSqliteAdapterFromDb(sqliteDb!);
-  const catalog = createCatalogService({ persistence, events });
+  // full-commerce-persistence-audit epic: a real, named Catalog entity with
+  // its own metadata that products are genuinely assigned to (not implicit
+  // from which database a product happens to live in) -- Postgres-only in
+  // this pass (see design-discussion.md §2a), falling back to in-memory for
+  // every other backend, same two-state pattern every other subsystem below
+  // uses.
+  const catalogs = pgPool ? createPostgresCatalogRepository(pgPool) : createInMemoryCatalogRepository();
+  const productCatalogs = pgPool
+    ? createPostgresProductCatalogRepository(pgPool)
+    : createInMemoryProductCatalogRepository();
+  const catalog = createCatalogService({ persistence, events, catalogs, productCatalogs });
 
   // per-demo-backend-diversity epic: categories/product-category assignments
   // now genuinely persist to whichever real backend this demo resolved
@@ -536,7 +566,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
           : createInMemoryProductCategoryRepository();
 
   const cart = createCartService({
-    repository: createInMemoryCartRepository(),
+    repository: pgPool ? createPostgresCartRepository(pgPool) : createInMemoryCartRepository(),
     skus: catalog,
     events,
   });
@@ -562,7 +592,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     });
 
   const promotions = createPromotionsService({
-    repository: createInMemoryPromotionRepository(),
+    repository: pgPool ? createPostgresPromotionRepository(pgPool) : createInMemoryPromotionRepository(),
     events,
   });
 
@@ -570,7 +600,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // queue (submit -> pending -> admin publishes/rejects), never
   // auto-published. See @mercatus-liber/reviews's own doc comment.
   const reviews = createReviewsService({
-    repository: createInMemoryReviewRepository(),
+    repository: pgPool ? createPostgresReviewRepository(pgPool) : createInMemoryReviewRepository(),
     events,
   });
 
@@ -582,7 +612,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // code here -- the multi-brand pattern this repo's own multi-demo
   // routing already provides).
   const storefrontViews = createStorefrontViewsService({
-    repository: createInMemoryStorefrontViewRepository(),
+    repository: pgPool ? createPostgresStorefrontViewRepository(pgPool) : createInMemoryStorefrontViewRepository(),
   });
 
   // checkout's PricingAdjustment (per design-discussion.md §3) carries only
@@ -597,7 +627,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // services' field names/shapes differ slightly at the boundary (evaluate()
   // returns appliedPromotionId; PricingAdjustment carries only appliedCode).
   const checkout = createCheckoutOrdersService({
-    repository: createInMemoryOrderRepository(),
+    repository: pgPool ? createPostgresOrderRepository(pgPool) : createInMemoryOrderRepository(),
     cart,
     payments,
     events,
@@ -633,7 +663,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // object needed, same structural-satisfaction pattern used for
   // account/inventory's OrderLookup below.
   const bundles = createBundlesService({
-    repository: createInMemoryBundleRepository(),
+    repository: pgPool ? createPostgresBundleRepository(pgPool) : createInMemoryBundleRepository(),
     skuLookup: catalog,
   });
 
@@ -643,7 +673,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // no curated rule is app-composed orchestration in the PDP/cart pages
   // themselves, not a dependency this service needs.
   const recommendations = createRecommendationsService({
-    repository: createInMemoryRecommendationRepository(),
+    repository: pgPool ? createPostgresRecommendationRepository(pgPool) : createInMemoryRecommendationRepository(),
   });
 
   // Core-only dependency, mirroring promotions/bundles/recommendations
@@ -651,7 +681,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // imports cms/service-areas/catalog. Targeting is resolved at the
   // app-composition layer (cms-sections.tsx's AdSlot), not here.
   const advertising = createAdvertisingService({
-    repository: createInMemoryCampaignRepository(),
+    repository: pgPool ? createPostgresCampaignRepository(pgPool) : createInMemoryCampaignRepository(),
   });
 
   const marketingCatalog = createMarketingCatalogService({
@@ -692,7 +722,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // `checkout` structurally satisfies account's OrderLookup interface
   // (getOrder + listOrdersByCustomer) already -- no adapter object needed.
   const account = createAccountService({
-    profiles: createInMemoryCustomerProfileRepository(),
+    profiles: pgPool ? createPostgresCustomerProfileRepository(pgPool) : createInMemoryCustomerProfileRepository(),
     orders: checkout,
     events,
   });
@@ -717,7 +747,9 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // same pattern as registerInventorySync above -- it only sees events fired
   // from this point forward, no backfill of pre-existing history (see
   // .pHive/epics/internal-bi-metrics/docs/design-discussion.md §3).
-  const biEventLog = createInMemoryBiEventLogRepository();
+  const biEventLog = pgPool
+    ? await createPostgresBiEventLogRepository(pgPool)
+    : createInMemoryBiEventLogRepository();
   const bi = createDefaultBiAdapter({
     orders: {
       listOrders: () => checkout.listOrders(),
@@ -784,7 +816,9 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // below close over the same Map instance.
   const printifyExternalOrderIdByOrderId = new Map<string, string>();
 
-  const fulfillmentRouting = createInMemoryFulfillmentRoutingRepository();
+  const fulfillmentRouting = pgPool
+    ? createPostgresFulfillmentRoutingRepository(pgPool)
+    : createInMemoryFulfillmentRoutingRepository();
   const fulfillment = createFulfillmentService({
     orders: checkout,
     routing: fulfillmentRouting,
@@ -933,8 +967,10 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   await plugins.initAll({ events });
 
   const serviceAreas = createServiceAreaService({
-    areas: createInMemoryServiceAreaRepository(),
-    assignments: createInMemoryServiceAreaProductRepository(),
+    areas: pgPool ? createPostgresServiceAreaRepository(pgPool) : createInMemoryServiceAreaRepository(),
+    assignments: pgPool
+      ? createPostgresServiceAreaProductRepository(pgPool)
+      : createInMemoryServiceAreaProductRepository(),
   });
 
   // demoSlug picks the seed via the lib/demos.ts registry -- replaces the
