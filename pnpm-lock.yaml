@@ -328,12 +328,51 @@ importers:
 
   packages/adapter-postgres:
     dependencies:
+      '@mercatus-liber/account':
+        specifier: workspace:*
+        version: link:../account
+      '@mercatus-liber/advertising':
+        specifier: workspace:*
+        version: link:../advertising
+      '@mercatus-liber/bundles':
+        specifier: workspace:*
+        version: link:../bundles
+      '@mercatus-liber/cart':
+        specifier: workspace:*
+        version: link:../cart
+      '@mercatus-liber/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@mercatus-liber/checkout-orders':
+        specifier: workspace:*
+        version: link:../checkout-orders
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../core
+      '@mercatus-liber/fulfillment':
+        specifier: workspace:*
+        version: link:../fulfillment
+      '@mercatus-liber/internal-bi':
+        specifier: workspace:*
+        version: link:../internal-bi
       '@mercatus-liber/marketing-catalog':
         specifier: workspace:*
         version: link:../marketing-catalog
+      '@mercatus-liber/promotions':
+        specifier: workspace:*
+        version: link:../promotions
+      '@mercatus-liber/recommendations':
+        specifier: workspace:*
+        version: link:../recommendations
+      '@mercatus-liber/reviews':
+        specifier: workspace:*
+        version: link:../reviews
+      '@mercatus-liber/service-areas':
+        specifier: workspace:*
+        version: link:../service-areas
+      '@mercatus-liber/storefront-views':
+        specifier: workspace:*
+        version: link:../storefront-views
       pg:
         specifier: ^8.23.0
         version: 8.23.0
