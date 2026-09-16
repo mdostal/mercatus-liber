@@ -67,7 +67,14 @@ export default async function AdminReviewsPage({ params }: { params: Promise<{ d
               <td>{review.title}</td>
               <td>{review.status}</td>
               <td>
-                {review.status !== "published" ? (
+                {/* Real bug, found via test-coverage work: "rejected" is a terminal
+                    outcome (see ReviewStatus's own doc comment) -- moderateReview now
+                    throws ReviewAlreadyRejectedError for it, so this button must not
+                    render for an already-rejected review either (the old `!== "published"`
+                    condition was true for "rejected" too, letting an admin click Publish
+                    on a rejected review and hit a real thrown error). Only "pending" is a
+                    legal target for a first publish. */}
+                {review.status === "pending" ? (
                   <form action={publishReviewAction}>
                     <input type="hidden" name="demoSlug" value={demoSlug} />
                     <input type="hidden" name="id" value={review.id} />

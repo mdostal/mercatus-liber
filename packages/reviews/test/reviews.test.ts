@@ -2,7 +2,7 @@ import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createInMemoryReviewRepository } from "../src/in-memory-repository.js";
 import { createReviewsService, type ReviewsService } from "../src/service.js";
-import { ReviewNotFoundError } from "../src/types.js";
+import { ReviewAlreadyRejectedError, ReviewNotFoundError } from "../src/types.js";
 import type { NewReviewInput, ReviewRepository } from "../src/types.js";
 
 function baseReview(overrides: Partial<NewReviewInput> = {}): NewReviewInput {
@@ -104,6 +104,24 @@ describe("reviews service", () => {
 
     it("throws ReviewNotFoundError for an unknown id", async () => {
       await expect(reviews.moderateReview("missing", "published")).rejects.toThrow(ReviewNotFoundError);
+    });
+
+    it("rejected is a terminal outcome -- rejecting then attempting to publish throws ReviewAlreadyRejectedError", async () => {
+      const review = await reviews.submitReview(baseReview());
+      await reviews.moderateReview(review.id, "rejected");
+      await expect(reviews.moderateReview(review.id, "published")).rejects.toThrow(ReviewAlreadyRejectedError);
+      // Re-rejecting an already-rejected review is also blocked, not just re-publishing.
+      await expect(reviews.moderateReview(review.id, "rejected")).rejects.toThrow(ReviewAlreadyRejectedError);
+      // Confirmed still rejected, never silently flipped.
+      expect((await reviews.getReview(review.id))?.status).toBe("rejected");
+    });
+
+    it("published -> rejected (retracting a mistakenly-published review) is a legal transition", async () => {
+      const review = await reviews.submitReview(baseReview());
+      await reviews.moderateReview(review.id, "published");
+      const retracted = await reviews.moderateReview(review.id, "rejected");
+      expect(retracted.status).toBe("rejected");
+      expect(await reviews.listPublishedReviewsForProduct("p1")).toHaveLength(0);
     });
   });
 

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { EventBus } from "@mercatus-liber/core";
-import { ReviewNotFoundError } from "./types.js";
+import { ReviewAlreadyRejectedError, ReviewNotFoundError } from "./types.js";
 import type { NewReviewInput, RatingSummary, Review, ReviewRepository, ReviewStatus } from "./types.js";
 
 export interface ReviewsService {
@@ -10,7 +10,7 @@ export interface ReviewsService {
   listPublishedReviewsForProduct(productId: string): Promise<Review[]>;
   /** Every review for this product regardless of status -- the admin moderation queue's per-product read path. */
   listAllForModeration(filter?: { status?: ReviewStatus }): Promise<Review[]>;
-  /** pending -> published or pending -> rejected. Publishes reviews.review.published only on the published transition. Throws ReviewNotFoundError for an unknown id. */
+  /** pending -> published, pending -> rejected, or published -> rejected (retracting a mistakenly-published review). Publishes reviews.review.published only on the published transition. Throws ReviewNotFoundError for an unknown id, ReviewAlreadyRejectedError if the review is already rejected -- rejected is a terminal, one-way outcome (see ReviewStatus's own doc comment). */
   moderateReview(id: string, status: "published" | "rejected"): Promise<Review>;
   /** Computed fresh from listPublishedReviewsForProduct every call -- never cached/stale, mirrors PromotionsService.evaluate's "always live" posture. */
   getRatingSummary(productId: string): Promise<RatingSummary>;
@@ -57,6 +57,7 @@ export function createReviewsService(deps: { repository: ReviewRepository; event
     async moderateReview(id: string, status: "published" | "rejected"): Promise<Review> {
       const existing = await repository.get(id);
       if (!existing) throw new ReviewNotFoundError(id);
+      if (existing.status === "rejected") throw new ReviewAlreadyRejectedError(id);
       const updated: Review = { ...existing, status };
       await repository.save(updated);
       if (status === "published") {

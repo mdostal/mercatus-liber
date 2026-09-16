@@ -52,3 +52,20 @@ export class ReviewNotFoundError extends Error {
     this.name = "ReviewNotFoundError";
   }
 }
+
+/**
+ * Real bug, found live during test-coverage work: ReviewStatus's own doc
+ * comment above calls "rejected" a terminal outcome, but moderateReview had
+ * no guard enforcing that -- an admin could click "Publish" on an
+ * already-rejected review (the admin queue's own button condition,
+ * `status !== "published"`, is true for "rejected" too) and it would
+ * genuinely go live. Thrown by moderateReview whenever the review's
+ * CURRENT status is already "rejected", regardless of the requested target
+ * status -- rejected is a one-way door.
+ */
+export class ReviewAlreadyRejectedError extends Error {
+  constructor(id: string) {
+    super(`Review ${id} was already rejected -- rejected is a terminal outcome and cannot be re-moderated`);
+    this.name = "ReviewAlreadyRejectedError";
+  }
+}
