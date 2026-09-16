@@ -38,4 +38,27 @@ CREATE TABLE IF NOT EXISTS product_attributes (
   facetable BOOLEAN NOT NULL,
   PRIMARY KEY (product_id, key)
 );
+
+-- marketing-catalog subsystem: categories are product data, so they live in
+-- the same real database as products/skus, not in-memory -- see
+-- @mercatus-liber/marketing-catalog's CategoryRepository/ProductCategoryRepository.
+-- No REFERENCES products(id) on product_category_assignments.product_id --
+-- ProductCategoryRepository is a narrow, catalog-agnostic interface (see that
+-- package's types.ts doc comment) and must not force a FK dependency on the
+-- products table existing/being populated by this same adapter.
+CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  parent_id TEXT REFERENCES categories(id)
+);
+CREATE INDEX IF NOT EXISTS idx_categories_parent_id ON categories(parent_id);
+
+CREATE TABLE IF NOT EXISTS product_category_assignments (
+  product_id TEXT NOT NULL,
+  category_id TEXT NOT NULL REFERENCES categories(id),
+  PRIMARY KEY (product_id, category_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pca_category_id ON product_category_assignments(category_id);
 `;
