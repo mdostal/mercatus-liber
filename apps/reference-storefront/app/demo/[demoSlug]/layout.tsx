@@ -294,6 +294,13 @@ export default async function DemoLayout({
             padding: "2px 0 6px",
           }}
         >
+          <a
+            href={`/demo/${demoSlug}/start`}
+            style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none", fontWeight: 600 }}
+          >
+            Start here &rarr;
+          </a>{" "}
+          &middot;{" "}
           <a href="/architecture" style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}>
             How this works &rarr;
           </a>
