@@ -6,55 +6,55 @@ version_bump: minor
 
 stories:
   - id: fcp-01-catalog-entity
-    title: Real Catalog entity + ProductCatalogRepository (many-to-many), Postgres + SQLite
+    title: Real Catalog entity + ProductCatalogRepository (many-to-many), Postgres
     complexity: high
     depends_on: []
   - id: fcp-02-cart
-    title: Real Cart persistence, Postgres + SQLite
+    title: Real Cart persistence, Postgres
     complexity: medium
     depends_on: []
   - id: fcp-03-orders
-    title: Real Order persistence, Postgres + SQLite
+    title: Real Order persistence, Postgres
     complexity: high
     depends_on: []
   - id: fcp-04-accounts
-    title: Real CustomerProfile persistence, Postgres + SQLite
+    title: Real CustomerProfile persistence, Postgres
     complexity: medium
     depends_on: []
   - id: fcp-05-promotions
-    title: Real Promotion persistence, Postgres + SQLite
+    title: Real Promotion persistence, Postgres
     complexity: medium
     depends_on: []
   - id: fcp-06-reviews
-    title: Real Review persistence, Postgres + SQLite
+    title: Real Review persistence, Postgres
     complexity: medium
     depends_on: []
   - id: fcp-07-storefront-views
-    title: Real StorefrontView persistence, Postgres + SQLite
+    title: Real StorefrontView persistence, Postgres
     complexity: medium
     depends_on: []
   - id: fcp-08-bundles
-    title: Real Bundle persistence, Postgres + SQLite
+    title: Real Bundle persistence, Postgres
     complexity: medium
     depends_on: []
   - id: fcp-09-recommendations
-    title: Real RecommendationRule persistence, Postgres + SQLite
+    title: Real RecommendationRule persistence, Postgres
     complexity: low
     depends_on: []
   - id: fcp-10-advertising
-    title: Real Campaign persistence, Postgres + SQLite
+    title: Real Campaign persistence, Postgres
     complexity: medium
     depends_on: []
   - id: fcp-11-service-areas
-    title: Real ServiceArea + ServiceAreaProductRepository persistence, Postgres + SQLite
+    title: Real ServiceArea + ServiceAreaProductRepository persistence, Postgres
     complexity: medium
     depends_on: []
   - id: fcp-12-internal-bi
-    title: Real BiEventLog persistence, Postgres + SQLite
+    title: Real BiEventLog persistence, Postgres
     complexity: low
     depends_on: []
   - id: fcp-13-fulfillment-routing
-    title: Real FulfillmentRoutingRepository persistence, Postgres + SQLite
+    title: Real FulfillmentRoutingRepository persistence, Postgres
     complexity: low
     depends_on: []
   - id: fcp-14-services-wiring
