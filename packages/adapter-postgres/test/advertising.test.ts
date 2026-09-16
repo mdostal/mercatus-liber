@@ -4,13 +4,11 @@
  * was in-memory-only across every adapter, including Postgres, until now.
  *
  * Uses its OWN local fake Postgres Pool double, deliberately not the shared
- * test/fake-pool.ts -- this file is self-contained per this package's
- * file-isolation convention while multiple persistence subsystems land in
- * parallel (see accounts.test.ts for the same convention). starts_at/
- * ends_at are real TIMESTAMPTZ columns in Postgres, so this double mimics
- * the driver's own behavior of handing back a Date for a non-null value
- * (src/advertising.ts's rowToCampaign normalizes that back to an ISO
- * string) while passing null through untouched.
+ * test/fake-pool.ts. starts_at/ends_at are real TIMESTAMPTZ columns in
+ * src/advertising.ts's schema, so this double mimics the driver's own
+ * behavior of handing back a Date for a non-null value (rowToCampaign
+ * normalizes that back to an ISO string) while passing null through
+ * untouched. targeting is flattened into two columns, not a JSONB blob.
  */
 import type { Campaign } from "@mercatus-liber/advertising";
 import { beforeEach, describe, expect, it } from "vitest";
