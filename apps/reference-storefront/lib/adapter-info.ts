@@ -15,6 +15,9 @@
  * concrete adapter choices outside of services.ts itself.
  */
 
+import { DEMO_SLUGS, type DemoSlug } from "./demos";
+import { resolveDemoPersistenceEnv } from "./services";
+
 export type AdapterStatus = "active" | "unconfigured";
 
 export interface AdapterInfo {
@@ -25,52 +28,53 @@ export interface AdapterInfo {
 }
 
 /**
- * Mirrors services.ts's own `persistence` branch exactly (see its doc
- * comment there): `DATABASE_URL` set -> Postgres; else `SQLITE_FILE_PATH`
- * set -> file-backed SQLite at that exact path; else the original
- * in-memory SQLite default, explicitly labeled "ephemeral -- data resets
- * on every restart" so an operator sees this clearly here rather than
- * discovering it the hard way after a restart (see
- * .pHive/epics/data-backup-restore-and-adapter-portability/docs/design-discussion.md
- * §1a). Before that story this row was hardcoded to always report the
- * in-memory default -- there was no env branch to report on.
+ * Mirrors services.ts's own `resolveDemoPersistenceEnv` + `persistence`
+ * branch exactly (per-demo-backend-diversity epic): resolved for THIS
+ * demoSlug (per-demo env-var overrides, falling back to the global chain
+ * when this demo has none of its own -- see resolveDemoPersistenceEnv's own
+ * doc comment), not a single process-wide answer. `demoSlug` is optional
+ * only for the demo-agnostic summary case (see `getAdapterInfo`'s own doc
+ * comment) -- every real per-demo caller (each store's own `/start` page,
+ * `/admin/settings`) always passes one.
  */
-function persistenceInfo(): AdapterInfo {
-  if (process.env.DATABASE_URL) {
+function persistenceInfo(demoSlug: DemoSlug): AdapterInfo {
+  const env = resolveDemoPersistenceEnv(demoSlug);
+
+  if (env.databaseUrl) {
     return {
       subsystem: "Persistence (catalog)",
       adapter: "Postgres",
-      detail: "DATABASE_URL is set -- createPostgresAdapter() (packages/adapter-postgres)",
+      detail: "DATABASE_URL (or a per-demo override) is set -- createPostgresAdapter() (packages/adapter-postgres)",
       status: "active",
     };
   }
 
-  if (process.env.MONGODB_URL) {
+  if (env.mongodbUrl) {
     return {
       subsystem: "Persistence (catalog)",
       adapter: "MongoDB",
-      detail: "MONGODB_URL is set (and DATABASE_URL is not) -- connectMongoAdapter() (packages/adapter-mongodb)",
+      detail: "MONGODB_URL (or a per-demo override) is set -- createMongoAdapter() (packages/adapter-mongodb)",
       status: "active",
     };
   }
 
-  if (process.env.CONVEX_URL) {
+  if (env.convexUrl) {
     return {
       subsystem: "Persistence (catalog)",
       adapter: "Convex",
       detail:
-        "CONVEX_URL is set (and DATABASE_URL/MONGODB_URL are not) -- connectConvexAdapter() " +
+        "CONVEX_URL (or a per-demo override) is set -- connectConvexAdapter() " +
         "(packages/adapter-convex), calling the real functions in that package's convex-functions/ " +
         "directory once deployed to your own Convex project",
       status: "active",
     };
   }
 
-  if (process.env.SQLITE_FILE_PATH) {
+  if (env.sqliteFilePath) {
     return {
       subsystem: "Persistence (catalog)",
       adapter: "SQLite (file-backed)",
-      detail: `SQLITE_FILE_PATH is set -- createSqliteAdapter(${JSON.stringify(process.env.SQLITE_FILE_PATH)}) (packages/adapter-sqlite), durable across restarts`,
+      detail: `SQLITE_FILE_PATH (or a per-demo override) is set -- createSqliteAdapterFromDb(openSqliteDb(${JSON.stringify(env.sqliteFilePath)})) (packages/adapter-sqlite), durable across restarts`,
       status: "active",
     };
   }
@@ -79,7 +83,7 @@ function persistenceInfo(): AdapterInfo {
     subsystem: "Persistence (catalog)",
     adapter: "SQLite (in-memory)",
     detail:
-      "Neither DATABASE_URL nor SQLITE_FILE_PATH is set -- createSqliteAdapter(':memory:') (packages/adapter-sqlite) -- ephemeral, data resets on every restart",
+      "No persistence backend is configured for this demo -- createSqliteAdapterFromDb(openSqliteDb(':memory:')) (packages/adapter-sqlite) -- ephemeral, data resets on every restart",
     status: "active",
   };
 }
@@ -282,21 +286,27 @@ function mediaInfo(): AdapterInfo {
 
 /**
  * Mirrors services.ts's own `inventory` branch exactly (ims-postgres-
- * alternate epic): createInMemoryInventoryAdapter() (@mercatus-liber/
- * inventory) is always the default; DATABASE_URL set and truthy
+ * alternate epic, made demo-aware by per-demo-backend-diversity):
+ * createInMemoryInventoryAdapter() (@mercatus-liber/inventory) is always
+ * the default; this demo resolving to Postgres (see persistenceInfo above)
  * additionally swaps in the real Postgres-backed InventoryAdapter
  * (@mercatus-liber/adapter-postgres-inventory), sharing the exact same
- * connection pool catalog persistence already opened for that URL -- not a
- * second, independent env-var check that happens to agree.
+ * connection pool catalog persistence already opened for that URL. A demo
+ * resolving to MongoDB/Convex correctly stays in-memory for inventory --
+ * neither adapter has a matching InventoryAdapter implementation today
+ * (only adapter-postgres-inventory exists), the same pre-existing,
+ * disclosed gap as any other non-Postgres backend, not new.
  */
-function inventoryInfo(): AdapterInfo {
-  if (!process.env.DATABASE_URL) {
+function inventoryInfo(demoSlug: DemoSlug): AdapterInfo {
+  const env = resolveDemoPersistenceEnv(demoSlug);
+
+  if (!env.databaseUrl) {
     return {
       subsystem: "Inventory",
       adapter: "In-memory (reference default)",
       detail:
-        "DATABASE_URL is not set -- createInMemoryInventoryAdapter() (packages/inventory), a deliberately " +
-        "valid, fully-functional default in this app's own posture, not an error state",
+        "This demo isn't resolving to Postgres -- createInMemoryInventoryAdapter() (packages/inventory), a " +
+        "deliberately valid, fully-functional default in this app's own posture, not an error state",
       status: "active",
     };
   }
@@ -305,25 +315,35 @@ function inventoryInfo(): AdapterInfo {
     subsystem: "Inventory",
     adapter: "Postgres",
     detail:
-      "DATABASE_URL is set -- createPostgresInventoryAdapter() (packages/adapter-postgres-inventory), " +
+      "This demo resolves to Postgres -- createPostgresInventoryAdapter() (packages/adapter-postgres-inventory), " +
       "sharing the same connection pool catalog persistence already opened for this URL",
     status: "active",
   };
 }
 
 /**
- * Returns exactly eight entries describing this instance's actual adapter
- * wiring, computed fresh from process.env on every call.
+ * Returns eight entries describing this instance's actual adapter wiring,
+ * computed fresh from process.env on every call. Persistence/Inventory are
+ * demo-aware (per-demo-backend-diversity epic) -- pass the real demoSlug a
+ * caller is rendering for (every per-demo caller does: each store's own
+ * `/start` page, `/admin/settings`). Omitting `demoSlug` is ONLY for
+ * `/architecture`, a genuinely demo-agnostic page with no single demoSlug
+ * of its own -- see that page's own per-demo breakdown table, built from
+ * `getAdapterInfo(slug)` called once per real demo slug, not this
+ * no-arg form's Persistence/Inventory rows (which fall back to the first
+ * registered demo purely so the function still returns a complete,
+ * non-crashing AdapterInfo[] if ever called with no argument).
  */
-export function getAdapterInfo(): AdapterInfo[] {
+export function getAdapterInfo(demoSlug?: DemoSlug): AdapterInfo[] {
+  const resolvedSlug = demoSlug ?? DEMO_SLUGS[0]!;
   return [
-    persistenceInfo(),
+    persistenceInfo(resolvedSlug),
     cmsInfo(),
     paymentsInfo(),
     analyticsInfo(),
     fulfillmentInfo(),
     shippingInfo(),
     mediaInfo(),
-    inventoryInfo(),
+    inventoryInfo(resolvedSlug),
   ];
 }

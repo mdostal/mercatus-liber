@@ -43,9 +43,17 @@ export async function buildViewSections(
     await Promise.all(view.categoryIds.map((id) => services.marketingCatalog.getCategory(id)))
   ).filter((category): category is NonNullable<typeof category> => category !== null);
 
+  // per-demo-backend-diversity epic: parallelized -- this used to await
+  // listProductIdsInCategory once per category, sequentially. Harmless
+  // against the always-in-memory categories this was originally written
+  // against, but categories now genuinely persist to a real per-demo
+  // backend (Postgres/Mongo/Convex), so a real network round-trip per
+  // category adds up; same fix as the category page's own N+1 SKU lookup.
+  const productIdLists = await Promise.all(
+    categories.map((category) => services.marketingCatalog.listProductIdsInCategory(category.id)),
+  );
   const productIdSet = new Set<string>();
-  for (const category of categories) {
-    const ids = await services.marketingCatalog.listProductIdsInCategory(category.id);
+  for (const ids of productIdLists) {
     for (const id of ids) productIdSet.add(id);
   }
   const productIds = Array.from(productIdSet).slice(0, MAX_VIEW_PRODUCT_IDS);

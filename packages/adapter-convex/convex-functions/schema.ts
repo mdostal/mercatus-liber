@@ -42,4 +42,29 @@ export default defineSchema({
     value: v.any(),
     facetable: v.boolean(),
   }).index("by_product_and_key", ["productId", "key"]),
+
+  categories: defineTable({
+    // This framework's own Category.id (a UUID it generates itself) -- same
+    // externalId pattern as products/skus above, see this directory's
+    // README.md, "Why externalId, not Convex's own _id".
+    externalId: v.string(),
+    slug: v.string(),
+    title: v.string(),
+    description: v.string(),
+    // null for a top-level category (mirrors Category.parentId in
+    // @mercatus-liber/marketing-catalog's types.ts).
+    parentId: v.union(v.string(), v.null()),
+  })
+    .index("by_external_id", ["externalId"])
+    .index("by_slug", ["slug"]),
+
+  // Many-to-many product<->category assignment. productId/categoryId are
+  // this framework's own real Product.id/Category.id strings, never
+  // Convex's internal _id.
+  productCategoryAssignments: defineTable({
+    productId: v.string(),
+    categoryId: v.string(),
+  })
+    .index("by_product_and_category", ["productId", "categoryId"])
+    .index("by_category_id", ["categoryId"]),
 });

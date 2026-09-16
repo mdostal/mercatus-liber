@@ -175,7 +175,21 @@ export async function connectMongoAdapter(
   connectionString: string,
 ): Promise<{ adapter: CatalogPersistenceAdapter; close: () => Promise<void> }> {
   const { MongoClient } = await import("mongodb");
-  const client = new MongoClient(connectionString);
+  // Real production incident already hit this exact risk class for
+  // Postgres this session (pg.Pool's default max:10 x many concurrent
+  // Vercel serverless cold starts exhausted Supabase's Supavisor pooler).
+  // Confirmed via MongoDB's own docs before wiring this in, not assumed:
+  // the driver's own default maxPoolSize is 100, and Atlas's free/flex
+  // tiers cap at 500 total connections -- just 5 concurrent cold-started
+  // MongoClients at the default pool size could exhaust that cap. MongoDB's
+  // own "Manage Connections with AWS Lambda" doc's real guidance is
+  // create-once-outside-the-handler (already true here via services.ts's
+  // servicesByDemo module-level cache) plus a bounded maxIdleTimeMS; it
+  // gives no specific serverless maxPoolSize number, so 5 is this app's own
+  // conservative choice (mirrors pg.Pool's max:1 in spirit -- small enough
+  // that even a burst of concurrent cold starts stays well under the
+  // 500-connection cap, generous enough for one demo store's real traffic).
+  const client = new MongoClient(connectionString, { maxPoolSize: 5, maxIdleTimeMS: 60000 });
   await client.connect();
   // The real driver's Filter<TDoc>/generic Collection<T> typings are
   // stricter than this file's own deliberately-narrow DbLike (they require
@@ -189,3 +203,14 @@ export async function connectMongoAdapter(
   const adapter = await createMongoAdapter(client.db() as unknown as DbLike);
   return { adapter, close: () => client.close() };
 }
+
+/**
+ * Real MongoDB-backed CategoryRepository / ProductCategoryRepository --
+ * @mercatus-liber/marketing-catalog's categories + product<->category
+ * many-to-many assignment, which (like the rest of this adapter's own
+ * repositories above) had zero real backend implementation anywhere in the
+ * project before this. See categories.ts for the full implementation; kept
+ * in a sibling file rather than inline here since this file is already the
+ * dedicated home for CatalogPersistenceAdapter's own products/skus/attributes.
+ */
+export { createMongoCategoryRepository, createMongoProductCategoryRepository } from "./categories.js";

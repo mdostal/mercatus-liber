@@ -27,4 +27,28 @@ CREATE TABLE IF NOT EXISTS product_attributes (
   facetable INTEGER NOT NULL, -- 0 | 1
   PRIMARY KEY (product_id, key)
 );
+
+-- @mercatus-liber/marketing-catalog's CategoryRepository/ProductCategoryRepository
+-- persistence -- every field is a plain scalar, so unlike products/skus/
+-- product_attributes above, no column here needs JSON-encoded TEXT.
+CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  parent_id TEXT REFERENCES categories(id) -- NULL for a top-level category
+);
+CREATE INDEX IF NOT EXISTS idx_categories_parent_id ON categories(parent_id);
+
+-- Many-to-many product<->category assignment. product_id intentionally has no
+-- REFERENCES products(id): marketing-catalog's ProductCategoryRepository is a
+-- structural interface only, owned by a package that never imports the
+-- product catalog, so this adapter must not encode a hard FK to the products
+-- table here either.
+CREATE TABLE IF NOT EXISTS product_category_assignments (
+  product_id TEXT NOT NULL,
+  category_id TEXT NOT NULL REFERENCES categories(id),
+  PRIMARY KEY (product_id, category_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pca_category_id ON product_category_assignments(category_id);
 `;

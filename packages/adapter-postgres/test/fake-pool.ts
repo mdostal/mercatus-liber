@@ -21,6 +21,8 @@ export function createFakePgPool(): FakePool {
   const products = new Map<string, FakeRow>();
   const skus = new Map<string, FakeRow>();
   const attributes = new Map<string, FakeRow>(); // keyed by `${productId}::${key}`
+  const categories = new Map<string, FakeRow>();
+  const assignments = new Map<string, FakeRow>(); // keyed by `${productId}::${categoryId}`
 
   return {
     async query<T = FakeRow>(text: string, values: unknown[] = []): Promise<{ rows: T[] }> {
@@ -120,6 +122,50 @@ export function createFakePgPool(): FakePool {
       if (sql.startsWith("DELETE FROM product_attributes")) {
         const [productId, key] = values as [string, string];
         attributes.delete(`${productId}::${key}`);
+        return { rows: [] };
+      }
+
+      // --- categories ---
+      if (sql === "SELECT * FROM categories WHERE id = $1") {
+        const row = categories.get(values[0] as string);
+        return { rows: (row ? [row] : []) as T[] };
+      }
+      if (sql === "SELECT * FROM categories WHERE slug = $1") {
+        const row = [...categories.values()].find((c) => c.slug === values[0]);
+        return { rows: (row ? [row] : []) as T[] };
+      }
+      if (sql === "SELECT * FROM categories") {
+        return { rows: [...categories.values()] as T[] };
+      }
+      if (sql.startsWith("INSERT INTO categories")) {
+        const [id, slug, title, description, parentId] = values as [
+          string,
+          string,
+          string,
+          string,
+          string | null,
+        ];
+        categories.set(id, { id, slug, title, description, parent_id: parentId });
+        return { rows: [] };
+      }
+
+      // --- product_category_assignments ---
+      if (sql === "SELECT product_id, category_id FROM product_category_assignments WHERE product_id = $1") {
+        return { rows: [...assignments.values()].filter((a) => a.product_id === values[0]) as T[] };
+      }
+      if (sql === "SELECT product_id, category_id FROM product_category_assignments WHERE category_id = $1") {
+        return { rows: [...assignments.values()].filter((a) => a.category_id === values[0]) as T[] };
+      }
+      if (sql.startsWith("INSERT INTO product_category_assignments")) {
+        const [productId, categoryId] = values as [string, string];
+        // Real ON CONFLICT (product_id, category_id) DO NOTHING semantics --
+        // re-assigning an existing pair is a silent no-op, not a duplicate row.
+        assignments.set(`${productId}::${categoryId}`, { product_id: productId, category_id: categoryId });
+        return { rows: [] };
+      }
+      if (sql.startsWith("DELETE FROM product_category_assignments")) {
+        const [productId, categoryId] = values as [string, string];
+        assignments.delete(`${productId}::${categoryId}`);
         return { rows: [] };
       }
 

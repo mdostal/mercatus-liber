@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/marketing-catalog": "workspace:*",
     "pg": "^8.23.0"
   },
   "devDependencies": {

@@ -117,9 +117,16 @@ export default async function StartHerePage({ params }: { params: Promise<{ demo
   const allPromotions = await promotions.listPromotions();
   const activeCodes = allPromotions.filter((promo) => promo.code && promo.status === "active");
 
-  const adapters = getAdapterInfo();
+  const adapters = getAdapterInfo(demoSlug);
   const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
   const adminDevPassword = process.env.ADMIN_DEV_PASSWORD ?? null;
+  // real-provider-verification epic: publishing the OWNER password here was
+  // a real gap, found after the fact -- any visitor got full mutate/
+  // manage_users access, not just a look around. ADMIN_VIEWER_PASSWORD, when
+  // set, is what this page now leads with; the owner password is only shown
+  // as a secondary "if you want to test real mutations" option, never the
+  // only credential on offer.
+  const adminViewerPassword = process.env.ADMIN_VIEWER_PASSWORD ?? null;
 
   return (
     <main className="ml-shell mlsh-page">
@@ -143,6 +150,26 @@ export default async function StartHerePage({ params }: { params: Promise<{ demo
               <Link href={`/demo/${demoSlug}/admin`}>{`/demo/${demoSlug}/admin`}</Link> and sign in (or create an
               account) through Clerk&rsquo;s own hosted flow.
             </p>
+          ) : adminViewerPassword ? (
+            <>
+              <p>
+                This deployment uses the zero-infra dev-default admin login (no Clerk account configured here).
+                For a read-only look around -- catalog, CMS, promotions, metrics, and every other admin screen,
+                with no ability to change anything -- use:
+              </p>
+              <p className="mlsh-code-block">{adminViewerPassword}</p>
+              <p>
+                Visit <Link href={`/demo/${demoSlug}/admin`}>{`/demo/${demoSlug}/admin`}</Link> and enter it.
+                {adminDevPassword ? (
+                  <>
+                    {" "}
+                    If you want to try a real mutation (create a promotion, publish a page, moderate a review),
+                    the full owner password is <span className="mlsh-code-block mlsh-code-inline">{adminDevPassword}</span>{" "}
+                    -- please be considerate, this is a shared public demo.
+                  </>
+                ) : null}
+              </p>
+            </>
           ) : adminDevPassword ? (
             <>
               <p>
@@ -153,7 +180,8 @@ export default async function StartHerePage({ params }: { params: Promise<{ demo
               <p>
                 Visit <Link href={`/demo/${demoSlug}/admin`}>{`/demo/${demoSlug}/admin`}</Link> and enter it. This
                 unlocks catalog, CMS, promotions, bundles, recommendations, advertising, reviews, storefront views,
-                and metrics management for this store.
+                and metrics management for this store. (No read-only viewer password is currently configured on
+                this deployment -- every visitor who uses this gets full access.)
               </p>
             </>
           ) : (

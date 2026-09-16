@@ -80,9 +80,20 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
   // and optional (CategorySpecRow, components/category-spec-grid.tsx): the
   // other 3 category templates don't declare this prop, so computing and
   // passing it is a no-op for them, never a fabricated price.
+  // per-demo-backend-diversity epic: this was a sequential for-loop
+  // (one awaited network round-trip per product, one at a time) -- harmless
+  // latency against a local/low-latency backend, but a real, confirmed
+  // problem once a demo's catalog resolves to a genuinely remote database
+  // (MongoDB Atlas/Convex): a category with N products took N sequential
+  // round-trips just for this one price-range computation, live-measured
+  // at several seconds for a real category page against Mongo/Convex,
+  // risking a serverless function timeout in production. Parallelized with
+  // Promise.all, same pattern the products lookup right above already uses.
   const specsByProductId: Record<string, CategorySpecRow> = {};
-  for (const product of products) {
-    const skus = await catalog.listSkusByProduct(product.id);
+  const skusByProduct = await Promise.all(
+    products.map(async (product) => ({ product, skus: await catalog.listSkusByProduct(product.id) })),
+  );
+  for (const { product, skus } of skusByProduct) {
     if (skus.length === 0) continue;
     const amounts = skus.map((sku) => sku.price.amount);
     specsByProductId[product.id] = {

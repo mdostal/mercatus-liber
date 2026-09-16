@@ -25,10 +25,15 @@ export default async function AdminReviewsPage({ params }: { params: Promise<{ d
   // No filter -- the admin queue shows every status (pending/published/rejected) so an
   // admin can see the full moderation history, not just what's still awaiting action.
   const allReviews = await reviews.listAllForModeration();
-  const productLabels = new Map<string, { title: string; slug: string | null }>();
-  for (const productId of new Set(allReviews.map((r) => r.productId))) {
-    productLabels.set(productId, await resolveProductLabel(catalog, productId));
-  }
+  // per-demo-backend-diversity epic: parallelized -- catalog.getProduct is
+  // now genuinely backend-dependent per demo (Postgres/Mongo/Convex), so a
+  // sequential await-per-product loop here would add up on a real remote
+  // backend, same fix as the category page's own N+1 lookup.
+  const uniqueProductIds = [...new Set(allReviews.map((r) => r.productId))];
+  const labelEntries = await Promise.all(
+    uniqueProductIds.map(async (productId) => [productId, await resolveProductLabel(catalog, productId)] as const),
+  );
+  const productLabels = new Map(labelEntries);
 
   return (
     <main>

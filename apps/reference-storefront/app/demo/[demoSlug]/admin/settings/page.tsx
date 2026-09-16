@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getAdapterInfo } from "../../../../../lib/adapter-info";
+import { isDemoSlug } from "../../../../../lib/demos";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage({ params }: { params: Promise<{ demoSlug: string }> }) {
   const { demoSlug } = await params;
-  const rows = getAdapterInfo();
+  if (!isDemoSlug(demoSlug)) notFound();
+  const rows = getAdapterInfo(demoSlug);
 
   return (
     <main>

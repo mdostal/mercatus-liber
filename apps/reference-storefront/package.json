@@ -54,6 +54,7 @@
     "@mercatus-liber/shipping": "workspace:*",
     "@mercatus-liber/theming": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "mongodb": "^7.6.0",
     "next": "^16.3.4",
     "pg": "^8.23.0",
     "posthog-js": "^1.428.3",

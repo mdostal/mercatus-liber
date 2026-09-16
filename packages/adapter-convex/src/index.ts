@@ -10,6 +10,7 @@ import type {
   Sku,
   SkuRepository,
 } from "@mercatus-liber/core";
+import type { Category, CategoryRepository, ProductCategoryRepository } from "@mercatus-liber/marketing-catalog";
 
 interface ProductDoc {
   externalId: string;
@@ -35,6 +36,14 @@ interface AttributeDoc {
   key: string;
   value: ProductAttribute["value"];
   facetable: boolean;
+}
+
+interface CategoryDoc {
+  externalId: string;
+  slug: string;
+  title: string;
+  description: string;
+  parentId: string | null;
 }
 
 /**
@@ -77,6 +86,16 @@ function docToSku(doc: SkuDoc): Sku {
 
 function docToAttribute(doc: AttributeDoc): ProductAttribute {
   return { productId: doc.productId, key: doc.key, value: doc.value, facetable: doc.facetable };
+}
+
+function docToCategory(doc: CategoryDoc): Category {
+  return {
+    id: doc.externalId,
+    slug: doc.slug,
+    title: doc.title,
+    description: doc.description,
+    parentId: doc.parentId,
+  };
 }
 
 /**
@@ -150,8 +169,61 @@ export async function createConvexAdapter(client: ConvexClientLike): Promise<Cat
 }
 
 /**
- * Real end-to-end connection helper: constructs the real ConvexHttpClient
- * against `convexUrl` (a deployment's real HTTP API URL, e.g.
+ * Real Convex-backed CategoryRepository -- calls this package's own
+ * convex-functions/categories.ts (get/getBySlug/list/save), the same
+ * externalId-mapping pattern as products/skus above. See
+ * @mercatus-liber/marketing-catalog's in-memory-repository.ts for the
+ * reference behavior this must match byte-for-byte.
+ */
+export function createConvexCategoryRepository(client: ConvexClientLike): CategoryRepository {
+  return {
+    async get(id: string): Promise<Category | null> {
+      const doc = (await client.query("categories:get", { externalId: id })) as CategoryDoc | null;
+      return doc ? docToCategory(doc) : null;
+    },
+    async getBySlug(slug: string): Promise<Category | null> {
+      const doc = (await client.query("categories:getBySlug", { slug })) as CategoryDoc | null;
+      return doc ? docToCategory(doc) : null;
+    },
+    async list(): Promise<Category[]> {
+      const docs = (await client.query("categories:list", {})) as CategoryDoc[];
+      return docs.map(docToCategory);
+    },
+    async save(category: Category): Promise<void> {
+      const { id, ...rest } = category;
+      await client.mutation("categories:save", { externalId: id, ...rest });
+    },
+  };
+}
+
+/**
+ * Real Convex-backed ProductCategoryRepository -- calls this package's own
+ * convex-functions/productCategories.ts. productId/categoryId are this
+ * framework's own real ids already (never Convex's internal `_id`), so
+ * unlike products/skus/categories above there is no externalId mapping to
+ * do here.
+ */
+export function createConvexProductCategoryRepository(client: ConvexClientLike): ProductCategoryRepository {
+  return {
+    async listCategoryIdsForProduct(productId: string): Promise<string[]> {
+      return (await client.query("productCategories:listCategoryIdsForProduct", { productId })) as string[];
+    },
+    async listProductIdsInCategory(categoryId: string): Promise<string[]> {
+      return (await client.query("productCategories:listProductIdsInCategory", { categoryId })) as string[];
+    },
+    async assign(productId: string, categoryId: string): Promise<void> {
+      await client.mutation("productCategories:assign", { productId, categoryId });
+    },
+    async unassign(productId: string, categoryId: string): Promise<void> {
+      await client.mutation("productCategories:unassign", { productId, categoryId });
+    },
+  };
+}
+
+/**
+ * Real end-to-end connection helper shared by every `connectConvex*`
+ * function below: constructs the real ConvexHttpClient against `convexUrl`
+ * (a deployment's real HTTP API URL, e.g.
  * `https://<deployment-name>.convex.cloud`), bridging its
  * FunctionReference-typed query/mutation methods to this adapter's plain
  * string-name ConvexClientLike contract via `makeFunctionReference` --
@@ -161,15 +233,25 @@ export async function createConvexAdapter(client: ConvexClientLike): Promise<Cat
  * by applications that don't run `npx convex dev`'s codegen step against
  * this specific calling repo).
  */
-export async function connectConvexAdapter(convexUrl: string): Promise<CatalogPersistenceAdapter> {
+async function connectConvexClient(convexUrl: string): Promise<ConvexClientLike> {
   const { ConvexHttpClient } = await import("convex/browser");
   const { makeFunctionReference } = await import("convex/server");
   const real = new ConvexHttpClient(convexUrl);
 
-  const shim: ConvexClientLike = {
+  return {
     query: (name, args) => real.query(makeFunctionReference<"query">(name) as never, args as never),
     mutation: (name, args) => real.mutation(makeFunctionReference<"mutation">(name) as never, args as never),
   };
+}
 
-  return createConvexAdapter(shim);
+export async function connectConvexAdapter(convexUrl: string): Promise<CatalogPersistenceAdapter> {
+  return createConvexAdapter(await connectConvexClient(convexUrl));
+}
+
+export async function connectConvexCategoryRepository(convexUrl: string): Promise<CategoryRepository> {
+  return createConvexCategoryRepository(await connectConvexClient(convexUrl));
+}
+
+export async function connectConvexProductCategoryRepository(convexUrl: string): Promise<ProductCategoryRepository> {
+  return createConvexProductCategoryRepository(await connectConvexClient(convexUrl));
 }

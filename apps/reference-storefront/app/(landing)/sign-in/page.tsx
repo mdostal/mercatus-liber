@@ -35,8 +35,9 @@ export default async function SignInPage({
     >
       <h1 style={{ fontSize: 20, marginBottom: 8 }}>Admin Sign In</h1>
       <p style={{ color: "#666", fontSize: 14, marginBottom: 20 }}>
-        Dev-default authentication. Enter the admin password configured via the{" "}
-        <code>ADMIN_DEV_PASSWORD</code> environment variable.
+        Dev-default authentication. Enter the owner password (<code>ADMIN_DEV_PASSWORD</code>) for full access, or
+        the read-only viewer password (<code>ADMIN_VIEWER_PASSWORD</code>, when configured) to look around without
+        being able to change anything.
       </p>
       {hasError ? (
         <p style={{ color: "#b91c1c", fontSize: 14, marginBottom: 12 }}>

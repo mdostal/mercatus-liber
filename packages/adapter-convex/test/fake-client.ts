@@ -15,6 +15,8 @@ export function createFakeConvexClient(): ConvexClientLike {
   const products: Record<string, unknown>[] = [];
   const skus: Record<string, unknown>[] = [];
   const attributes: Record<string, unknown>[] = [];
+  const categories: Record<string, unknown>[] = [];
+  const productCategoryAssignments: Record<string, unknown>[] = [];
 
   function upsert(list: Record<string, unknown>[], match: (row: Record<string, unknown>) => boolean, doc: Record<string, unknown>) {
     const index = list.findIndex(match);
@@ -41,6 +43,20 @@ export function createFakeConvexClient(): ConvexClientLike {
           return skus.filter((s) => s.productId === args.productId);
         case "attributes:listByProduct":
           return attributes.filter((a) => a.productId === args.productId);
+        case "categories:get":
+          return categories.find((c) => c.externalId === args.externalId) ?? null;
+        case "categories:getBySlug":
+          return categories.find((c) => c.slug === args.slug) ?? null;
+        case "categories:list":
+          return categories;
+        case "productCategories:listCategoryIdsForProduct":
+          return productCategoryAssignments
+            .filter((a) => a.productId === args.productId)
+            .map((a) => a.categoryId);
+        case "productCategories:listProductIdsInCategory":
+          return productCategoryAssignments
+            .filter((a) => a.categoryId === args.categoryId)
+            .map((a) => a.productId);
         default:
           throw new Error(`FakeConvexClient: unrecognized query -- ${functionName}`);
       }
@@ -60,6 +76,23 @@ export function createFakeConvexClient(): ConvexClientLike {
         case "attributes:remove": {
           const index = attributes.findIndex((a) => a.productId === args.productId && a.key === args.key);
           if (index >= 0) attributes.splice(index, 1);
+          return null;
+        }
+        case "categories:save":
+          upsert(categories, (c) => c.externalId === args.externalId, args);
+          return null;
+        case "productCategories:assign": {
+          const exists = productCategoryAssignments.some(
+            (a) => a.productId === args.productId && a.categoryId === args.categoryId,
+          );
+          if (!exists) productCategoryAssignments.push(args);
+          return null;
+        }
+        case "productCategories:unassign": {
+          const index = productCategoryAssignments.findIndex(
+            (a) => a.productId === args.productId && a.categoryId === args.categoryId,
+          );
+          if (index >= 0) productCategoryAssignments.splice(index, 1);
           return null;
         }
         default:
