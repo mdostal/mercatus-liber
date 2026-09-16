@@ -203,3 +203,14 @@ export async function connectMongoAdapter(
   const adapter = await createMongoAdapter(client.db() as unknown as DbLike);
   return { adapter, close: () => client.close() };
 }
+
+/**
+ * Real MongoDB-backed CategoryRepository / ProductCategoryRepository --
+ * @mercatus-liber/marketing-catalog's categories + product<->category
+ * many-to-many assignment, which (like the rest of this adapter's own
+ * repositories above) had zero real backend implementation anywhere in the
+ * project before this. See categories.ts for the full implementation; kept
+ * in a sibling file rather than inline here since this file is already the
+ * dedicated home for CatalogPersistenceAdapter's own products/skus/attributes.
+ */
+export { createMongoCategoryRepository, createMongoProductCategoryRepository } from "./categories.js";
