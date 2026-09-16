@@ -14,6 +14,19 @@ import type {
 import { SCHEMA_SQL } from "./schema.js";
 
 export { createPostgresCategoryRepository, createPostgresProductCategoryRepository } from "./categories.js";
+export { createPostgresCatalogRepository, createPostgresProductCatalogRepository } from "./catalog-entity.js";
+export { createPostgresCartRepository } from "./cart.js";
+export { createPostgresOrderRepository } from "./orders.js";
+export { createPostgresCustomerProfileRepository } from "./accounts.js";
+export { createPostgresPromotionRepository } from "./promotions.js";
+export { createPostgresReviewRepository } from "./reviews.js";
+export { createPostgresStorefrontViewRepository } from "./storefront-views.js";
+export { createPostgresBundleRepository } from "./bundles.js";
+export { createPostgresRecommendationRepository } from "./recommendations.js";
+export { createPostgresCampaignRepository } from "./advertising.js";
+export { createPostgresServiceAreaRepository, createPostgresServiceAreaProductRepository } from "./service-areas.js";
+export { createPostgresBiEventLogRepository } from "./internal-bi.js";
+export { createPostgresFulfillmentRoutingRepository } from "./fulfillment-routing.js";
 
 interface ProductRow {
   id: string;
