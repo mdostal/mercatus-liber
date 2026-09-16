@@ -79,12 +79,16 @@ function rowToAttribute(row: AttributeRow): ProductAttribute {
 }
 
 /**
- * Reference SQLite persistence adapter. Public surface is exactly the
- * CatalogPersistenceAdapter interface from @mercatus-liber/core -- no SQLite-specific type
- * (Database, statements, row shapes) is exported. Swapping this for
- * @mercatus-liber/adapter-postgres must never require a caller-side change.
+ * Opens a real, ready-to-use better-sqlite3 handle against `path` -- the
+ * same open+pragma+schema-init logic `createSqliteAdapter` always ran
+ * inline, now split out so a caller (per-demo-backend-diversity epic's
+ * services.ts wiring) can open ONE handle and share it across
+ * `createSqliteAdapterFromDb` and `createSqliteCategoryRepository`/
+ * `createSqliteProductCategoryRepository`, mirroring adapter-postgres's own
+ * `pgPool`-sharing pattern exactly -- rather than each repository opening
+ * its own independent file handle against the same path.
  */
-export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
+export function openSqliteDb(path: string): Database.Database {
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
   db.exec(SCHEMA_SQL);
@@ -102,7 +106,18 @@ export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
     // already has the column -- expected on every fresh DB and every DB
     // that already ran this migration once.
   }
+  return db;
+}
 
+/**
+ * Reference SQLite persistence adapter, given an already-open db handle
+ * (see `openSqliteDb` above). Public surface is exactly the
+ * CatalogPersistenceAdapter interface from @mercatus-liber/core -- no
+ * SQLite-specific type (Database, statements, row shapes) is exported.
+ * Swapping this for @mercatus-liber/adapter-postgres must never require a
+ * caller-side change.
+ */
+export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersistenceAdapter {
   const products: ProductRepository = {
     async get(id: string): Promise<Product | null> {
       const row = db.prepare("SELECT * FROM products WHERE id = ?").get(id) as
@@ -216,4 +231,16 @@ export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
   };
 
   return { products, skus, attributes };
+}
+
+/**
+ * Convenience wrapper preserving the original one-call signature every
+ * existing caller (this app, every test in this monorepo) already uses --
+ * opens its own db handle via `openSqliteDb` and builds the adapter from
+ * it. A caller that also needs the category repositories sharing the SAME
+ * handle should call `openSqliteDb` + `createSqliteAdapterFromDb` directly
+ * instead of this wrapper.
+ */
+export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
+  return createSqliteAdapterFromDb(openSqliteDb(path));
 }
