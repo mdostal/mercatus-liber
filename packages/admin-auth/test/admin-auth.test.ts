@@ -4,6 +4,7 @@ import {
   createDefaultAdminAuthAdapter,
   hasPermission,
   verifyDevPassword,
+  verifyDevViewerPassword,
 } from "../src/index.js";
 import type { AdminAction, AdminRole } from "../src/index.js";
 
@@ -73,6 +74,36 @@ describe("verifyDevPassword", () => {
   });
 });
 
+describe("verifyDevViewerPassword", () => {
+  const ORIGINAL_ENV = process.env.ADMIN_VIEWER_PASSWORD;
+
+  beforeEach(() => {
+    process.env.ADMIN_VIEWER_PASSWORD = "viewer-only-please";
+  });
+
+  afterEach(() => {
+    if (ORIGINAL_ENV === undefined) {
+      delete process.env.ADMIN_VIEWER_PASSWORD;
+    } else {
+      process.env.ADMIN_VIEWER_PASSWORD = ORIGINAL_ENV;
+    }
+  });
+
+  it("returns true for a matching value", () => {
+    expect(verifyDevViewerPassword("viewer-only-please")).toBe(true);
+  });
+
+  it("returns false for a non-matching value", () => {
+    expect(verifyDevViewerPassword("wrong-password")).toBe(false);
+  });
+
+  it("returns false when ADMIN_VIEWER_PASSWORD is unset, even for an empty-string guess", () => {
+    delete process.env.ADMIN_VIEWER_PASSWORD;
+    expect(verifyDevViewerPassword("")).toBe(false);
+    expect(verifyDevViewerPassword("viewer-only-please")).toBe(false);
+  });
+});
+
 describe("createDefaultAdminAuthAdapter", () => {
   const ORIGINAL_ENV = process.env.ADMIN_DEV_PASSWORD;
 
@@ -128,5 +159,54 @@ describe("createDefaultAdminAuthAdapter", () => {
     await expect(adapter.setAdminUserRole("some-user", "admin")).rejects.toThrow(
       "not supported in dev mode",
     );
+  });
+
+  describe("with ADMIN_VIEWER_PASSWORD also configured", () => {
+    const ORIGINAL_VIEWER_ENV = process.env.ADMIN_VIEWER_PASSWORD;
+
+    beforeEach(() => {
+      process.env.ADMIN_VIEWER_PASSWORD = "viewer-secret";
+    });
+
+    afterEach(() => {
+      if (ORIGINAL_VIEWER_ENV === undefined) {
+        delete process.env.ADMIN_VIEWER_PASSWORD;
+      } else {
+        process.env.ADMIN_VIEWER_PASSWORD = ORIGINAL_VIEWER_ENV;
+      }
+    });
+
+    it("getCurrentSession() returns a role 'viewer' session for the viewer password", async () => {
+      const adapter = createDefaultAdminAuthAdapter({ getSessionCookie: () => "viewer-secret" });
+      const session = await adapter.getCurrentSession();
+      expect(session).not.toBeNull();
+      expect(session?.role).toBe("viewer");
+      expect(session?.userId).toBeTruthy();
+      expect(session?.email).toBeTruthy();
+    });
+
+    it("getCurrentSession() still returns 'owner' for the owner password when both are configured", async () => {
+      const adapter = createDefaultAdminAuthAdapter({ getSessionCookie: () => "dev-secret" });
+      const session = await adapter.getCurrentSession();
+      expect(session?.role).toBe("owner");
+    });
+
+    it("getCurrentSession() returns null for a cookie matching neither password", async () => {
+      const adapter = createDefaultAdminAuthAdapter({ getSessionCookie: () => "neither-one" });
+      await expect(adapter.getCurrentSession()).resolves.toBeNull();
+    });
+
+    it("owner wins if both passwords are ever misconfigured to the same value", async () => {
+      process.env.ADMIN_VIEWER_PASSWORD = "dev-secret"; // same as ADMIN_DEV_PASSWORD in this describe block
+      const adapter = createDefaultAdminAuthAdapter({ getSessionCookie: () => "dev-secret" });
+      const session = await adapter.getCurrentSession();
+      expect(session?.role).toBe("owner");
+    });
+
+    it("listAdminUsers() returns both a dev-owner and a dev-viewer entry", async () => {
+      const adapter = createDefaultAdminAuthAdapter();
+      const users = await adapter.listAdminUsers();
+      expect(users.map((u) => u.role).sort()).toEqual(["owner", "viewer"]);
+    });
   });
 });

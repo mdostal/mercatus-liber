@@ -6,6 +6,9 @@ export const ADMIN_DEV_SESSION_COOKIE = "ml_admin_dev_session";
 const DEV_OWNER_USER_ID = "dev-owner";
 const DEV_OWNER_EMAIL = "dev-owner@localhost";
 const DEV_OWNER_ROLE: AdminRole = "owner";
+const DEV_VIEWER_USER_ID = "dev-viewer";
+const DEV_VIEWER_EMAIL = "dev-viewer@localhost";
+const DEV_VIEWER_ROLE: AdminRole = "viewer";
 
 /**
  * Compares `password` against `process.env.ADMIN_DEV_PASSWORD`. Returns
@@ -14,6 +17,28 @@ const DEV_OWNER_ROLE: AdminRole = "owner";
  */
 export function verifyDevPassword(password: string): boolean {
   const expected = process.env.ADMIN_DEV_PASSWORD;
+  if (!expected) return false;
+  return password === expected;
+}
+
+/**
+ * real-provider-verification epic: a second, deliberately lower-privilege
+ * password for outside reviewers exploring a public demo -- distinct from
+ * `verifyDevPassword`'s single shared owner password. Real motivation: this
+ * app's own per-store `/start` page (epic 54) publishes the OWNER password
+ * on a public page by design, since there's no per-visitor account system
+ * and the whole point is letting a stranger explore without contacting the
+ * site owner first -- but that meant every visitor got full mutate/
+ * manage_users access too. `ADMIN_VIEWER_PASSWORD`, when set, lets a
+ * visitor authenticate as a genuine read-only `viewer` role instead
+ * (hasPermission's own existing 3-role matrix already understands
+ * "viewer" -- this only wires the dev-default adapter to actually be able
+ * to PRODUCE one, which it previously could not: getCurrentSession always
+ * hardcoded role "owner"). Returns false whenever the env var is unset or
+ * empty, same posture as verifyDevPassword.
+ */
+export function verifyDevViewerPassword(password: string): boolean {
+  const expected = process.env.ADMIN_VIEWER_PASSWORD;
   if (!expected) return false;
   return password === expected;
 }
@@ -46,11 +71,15 @@ export function verifyDevPassword(password: string): boolean {
  * considered present.
  *
  * listAdminUsers() and setAdminUserRole() are intentionally minimal --
- * this default models single-operator local development only, never
+ * this default models single-operator local development only, never real
  * multi-user role management (that is adapter-clerk's real job):
- *  - listAdminUsers() always returns exactly one synthetic "dev-owner" entry.
+ *  - listAdminUsers() always returns a synthetic "dev-owner" entry, plus a
+ *    synthetic "dev-viewer" entry too when ADMIN_VIEWER_PASSWORD is set
+ *    (see verifyDevViewerPassword above) -- still not real per-user
+ *    management, just two fixed synthetic identities instead of one.
  *  - setAdminUserRole() always throws "not supported in dev mode" -- there
- *    is no second user to promote or demote in single-operator dev mode.
+ *    is no real per-user promotion/demotion in this dev-default model,
+ *    only the two fixed passwords.
  */
 export function createDefaultAdminAuthAdapter(deps?: {
   getSessionCookie?: () => string | undefined;
@@ -61,12 +90,24 @@ export function createDefaultAdminAuthAdapter(deps?: {
     async getCurrentSession(): Promise<AdminSession | null> {
       const cookie = getSessionCookie();
       if (!cookie) return null;
-      if (!verifyDevPassword(cookie)) return null;
-      return { userId: DEV_OWNER_USER_ID, email: DEV_OWNER_EMAIL, role: DEV_OWNER_ROLE };
+      // Owner checked first -- if a deployment ever sets both passwords to
+      // the same value (a misconfiguration, not a supported setup), owner
+      // wins rather than silently downgrading access.
+      if (verifyDevPassword(cookie)) {
+        return { userId: DEV_OWNER_USER_ID, email: DEV_OWNER_EMAIL, role: DEV_OWNER_ROLE };
+      }
+      if (verifyDevViewerPassword(cookie)) {
+        return { userId: DEV_VIEWER_USER_ID, email: DEV_VIEWER_EMAIL, role: DEV_VIEWER_ROLE };
+      }
+      return null;
     },
 
     async listAdminUsers() {
-      return [{ userId: DEV_OWNER_USER_ID, email: DEV_OWNER_EMAIL, role: DEV_OWNER_ROLE }];
+      const users = [{ userId: DEV_OWNER_USER_ID, email: DEV_OWNER_EMAIL, role: DEV_OWNER_ROLE }];
+      if (process.env.ADMIN_VIEWER_PASSWORD) {
+        users.push({ userId: DEV_VIEWER_USER_ID, email: DEV_VIEWER_EMAIL, role: DEV_VIEWER_ROLE });
+      }
+      return users;
     },
 
     async setAdminUserRole(): Promise<void> {

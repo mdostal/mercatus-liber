@@ -8,6 +8,7 @@ import {
   ADMIN_DEV_SESSION_COOKIE,
   hasPermission,
   verifyDevPassword,
+  verifyDevViewerPassword,
   type AdminAction,
   type AdminRole,
 } from "@mercatus-liber/admin-auth";
@@ -233,7 +234,13 @@ export async function signInDevAction(formData: FormData): Promise<void> {
   const password = String(formData.get("password") ?? "");
   const redirectUrl = String(formData.get("redirect_url") ?? "/");
 
-  if (!verifyDevPassword(password)) {
+  // Either password authenticates -- default-adapter.ts's own
+  // getCurrentSession() re-checks owner-then-viewer on every read (the
+  // cookie stores the raw password itself, verified fresh each time), so
+  // this action only needs to confirm ONE of the two is valid before
+  // setting the cookie; which role that resolves to is decided there, not
+  // here.
+  if (!verifyDevPassword(password) && !verifyDevViewerPassword(password)) {
     redirect(`/sign-in?error=1&redirect_url=${encodeURIComponent(redirectUrl)}`);
   }
 
