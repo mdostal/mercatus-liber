@@ -23,11 +23,12 @@ export const metadata: Metadata = {
  *    fresh from process.env on every request, mirroring lib/services.ts's own
  *    env-reading branches exactly (see that module's own doc comment). This
  *    is genuinely what THIS running deployment chose, not a static claim.
- * 2. A per-demo persistence/inventory breakdown (per-demo-backend-diversity
- *    epic) -- unlike every other row above, catalog persistence and
- *    inventory are demo-aware, not process-wide: print-shop, northline, and
- *    broadleaf can each genuinely resolve to a different real database.
- *    This table proves it live, one row per real demo slug.
+ * 2. A per-demo persistence breakdown (per-demo-backend-diversity and
+ *    full-commerce-persistence-audit epics) -- unlike every other row above,
+ *    catalog persistence and the 14 subsystems built on top of it are
+ *    demo-aware, not process-wide: print-shop, northline, and broadleaf can
+ *    each genuinely resolve to a different real database. This table proves
+ *    it live, one row per subsystem, one column per real demo slug.
  * 3. A concrete walkthrough of the payments adapter as the flagship example
  *    of the swap pattern (packages/payments/src/types.ts's PaymentAdapter
  *    interface, packages/payments/src/stripe-adapter.ts, and the sandbox
@@ -55,20 +56,51 @@ export const metadata: Metadata = {
 // already read process.env fresh per-request by construction.
 export const dynamic = "force-dynamic";
 
+// full-commerce-persistence-audit epic: every subsystem lib/adapter-info.ts's
+// getAdapterInfo() now resolves per-demo (Persistence/Inventory from the
+// original per-demo-backend-diversity epic, plus the 13 newly-Postgres-wired
+// subsystems below) -- exactly the same subsystem name strings that module's
+// own catalogEntityInfo/cartInfo/etc. functions return, kept in one ordered
+// list here so this page's per-demo table (section 2) can render one row per
+// subsystem with each store as a column, rather than the reverse (a row per
+// store would mean 15 columns, unreadable at any width).
+const PER_DEMO_SUBSYSTEMS = [
+  "Persistence (catalog)",
+  "Inventory",
+  "Catalog (named entity)",
+  "Cart",
+  "Orders (checkout)",
+  "Customer profiles (account)",
+  "Promotions",
+  "Reviews",
+  "Storefront views",
+  "Bundles",
+  "Recommendations",
+  "Advertising (campaigns)",
+  "Service areas",
+  "Internal BI event log",
+  "Fulfillment routing",
+] as const;
+
 export default function ArchitecturePage() {
-  // Persistence/Inventory rendered separately below (per-demo, section 2) --
-  // every other row here is genuinely process-wide/shared, so a single
-  // no-arg call (falling back to the first registered demo internally, per
+  // Per-demo subsystems rendered separately below (section 2) -- every other
+  // row here is genuinely process-wide/shared, so a single no-arg call
+  // (falling back to the first registered demo internally, per
   // getAdapterInfo's own doc comment) is correct for THIS table.
-  const sharedAdapters = getAdapterInfo().filter(
-    (row) => row.subsystem !== "Persistence (catalog)" && row.subsystem !== "Inventory",
-  );
-  const perDemoRows = DEMO_SLUGS.map((slug) => {
-    const [persistence, inventory] = getAdapterInfo(slug).filter(
-      (row) => row.subsystem === "Persistence (catalog)" || row.subsystem === "Inventory",
-    );
-    return { slug, displayName: DEMO_REGISTRY[slug].displayName, persistence: persistence!, inventory: inventory! };
-  });
+  const perDemoSubsystemNames: readonly string[] = PER_DEMO_SUBSYSTEMS;
+  const sharedAdapters = getAdapterInfo().filter((row) => !perDemoSubsystemNames.includes(row.subsystem));
+  // One row per subsystem, one column per store -- transposed from a naive
+  // "one row per store" shape, which would need 15 columns (Persistence/
+  // Inventory plus the 13 subsystems the full-commerce-persistence-audit
+  // epic newly wired onto real Postgres) to be unreadable at any width.
+  const perDemoInfoBySlug = new Map(DEMO_SLUGS.map((slug) => [slug, getAdapterInfo(slug)]));
+  const perDemoSubsystemRows = PER_DEMO_SUBSYSTEMS.map((subsystem) => ({
+    subsystem,
+    bySlug: DEMO_SLUGS.map((slug) => ({
+      slug,
+      info: perDemoInfoBySlug.get(slug)!.find((row) => row.subsystem === subsystem)!,
+    })),
+  }));
 
   return (
     <div className="ml-shell mla-page">
@@ -94,8 +126,8 @@ export default function ArchitecturePage() {
           <code>lib/adapter-info.ts</code>&rsquo;s <code>getAdapterInfo()</code>) &mdash; not a static claim.
           <strong> All three demo stores on this deployment (print-shop, northline, broadleaf) share this
           exact wiring</strong>, since it&rsquo;s process-wide, not per-store: a real merchant configures these
-          env vars once for their own deployment. (Persistence and Inventory are the two exceptions &mdash;
-          see the per-demo table right below.)
+          env vars once for their own deployment. (Persistence and the 14 subsystems built on top of it are
+          the exceptions &mdash; see the per-demo table right below.)
         </p>
         <div className="mla-table-wrap">
           <table className="mla-table">
@@ -122,32 +154,38 @@ export default function ArchitecturePage() {
       </section>
 
       <section className="mla-section">
-        <h2>Persistence &amp; inventory, per demo store</h2>
+        <h2>Persistence, per demo store</h2>
         <p className="mla-lede">
-          Unlike every subsystem above, catalog persistence (and the inventory it shares a connection with)
-          is resolved separately per demo store (per-demo-backend-diversity epic) &mdash; each store can
+          Unlike every subsystem above, catalog persistence and the 14 subsystems built on top of it
+          (inventory, the named Catalog entity, cart, orders, customer profiles, promotions, reviews,
+          storefront views, bundles, recommendations, advertising, service areas, the internal BI event
+          log, and fulfillment routing) are each resolved separately per demo store
+          (per-demo-backend-diversity and full-commerce-persistence-audit epics) &mdash; each store can
           genuinely run a different real database, not one process-wide choice. This table proves it live,
-          computed fresh per demo on every request.
+          computed fresh per demo on every request; every one of these rows besides &ldquo;Persistence
+          (catalog)&rdquo; is Postgres-only in this pass (real Mongo/Convex/SQLite equivalents are out of
+          scope, see lib/services.ts&rsquo;s own doc comments), so each shows either &ldquo;Postgres&rdquo;
+          or the in-memory reference default.
         </p>
         <div className="mla-table-wrap">
           <table className="mla-table">
             <thead>
               <tr>
-                <th>Store</th>
-                <th>Persistence</th>
-                <th>Inventory</th>
+                <th>Subsystem</th>
+                {DEMO_SLUGS.map((slug) => (
+                  <th key={slug}>{DEMO_REGISTRY[slug].displayName}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {perDemoRows.map((row) => (
-                <tr key={row.slug}>
-                  <td className="mla-subsystem">{row.displayName}</td>
-                  <td>
-                    <span className="mla-badge">{row.persistence.adapter}</span>
-                  </td>
-                  <td>
-                    <span className="mla-badge">{row.inventory.adapter}</span>
-                  </td>
+              {perDemoSubsystemRows.map((row) => (
+                <tr key={row.subsystem}>
+                  <td className="mla-subsystem">{row.subsystem}</td>
+                  {row.bySlug.map(({ slug, info }) => (
+                    <td key={slug}>
+                      <span className="mla-badge">{info.adapter}</span>
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

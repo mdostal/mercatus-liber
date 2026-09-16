@@ -322,16 +322,193 @@ function inventoryInfo(demoSlug: DemoSlug): AdapterInfo {
 }
 
 /**
- * Returns eight entries describing this instance's actual adapter wiring,
- * computed fresh from process.env on every call. Persistence/Inventory are
- * demo-aware (per-demo-backend-diversity epic) -- pass the real demoSlug a
- * caller is rendering for (every per-demo caller does: each store's own
- * `/start` page, `/admin/settings`). Omitting `demoSlug` is ONLY for
- * `/architecture`, a genuinely demo-agnostic page with no single demoSlug
- * of its own -- see that page's own per-demo breakdown table, built from
- * `getAdapterInfo(slug)` called once per real demo slug, not this
- * no-arg form's Persistence/Inventory rows (which fall back to the first
- * registered demo purely so the function still returns a complete,
+ * full-commerce-persistence-audit epic: generic helper for the 13 subsystems
+ * below that all share the exact same "Postgres when this demo resolves to
+ * DATABASE_URL, else the in-memory reference implementation" shape as
+ * `inventoryInfo` above -- unlike `persistenceInfo` (which has real
+ * Mongo/Convex/SQLite branches too), these 13 are Postgres-only in this pass
+ * (matching lib/services.ts's own wiring -- see that module's doc comment on
+ * each repository), so a single two-branch helper covers all of them rather
+ * than repeating the same env check 13 times.
+ */
+function pgOrInMemoryInfo(
+  demoSlug: DemoSlug,
+  subsystem: string,
+  postgresFactories: string,
+  inMemoryFactories: string,
+  inMemoryPackage: string,
+): AdapterInfo {
+  const env = resolveDemoPersistenceEnv(demoSlug);
+
+  if (env.databaseUrl) {
+    return {
+      subsystem,
+      adapter: "Postgres",
+      detail: `This demo resolves to Postgres -- ${postgresFactories} (packages/adapter-postgres), sharing the same connection pool catalog persistence already opened for this URL`,
+      status: "active",
+    };
+  }
+
+  return {
+    subsystem,
+    adapter: "In-memory (reference default)",
+    detail: `This demo isn't resolving to Postgres -- ${inMemoryFactories} (${inMemoryPackage}), a deliberately valid, fully-functional default in this app's own posture, not an error state`,
+    status: "active",
+  };
+}
+
+/**
+ * full-commerce-persistence-audit epic: the 13 subsystems newly wired onto
+ * real Postgres persistence in lib/services.ts's buildServices() (see that
+ * module's own doc comments at each repository) -- demo-aware, same as
+ * persistenceInfo/inventoryInfo above, since each store resolves its own
+ * DATABASE_URL independently (per-demo-backend-diversity epic).
+ */
+function catalogEntityInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Catalog (named entity)",
+    "createPostgresCatalogRepository()/createPostgresProductCatalogRepository()",
+    "createInMemoryCatalogRepository()/createInMemoryProductCatalogRepository()",
+    "packages/catalog",
+  );
+}
+
+function cartInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Cart",
+    "createPostgresCartRepository()",
+    "createInMemoryCartRepository()",
+    "packages/cart",
+  );
+}
+
+function ordersInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Orders (checkout)",
+    "createPostgresOrderRepository()",
+    "createInMemoryOrderRepository()",
+    "packages/checkout-orders",
+  );
+}
+
+function customerProfilesInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Customer profiles (account)",
+    "createPostgresCustomerProfileRepository()",
+    "createInMemoryCustomerProfileRepository()",
+    "packages/account",
+  );
+}
+
+function promotionsInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Promotions",
+    "createPostgresPromotionRepository()",
+    "createInMemoryPromotionRepository()",
+    "packages/promotions",
+  );
+}
+
+function reviewsInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Reviews",
+    "createPostgresReviewRepository()",
+    "createInMemoryReviewRepository()",
+    "packages/reviews",
+  );
+}
+
+function storefrontViewsInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Storefront views",
+    "createPostgresStorefrontViewRepository()",
+    "createInMemoryStorefrontViewRepository()",
+    "packages/storefront-views",
+  );
+}
+
+function bundlesInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Bundles",
+    "createPostgresBundleRepository()",
+    "createInMemoryBundleRepository()",
+    "packages/bundles",
+  );
+}
+
+function recommendationsInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Recommendations",
+    "createPostgresRecommendationRepository()",
+    "createInMemoryRecommendationRepository()",
+    "packages/recommendations",
+  );
+}
+
+function advertisingInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Advertising (campaigns)",
+    "createPostgresCampaignRepository()",
+    "createInMemoryCampaignRepository()",
+    "packages/advertising",
+  );
+}
+
+function serviceAreasInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Service areas",
+    "createPostgresServiceAreaRepository()/createPostgresServiceAreaProductRepository()",
+    "createInMemoryServiceAreaRepository()/createInMemoryServiceAreaProductRepository()",
+    "packages/service-areas",
+  );
+}
+
+function biEventLogInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Internal BI event log",
+    "createPostgresBiEventLogRepository()",
+    "createInMemoryBiEventLogRepository()",
+    "packages/internal-bi",
+  );
+}
+
+function fulfillmentRoutingInfo(demoSlug: DemoSlug): AdapterInfo {
+  return pgOrInMemoryInfo(
+    demoSlug,
+    "Fulfillment routing",
+    "createPostgresFulfillmentRoutingRepository()",
+    "createInMemoryFulfillmentRoutingRepository()",
+    "packages/fulfillment",
+  );
+}
+
+/**
+ * Returns twenty-one entries describing this instance's actual adapter
+ * wiring, computed fresh from process.env on every call. Persistence/
+ * Inventory, plus the 13 subsystems the full-commerce-persistence-audit
+ * epic newly wired onto real Postgres (Catalog entity, Cart, Orders,
+ * Customer profiles, Promotions, Reviews, Storefront views, Bundles,
+ * Recommendations, Advertising, Service areas, Internal BI event log,
+ * Fulfillment routing), are all demo-aware (per-demo-backend-diversity
+ * epic) -- pass the real demoSlug a caller is rendering for (every per-demo
+ * caller does: each store's own `/start` page, `/admin/settings`). Omitting
+ * `demoSlug` is ONLY for `/architecture`, a genuinely demo-agnostic page
+ * with no single demoSlug of its own -- see that page's own per-demo
+ * breakdown table, built from `getAdapterInfo(slug)` called once per real
+ * demo slug, not this no-arg form's per-demo rows (which fall back to the
+ * first registered demo purely so the function still returns a complete,
  * non-crashing AdapterInfo[] if ever called with no argument).
  */
 export function getAdapterInfo(demoSlug?: DemoSlug): AdapterInfo[] {
@@ -345,5 +522,18 @@ export function getAdapterInfo(demoSlug?: DemoSlug): AdapterInfo[] {
     shippingInfo(),
     mediaInfo(),
     inventoryInfo(resolvedSlug),
+    catalogEntityInfo(resolvedSlug),
+    cartInfo(resolvedSlug),
+    ordersInfo(resolvedSlug),
+    customerProfilesInfo(resolvedSlug),
+    promotionsInfo(resolvedSlug),
+    reviewsInfo(resolvedSlug),
+    storefrontViewsInfo(resolvedSlug),
+    bundlesInfo(resolvedSlug),
+    recommendationsInfo(resolvedSlug),
+    advertisingInfo(resolvedSlug),
+    serviceAreasInfo(resolvedSlug),
+    biEventLogInfo(resolvedSlug),
+    fulfillmentRoutingInfo(resolvedSlug),
   ];
 }
