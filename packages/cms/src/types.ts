@@ -47,10 +47,37 @@ export interface MarketingPageMetaRepository {
   save(meta: MarketingPageMeta): Promise<void>;
 }
 
+/**
+ * Describes one key a component type's opaque `config` object is expected
+ * to carry -- metadata for an authoring UI (or a future validator) to build
+ * against, NOT a runtime contract: ComponentInstance.config stays a plain
+ * `Record<string, unknown>` regardless of what's declared here. `kind` is a
+ * closed set of primitive/reference shapes; a field whose real data is a
+ * list (e.g. an array of product ids) still uses the singular ref kind for
+ * "what each item is" -- there's no separate list flag, by design, to keep
+ * this shape simple and predictable for downstream consumers (see
+ * component-registry.ts's fields[] for the grounded examples).
+ */
+export interface ComponentFieldSchema {
+  key: string;
+  label: string;
+  kind: "text" | "richtext" | "image" | "productRef" | "categoryRef" | "number" | "boolean";
+  required?: boolean;
+  helpText?: string;
+}
+
 export interface ComponentDefinition {
   type: string;
   label: string;
   description: string;
+  /**
+   * Optional per-type field schema, additive metadata only -- omitted
+   * entirely, an empty array, and a populated array are all valid (ad-slot
+   * below is legitimately empty: its config is never read by the render
+   * layer, see components/cms-sections.tsx's AdSlot, which resolves its
+   * content from the advertising service instead).
+   */
+  fields?: ComponentFieldSchema[];
 }
 
 export interface ComponentRegistry {
