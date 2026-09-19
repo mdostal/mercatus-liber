@@ -7,6 +7,7 @@ import { NavBlueprintBar } from "../../../components/nav-blueprint-bar";
 import { NavRail } from "../../../components/nav-rail";
 import { NavTopBar } from "../../../components/nav-top-bar";
 import { DEMO_REGISTRY, DEMO_SLUGS, isDemoSlug, type DemoSlug } from "../../../lib/demos";
+import { resolvePageTemplateOverride } from "../../../lib/resolve-page-template";
 import { getServicesForDemo } from "../../../lib/services";
 import { readActiveThemeBundle } from "../../../lib/theme-cookie";
 
@@ -163,12 +164,12 @@ export default async function DemoLayout({
     displayName: DEMO_REGISTRY[slug].displayName,
   }));
 
-  // design-system-v2-02: resolve the "nav" page type's template the exact
-  // same way products/[slug]/page.tsx resolves "pdp" -- the active theme
-  // bundle's own defaultTemplatesByPageType.nav is passed as the explicit
-  // override (undefined for the 7 pre-existing bundles, which don't define
-  // one, so resolveTemplate falls back to its own first-registered-template
-  // default, "nav.top-bar" -- see packages/theming/src/service.ts).
+  // design-system-v2-02 / scc-04: resolve the "nav" page type's template via
+  // resolvePageTemplateOverride's shared precedence (lib/resolve-page-template.ts)
+  // -- an admin's own per-page-type override (content-layout dashboard) wins,
+  // else the active theme bundle's own defaultTemplatesByPageType.nav
+  // (undefined for the 7 pre-existing bundles, which don't define one), else
+  // resolveTemplate's own first-registered-template default, "nav.top-bar".
   const { theming, storefrontViews } = await getServicesForDemo(demoSlug);
   // storefront-views-and-multi-catalog epic: a real, live-data-driven
   // discoverability fix -- a permanent second storefront (isDefaultOverride:
@@ -181,7 +182,7 @@ export default async function DemoLayout({
   const discoverableViews = (await storefrontViews.listViews(demoSlug)).filter(
     (view) => view.status === "active" && !view.isDefaultOverride,
   );
-  const navTemplateKey = theming.resolveTemplate("nav", activeTheme.defaultTemplatesByPageType.nav);
+  const navTemplateKey = theming.resolveTemplate("nav", resolvePageTemplateOverride(theming, "nav", activeTheme));
   const NavChrome: ComponentType<NavChromeProps> =
     (navTemplateKey && NAV_TEMPLATES[navTemplateKey as keyof typeof NAV_TEMPLATES]) || NavTopBar;
   const isRailNav = navTemplateKey === "nav.rail";

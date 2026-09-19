@@ -152,6 +152,10 @@ export function createThemingService(initial?: {
       defaultsByPageType.set(pageType, templateKey);
     },
 
+    getConfiguredDefault(pageType) {
+      return defaultsByPageType.get(pageType) ?? null;
+    },
+
     getTokens() {
       return { ...tokens };
     },

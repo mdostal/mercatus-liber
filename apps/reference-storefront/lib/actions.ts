@@ -19,6 +19,7 @@ import type { CreatePromotionInput } from "@mercatus-liber/promotions";
 import type { CreateRuleInput } from "@mercatus-liber/recommendations";
 import type { NewStorefrontViewInput } from "@mercatus-liber/storefront-views";
 import { getOrCreateCartId, readCartId } from "./cart-cookie";
+import { CONTENT_LAYOUT_PAGE_TYPES } from "./content-layout-status";
 import { readCouponCode, setCouponCode } from "./coupon-cookie";
 import { getOrCreateCustomerId } from "./customer-cookie";
 import { isDemoSlug, type DemoSlug } from "./demos";
@@ -269,6 +270,48 @@ export async function setThemeAction(formData: FormData): Promise<void> {
   // the demo-agnostic landing page's layout (app/(landing)/layout.tsx),
   // which don't read this cookie at all.
   revalidatePath(`/demo/${demoSlug}`, "layout");
+}
+
+/**
+ * scc-04 (content-layout dashboard): the per-page-type sibling of
+ * applyThemeAction/setThemeAction above -- those two mutate a WHOLE theme
+ * bundle (tokens + every page type's template) via a cookie; this calls
+ * ThemingService.setDefaultTemplate for JUST one page type, additive on top
+ * of the whole-bundle picker (never replacing it). See
+ * lib/resolve-page-template.ts's own doc comment for exactly how the two
+ * compose at render time: this per-page-type pick wins over the active
+ * bundle's own pick for that one page type, but a page type with no admin
+ * override still follows the active bundle exactly as before this story.
+ * Mutates the demo's own memoized ThemingService singleton (servicesByDemo
+ * in lib/services.ts), so it persists across requests, same as every other
+ * admin mutation in this file -- no separate persistence layer needed.
+ * `templateKey` is validated against `theming.listTemplates(pageType)`
+ * (not just any string) so a malformed/stale form submission can't silently
+ * set a dangling template key nothing ever renders.
+ */
+export async function setPageTemplateAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+
+  const pageType = String(formData.get("pageType") ?? "").trim();
+  if (!CONTENT_LAYOUT_PAGE_TYPES.some((row) => row.pageType === pageType)) {
+    throw new Error(`Invalid page type: ${JSON.stringify(pageType)}`);
+  }
+
+  const { theming } = await getServicesForDemo(demoSlug);
+  const templateKey = String(formData.get("templateKey") ?? "").trim();
+  const validKeys = theming.listTemplates(pageType).map((t) => t.key);
+  if (!validKeys.includes(templateKey)) {
+    throw new Error(`Invalid template key ${JSON.stringify(templateKey)} for page type ${JSON.stringify(pageType)}.`);
+  }
+
+  theming.setDefaultTemplate(pageType, templateKey);
+  // A page-type template change ripples across every page of that type
+  // (every category page, every PDP, the whole nav chrome, ...) -- same
+  // broad "whole demo layout" revalidation setThemeAction/
+  // resetDemoDataAction already use for a similarly cross-cutting change.
+  revalidatePath(`/demo/${demoSlug}`, "layout");
+  revalidatePath(`/demo/${demoSlug}/admin/content-layout`);
 }
 
 /**

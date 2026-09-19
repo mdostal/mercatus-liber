@@ -10,6 +10,7 @@ import { CategoryStandardGrid } from "../../../../../components/category-standar
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { isDemoSlug, type DemoSlug } from "../../../../../lib/demos";
 import { breadcrumbList, JsonLd, type BreadcrumbItem } from "../../../../../lib/json-ld";
+import { resolvePageTemplateOverride } from "../../../../../lib/resolve-page-template";
 import { getServicesForDemo } from "../../../../../lib/services";
 import { canonicalUrl } from "../../../../../lib/site-url";
 import { readActiveThemeBundle } from "../../../../../lib/theme-cookie";
@@ -104,13 +105,13 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
     };
   }
 
-  // Same override-from-active-bundle pattern PDP already uses: the active
-  // theme bundle's own defaultTemplatesByPageType.category is passed as the
-  // explicit override (undefined for the 7 pre-existing bundles, which
-  // don't define one, so resolveTemplate falls back to its own
-  // first-registered-template default, "category.standard-grid").
+  // scc-04: resolvePageTemplateOverride's shared precedence (lib/resolve-page-template.ts)
+  // -- an admin's own per-page-type override (content-layout dashboard) wins,
+  // else the active theme bundle's own defaultTemplatesByPageType.category
+  // (undefined for the 7 pre-existing bundles, which don't define one), else
+  // resolveTemplate's own first-registered-template default, "category.standard-grid".
   const activeTheme = await readActiveThemeBundle(demoSlug);
-  const templateKey = theming.resolveTemplate("category", activeTheme.defaultTemplatesByPageType.category);
+  const templateKey = theming.resolveTemplate("category", resolvePageTemplateOverride(theming, "category", activeTheme));
   const Template: ComponentType<{
     demoSlug: DemoSlug;
     products: Product[];

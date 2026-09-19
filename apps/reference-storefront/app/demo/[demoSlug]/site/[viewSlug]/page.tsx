@@ -5,6 +5,7 @@ import { isViewLive } from "@mercatus-liber/storefront-views";
 import { HOME_TEMPLATES, HomeStandardGrid } from "../../../../../lib/home-templates";
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { isDemoSlug, type DemoSlug } from "../../../../../lib/demos";
+import { resolvePageTemplateOverride } from "../../../../../lib/resolve-page-template";
 import { buildViewSections } from "../../../../../lib/storefront-view-sections";
 import { getServicesForDemo } from "../../../../../lib/services";
 import { canonicalUrl } from "../../../../../lib/site-url";
@@ -68,7 +69,10 @@ export default async function StorefrontViewPage({
   const baseTheme = await readActiveThemeBundle(demoSlug);
   const { sections, theme: activeTheme } = await buildViewSections({ marketingCatalog }, view, baseTheme);
 
-  const templateKey = theming.resolveTemplate("home", activeTheme.defaultTemplatesByPageType.home);
+  // scc-04: same resolvePageTemplateOverride composition page.tsx's own home
+  // page uses -- an admin's own "home" page-type override (content-layout
+  // dashboard) wins over this view's own resolved theme too.
+  const templateKey = theming.resolveTemplate("home", resolvePageTemplateOverride(theming, "home", activeTheme));
   const Template: ComponentType<{ demoSlug: DemoSlug; sections: typeof sections }> =
     (templateKey && HOME_TEMPLATES[templateKey as keyof typeof HOME_TEMPLATES]) || HomeStandardGrid;
 
