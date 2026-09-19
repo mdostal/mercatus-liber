@@ -1,7 +1,7 @@
 import type { AdminSession } from "@mercatus-liber/admin-auth";
 import type { CmsService } from "@mercatus-liber/cms";
 import type { ThemingService } from "@mercatus-liber/theming";
-import type { SanityContextClient } from "./sanity-context-client.js";
+import type { SanityContextClient } from "./sanity-context-client";
 
 /**
  * scc-06's deliberately narrow first scope (design-discussion.md #2e): the

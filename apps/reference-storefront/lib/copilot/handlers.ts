@@ -1,7 +1,7 @@
 import { needsConfirmation, pendingConfirmation } from "@mercatus-liber/ai-interface";
 import type { ComponentInstance } from "@mercatus-liber/cms";
-import { requireMutatePermission } from "./permission.js";
-import type { CopilotToolDeps, HeroCopyCandidate, ProposalShape, TemplateSwapCandidate, ToolResult } from "./types.js";
+import { requireMutatePermission } from "./permission";
+import type { CopilotToolDeps, HeroCopyCandidate, ProposalShape, TemplateSwapCandidate, ToolResult } from "./types";
 
 export type ToolHandler = (input: Record<string, unknown>) => Promise<ToolResult>;
 

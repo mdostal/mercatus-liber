@@ -1,8 +1,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { AnthropicClient } from "./anthropic-client.js";
-import { createCopilotToolHandlers } from "./handlers.js";
-import { TOOL_DEFINITIONS, toAnthropicTools } from "./tool-definitions.js";
-import type { CopilotToolDeps, ToolResult } from "./types.js";
+import type { AnthropicClient } from "./anthropic-client";
+import { createCopilotToolHandlers } from "./handlers";
+import { TOOL_DEFINITIONS, toAnthropicTools } from "./tool-definitions";
+import type { CopilotToolDeps, ToolResult } from "./types";
 
 export interface CopilotTurnInput {
   /** The admin's free-text request, e.g. "make the home page hero more seasonal". */

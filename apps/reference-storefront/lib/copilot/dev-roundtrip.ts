@@ -35,9 +35,9 @@ import type { AdminSession } from "@mercatus-liber/admin-auth";
 import { createCmsService, createComponentRegistry, createInMemoryCmsAdapter } from "@mercatus-liber/cms";
 import { createThemingService } from "@mercatus-liber/theming";
 import type Anthropic from "@anthropic-ai/sdk";
-import { createAnthropicClient, type AnthropicClient } from "./anthropic-client.js";
-import { createSanityContextClient } from "./sanity-context-client.js";
-import { runCopilotTurn } from "./loop.js";
+import { createAnthropicClient, type AnthropicClient } from "./anthropic-client";
+import { createSanityContextClient } from "./sanity-context-client";
+import { runCopilotTurn } from "./loop";
 
 function log(...args: unknown[]): void {
   // eslint-disable-next-line no-console
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
 
   // --- 5. Rejection paths, proven directly against the same handlers the loop uses ---
   log("\n--- Rejection paths (mirrors requireAdminPermission's own discipline) ---");
-  const { createCopilotToolHandlers } = await import("./handlers.js");
+  const { createCopilotToolHandlers } = await import("./handlers");
   const viewerHandlers = createCopilotToolHandlers({ cms, theming, session: sessionFor("viewer") });
   try {
     await viewerHandlers.apply_option!({ shape: "swap_hero_copy", pageType: "home", slug: "home", chosen: { headline: "nope" }, confirm: true });
