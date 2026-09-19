@@ -1,0 +1,19 @@
+{
+  "$comment": "Registers this repo's two MCP tool sources for a Claude Code session opened at the repo root -- see .claude/skills/sanity-content/SKILL.md for usage of the 'sanity' entry, and docs/subsystems/14-ai-mcp-interface.md for the 'reference-storefront-commerce' entry.",
+  "mcpServers": {
+    "reference-storefront-commerce": {
+      "$comment": "This repo's own stdio MCP server (apps/reference-storefront/mcp-server.ts, package.json script 'mcp'). Previously only reachable by manually running `pnpm mcp` in apps/reference-storefront and wiring an external client at it by hand -- this entry makes it available automatically in any Claude Code session opened at the repo root, alongside Sanity's remote server below. Fixed to the 'print-shop' demo (see mcp-server.ts's own comment on why this stdio entry point isn't demoSlug-aware).",
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["--filter", "@mercatus-liber/reference-storefront", "mcp"]
+    },
+    "sanity": {
+      "$comment": "Sanity's real, hosted remote MCP server -- GROQ query, document CRUD, schema inspection/deploy, Content Releases, asset upload, semantic search over embeddings. Auth via the same SANITY_TOKEN this repo's own CMS backend already uses (apps/reference-storefront/lib/services.ts) when SANITY_PROJECT_ID is set -- see SKILL.md's Notes for the token's actual scope and how to set it. Falls back to Sanity's own OAuth flow on first use if SANITY_TOKEN is unset.",
+      "type": "http",
+      "url": "https://mcp.sanity.io",
+      "headers": {
+        "Authorization": "Bearer ${SANITY_TOKEN}"
+      }
+    }
+  }
+}
