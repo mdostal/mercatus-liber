@@ -1,0 +1,61 @@
+id: scc-04-content-layout-dashboard
+epic: sanity-challenge-commerce-copilot
+title: Build the Content & Layout admin dashboard (CMS sections + theming templates, connected)
+status: pending
+complexity: high
+methodology: classic
+depends_on: [scc-03-schema-typed-section-editor]
+
+description: |
+  packages/theming's LayoutTemplate/ThemingService.resolveTemplate/setDefaultTemplate system and
+  packages/cms's Page/ComponentInstance system are today completely disconnected -- theming only
+  has a single whole-bundle picker at a separate top-level /themes page (applyThemeAction writes a
+  cookie), with no per-page-type independent override UI, and no admin surface ties it to CMS
+  sections at all. This story builds the first real connection: a new admin page (e.g.
+  admin/content-layout) that, per page type (nav/home/category/cart/pdp), shows the current
+  LayoutTemplate (via theming.resolveTemplate) with a real picker calling setDefaultTemplate for
+  JUST that page type (not the whole bundle), plus that page type's real CMS sections inline using
+  scc-03's new schema-typed editor. This is the literal answer to the user's "build dashboards and
+  swap around areas and layouts" ask -- follow every existing admin-dashboard convention exactly
+  (plain async RSC per admin/metrics/page.tsx's shape, requireAdminPermission("mutate")-gated
+  actions in lib/actions.ts, an adapter-info.ts-style status row showing which template is active
+  per page type, a hardcoded <li> added to admin/page.tsx's nav).
+
+acceptance_criteria:
+  - "Given the new dashboard page, when an admin opens it for a demo, then it shows every page type's current LayoutTemplate and lets them independently set a different one for just that page type (not the whole bundle) via a real requireAdminPermission-gated action"
+  - "Given the same dashboard, when a page type has CMS sections, then those sections render inline using scc-03's schema-typed editor, editable and savable from the same page"
+  - "Given an admin swaps a page type's template, when the public storefront is visited for that demo, then the change is genuinely live -- verified against a real dev server, not just the admin page reflecting the change"
+  - "Given the existing whole-bundle /themes picker, when this story lands, then it still works unchanged (this is additive -- a per-page-type override on top, not a replacement)"
+
+steps:
+  - id: research
+    description: Read ThemingService.resolveTemplate/setDefaultTemplate, the /themes page's applyThemeAction, and admin/metrics/page.tsx (the RSC/no-chart-lib convention to mirror) in full.
+    agent: researcher
+  - id: implement
+    description: Build admin/content-layout/page.tsx and its supporting lib/actions.ts mutation(s), following the exact conventions cited above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Add tests covering the new per-page-type template-override action, mirroring existing admin-action test conventions.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review that the whole-bundle /themes path is genuinely unaffected and the new per-page-type override composes correctly with it.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/sanity-challenge-commerce-copilot. Live-verify against a real dev server per acceptance criteria before closing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/theming/src/service.ts
+      purpose: "resolveTemplate/setDefaultTemplate -- the real plumbing this dashboard exposes an admin UI for"
+    - path: apps/reference-storefront/app/(landing)/themes/page.tsx
+      purpose: "The existing whole-bundle picker (applyThemeAction) -- must stay working unchanged"
+    - path: apps/reference-storefront/app/demo/[demoSlug]/admin/metrics/page.tsx
+      purpose: "The plain-RSC, no-chart-lib, Promise.all-in-body admin-dashboard convention to mirror exactly"
+    - path: apps/reference-storefront/lib/adapter-info.ts
+      purpose: "The 'computed-fresh-per-subsystem status row' convention this dashboard's template-status display should follow"
