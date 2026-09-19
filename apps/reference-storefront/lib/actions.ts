@@ -14,7 +14,7 @@ import {
 } from "@mercatus-liber/admin-auth";
 import type { BundleTier, CreateBundleInput } from "@mercatus-liber/bundles";
 import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising";
-import type { ComponentInstance, PageType } from "@mercatus-liber/cms";
+import type { ComponentDefinition, ComponentFieldSchema, ComponentInstance, PageType } from "@mercatus-liber/cms";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
 import type { CreateRuleInput } from "@mercatus-liber/recommendations";
 import type { NewStorefrontViewInput } from "@mercatus-liber/storefront-views";
@@ -616,36 +616,110 @@ const CMS_SECTION_SLOTS = 6;
 /** The non-"marketing" PageType values -- marketing pages go through createMarketingPageAction instead (see design-discussion.md §3). */
 const CMS_PAGE_TYPES: readonly PageType[] = ["home", "category", "search", "pdp", "location"];
 
+/** Matches CmsSectionFields' `fieldInputName` helper exactly -- must stay in sync with that component's field input `name`s. */
+function cmsFieldInputName(slotIndex: number, key: string): string {
+  return `section_${slotIndex}_field_${key}`;
+}
+
 /**
- * Parses the CMS admin forms' fixed, indexed section slots
- * (section_0_componentType/section_0_config, section_1_..., ...) shared by
- * the new-page, new-marketing-page, and edit forms -- mirrors
+ * scc-02's ComponentFieldSchema has no separate "this text field is really a
+ * list" flag by design (see packages/cms/src/types.ts's own doc comment) --
+ * every field whose real grounded usage is a list (see component-registry.ts's
+ * fields[]) documents that in its own helpText with the word "array"
+ * (categorySlugs/productIds/servicesOffered all do; scalar fields like
+ * headline/subheadline/hours/blurb never do). Mirrored exactly from
+ * CmsSectionFields.tsx's own isListTextField -- both sides of this form must
+ * agree on which fields are comma/newline-separated lists.
+ */
+function isListTextField(field: ComponentFieldSchema): boolean {
+  return (field.kind === "text" || field.kind === "richtext") && !!field.helpText && /array/i.test(field.helpText);
+}
+
+/**
+ * Reads one field's typed input(s) out of `formData` for the given slot,
+ * per scc-02's ComponentFieldSchema `kind` -- returns `undefined` when the
+ * field should be omitted from the resulting config object entirely (a
+ * blank/empty optional field), matching how a careful raw-JSON author would
+ * simply leave an unused key out. Booleans and required-but-typed-empty
+ * numbers are the only kinds that can legitimately resolve to a defined
+ * "empty" value (false / not provided) rather than being omitted.
+ */
+function parseCmsFieldValue(formData: FormData, slotIndex: number, field: ComponentFieldSchema): unknown {
+  const name = cmsFieldInputName(slotIndex, field.key);
+  switch (field.kind) {
+    case "boolean":
+      // Checkbox: present in FormData only when checked.
+      return formData.get(name) != null;
+
+    case "number": {
+      const raw = String(formData.get(name) ?? "").trim();
+      if (raw.length === 0) return undefined;
+      const num = Number(raw);
+      return Number.isNaN(num) ? undefined : num;
+    }
+
+    case "categoryRef":
+    case "productRef": {
+      // Real, grounded usage (component-registry.ts's fields[]): every
+      // categoryRef/productRef field here is an ARRAY of references
+      // (categorySlugs/productIds), never a single one -- the <select
+      // multiple> this pairs with (CmsSectionFields.tsx) submits one
+      // FormData entry per chosen option under this same name.
+      const values = formData
+        .getAll(name)
+        .map((v) => String(v).trim())
+        .filter((v) => v.length > 0);
+      return values.length > 0 ? values : undefined;
+    }
+
+    case "text":
+    case "richtext":
+    case "image":
+    default: {
+      const raw = String(formData.get(name) ?? "");
+      if (isListTextField(field)) {
+        const values = raw
+          .split(/[,\n]/)
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0);
+        return values.length > 0 ? values : undefined;
+      }
+      const trimmed = raw.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }
+  }
+}
+
+/**
+ * Parses the CMS admin forms' fixed, indexed section slots (
+ * section_0_componentType, section_0_field_<key>, section_1_..., ...)
+ * shared by the new-page, new-marketing-page, and edit forms -- mirrors
  * parseBundleFormData's tier-slot convention. A slot with a blank
  * componentType is treated as unused and omitted from the result.
  *
- * ComponentInstance's config is Record<string, unknown> by design (opaque
- * to CMS itself -- see docs/subsystems/05-cms-pages.md), so each slot's
- * config textarea is raw JSON. A slot's JSON parse failure throws a clear,
- * specific error naming that slot (1-indexed, matching the UI's "Section N"
- * label) and its componentType, rather than a generic crash -- this is the
- * one place in this parser where a caller-facing mistake must be
- * distinguishable from every other slot's mistake.
+ * scc-03: replaces the old whole-slot raw-JSON textarea/JSON.parse with
+ * real per-field parsing driven by scc-02's ComponentFieldSchema
+ * (`componentTypes`, from `cms.components.list()`) -- each slot's
+ * componentType looks up that type's `fields[]` and reads one named input
+ * per field (see CmsSectionFields.tsx, which renders those same names),
+ * reassembling `config` from them. A componentType with no matching
+ * definition (shouldn't happen -- the <select> is populated from this same
+ * `componentTypes` list) or an empty `fields[]` (ad-slot, deliberately)
+ * simply yields `config: {}`, the same shape the old raw-JSON editor
+ * produced for that case.
  */
-function parseCmsSectionFormData(formData: FormData): ComponentInstance[] {
+function parseCmsSectionFormData(formData: FormData, componentTypes: ComponentDefinition[]): ComponentInstance[] {
   const sections: ComponentInstance[] = [];
   for (let i = 0; i < CMS_SECTION_SLOTS; i++) {
     const componentType = String(formData.get(`section_${i}_componentType`) ?? "").trim();
     if (componentType.length === 0) continue;
 
-    const configRaw = String(formData.get(`section_${i}_config`) ?? "").trim();
-    let config: Record<string, unknown> = {};
-    if (configRaw.length > 0) {
-      try {
-        config = JSON.parse(configRaw) as Record<string, unknown>;
-      } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err);
-        throw new Error(`Section ${i + 1} (${componentType}): invalid JSON config -- ${reason}`);
-      }
+    const definition = componentTypes.find((def) => def.type === componentType);
+    const fields = definition?.fields ?? [];
+    const config: Record<string, unknown> = {};
+    for (const field of fields) {
+      const value = parseCmsFieldValue(formData, i, field);
+      if (value !== undefined) config[field.key] = value;
     }
     sections.push({ componentType, config });
   }
@@ -667,9 +741,9 @@ export async function createCmsPageAction(formData: FormData): Promise<void> {
   const pageType = parseCmsPageType(formData);
   const slug = String(formData.get("slug") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
-  const sections = parseCmsSectionFormData(formData);
 
   const { cms } = await getServicesForDemo(demoSlug);
+  const sections = parseCmsSectionFormData(formData, cms.components.list());
   await cms.createPage({ pageType, slug, title, sections });
   revalidatePath(`/demo/${demoSlug}/admin/cms`);
   redirect(`/demo/${demoSlug}/admin/cms`);
@@ -688,9 +762,9 @@ export async function createMarketingPageAction(formData: FormData): Promise<voi
     .split(",")
     .map((productId) => productId.trim())
     .filter((productId) => productId.length > 0);
-  const sections = parseCmsSectionFormData(formData);
 
   const { cms } = await getServicesForDemo(demoSlug);
+  const sections = parseCmsSectionFormData(formData, cms.components.list());
   await cms.createMarketingPage({
     slug,
     title,
@@ -711,9 +785,9 @@ export async function updateCmsPageAction(formData: FormData): Promise<void> {
 
   const id = String(formData.get("id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
-  const sections = parseCmsSectionFormData(formData);
 
   const { cms } = await getServicesForDemo(demoSlug);
+  const sections = parseCmsSectionFormData(formData, cms.components.list());
   await cms.updatePage(id, { title, sections });
   revalidatePath(`/demo/${demoSlug}/admin/cms`);
   redirect(`/demo/${demoSlug}/admin/cms`);

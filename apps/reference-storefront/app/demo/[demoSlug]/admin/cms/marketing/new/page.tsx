@@ -17,8 +17,11 @@ export const dynamic = "force-dynamic";
 export default async function NewMarketingCmsPagePage({ params }: { params: Promise<{ demoSlug: string }> }) {
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const { cms } = await getServicesForDemo(demoSlug);
+  const { cms, catalog, marketingCatalog } = await getServicesForDemo(demoSlug);
   const componentTypes = cms.components.list();
+  const [categories, products] = await Promise.all([marketingCatalog.listCategories(), catalog.listProducts()]);
+  const categoryOptions = categories.map((c) => ({ value: c.slug, label: `${c.title} (${c.slug})` }));
+  const productOptions = products.map((p) => ({ value: p.id, label: `${p.title} (${p.slug})` }));
 
   return (
     <main>
@@ -70,7 +73,7 @@ export default async function NewMarketingCmsPagePage({ params }: { params: Prom
             <input type="text" name="productIds" />
           </label>
         </p>
-        <CmsSectionFields componentTypes={componentTypes} />
+        <CmsSectionFields componentTypes={componentTypes} categoryOptions={categoryOptions} productOptions={productOptions} />
         <p>
           <button type="submit">Create marketing page</button>
         </p>
