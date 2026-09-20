@@ -11,9 +11,11 @@
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "mcp": "tsx mcp-server.ts"
+    "mcp": "tsx mcp-server.ts",
+    "copilot:roundtrip": "tsx lib/copilot/dev-roundtrip.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.127.0",
     "@clerk/nextjs": "^7.9.1",
     "@mercatus-liber/account": "workspace:*",
     "@mercatus-liber/adapter-clerk": "workspace:*",

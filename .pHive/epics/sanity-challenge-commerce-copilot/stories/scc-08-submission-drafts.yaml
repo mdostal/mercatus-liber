@@ -1,0 +1,52 @@
+id: scc-08-submission-drafts
+epic: sanity-challenge-commerce-copilot
+title: Draft both Sanity Challenge submission write-ups (local files only, never published)
+status: pending
+complexity: low
+methodology: classic
+depends_on: [scc-05-sanity-mcp-registration, scc-07-copilot-chat-ui]
+
+description: |
+  Draft two local markdown files under this epic's docs/ directory, one per Sanity Challenge path,
+  following the Challenge's own submission templates (fetched from
+  https://dev.to/devteam/join-the-sanity-challenge-2500-in-prizes-for-five-winners-514m on
+  2026-09-19): docs/submission-path-two.md (the "deep store" -- build-process writeup honesty,
+  functionality, schema thoughtfulness, creativity) and docs/submission-path-one.md (the AI
+  copilot -- Sanity Context/Knowledge Base usage, usability). Both must cite the real Sanity
+  project ID or a public dataset URL (required by the Challenge's own rules for every
+  submission), and any testing credentials a judge would need to access the live demo/admin.
+  Every claim in both drafts must trace to something actually built and live-verified in
+  scc-01 through scc-07 -- do not describe capabilities that weren't actually shipped.
+
+  CRITICAL: this story produces drafts ONLY. Do not publish to DEV.to, do not create a DEV.to
+  post, do not use dev.to/agent_sessions/new. Publishing under the user's own identity is a
+  separate, explicit, user-gated action that happens later, at the user's own initiative -- never
+  as part of this story or this epic's /execute run.
+
+acceptance_criteria:
+  - "Given both drafts, when read, then every capability claim traces to a real, live-verified acceptance criterion from an earlier story in this epic -- nothing invented or aspirational"
+  - "Given the Challenge's own submission template requirements, when each draft is checked against them, then it includes every required field (project ID/dataset URL, testing credentials if needed, the DEV Community #sanitychallenge tag noted as the intended publish target)"
+  - "Given this story completes, when checked, then no DEV.to post exists anywhere as a result of this epic's execution -- both artifacts are local files only"
+
+steps:
+  - id: research
+    description: Re-read the Challenge's real submission template requirements (already fetched once this session -- verify still current). Review every prior story's real acceptance-criteria evidence in this epic to source honest claims from.
+    agent: researcher
+  - id: implement
+    description: Write docs/submission-path-two.md and docs/submission-path-one.md as complete, submission-ready drafts.
+    agent: developer
+    depends_on: [research]
+  - id: review
+    description: Review both drafts line by line against what was actually built -- flag and remove any unverified or aspirational claim.
+    agent: reviewer
+    depends_on: [implement]
+  - id: integrate
+    description: Commit both drafts to feat/sanity-challenge-commerce-copilot. Report to the user that they're ready for review and that publishing is a separate step awaiting explicit go-ahead.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/epics/sanity-challenge-commerce-copilot/docs/design-discussion.md
+      purpose: "The epic's own goal statement and scope -- source of truth for what this epic actually promised to build"

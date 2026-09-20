@@ -9,6 +9,7 @@ import { InteractionTracker } from "../../../../../components/interaction-tracke
 import { RecommendationShelf, resolvePdpRecommendations } from "../../../../../components/recommendation-shelf";
 import { isDemoSlug } from "../../../../../lib/demos";
 import { breadcrumbList, JsonLd, type BreadcrumbItem } from "../../../../../lib/json-ld";
+import { resolvePageTemplateOverride } from "../../../../../lib/resolve-page-template";
 import { isCustomizableProduct } from "../../../../../lib/seed";
 import { getServicesForDemo } from "../../../../../lib/services";
 import { canonicalUrl } from "../../../../../lib/site-url";
@@ -133,15 +134,18 @@ export default async function ProductPage({
   const { demoSlug, slug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { template } = await searchParams;
-  const { pdp, inventory, bundles, recommendations, catalog, marketingCatalog, media, reviews } = await getServicesForDemo(demoSlug);
+  const { pdp, theming, inventory, bundles, recommendations, catalog, marketingCatalog, media, reviews } =
+    await getServicesForDemo(demoSlug);
 
-  // Explicit ?template= always wins; otherwise fall back to the active
-  // theme's PDP choice (a per-request, per-call override -- never mutates
-  // the shared theming singleton, so concurrent requests with different
-  // themes never race each other). Only pdp's own internal default (theming
-  // .resolveTemplate) is used if neither is provided.
+  // scc-04: resolvePageTemplateOverride's shared precedence (lib/resolve-page-template.ts)
+  // -- explicit ?template= always wins (a per-request, per-call override --
+  // never mutates the shared theming singleton, so concurrent requests with
+  // different themes never race each other); else an admin's own
+  // per-page-type override (content-layout dashboard); else the active
+  // theme's own PDP choice. Only pdp's own internal default (theming
+  // .resolveTemplate) is used if none of those apply.
   const activeTheme = await readActiveThemeBundle(demoSlug);
-  const templateOverride = template ?? activeTheme.defaultTemplatesByPageType.pdp;
+  const templateOverride = resolvePageTemplateOverride(theming, "pdp", activeTheme, template);
 
   const viewModel = await pdp.getViewModel(slug, templateOverride);
   if (!viewModel) notFound();

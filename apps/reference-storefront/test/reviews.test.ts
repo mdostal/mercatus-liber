@@ -90,6 +90,7 @@ vi.mock("../lib/services.js", () => ({
     cms,
     inventory,
     pdp,
+    theming,
     bundles,
     recommendations,
     media,

@@ -41,6 +41,44 @@ describe("theming service", () => {
     expect(theming.listTemplates("search").map((t) => t.key)).toEqual(["search.dense"]);
   });
 
+  // scc-04: getConfiguredDefault reads back exactly what setDefaultTemplate
+  // stored, distinct from resolveTemplate's own folded-in fallback chain.
+  describe("getConfiguredDefault", () => {
+    it("returns null when no default has been configured for that page type", () => {
+      const theming = createThemingService();
+      expect(theming.getConfiguredDefault("pdp")).toBeNull();
+    });
+
+    it("returns exactly what setDefaultTemplate most recently stored", () => {
+      const theming = createThemingService();
+      theming.setDefaultTemplate("pdp", "pdp.long-scroll");
+      expect(theming.getConfiguredDefault("pdp")).toBe("pdp.long-scroll");
+      theming.setDefaultTemplate("pdp", "pdp.spec-sheet");
+      expect(theming.getConfiguredDefault("pdp")).toBe("pdp.spec-sheet");
+    });
+
+    it("is independent per page type", () => {
+      const theming = createThemingService();
+      theming.setDefaultTemplate("home", "home.magazine-grid");
+      expect(theming.getConfiguredDefault("home")).toBe("home.magazine-grid");
+      expect(theming.getConfiguredDefault("category")).toBeNull();
+    });
+
+    it("distinguishes 'nothing configured' from 'configured equal to the first-registered key' -- unlike resolveTemplate(pageType) alone", () => {
+      const theming = createThemingService();
+      // No default configured: resolveTemplate falls all the way through to
+      // the first-registered template, same key a caller might also
+      // deliberately configure explicitly below -- getConfiguredDefault is
+      // the only way to tell these two cases apart.
+      expect(theming.resolveTemplate("pdp")).toBe("pdp.tabbed-detail");
+      expect(theming.getConfiguredDefault("pdp")).toBeNull();
+
+      theming.setDefaultTemplate("pdp", "pdp.tabbed-detail");
+      expect(theming.resolveTemplate("pdp")).toBe("pdp.tabbed-detail");
+      expect(theming.getConfiguredDefault("pdp")).toBe("pdp.tabbed-detail");
+    });
+  });
+
   it("getTokens/setTokens round-trip a style-token map", () => {
     const theming = createThemingService();
     expect(theming.getTokens()).toEqual({});

@@ -1,0 +1,42 @@
+name: sanity-challenge-commerce-copilot
+title: Deep Sanity CMS integration + AI content copilot, for a dual Sanity Challenge submission
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: none
+sidecar_retention: committed
+
+stories:
+  - id: scc-01-verify-sanity-production-health
+    title: Verify (and fix forward if needed) production Sanity health
+    complexity: low
+    depends_on: []
+  - id: scc-02-cms-component-schema
+    title: Extend ComponentRegistry with real per-component-type field schemas
+    complexity: medium
+    depends_on: []
+  - id: scc-03-schema-typed-section-editor
+    title: Generate the admin CMS section editor form from the new schema
+    complexity: medium
+    depends_on: [scc-02-cms-component-schema]
+  - id: scc-04-content-layout-dashboard
+    title: Build the Content & Layout admin dashboard (CMS sections + theming templates, connected)
+    complexity: high
+    depends_on: [scc-03-schema-typed-section-editor]
+  - id: scc-05-sanity-mcp-registration
+    title: Register Sanity's remote MCP server + write the sanity-content agent skill
+    complexity: low
+    depends_on: []
+    parallel_allowed: true
+    parallel_rationale: bounded-slice
+  - id: scc-06-copilot-backend
+    title: AI content copilot backend (Anthropic SDK tool-calling loop, Sanity Context MCP client, propose/apply tools)
+    complexity: high
+    depends_on: [scc-02-cms-component-schema, scc-03-schema-typed-section-editor]
+  - id: scc-07-copilot-chat-ui
+    title: AI content copilot admin chat UI, wired end to end
+    complexity: high
+    depends_on: [scc-06-copilot-backend, scc-04-content-layout-dashboard]
+  - id: scc-08-submission-drafts
+    title: Draft both Sanity Challenge submission write-ups (local files only, never published)
+    complexity: low
+    depends_on: [scc-05-sanity-mcp-registration, scc-07-copilot-chat-ui]

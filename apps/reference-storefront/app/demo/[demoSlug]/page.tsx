@@ -4,6 +4,7 @@ import type { ComponentInstance } from "@mercatus-liber/cms";
 import { HOME_TEMPLATES, HomeStandardGrid } from "../../../lib/home-templates";
 import { InteractionTracker } from "../../../components/interaction-tracker";
 import { isDemoSlug, type DemoSlug } from "../../../lib/demos";
+import { resolvePageTemplateOverride } from "../../../lib/resolve-page-template";
 import { getServicesForDemo } from "../../../lib/services";
 import { buildViewSections } from "../../../lib/storefront-view-sections";
 import { readActiveThemeBundle } from "../../../lib/theme-cookie";
@@ -71,12 +72,12 @@ export default async function DemoHomePage({ params }: { params: Promise<{ demoS
     sections = home.sections;
   }
 
-  // Same override-from-active-bundle pattern PDP already uses: the active
-  // theme bundle's own defaultTemplatesByPageType.home is passed as the
-  // explicit override (undefined for the 7 pre-existing bundles, which
-  // don't define one, so resolveTemplate falls back to its own
-  // first-registered-template default, "home.standard-grid").
-  const templateKey = theming.resolveTemplate("home", activeTheme.defaultTemplatesByPageType.home);
+  // scc-04: resolvePageTemplateOverride's shared precedence (lib/resolve-page-template.ts)
+  // -- an admin's own per-page-type override (content-layout dashboard) wins,
+  // else the active theme bundle's own defaultTemplatesByPageType.home
+  // (undefined for the 7 pre-existing bundles, which don't define one), else
+  // resolveTemplate's own first-registered-template default, "home.standard-grid".
+  const templateKey = theming.resolveTemplate("home", resolvePageTemplateOverride(theming, "home", activeTheme));
   const Template: ComponentType<{ demoSlug: DemoSlug; sections: ComponentInstance[] }> =
     (templateKey && HOME_TEMPLATES[templateKey as keyof typeof HOME_TEMPLATES]) || HomeStandardGrid;
 

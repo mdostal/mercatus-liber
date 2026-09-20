@@ -1,0 +1,83 @@
+id: scc-06-copilot-backend
+epic: sanity-challenge-commerce-copilot
+title: AI content copilot backend (Anthropic SDK tool-calling loop, Sanity Context MCP client, propose/apply tools)
+status: pending
+complexity: high
+methodology: classic
+depends_on: [scc-02-cms-component-schema, scc-03-schema-typed-section-editor]
+
+description: |
+  This repo has zero LLM integration and zero MCP-client code today (confirmed via grep: no
+  ai/@ai-sdk/* deps, no Client( construction anywhere). This story builds the real, new backend
+  for the "lightweight wrapper" AI copilot (Path One of the Sanity Challenge): a server-side
+  tool-calling loop using the real Anthropic Messages API (@anthropic-ai/sdk, new dependency),
+  with tools wrapping (a) read-only queries against Sanity's Context MCP in Knowledge Base mode
+  (https://www.sanity.io/docs/ai/sanity-context-mcp -- confirmed real, currently-beta, shipped
+  2026-09) for schema/content semantic search, and (b) Mercatus Liber's own real CmsService/
+  ThemingService reads (current sections per page type via scc-02's schema, current template per
+  page type). A propose_options tool generates 2-3 candidate section/template configurations per
+  admin request (deliberately narrow first scope per design-discussion.md #2e -- fixed proposal
+  shapes like "swap hero copy" or "swap template", not fully open-ended generation). An
+  apply_option tool writes the chosen option back through CmsService/ThemingService, gated behind
+  the SAME confirm:true-then-requireAdminPermission("mutate") discipline every other admin
+  mutation in this repo already follows -- do not invent a new trust boundary.
+
+  First action of this story is a REAL Portunus check for an Anthropic API key (and any Sanity
+  Context MCP credential) in the mercatus-liber-commerce vault -- do not write code assuming a
+  key exists before verifying. If genuinely unavailable, this becomes an honestly-disclosed
+  credential gap (same pattern as epics 42/43/44/46), with the tool-calling loop's logic still
+  built and unit-tested against injected fakes, exactly like adapter-shopify/adapter-printful's
+  own disclosed-double pattern for APIs with no live credential.
+
+  No UI in this story -- verify the loop via a scripted/CLI-level round trip only. The admin chat
+  UI is scc-07.
+
+acceptance_criteria:
+  - "Given a real (or, if genuinely unavailable, injected-fake per the disclosed-gap pattern) Anthropic credential, when the tool-calling loop is invoked with a sample admin request (e.g. 'make the home page hero more seasonal'), then it genuinely returns 2-3 distinct candidate option objects, not a single fixed response"
+  - "Given a chosen option, when apply_option is called, then it writes through the real CmsService/ThemingService (not a Sanity-specific write path) and the change is verifiable via a direct service read afterward"
+  - "Given apply_option is called without confirm:true or by a non-mutate-permitted session, when checked, then it's rejected the same way every other admin mutation in this repo already is (mirrored, not reinvented)"
+  - "Given the Sanity Context MCP tool, when queried, then it genuinely returns real content/schema results from the live Sanity project (or, if credentials are unavailable, this is explicitly and honestly disclosed rather than faked)"
+
+steps:
+  - id: research
+    description: Check Portunus (mercatus-liber-commerce vault) for an Anthropic API key and any Sanity Context MCP credential -- real check, don't assume. Read packages/ai-interface/src/{types,handlers,confirmation}.ts in full for the confirm:true-gated preview-then-confirm pattern to mirror.
+    agent: researcher
+  - id: implement
+    description: Add @anthropic-ai/sdk dependency. Build the new copilot backend (suggested location apps/reference-storefront/lib/copilot/) -- tool-calling loop, Sanity Context MCP client, CmsService/ThemingService read tools, propose_options, apply_option (mirroring the confirm:true gate).
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Unit-test the tool-calling loop against injected fakes for both the Anthropic client and the Sanity Context MCP client, mirroring adapter-shopify's disclosed-double test pattern. Cover the confirm:true/permission-rejection paths explicitly.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review that apply_option genuinely reuses requireAdminPermission unmodified and that no new trust boundary was invented.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/sanity-challenge-commerce-copilot. Run the scripted round-trip verification per acceptance criteria.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/ai-interface/src/confirmation.ts
+      purpose: "needsConfirmation/pendingConfirmation -- the exact preview-then-confirm pattern apply_option mirrors"
+    - path: packages/adapter-shopify/
+      purpose: "The disclosed-double test pattern (injectable client, fake in tests, no live credential assumed) to mirror for both the Anthropic and Sanity-Context-MCP clients"
+  code_examples:
+    - title: "Existing confirm-gated admin tool pattern"
+      file: packages/ai-interface/src/handlers.ts
+      snippet: |
+        // Admin handlers call needsConfirmation()/pendingConfirmation() before
+        // any real mutation -- apply_option must follow this exact shape, not
+        // invent a parallel confirmation mechanism.
+
+risks:
+  - severity: medium
+    description: Anthropic API key or Sanity Context MCP credential may not exist in this environment
+    mitigation: Real Portunus check first; if missing, disclosed-gap pattern with fake-backed tests, not fabricated live behavior
+  - severity: medium
+    description: Sanity Context MCP is beta and under-documented -- exact tool names/response shapes may differ from docs
+    mitigation: Build the client as an isolated, swappable piece; verify against the live endpoint early in implementation, not assumed from docs alone

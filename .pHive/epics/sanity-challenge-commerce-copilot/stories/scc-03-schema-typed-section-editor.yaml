@@ -1,0 +1,66 @@
+id: scc-03-schema-typed-section-editor
+epic: sanity-challenge-commerce-copilot
+title: Generate the admin CMS section editor form from the new schema
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [scc-02-cms-component-schema]
+
+description: |
+  apps/reference-storefront/app/demo/[demoSlug]/admin/cms/CmsSectionFields.tsx currently renders
+  6 fixed slots, each a componentType <select> + a raw-JSON <textarea> for config (whole-blob
+  JSON.stringify/parse). This story replaces the raw-JSON textarea with real per-field inputs
+  generated from scc-02's new ComponentFieldSchema (text -> <input>, richtext -> <textarea>,
+  image -> a URL input for now, productRef/categoryRef -> a <select> populated from the real
+  catalog/marketing-catalog services already available via getServicesForDemo, number ->
+  <input type=number>, boolean -> checkbox). Server-side parsing in the page/[id] route handlers
+  changes from JSON.parse(rawTextareaValue) to reading the individual named form fields per slot
+  and reassembling the config object -- same "use server" + requireAdminPermission("mutate")
+  pattern every other admin mutation in this repo already follows, unchanged.
+
+  This is the literal fix for the user's complaint that "swapping layouts" today means hand-
+  editing JSON blobs.
+
+acceptance_criteria:
+  - "Given an admin opens /admin/cms/[id] for any existing seeded page, when the page loads, then every section shows real typed fields (not a JSON textarea) matching scc-02's schema for that component type"
+  - "Given an admin edits a section through the new fields and saves, when the page is reloaded, then the resulting ComponentInstance.config is byte-identical in shape to what the old raw-JSON editor would have produced for the same logical edit"
+  - "Given a productRef/categoryRef field, when rendered, then it's a real <select> populated from live catalog/marketing-catalog data for that demo, not a free-text ID input"
+  - "Given the full monorepo test/typecheck/build runs, then it's clean, and a real dev-server live check confirms every existing seeded CMS page (across all 3 demos) still renders identically on the public storefront side after this admin-only change"
+
+steps:
+  - id: research
+    description: Read CmsSectionFields.tsx and the [id]/new/marketing/new page route handlers in full to understand today's exact raw-JSON parse/serialize flow.
+    agent: researcher
+  - id: implement
+    description: Rewrite CmsSectionFields.tsx's per-slot rendering to generate real typed inputs from scc-02's schema. Update the server-side parsing in every route handler that submits this form.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Extend/add tests covering the new form-parsing logic, mirroring the existing admin-action test conventions in this repo (e.g. promotions/bundles admin action tests).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review that config shape parity with the old raw-JSON path is genuinely preserved, and that requireAdminPermission gating is unchanged.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/sanity-challenge-commerce-copilot. Live-verify against a real dev server per acceptance criteria before closing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/app/demo/[demoSlug]/admin/cms/CmsSectionFields.tsx
+      purpose: "The exact component this story rewrites -- 6 fixed slots, currently raw-JSON textarea per slot"
+    - path: apps/reference-storefront/lib/actions.ts
+      purpose: "requireDemoSlug + requireAdminPermission(\"mutate\") opener pattern every mutation here follows -- reuse unchanged"
+
+code_examples:
+  - title: "Existing admin form-parsing pattern to mirror (bundles' fixed-slot parser)"
+    file: apps/reference-storefront/lib/actions.ts
+    snippet: |
+      // parseBundleFormData(formData): parses fixed, indexed form slots
+      // (tier_0_label, tier_0_skuIds, ...) into a typed object -- same
+      // "fixed slots, typed fields, parsed server-side" shape this story
+      // applies to CMS sections instead of bundle tiers.

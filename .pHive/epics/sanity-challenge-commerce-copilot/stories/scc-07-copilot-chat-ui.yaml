@@ -1,0 +1,53 @@
+id: scc-07-copilot-chat-ui
+epic: sanity-challenge-commerce-copilot
+title: AI content copilot admin chat UI, wired end to end
+status: pending
+complexity: high
+methodology: classic
+depends_on: [scc-06-copilot-backend, scc-04-content-layout-dashboard]
+
+description: |
+  Builds the real chat surface for scc-06's copilot backend: a new admin page (e.g.
+  admin/copilot) where an admin describes desired page/content changes in natural language, sees
+  the agent's 2-3 generated candidate options rendered as real preview cards, and can apply one
+  (closing the loop into scc-04's Content & Layout dashboard). This is the first client-side
+  interactive admin component in this repo (every existing admin page is a plain server-rendered
+  RSC with "use server" form actions) -- justified departure since a form POST can't stream a
+  conversation; called out explicitly, not silently introduced. No existing chat/streaming infra
+  exists to build on (confirmed: no ai/@ai-sdk/* deps, no useChat/streamText anywhere) -- this is
+  genuinely new UI work, not a wrapper around an existing pattern.
+
+acceptance_criteria:
+  - "Given a live admin session, when an admin types a request describing a desired change, then the UI shows the agent's real response including 2-3 distinct rendered option previews (not raw JSON)"
+  - "Given an admin picks one option and confirms, when applied, then scc-04's Content & Layout dashboard reflects the real change on next load, verified against a running dev server end to end"
+  - "Given a non-mutate-permitted (viewer-role) session, when they open the copilot page, then apply is genuinely blocked the same way every other admin mutation already is in this repo"
+  - "Given the copilot page, when reached from admin/page.tsx's nav, then it's a real, linked, discoverable admin route like every other admin page"
+
+steps:
+  - id: research
+    description: Read scc-06's finished backend interface and scc-04's dashboard to understand exactly what apply_option needs to hand off to for the loop to close correctly.
+    agent: researcher
+  - id: implement
+    description: Build admin/copilot/page.tsx (client component) plus its streaming/polling route handler, wired to scc-06's backend. Add the nav link to admin/page.tsx.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Test the UI's integration against scc-06's backend (fakes/mocks where a real credential isn't available, per the disclosed-gap pattern already established in scc-06).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review that permission-gating is genuinely enforced in the UI path (not just the backend), and that the client-component departure from this repo's plain-RSC admin convention is clean and isolated.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/sanity-challenge-commerce-copilot. Live-verify the full end-to-end loop against a real dev server per acceptance criteria before closing.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/app/demo/[demoSlug]/admin/page.tsx
+      purpose: "The hardcoded nav <ul> this story adds a new <li> to"
+    - path: apps/reference-storefront/app/demo/[demoSlug]/admin/layout.tsx
+      purpose: "The shared admin-auth-gated layout every admin route (including this new one) sits under automatically"

@@ -1,0 +1,65 @@
+id: scc-02-cms-component-schema
+epic: sanity-challenge-commerce-copilot
+title: Extend ComponentRegistry with real per-component-type field schemas
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  packages/cms/src/types.ts models ComponentInstance = {componentType, config: Record<string,
+  unknown>} -- config is deliberately opaque. ComponentRegistry (component-registry.ts) currently
+  registers 5 types (hero-banner, ad-slot, category-spot, product-grid, service-area-info) as just
+  {type, label, description} -- no field schema. This story adds a real field schema per component
+  type: a new ComponentFieldSchema type ({key, label, kind: "text"|"richtext"|"image"|"productRef"|
+  "categoryRef"|"number"|"boolean", required?, helpText?}[]), attached to each of the 5 existing
+  registrations. This is purely additive -- ComponentInstance.config's runtime shape (a plain
+  object) is unchanged, so no persistence adapter (in-memory, Sanity) needs migration; only the act
+  of building/reading the schema is new. Ground every field's `kind` in what that component type's
+  config ACTUALLY contains today (read real seed data / existing config usages, don't invent
+  fields that aren't used).
+
+acceptance_criteria:
+  - "Given the existing 5 component types, when each is inspected, then it has a real fields[] schema whose keys/kinds match what that component type's config actually contains in real seed data today (verified by reading actual seeded CMS pages, not assumed)"
+  - "Given the schema addition, when the full monorepo test/typecheck/build runs, then every existing CMS test still passes unmodified (this is additive, not a breaking change)"
+  - "Given a component instance's config already has extra keys not covered by the new schema (if any), when the schema is checked against real data, then this is explicitly reconciled (either the schema covers it or the discrepancy is a documented, deliberate choice)"
+
+steps:
+  - id: research
+    description: Read packages/cms/src/component-registry.ts and types.ts in full. Grep every real usage of each of the 5 component types across apps/reference-storefront/lib/seed*.ts to find every config key actually used per type.
+    agent: researcher
+  - id: implement
+    description: Add ComponentFieldSchema type to packages/cms/src/types.ts. Extend ComponentRegistry's 5 registrations with real fields[] per type, grounded in the research step's findings.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Add unit tests for the new schema shape in packages/cms/test/. Confirm existing CMS test suite is unaffected.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review that every field's kind genuinely matches real usage, nothing invented.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/sanity-challenge-commerce-copilot.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/cms/src/types.ts
+      purpose: "Page/ComponentInstance shape -- config: Record<string,unknown> stays unchanged"
+    - path: packages/cms/src/component-registry.ts
+      purpose: "The 5 hardcoded component-type registrations this story extends"
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: "Real seeded CMS pages -- ground truth for what each component type's config actually contains"
+
+code_examples:
+  - title: "Existing catalog schema-description pattern this mirrors"
+    file: packages/core/src/schema.ts
+    snippet: |
+      // Product.identifyingAttributeKeys: string[] -- names which attribute keys
+      // define this product's SKUs, without forcing a universal shape across
+      // every product. Same "schema describes structure, doesn't force uniformity"
+      // spirit this story applies to CMS component config.

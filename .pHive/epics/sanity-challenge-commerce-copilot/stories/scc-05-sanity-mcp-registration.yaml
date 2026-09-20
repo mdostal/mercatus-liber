@@ -1,0 +1,69 @@
+id: scc-05-sanity-mcp-registration
+epic: sanity-challenge-commerce-copilot
+title: Register Sanity's remote MCP server + write the sanity-content agent skill
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+parallel_allowed: true
+parallel_rationale: bounded-slice
+files_to_modify:
+  - file: .mcp.json
+    change: register Sanity's remote MCP server (https://mcp.sanity.io) alongside this repo's existing stdio commerce MCP server
+  - file: .claude/skills/sanity-content/SKILL.md
+    change: new agent-facing skill documenting common Sanity content workflows via the registered MCP tools
+
+description: |
+  Confirmed via repo-wide grep: this repo has zero MCP-client code anywhere and no .mcp.json --
+  it only ever exposes its own tools (packages/ai-interface + apps/reference-storefront/
+  mcp-server.ts) via stdio to external clients. Building a server-side MCP-client aggregator is
+  out of proportion (per user's own scoping decision, "lightweight wrapper" for this piece). This
+  story is the real, minimal, immediately-usable version: register Sanity's real remote MCP
+  server (https://mcp.sanity.io -- GROQ query, document CRUD, schema deploy, Content Releases,
+  asset upload, semantic search over embeddings) in a new .mcp.json alongside this repo's existing
+  `pnpm mcp` stdio server, so a Claude Code session pointed at this repo gets BOTH tool sets
+  simultaneously with zero server-side code changes. Then write a new agent-facing skill,
+  .claude/skills/sanity-content/SKILL.md, mirroring .claude/skills/create-store/SKILL.md's exact
+  convention (frontmatter name+description, ## Overview stating what's real vs. aspirational,
+  numbered ## Steps for the common workflows -- querying the live schema, browsing/mutating
+  content, how it composes with the existing manage_cms_page MCP tool -- and a ## Notes section
+  covering auth/token setup and dataset scoping).
+
+  Auth needs a real Sanity API token with appropriate scope -- verify via Portunus
+  (mercatus-liber-commerce vault) whether one already exists before assuming; if not, this is a
+  disclosed credential gap (same honest pattern as prior epics' provider-credential disclosures),
+  not something to fabricate.
+
+acceptance_criteria:
+  - "Given the new .mcp.json, when a fresh Claude Code session opens this repo, then both the existing commerce MCP server and Sanity's remote MCP server are available as real, connected tool sources (not just declared -- actually connectable, verified with the real credential found via Portunus or explicitly disclosed as a gap if none exists)"
+  - "Given the new skill file, when read, then it follows create-store/SKILL.md's exact structural convention and every step is something an agent could mechanically follow, citing real file paths as ground truth"
+  - "Given the skill documents composing with manage_cms_page, when that claim is checked, then it's accurate -- manage_cms_page (packages/ai-interface/src/tool-definitions.ts:139) genuinely works against whatever CMS backend services.ts wired, Sanity included"
+
+steps:
+  - id: research
+    description: Read .claude/skills/create-store/SKILL.md in full for the convention to mirror. Check Portunus (mercatus-liber-commerce vault) for any existing Sanity MCP-scoped token.
+    agent: researcher
+  - id: implement
+    description: Write .mcp.json registering Sanity's remote MCP server. Write .claude/skills/sanity-content/SKILL.md.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Verify the MCP registration actually connects (or document the credential gap honestly if it can't).
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Review the skill doc against create-store's convention for structural fidelity.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/sanity-challenge-commerce-copilot.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .claude/skills/create-store/SKILL.md
+      purpose: "The exact structural convention this new skill mirrors"
+    - path: packages/ai-interface/src/tool-definitions.ts
+      purpose: "Line 139: manage_cms_page -- the existing tool this new skill documents composing with"

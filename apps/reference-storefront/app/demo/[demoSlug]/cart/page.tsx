@@ -8,6 +8,7 @@ import { readCartId } from "../../../../lib/cart-cookie";
 import { readCouponCode } from "../../../../lib/coupon-cookie";
 import { isDemoSlug } from "../../../../lib/demos";
 import { resolveProductImageAlt, resolveProductImageUrl } from "../../../../lib/product-image";
+import { resolvePageTemplateOverride } from "../../../../lib/resolve-page-template";
 import { getServicesForDemo } from "../../../../lib/services";
 import { readActiveThemeBundle } from "../../../../lib/theme-cookie";
 
@@ -86,13 +87,13 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
   const subtotalAmount = adjustment.total.amount + adjustment.discountTotal.amount;
   const couponEnteredButInvalid = couponCode !== null && adjustment.appliedCode === null;
 
-  // Same override-from-active-bundle pattern PDP already uses: the active
-  // theme bundle's own defaultTemplatesByPageType.cart is passed as the
-  // explicit override (undefined for the 7 pre-existing bundles, which
-  // don't define one, so resolveTemplate falls back to its own
-  // first-registered-template default, "cart.standard").
+  // scc-04: resolvePageTemplateOverride's shared precedence (lib/resolve-page-template.ts)
+  // -- an admin's own per-page-type override (content-layout dashboard) wins,
+  // else the active theme bundle's own defaultTemplatesByPageType.cart
+  // (undefined for the 7 pre-existing bundles, which don't define one), else
+  // resolveTemplate's own first-registered-template default, "cart.standard".
   const activeTheme = await readActiveThemeBundle(demoSlug);
-  const templateKey = theming.resolveTemplate("cart", activeTheme.defaultTemplatesByPageType.cart);
+  const templateKey = theming.resolveTemplate("cart", resolvePageTemplateOverride(theming, "cart", activeTheme));
   const Template: ComponentType<CartTemplateProps> =
     (templateKey && CART_TEMPLATES[templateKey as keyof typeof CART_TEMPLATES]) || CartStandard;
 

@@ -49,6 +49,13 @@
  * FulfillmentService.submitOrder), so the "succeeds normally" cases below
  * prove a genuine status transition happened, not just that no error was
  * thrown.
+ *
+ * scc-04: also covers setPageTemplateAction's own requireAdminPermission
+ * guard, same "real, in-memory-backed ThemingService, mocked adminAuth
+ * only" shape as every domain above -- a "succeeds normally" assertion
+ * reads back theming.getConfiguredDefault(pageType) afterward, proving the
+ * real ThemingService.setDefaultTemplate call actually happened, not just
+ * that no error was thrown.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminAuthAdapter, AdminRole, AdminSession } from "@mercatus-liber/admin-auth";
@@ -63,6 +70,7 @@ import {
   MANUAL_FULFILLMENT_PROVIDER,
 } from "@mercatus-liber/fulfillment";
 import { createInMemoryPromotionRepository, createPromotionsService } from "@mercatus-liber/promotions";
+import { createThemingService } from "@mercatus-liber/theming";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -75,6 +83,7 @@ const bundles = createBundlesService({
 });
 const advertising = createAdvertisingService({ repository: createInMemoryCampaignRepository() });
 const cms = createCmsService({ persistence: createInMemoryCmsAdapter(), components: createComponentRegistry() });
+const theming = createThemingService();
 
 /** A minimal, real OrderLookup -- fulfillment reads orders structurally, never imports checkout-orders (see docs/subsystems/22-fulfillment.md). */
 const fakeOrders = {
@@ -99,7 +108,15 @@ const mockAdminAuth: AdminAuthAdapter = {
 };
 
 vi.mock("../lib/services.js", () => ({
-  getServicesForDemo: vi.fn(async () => ({ adminAuth: mockAdminAuth, promotions, bundles, advertising, cms, fulfillment })),
+  getServicesForDemo: vi.fn(async () => ({
+    adminAuth: mockAdminAuth,
+    promotions,
+    bundles,
+    advertising,
+    cms,
+    fulfillment,
+    theming,
+  })),
 }));
 
 const {
@@ -108,6 +125,7 @@ const {
   deactivateCampaignAction,
   deactivatePromotionAction,
   markFulfillmentLineShippedAction,
+  setPageTemplateAction,
 } = await import("../lib/actions.js");
 
 function sessionFor(role: AdminRole): AdminSession {
@@ -391,6 +409,86 @@ describe("admin mutation guard (admin-auth-03)", () => {
 
       const [record] = await fulfillment.listForOrder("guard-test-order");
       expect(record?.status).toBe("shipped");
+    });
+  });
+
+  describe("setPageTemplateAction (theming)", () => {
+    it("rejects a viewer-role session before mutating", async () => {
+      currentSession = sessionFor("viewer");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("pageType", "home");
+      formData.set("templateKey", "home.magazine-grid");
+      await expect(setPageTemplateAction(formData)).rejects.toThrow(/not authorized/i);
+
+      expect(theming.getConfiguredDefault("home")).toBeNull();
+    });
+
+    it("rejects when there is no session at all", async () => {
+      currentSession = null;
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("pageType", "home");
+      formData.set("templateKey", "home.magazine-grid");
+      await expect(setPageTemplateAction(formData)).rejects.toThrow(/not authorized/i);
+
+      expect(theming.getConfiguredDefault("home")).toBeNull();
+    });
+
+    it("rejects an invalid page type even for an owner session", async () => {
+      currentSession = sessionFor("owner");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("pageType", "marketing");
+      formData.set("templateKey", "home.magazine-grid");
+      await expect(setPageTemplateAction(formData)).rejects.toThrow(/invalid page type/i);
+    });
+
+    it("rejects a template key not registered for that page type", async () => {
+      currentSession = sessionFor("owner");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("pageType", "cart");
+      formData.set("templateKey", "pdp.tabbed-detail");
+      await expect(setPageTemplateAction(formData)).rejects.toThrow(/invalid template key/i);
+
+      expect(theming.getConfiguredDefault("cart")).toBeNull();
+    });
+
+    it("succeeds for an admin-role session, with the real per-page-type default persisted", async () => {
+      currentSession = sessionFor("admin");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("pageType", "category");
+      formData.set("templateKey", "category.magazine-grid");
+      await setPageTemplateAction(formData);
+
+      expect(theming.getConfiguredDefault("category")).toBe("category.magazine-grid");
+      // Independent of every other page type -- only "category" changed.
+      expect(theming.getConfiguredDefault("home")).toBeNull();
+    });
+
+    it("succeeds for an owner-role session, and a later call overrides the earlier one", async () => {
+      currentSession = sessionFor("owner");
+
+      const first = new FormData();
+      first.set("demoSlug", "print-shop");
+      first.set("pageType", "pdp");
+      first.set("templateKey", "pdp.long-scroll");
+      await setPageTemplateAction(first);
+      expect(theming.getConfiguredDefault("pdp")).toBe("pdp.long-scroll");
+
+      const second = new FormData();
+      second.set("demoSlug", "print-shop");
+      second.set("pageType", "pdp");
+      second.set("templateKey", "pdp.spec-sheet");
+      await setPageTemplateAction(second);
+      expect(theming.getConfiguredDefault("pdp")).toBe("pdp.spec-sheet");
     });
   });
 });
