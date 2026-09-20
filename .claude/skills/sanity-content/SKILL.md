@@ -93,11 +93,24 @@ confirm-before-mutate posture `manage_cms_page` already enforces for storefront-
   is the *same* token `services.ts` already uses for the app's own Sanity adapter -- there is no
   separate, purpose-built "MCP-scoped" Sanity token in Portunus today, and none was fabricated for
   this story. `.mcp.json`'s `sanity` entry reads it via `${SANITY_TOKEN}` expansion (Claude Code
-  expands `${VAR}` in `.mcp.json` `headers`/`url` fields from the environment at load time; verify
-  this specific var isn't caught by Claude Code's credential-variable-name denylist -- as of this
-  writing that denylist targets Claude/cloud-provider-shaped names like `ANTHROPIC_API_KEY`, not
-  arbitrary app secrets, but re-check current Claude Code docs if the `sanity` server silently
-  fails to authenticate).
+  expands `${VAR}` in `.mcp.json` `headers`/`url` fields from the environment Claude Code itself
+  was launched with).
+- **Confirmed failure mode, 2026-09-19 (this is the end-to-end test this skill's Overview flagged
+  as not yet done):** a real Claude Code session loaded this `.mcp.json` and the `sanity` server
+  failed with `AUTH_HEADER_REJECTED` / HTTP 401 `invalid_token` -- NOT the credential-denylist risk
+  flagged above, and NOT a bad/expired token (the token itself was independently re-verified live
+  and still works, per the Overview's handshake test). Root cause, directly confirmed: `SANITY_TOKEN`
+  was simply never exported into the shell environment Claude Code was launched from, so
+  `${SANITY_TOKEN}` expanded to empty/invalid, which Sanity correctly rejected. **Fix:** export the
+  var in the shell *before* starting Claude Code (a fresh terminal, or your shell profile for it to
+  persist) -- this must be run by the human directly, never by an agent, since `portunus resolve`
+  prints the raw secret to stdout with no redaction:
+  ```
+  export SANITY_TOKEN="$(portunus resolve '{{secret:mercatus-liber-sanity-token}}')"
+  ```
+  Then restart Claude Code (or reconnect the `sanity` MCP server via whatever `/mcp`-equivalent
+  reconnect command the client exposes) for the new env var to be picked up -- `.mcp.json` env
+  expansion happens at connection time, not on a running session.
 - **Scope gap, honestly disclosed:** `mercatus-liber-sanity-token` is described in Portunus as
   "editor access," which the live `initialize` handshake confirms is enough to *connect* and
   should cover GROQ query, document CRUD, and Content Releases. It was **not** tested against
