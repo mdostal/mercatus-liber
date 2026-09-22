@@ -49,8 +49,26 @@ decoupling violation, exactly like `adapter-sqlite` importing `better-sqlite3` o
 `adapter-sanity` importing Sanity's client.
 
 ## Open questions
-1. Live end-to-end verification against a real Clerk account is pending the user's actual
-   Clerk credentials — disclosed, not silent (see design-discussion.md §4).
+1. ~~Live end-to-end verification against a real Clerk account is pending the user's actual
+   Clerk credentials~~ **Resolved 2026-09-22 (real-provider-verification, epic 56,
+   `fix/admin-auth-clerk-live`).** Real test-mode `CLERK_SECRET_KEY`/
+   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` credentials were wired into a local dev server and
+   exercised end-to-end: all 3 demos' `/admin` correctly redirect an unauthenticated real
+   browser to Clerk's hosted sign-in; a real Clerk test user (`+clerk_test` address, Clerk's own
+   documented no-real-email test convention) signed in and landed back on the right demo's
+   `/admin`; `hasPermission` was confirmed gating a real `createPromotionAction` mutation —
+   blocked with a real "Not authorized" error for `viewer`, allowed once the same session's
+   `publicMetadata.role` was flipped to `owner` via the Clerk Backend API, with no re-login
+   needed (role is read fresh from Clerk each request, never cached). The zero-infra
+   `ADMIN_DEV_PASSWORD`/`ADMIN_VIEWER_PASSWORD` fallback was independently re-verified unchanged
+   with Clerk env vars unset. The real, disclosed prior "`/admin` 404/500 regression" (this
+   file's own history, `.pHive/planning/epic-backlog.md` row 56) traced to this repo's own
+   README documenting a non-existent `CLERK_PUBLISHABLE_KEY` env var name — the real SDK
+   (`@clerk/nextjs@7.9.1`) only ever reads `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, confirmed by
+   reading its published source. Fixed in both READMEs, plus a new defensive runtime check
+   (`apps/reference-storefront/lib/clerk-env-check.ts`, wired into `middleware.ts`) that fails
+   with a specific, actionable message instead of Clerk's generic
+   `MissingPublishableKeyError` if this exact misconfiguration recurs.
 2. Should shopper accounts (subsystem 10) eventually also run through Clerk, unifying
    identity across shopper and admin surfaces? Deliberately out of scope for this epic — admin
    auth was the urgent, live-exploitable gap; shopper auth is a separate future decision.

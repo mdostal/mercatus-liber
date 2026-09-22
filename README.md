@@ -53,11 +53,22 @@ and payment keys to get real behavior instead of a local stand-in.
   authentication (`middleware.ts`) and the real `createClerkAdminAuthAdapter()` is wired in
   (`lib/services.ts`); when unset, Clerk's middleware/provider are skipped entirely and the app
   falls back to the zero-infra `createDefaultAdminAuthAdapter()` dev adapter.
-- `CLERK_PUBLISHABLE_KEY` — Clerk's publishable key identifying the Clerk instance, required
-  alongside `CLERK_SECRET_KEY` for Clerk's SDK (`<ClerkProvider>`, `clerkMiddleware()`) to
-  function. Its client-exposed equivalent, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, would also be
-  needed if this app ever renders Clerk client components directly (see
-  `packages/adapter-clerk/README.md`).
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — Clerk's publishable key identifying the Clerk instance,
+  required alongside `CLERK_SECRET_KEY`. **Corrected 2026-09-22, real-provider-verification
+  (epic 56):** an earlier version of this doc claimed a separate, non-`NEXT_PUBLIC_`-prefixed
+  `CLERK_PUBLISHABLE_KEY` was what the server-side SDK (`clerkMiddleware()`, `<ClerkProvider>`)
+  reads. That was wrong — confirmed by reading `@clerk/nextjs@7.9.1`'s own published source
+  (`server/constants.js`): `PUBLISHABLE_KEY` is read exclusively from
+  `process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, both server- and client-side. There is no
+  separate `CLERK_PUBLISHABLE_KEY` this SDK version ever reads, anywhere. Setting the
+  non-`NEXT_PUBLIC_` name instead (as this doc previously instructed) leaves the real variable
+  unset, and `clerkMiddleware()` throws `MissingPublishableKeyError` on every request its broad
+  route matcher covers — i.e. nearly the whole site returns 500, not just `/admin` — reproduced
+  live against a real Clerk test-mode key during this fix. See
+  `packages/adapter-clerk/README.md` for the full writeup, including the separate, expected
+  Clerk-SDK behavior (not a bug) where an unauthenticated non-browser request to `/admin` — e.g.
+  a bare `curl` with no `Accept: text/html`/`Sec-Fetch-Dest` headers — gets a genuine 404
+  instead of a sign-in redirect.
 - `ADMIN_DEV_PASSWORD` — **local-development-only fallback, never a real security boundary.**
   Gates the dev-default admin adapter's single shared session cookie (see
   `packages/admin-auth/src/default-adapter.ts`): whatever value this is set to must match the
