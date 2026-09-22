@@ -7,9 +7,38 @@ A real `AdminAuthAdapter` (subsystem 21, `@mercatus-liber/admin-auth`) implement
 Clerk's own SDK reads these directly from the environment -- this package does not read or re-declare them itself:
 
 - `CLERK_SECRET_KEY` -- the Backend API secret key, used server-side by `auth()`, `currentUser()`, and `clerkClient()`.
-- `CLERK_PUBLISHABLE_KEY` (and its client-exposed equivalent `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, if `apps/reference-storefront` also renders any Clerk client components) -- the publishable key identifying the Clerk instance.
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` -- the publishable key identifying the Clerk instance, read by **both** server-side code (`clerkMiddleware()`, `auth()`, `clerkClient()`) and client-side code (`<ClerkProvider>`, `<UserButton>`). There is no separate, non-`NEXT_PUBLIC_`-prefixed `CLERK_PUBLISHABLE_KEY` this SDK version reads anywhere.
 
-Both names were confirmed by inspecting `@clerk/nextjs@7.9.1`'s and `@clerk/backend@3.17.1`'s own published source (`server/constants.js`), not guessed from older docs.
+**Correction, 2026-09-22 (real-provider-verification, epic 56):** an earlier version of this doc
+claimed a *separate* `CLERK_PUBLISHABLE_KEY` (no `NEXT_PUBLIC_` prefix) was also read server-side,
+"confirmed by inspecting `server/constants.js`" -- that inspection was wrong, or the file changed
+under it; re-reading the actual installed `@clerk/nextjs@7.9.1` (`dist/cjs/server/constants.js`)
+during this fix shows exactly one line resolving the publishable key:
+`const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "";` -- no fallback to
+any other env var name, server or client. This matters in practice: setting only the (nonexistent)
+`CLERK_PUBLISHABLE_KEY` name while leaving `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` unset makes
+`PUBLISHABLE_KEY` resolve to `""`, and `clerkMiddleware()` throws `MissingPublishableKeyError` the
+instant any matched request comes in -- reproduced live, locally, against a real Clerk test-mode
+key during this fix: every route covered by `middleware.ts`'s broad matcher (nearly the whole app)
+returned a 500, not just `/admin`. This is very likely the real, disclosed root cause of the
+"`/admin` 404 regression" mentioned in `.pHive/planning/epic-backlog.md` row 56's earlier update --
+someone plausibly followed this doc's previous (wrong) guidance when setting production env vars.
+
+### A related, non-bug gotcha: `/admin` 404s for non-browser requests, by design
+
+Separately from the above, `auth.protect()` (called from `middleware.ts` with no arguments) does
+**not** always redirect an unauthenticated visitor to sign-in. Reading `@clerk/nextjs@7.9.1`'s own
+`server/protect.js`: `handleUnauthenticated()` only calls `redirectToSignIn()` when
+`isPageRequest(request)` is true (the request carries `Sec-Fetch-Dest: document`/`iframe`, an
+`Accept: text/html` header, or looks like a Next.js internal app-router navigation) -- otherwise it
+falls through to `notFound()`, which `clerkMiddleware.js`'s own `handleControlFlowErrors` converts
+into a deliberate internal rewrite to a nonexistent `/clerk_<timestamp>` path specifically to force
+a genuine Next.js 404 (see that file's own comment: "This is an internal rewrite purely to trigger
+a not found error"). A bare `curl http://.../demo/<slug>/admin` (no browser fetch-metadata headers)
+reliably reproduces this real 404 -- confirmed live during this fix -- while the exact same URL in
+a real browser (or `curl` with `-H "Accept: text/html" -H "Sec-Fetch-Dest: document"`) correctly
+gets a `307` to Clerk's hosted sign-in flow. Anyone re-verifying this route with a raw HTTP client
+rather than a browser should expect this and not mistake it for a regression.
 
 ## Where role data lives
 
@@ -21,7 +50,14 @@ Both names were confirmed by inspecting `@clerk/nextjs@7.9.1`'s and `@clerk/back
 
 This package's own logic (role-mapping, the fail-closed default, argument plumbing into Clerk's Backend SDK calls) is exercised in `test/adapter-clerk.test.ts` **entirely against an injected mock Clerk client** -- see `createClerkAdminAuthAdapter`'s optional `deps` parameter (`auth`, `currentUser`, `users`), each of which defaults to the real `@clerk/nextjs/server` import when not supplied. No test in this package ever makes a live network call.
 
-There are no live Clerk credentials in this environment as of this piece of work. End-to-end verification against a real Clerk account -- confirming `auth()`/`currentUser()`/`clerkClient()` actually behave the way their published types say they do against a live Clerk instance -- is a separate, later step once real `CLERK_SECRET_KEY`/`CLERK_PUBLISHABLE_KEY` credentials exist. This is the same disclosed-gap posture `@mercatus-liber/adapter-sanity` takes for Sanity credentials, not silently claimed as fully verified.
+**Update 2026-09-22 (real-provider-verification, epic 56): this gap is now closed.** Real
+`CLERK_SECRET_KEY`/`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` test-mode credentials were provided, wired
+into a local dev server, and exercised end-to-end against a real Clerk instance (`more-lark-7491`):
+`auth.protect()` correctly redirects an unauthenticated real-browser request to Clerk's hosted
+sign-in across all 3 demos, a real test admin user was created via the Clerk Backend API and
+completed a real sign-in, and `hasPermission` was confirmed gating a real mutation for both
+`owner` and `viewer` roles set via `publicMetadata.role`. See
+`.pHive/planning/epic-backlog.md` row 56 for the full verification log.
 
 ## Usage
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextFetchEvent, NextMiddleware, NextRequest } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMisconfigurationError } from "./lib/clerk-env-check";
 
 /**
  * admin-auth-03: authentication layer (design-discussion.md §3). Scoped to
@@ -77,6 +78,17 @@ const clerkAdminGate: NextMiddleware = clerkMiddleware(async (auth, req) => {
 const middleware: NextMiddleware = (request: NextRequest, event: NextFetchEvent) => {
   if (!process.env.CLERK_SECRET_KEY) {
     return NextResponse.next();
+  }
+  // admin-auth-clerk-live: fail loud and specific, before ever calling
+  // clerkMiddleware(), for the exact real misconfiguration that caused this
+  // app's disclosed "/admin regression" (epic-backlog.md row 56) -- see
+  // lib/clerk-env-check.ts's own doc comment for the full root-cause
+  // writeup. Clerk's own MissingPublishableKeyError is real and would fire
+  // here anyway, but its text doesn't call out this repo's specific wrong-
+  // env-var-name history, so this surfaces first with an actionable message.
+  const misconfiguration = clerkMisconfigurationError(process.env);
+  if (misconfiguration) {
+    throw new Error(misconfiguration);
   }
   return clerkAdminGate(request, event);
 };
