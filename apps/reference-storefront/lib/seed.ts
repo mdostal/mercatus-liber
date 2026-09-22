@@ -11,7 +11,15 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import { upsertCatalog, upsertCategory, upsertProduct, upsertServiceArea, upsertStorefrontView } from "./idempotent-seed";
+import {
+  upsertCatalog,
+  upsertCategory,
+  upsertMarketingPage,
+  upsertPage,
+  upsertProduct,
+  upsertServiceArea,
+  upsertStorefrontView,
+} from "./idempotent-seed";
 
 interface DemoProduct {
   slug: string;
@@ -758,7 +766,7 @@ async function seedSubcategories(
  * slug.
  */
 async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string>): Promise<void> {
-  const home = await cms.createPage({
+  const { page: home, isNew: homeIsNew } = await upsertPage(cms, {
     pageType: "home",
     slug: "home-print-shop",
     title: "Home",
@@ -783,10 +791,10 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
       },
     ],
   });
-  await cms.publishPage(home.id);
+  if (homeIsNew) await cms.publishPage(home.id);
 
   const toteId = productIdBySlug.get("embroidered-canvas-tote");
-  const { page: campaign } = await cms.createMarketingPage({
+  const { page: campaign, isNew: campaignIsNew } = await upsertMarketingPage(cms, {
     slug: "fall-sale",
     title: "Fall Sale",
     sections: toteId ? [{ componentType: "product-grid", config: { productIds: [toteId] } }] : [],
@@ -795,7 +803,7 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
     endDate: "2026-10-31",
     productIds: toteId ? [toteId] : [],
   });
-  await cms.publishPage(campaign.id);
+  if (campaignIsNew) await cms.publishPage(campaign.id);
 }
 
 /**
@@ -846,7 +854,7 @@ async function seedServiceAreas(
     if (capId) await serviceAreas.assignProductToServiceArea(capId, area.id);
   }
 
-  const locationPage = await cms.createPage({
+  const { page: locationPage, isNew: locationPageIsNew } = await upsertPage(cms, {
     pageType: "location",
     slug: portland.slug,
     title: portland.name,
@@ -862,7 +870,7 @@ async function seedServiceAreas(
       },
     ],
   });
-  await cms.publishPage(locationPage.id);
+  if (locationPageIsNew) await cms.publishPage(locationPage.id);
 
   return portland.id;
 }

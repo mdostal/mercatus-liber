@@ -1,6 +1,13 @@
 import type { Catalog, CatalogService, NewCatalogInput, NewProductInput } from "@mercatus-liber/catalog";
 import type { Category, MarketingCatalogService, NewCategoryInput } from "@mercatus-liber/marketing-catalog";
 import type { Product } from "@mercatus-liber/core";
+import type {
+  CmsService,
+  MarketingPageMeta,
+  NewMarketingPageInput,
+  NewPageInput,
+  Page,
+} from "@mercatus-liber/cms";
 import type { NewServiceAreaInput, ServiceArea, ServiceAreaService } from "@mercatus-liber/service-areas";
 import type { NewStorefrontViewInput, StorefrontView, StorefrontViewsService } from "@mercatus-liber/storefront-views";
 
@@ -114,4 +121,45 @@ export async function upsertStorefrontView(
   const existing = await storefrontViews.getViewBySlug(input.demoSlug, input.slug);
   if (existing) return existing;
   return storefrontViews.createView(input);
+}
+
+/**
+ * Real, live bug found 2026-09-22 (user report: print-shop's nav rail
+ * showed "FALL SALE" repeated ~16 times): every one of `cms.createPage`/
+ * `cms.createMarketingPage`'s call sites in seed.ts/seed-northline.ts/
+ * seed-broadleaf.ts was still unconditional, the exact same class of bug
+ * this file's header comment already fixed for products/categories/
+ * catalogs (epic 48) and service-areas/storefront-views (data-reset-and-
+ * safety) -- just never extended to CMS pages. Harmless under the
+ * in-memory CMS default; a real, silently-growing pile of duplicate
+ * documents under the shared, persistent Sanity backend, since
+ * `createPage`/`createMarketingPage` both always mint a fresh random id
+ * (`packages/cms/src/service.ts`) with no uniqueness constraint on slug
+ * at the repository layer. Every Vercel serverless cold start re-running
+ * this demo's seed function created one more "fall-sale" document.
+ *
+ * `isNew` lets a caller skip the immediately-following `publishPage` call
+ * (and any other one-time-only side effects) on a page that already
+ * existed -- publishing an already-published page is likely harmless, but
+ * skipping it entirely avoids an unnecessary write against a real,
+ * persistent, remote CMS backend on every single cold start.
+ */
+export async function upsertPage(cms: CmsService, input: NewPageInput): Promise<{ page: Page; isNew: boolean }> {
+  const existing = await cms.getPageBySlug(input.slug);
+  if (existing) return { page: existing, isNew: false };
+  return { page: await cms.createPage(input), isNew: true };
+}
+
+/** Same idempotent-by-slug fix as upsertPage above, for the marketing/campaign-page + curated-mini-catalog pair `createMarketingPage` creates together. */
+export async function upsertMarketingPage(
+  cms: CmsService,
+  input: NewMarketingPageInput,
+): Promise<{ page: Page; meta: MarketingPageMeta | null; isNew: boolean }> {
+  const existing = await cms.getPageBySlug(input.slug);
+  if (existing) {
+    const meta = await cms.getMarketingPageMeta(existing.id);
+    return { page: existing, meta, isNew: false };
+  }
+  const { page, meta } = await cms.createMarketingPage(input);
+  return { page, meta, isNew: true };
 }
