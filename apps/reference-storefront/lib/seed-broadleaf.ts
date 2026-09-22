@@ -1122,6 +1122,7 @@ export async function seedBroadleafDemo(
     pageType: "home",
     slug: "home-broadleaf",
     title: "Broadleaf & Co.",
+    demoSlug: "broadleaf",
     sections: [
       {
         componentType: "hero-banner",

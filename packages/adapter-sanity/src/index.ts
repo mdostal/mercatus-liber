@@ -46,6 +46,10 @@ export function createSanityAdapter(config: SanityAdapterConfig): CmsPersistence
         clauses.push("status == $status");
         params.status = filter.status;
       }
+      if (filter?.demoSlug) {
+        clauses.push("demoSlug == $demoSlug");
+        params.demoSlug = filter.demoSlug;
+      }
       const where = clauses.length > 0 ? ` && ${clauses.join(" && ")}` : "";
       const docs = await client.query<SanityPageDoc[]>(`*[_type == "${PAGE_DOC_TYPE}"${where}]`, params);
       return docs.map(pageDocToPage);

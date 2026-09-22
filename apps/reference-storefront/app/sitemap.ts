@@ -67,7 +67,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Marketing (campaign) pages render at /demo/[demoSlug]/campaign/[slug]
     // (see app/demo/[demoSlug]/campaign/[slug]/page.tsx's cms.getPageBySlug(slug)).
-    const marketingPages = await cms.listPages({ pageType: "marketing", status: "published" });
+    // Same real cross-demo-bleed bug as buildNavLinks (app/demo/[demoSlug]/
+    // layout.tsx) in a third place: unscoped, this generated a
+    // /demo/${demoSlug}/campaign/fall-sale sitemap entry for EVERY demo,
+    // not just print-shop's own. Scoped by demoSlug, same fix.
+    const marketingPages = await cms.listPages({ pageType: "marketing", status: "published", demoSlug });
     for (const page of marketingPages) {
       entries.push({
         url: canonicalUrl(`/demo/${demoSlug}/campaign/${page.slug}`),
@@ -79,7 +83,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Location pages render at /demo/[demoSlug]/locations/[slug], keyed by
     // the same slug as the CMS "location" page (see app/demo/[demoSlug]/
     // locations/[slug]/page.tsx's cms.getPageBySlug(slug) lookup).
-    const locationPages = await cms.listPages({ pageType: "location", status: "published" });
+    const locationPages = await cms.listPages({ pageType: "location", status: "published", demoSlug });
     for (const page of locationPages) {
       entries.push({
         url: canonicalUrl(`/demo/${demoSlug}/locations/${page.slug}`),

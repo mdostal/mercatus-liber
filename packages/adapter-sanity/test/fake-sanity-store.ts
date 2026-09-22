@@ -53,6 +53,7 @@ export function createFakeSanityFetch(): typeof fetch {
         if (groq.includes("slug == $slug")) matches = matches.filter((p) => p.slug === params.slug);
         if (groq.includes("pageType == $pageType")) matches = matches.filter((p) => p.pageType === params.pageType);
         if (groq.includes("status == $status")) matches = matches.filter((p) => p.status === params.status);
+        if (groq.includes("demoSlug == $demoSlug")) matches = matches.filter((p) => p.demoSlug === params.demoSlug);
         result = isSingle ? (matches[0] ?? null) : matches;
       } else if (groq.includes(`_type == "${MARKETING_META_DOC_TYPE}"`)) {
         let matches = [...metas.values()];

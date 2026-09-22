@@ -17,6 +17,8 @@ export interface SanityPageDoc {
   title: string;
   status: Page["status"];
   sections: Page["sections"];
+  /** Optional, additive -- carries Page.demoSlug (see @mercatus-liber/cms's types.ts doc comment) through to/from the real Sanity document. */
+  demoSlug?: string;
 }
 
 export function pageDocToPage(doc: SanityPageDoc): Page {
@@ -27,6 +29,9 @@ export function pageDocToPage(doc: SanityPageDoc): Page {
     title: doc.title,
     status: doc.status,
     sections: doc.sections,
+    // exactOptionalPropertyTypes: only set the key when the doc really has
+    // one, rather than assigning `undefined` to it explicitly.
+    ...(doc.demoSlug !== undefined ? { demoSlug: doc.demoSlug } : {}),
   };
 }
 
@@ -39,6 +44,7 @@ export function pageToPageDoc(page: Page): SanityPageDoc {
     title: page.title,
     status: page.status,
     sections: page.sections,
+    ...(page.demoSlug !== undefined ? { demoSlug: page.demoSlug } : {}),
   };
 }
 

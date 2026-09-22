@@ -10,7 +10,11 @@ export default async function AdminCmsPage({ params }: { params: Promise<{ demoS
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { cms } = await getServicesForDemo(demoSlug);
-  const pages = await cms.listPages();
+  // Same real cross-demo-bleed bug as buildNavLinks (app/demo/[demoSlug]/
+  // layout.tsx) in a different place: under the shared Sanity backend, an
+  // unscoped listPages() here showed all 3 demos' CMS pages mixed together
+  // in one admin's page list. Scoped to this admin's own demo, same fix.
+  const pages = await cms.listPages({ demoSlug });
 
   return (
     <main>

@@ -52,6 +52,41 @@ describe("createSanityAdapter", () => {
       expect((await adapter.pages.list({ status: "published" })).map((p) => p.id)).toEqual(["page-2"]);
     });
 
+    /**
+     * Real, confirmed live bug (2026-09-22): all 3 demo stores share one
+     * Sanity project/dataset, and `pages.list()` had no `demoSlug` GROQ
+     * clause at all -- print-shop's "Fall Sale" campaign page bled into
+     * every other demo's nav. This proves the fix directly against the real
+     * GROQ-clause-construction logic this adapter issues (via the fake
+     * Sanity store, which recognizes the same "demoSlug == $demoSlug" clause
+     * the real adapter's index.ts now emits).
+     */
+    it("lists pages scoped by demoSlug -- two demos' pages never bleed into each other's results", async () => {
+      await adapter.pages.save({ ...home, demoSlug: "print-shop" });
+      await adapter.pages.save({
+        ...home,
+        id: "page-2",
+        slug: "fall-sale",
+        pageType: "marketing",
+        status: "published",
+        demoSlug: "print-shop",
+      });
+      await adapter.pages.save({
+        ...home,
+        id: "page-3",
+        slug: "home-broadleaf",
+        demoSlug: "broadleaf",
+      });
+
+      expect((await adapter.pages.list({ demoSlug: "print-shop" })).map((p) => p.id).sort()).toEqual(["page-1", "page-2"]);
+      expect((await adapter.pages.list({ demoSlug: "broadleaf" })).map((p) => p.id)).toEqual(["page-3"]);
+      expect(
+        (await adapter.pages.list({ pageType: "marketing", status: "published", demoSlug: "broadleaf" })),
+      ).toEqual([]);
+      // Unscoped list() still returns everything, fully backward compatible.
+      expect(await adapter.pages.list()).toHaveLength(3);
+    });
+
     it("upserts on save with the same id (createOrReplace) rather than creating a duplicate", async () => {
       await adapter.pages.save(home);
       await adapter.pages.save({ ...home, title: "Updated Home" });

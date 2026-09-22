@@ -93,4 +93,62 @@ describe("cms service", () => {
     expect((await cms.listPages({ status: "published" })).map((p) => p.id)).toEqual([home.id]);
     expect((await cms.listPages({ status: "draft" })).map((p) => p.pageType)).toEqual(["marketing"]);
   });
+
+  /**
+   * Real, confirmed live bug (2026-09-22): under a SHARED persistent CMS
+   * backend, print-shop's own "Fall Sale" campaign page showed up in
+   * Broadleaf's and Northline's nav too, because `listPages` had no way to
+   * scope a query to one demo's own pages. This proves the fix: two
+   * different demos' marketing pages never bleed into each other's
+   * demoSlug-scoped `listPages` results, and an unscoped `listPages()` call
+   * (e.g. a legitimate cross-demo admin view) still returns everything,
+   * fully backward compatible.
+   */
+  it("listPages scopes by demoSlug -- two different demos' pages never bleed into each other's results", async () => {
+    const printShopHome = await cms.createPage({
+      pageType: "home",
+      slug: "home-print-shop",
+      title: "The Print Shop",
+      sections: [],
+      demoSlug: "print-shop",
+    });
+    await cms.publishPage(printShopHome.id);
+    const { page: printShopSale } = await cms.createMarketingPage({
+      slug: "fall-sale",
+      title: "Fall Sale",
+      sections: [],
+      campaignName: "Fall Sale 2026",
+      startDate: "2026-10-01",
+      endDate: "2026-10-31",
+      productIds: [],
+      demoSlug: "print-shop",
+    });
+    await cms.publishPage(printShopSale.id);
+
+    const broadleafHome = await cms.createPage({
+      pageType: "home",
+      slug: "home-broadleaf",
+      title: "Broadleaf & Co.",
+      sections: [],
+      demoSlug: "broadleaf",
+    });
+    await cms.publishPage(broadleafHome.id);
+
+    const printShopMarketing = await cms.listPages({ pageType: "marketing", status: "published", demoSlug: "print-shop" });
+    expect(printShopMarketing.map((p) => p.slug)).toEqual(["fall-sale"]);
+
+    const broadleafMarketing = await cms.listPages({ pageType: "marketing", status: "published", demoSlug: "broadleaf" });
+    expect(broadleafMarketing).toEqual([]);
+
+    const broadleafAll = await cms.listPages({ demoSlug: "broadleaf" });
+    expect(broadleafAll.map((p) => p.id)).toEqual([broadleafHome.id]);
+
+    // Unscoped listPages() (no demoSlug filter) legitimately still returns
+    // every demo's pages -- backward compatible, for admin surfaces that
+    // genuinely want the whole cross-demo picture.
+    const everything = await cms.listPages({});
+    expect(everything.map((p) => p.id).sort()).toEqual(
+      [printShopHome.id, printShopSale.id, broadleafHome.id].sort(),
+    );
+  });
 });

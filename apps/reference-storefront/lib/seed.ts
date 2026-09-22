@@ -770,6 +770,7 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
     pageType: "home",
     slug: "home-print-shop",
     title: "Home",
+    demoSlug: "print-shop",
     sections: [
       {
         componentType: "hero-banner",
@@ -797,6 +798,7 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
   const { page: campaign, isNew: campaignIsNew } = await upsertMarketingPage(cms, {
     slug: "fall-sale",
     title: "Fall Sale",
+    demoSlug: "print-shop",
     sections: toteId ? [{ componentType: "product-grid", config: { productIds: [toteId] } }] : [],
     campaignName: "Fall Sale 2026",
     startDate: "2026-10-01",
@@ -858,6 +860,7 @@ async function seedServiceAreas(
     pageType: "location",
     slug: portland.slug,
     title: portland.name,
+    demoSlug: "print-shop",
     sections: [
       { componentType: "service-area-info", config: { hours: "Mon-Fri 9am-5pm" } },
       {
