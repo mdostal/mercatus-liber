@@ -10,7 +10,14 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import { upsertCatalog, upsertCategory, upsertProduct, upsertServiceArea, upsertStorefrontView } from "./idempotent-seed";
+import {
+  upsertCatalog,
+  upsertCategory,
+  upsertPage,
+  upsertProduct,
+  upsertServiceArea,
+  upsertStorefrontView,
+} from "./idempotent-seed";
 
 /**
  * Epic 15b's public demo: "Northline Home Tech", a fictional smart-home
@@ -1144,7 +1151,7 @@ export async function seedNorthlineDemo(
   // CMS backend (e.g. Sanity) has all 3 demos writing into the same
   // dataset, so this would silently clobber the other stores' home pages.
   // Namespaced per-store instead; see lib/seed.ts's identical correction.
-  const home = await cms.createPage({
+  const { page: home, isNew: homeIsNew } = await upsertPage(cms, {
     pageType: "home",
     slug: "home-northline",
     title: "Northline Home Tech",
@@ -1162,7 +1169,7 @@ export async function seedNorthlineDemo(
       },
     ],
   });
-  await cms.publishPage(home.id);
+  if (homeIsNew) await cms.publishPage(home.id);
 
   // One real, published location page per service area (all 8, not 1 of 8).
   // The list of services offered is derived directly from each service's
@@ -1172,7 +1179,7 @@ export async function seedNorthlineDemo(
     const area = DEMO_SERVICE_AREAS[areaIndex]!;
     const servicesOfferedHere = DEMO_SERVICES.filter((service) => service.areaIndices.includes(areaIndex)).map((service) => service.title);
 
-    const locationPage = await cms.createPage({
+    const { page: locationPage, isNew: locationPageIsNew } = await upsertPage(cms, {
       pageType: "location",
       slug: area.slug,
       title: area.name,
@@ -1187,7 +1194,7 @@ export async function seedNorthlineDemo(
         },
       ],
     });
-    await cms.publishPage(locationPage.id);
+    if (locationPageIsNew) await cms.publishPage(locationPage.id);
   }
 
   // "make the store feel real" pass: 4 more optional, guarded merchandising

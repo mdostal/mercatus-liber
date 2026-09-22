@@ -9,7 +9,7 @@ import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
-import { upsertCatalog, upsertCategory, upsertProduct, upsertStorefrontView } from "./idempotent-seed";
+import { upsertCatalog, upsertCategory, upsertPage, upsertProduct, upsertStorefrontView } from "./idempotent-seed";
 
 /**
  * Epic demo-store-plant-shop's third public demo: "Broadleaf & Co.", an
@@ -1118,7 +1118,7 @@ export async function seedBroadleafDemo(
   // lib/seed.ts's/lib/seed-northline.ts's identical correction -- namespaced
   // per-store instead of the bare literal "home", which would silently
   // collide across all 3 demos under a real SHARED external CMS backend.
-  const home = await cms.createPage({
+  const { page: home, isNew: homeIsNew } = await upsertPage(cms, {
     pageType: "home",
     slug: "home-broadleaf",
     title: "Broadleaf & Co.",
@@ -1158,7 +1158,7 @@ export async function seedBroadleafDemo(
       },
     ],
   });
-  await cms.publishPage(home.id);
+  if (homeIsNew) await cms.publishPage(home.id);
 
   await seedRealCatalog(catalog, productIdBySlug);
   if (promotions) await seedPromotions(promotions);

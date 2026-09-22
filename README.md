@@ -95,6 +95,24 @@ and payment keys to get real behavior instead of a local stand-in.
   project and dataset. Falls back to an empty string when unset, same posture as the Stripe
   keys above; only meaningful alongside `SANITY_PROJECT_ID`.
 
+**AI content copilot** (`apps/reference-storefront/lib/copilot/`, `/admin/copilot`):
+- `ANTHROPIC_API_KEY` — a real Anthropic API key. This is the single signal
+  `lib/copilot-runtime.ts`'s `isCopilotConfigured()` checks: when set, `/admin/copilot` runs the
+  real tool-calling loop against the live Anthropic API; when unset, the page renders an honest
+  "AI copilot is not configured for this environment" message instead of a broken or fake UI.
+  **Deliberately never set on `commerce.mdostal.com` (the shared public demo), and this is not an
+  oversight to "fix" — it's the intended, permanent posture.** A public demo with a shared
+  Anthropic key would let any anonymous visitor burn real API spend on the site owner's account;
+  the copilot's backend, UI, permission gating, and tests are all fully real and shippable without
+  it (see `.pHive/epics/sanity-challenge-commerce-copilot/docs/design-discussion.md`). If you're
+  running this framework yourself (locally, or your own deployment) and want to actually try the
+  copilot, set this to your own key in your own `.env.local`/hosting environment — never the
+  shared public one.
+- `SANITY_CONTEXT_ORG_ID` / `SANITY_CONTEXT_ENDPOINT_NAME` — optional, only meaningful alongside
+  `SANITY_TOKEN` (see Content (CMS) above): a Sanity Context MCP org-scoped token and endpoint
+  name for the copilot's Sanity Context (Knowledge Base) search tool. Same "bring your own
+  credential" posture as `ANTHROPIC_API_KEY` above — never set on the shared public demo.
+
 **Persistence (catalog)** (`@mercatus-liber/adapter-sqlite` + `@mercatus-liber/adapter-postgres`):
 - `DATABASE_URL` — a Postgres connection string. This is the highest-priority signal
   `lib/services.ts` uses to decide catalog persistence: when set, a real `createPostgresAdapter()`
