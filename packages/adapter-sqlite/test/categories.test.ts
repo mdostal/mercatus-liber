@@ -83,6 +83,32 @@ describe("createSqliteCategoryRepository", () => {
     expect(() => createSqliteCategoryRepository(fresh)).not.toThrow();
     expect(() => createSqliteCategoryRepository(fresh)).not.toThrow();
   });
+
+  /**
+   * Real, confirmed live bug (2026-09-22, epic-backlog.md row 61) -- same
+   * demo-scoping gap the Postgres adapter has, mirrored here so a demo
+   * running SQLITE_FILE_PATH gets the same real fix. Proves list(filter)
+   * scopes by demo_slug, and an unscoped list() still returns everything.
+   */
+  it("list(filter) scopes by demoSlug -- two demos' categories never bleed into each other's results", async () => {
+    const printShop: Category = { ...gifts, id: "ps1", slug: "embroidery", title: "Embroidery", demoSlug: "print-shop" };
+    const northline: Category = { ...gifts, id: "nl1", slug: "tv-home-theater", title: "TV & Home Theater", demoSlug: "northline" };
+    await categories.save(printShop);
+    await categories.save(northline);
+
+    expect(await categories.list({ demoSlug: "print-shop" })).toEqual([printShop]);
+    expect(await categories.list({ demoSlug: "northline" })).toEqual([northline]);
+
+    const everything = await categories.list();
+    expect(everything.map((c) => c.id).sort()).toEqual(["nl1", "ps1"]);
+  });
+
+  it("round-trips demoSlug through save/get, and omits it entirely when never set (backward compatible)", async () => {
+    await categories.save(gifts);
+    const found = await categories.get("c1");
+    expect(found?.demoSlug).toBeUndefined();
+    expect(found).not.toHaveProperty("demoSlug");
+  });
 });
 
 describe("createSqliteProductCategoryRepository", () => {

@@ -48,7 +48,7 @@ export function createFakeConvexClient(): ConvexClientLike {
         case "categories:getBySlug":
           return categories.find((c) => c.slug === args.slug) ?? null;
         case "categories:list":
-          return categories;
+          return args.demoSlug ? categories.filter((c) => c.demoSlug === args.demoSlug) : categories;
         case "productCategories:listCategoryIdsForProduct":
           return productCategoryAssignments
             .filter((a) => a.productId === args.productId)

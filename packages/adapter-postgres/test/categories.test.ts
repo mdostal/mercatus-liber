@@ -76,6 +76,37 @@ describe("createPostgresCategoryRepository", () => {
     const found = await categories.get("c1");
     expect(found?.parentId).toBeNull();
   });
+
+  /**
+   * Real, confirmed live bug (2026-09-22, epic-backlog.md row 61): print-shop
+   * and Northline Home Tech genuinely share this one Postgres categories
+   * table (both demos resolve the same global DATABASE_URL pool with no
+   * per-demo persistence override configured). An unscoped list() returned
+   * both demos' categories combined. Proves the fix: list(filter) scopes by
+   * demo_slug, and an unscoped list() (no filter) still returns everything.
+   */
+  it("list(filter) scopes by demoSlug -- two demos' categories never bleed into each other's results", async () => {
+    const printShop: Category = { ...apparel, id: "ps1", slug: "embroidery", title: "Embroidery", demoSlug: "print-shop" };
+    const northline: Category = { ...apparel, id: "nl1", slug: "tv-home-theater", title: "TV & Home Theater", demoSlug: "northline" };
+    await categories.save(printShop);
+    await categories.save(northline);
+
+    const printShopOnly = await categories.list({ demoSlug: "print-shop" });
+    expect(printShopOnly).toEqual([printShop]);
+
+    const northlineOnly = await categories.list({ demoSlug: "northline" });
+    expect(northlineOnly).toEqual([northline]);
+
+    const everything = await categories.list();
+    expect(everything.map((c) => c.id).sort()).toEqual(["nl1", "ps1"]);
+  });
+
+  it("round-trips demoSlug through save/get, and omits it entirely when never set (backward compatible)", async () => {
+    await categories.save(apparel);
+    const found = await categories.get("c1");
+    expect(found?.demoSlug).toBeUndefined();
+    expect(found).not.toHaveProperty("demoSlug");
+  });
 });
 
 describe("createPostgresProductCategoryRepository", () => {

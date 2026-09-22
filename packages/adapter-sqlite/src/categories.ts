@@ -26,12 +26,14 @@ export interface Category {
   description: string;
   /** null for a top-level category. */
   parentId: string | null;
+  /** Optional, additive -- demo-scoping epic (row 61), see @mercatus-liber/marketing-catalog's Category.demoSlug doc comment. */
+  demoSlug?: string;
 }
 
 export interface CategoryRepository {
   get(id: string): Promise<Category | null>;
   getBySlug(slug: string): Promise<Category | null>;
-  list(): Promise<Category[]>;
+  list(filter?: { demoSlug?: string }): Promise<Category[]>;
   save(category: Category): Promise<void>;
 }
 
@@ -48,6 +50,7 @@ interface CategoryRow {
   title: string;
   description: string;
   parent_id: string | null;
+  demo_slug: string | null;
 }
 
 function rowToCategory(row: CategoryRow): Category {
@@ -57,7 +60,26 @@ function rowToCategory(row: CategoryRow): Category {
     title: row.title,
     description: row.description,
     parentId: row.parent_id,
+    ...(row.demo_slug ? { demoSlug: row.demo_slug } : {}),
   };
+}
+
+/**
+ * SCHEMA_SQL's CREATE TABLE IF NOT EXISTS is a no-op against a file-backed
+ * DB created before the `demo_slug` column existed (:memory: DBs are
+ * always fresh, so this only matters for real file-backed deployments) --
+ * same defensive best-effort ALTER + ignore-"duplicate column" pattern
+ * adapter-sqlite's own openSqliteDb (index.ts) already uses for
+ * products.images (image-cdn epic).
+ */
+function ensureDemoSlugColumn(db: Database.Database): void {
+  try {
+    db.exec("ALTER TABLE categories ADD COLUMN demo_slug TEXT");
+  } catch {
+    // already has the column -- expected on every fresh DB (SCHEMA_SQL
+    // already created it with the column) and every DB that already ran
+    // this migration once.
+  }
 }
 
 /**
@@ -70,6 +92,7 @@ function rowToCategory(row: CategoryRow): Category {
  */
 export function createSqliteCategoryRepository(db: Database.Database): CategoryRepository {
   db.exec(SCHEMA_SQL);
+  ensureDemoSlugColumn(db);
 
   return {
     async get(id: string): Promise<Category | null> {
@@ -84,25 +107,29 @@ export function createSqliteCategoryRepository(db: Database.Database): CategoryR
         | undefined;
       return row ? rowToCategory(row) : null;
     },
-    async list(): Promise<Category[]> {
-      const rows = db.prepare("SELECT * FROM categories").all() as CategoryRow[];
+    async list(filter?: { demoSlug?: string }): Promise<Category[]> {
+      const rows = filter?.demoSlug
+        ? (db.prepare("SELECT * FROM categories WHERE demo_slug = ?").all(filter.demoSlug) as CategoryRow[])
+        : (db.prepare("SELECT * FROM categories").all() as CategoryRow[]);
       return rows.map(rowToCategory);
     },
     async save(category: Category): Promise<void> {
       db.prepare(
-        `INSERT INTO categories (id, slug, title, description, parent_id)
-         VALUES (@id, @slug, @title, @description, @parentId)
+        `INSERT INTO categories (id, slug, title, description, parent_id, demo_slug)
+         VALUES (@id, @slug, @title, @description, @parentId, @demoSlug)
          ON CONFLICT(id) DO UPDATE SET
            slug = excluded.slug,
            title = excluded.title,
            description = excluded.description,
-           parent_id = excluded.parent_id`,
+           parent_id = excluded.parent_id,
+           demo_slug = excluded.demo_slug`,
       ).run({
         id: category.id,
         slug: category.slug,
         title: category.title,
         description: category.description,
         parentId: category.parentId,
+        demoSlug: category.demoSlug ?? null,
       });
     },
   };
@@ -117,6 +144,7 @@ export function createSqliteProductCategoryRepository(
   db: Database.Database,
 ): ProductCategoryRepository {
   db.exec(SCHEMA_SQL);
+  ensureDemoSlugColumn(db);
 
   return {
     async listCategoryIdsForProduct(productId: string): Promise<string[]> {

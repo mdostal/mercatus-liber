@@ -14,15 +14,17 @@ export interface NewCategoryInput {
   title: string;
   description: string;
   parentId: string | null;
+  /** Optional, additive -- see Category.demoSlug's doc comment in types.ts for why this exists. */
+  demoSlug?: string;
 }
 
 export interface MarketingCatalogService {
   createCategory(input: NewCategoryInput): Promise<Category>;
   getCategory(id: string): Promise<Category | null>;
   getCategoryBySlug(slug: string): Promise<Category | null>;
-  listCategories(): Promise<Category[]>;
+  listCategories(filter?: { demoSlug?: string }): Promise<Category[]>;
   /** Pass null for top-level categories. */
-  listChildCategories(parentId: string | null): Promise<Category[]>;
+  listChildCategories(parentId: string | null, filter?: { demoSlug?: string }): Promise<Category[]>;
 
   assignProductToCategory(productId: string, categoryId: string): Promise<void>;
   unassignProductFromCategory(productId: string, categoryId: string): Promise<void>;
@@ -55,6 +57,9 @@ export function createMarketingCatalogService(deps: {
         title: input.title,
         description: input.description,
         parentId: input.parentId,
+        // exactOptionalPropertyTypes: only set the key when a real value was
+        // given, rather than assigning `undefined` to it explicitly.
+        ...(input.demoSlug !== undefined ? { demoSlug: input.demoSlug } : {}),
       };
       await categories.save(category);
       return category;
@@ -68,12 +73,12 @@ export function createMarketingCatalogService(deps: {
       return categories.getBySlug(slug);
     },
 
-    async listCategories() {
-      return categories.list();
+    async listCategories(filter) {
+      return categories.list(filter);
     },
 
-    async listChildCategories(parentId) {
-      const all = await categories.list();
+    async listChildCategories(parentId, filter) {
+      const all = await categories.list(filter);
       return all.filter((c) => c.parentId === parentId);
     },
 

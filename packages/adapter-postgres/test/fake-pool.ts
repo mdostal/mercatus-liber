@@ -137,15 +137,19 @@ export function createFakePgPool(): FakePool {
       if (sql === "SELECT * FROM categories") {
         return { rows: [...categories.values()] as T[] };
       }
+      if (sql === "SELECT * FROM categories WHERE demo_slug = $1") {
+        return { rows: [...categories.values()].filter((c) => c.demo_slug === values[0]) as T[] };
+      }
       if (sql.startsWith("INSERT INTO categories")) {
-        const [id, slug, title, description, parentId] = values as [
+        const [id, slug, title, description, parentId, demoSlug] = values as [
           string,
           string,
           string,
           string,
           string | null,
+          string | null,
         ];
-        categories.set(id, { id, slug, title, description, parent_id: parentId });
+        categories.set(id, { id, slug, title, description, parent_id: parentId, demo_slug: demoSlug ?? null });
         return { rows: [] };
       }
 

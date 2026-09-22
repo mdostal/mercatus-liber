@@ -105,7 +105,16 @@ async function buildNavLinks(demoSlug: DemoSlug): Promise<Array<{ href: string; 
   const { marketingCatalog, serviceAreas, cms } = await getServicesForDemo(demoSlug);
   const links: Array<{ href: string; label: string }> = [];
 
-  const topLevelCategories = await marketingCatalog.listChildCategories(null);
+  // Real, confirmed live bug (2026-09-22, found while closing out the
+  // sibling CMS demo-scoping fix, epic-backlog.md row 61): print-shop and
+  // Northline Home Tech genuinely share ONE Postgres categories table (both
+  // demos resolve the same global DATABASE_URL pool with no per-demo
+  // persistence override configured) -- this call had zero demo scoping,
+  // so print-shop's nav showed Northline's top-level categories mixed in
+  // (and vice versa). `demoSlug` (marketing-catalog's Category.demoSlug) is
+  // the real, structural fix -- same shape as the CMS listPages fix just
+  // above/below.
+  const topLevelCategories = await marketingCatalog.listChildCategories(null, { demoSlug });
   for (const category of topLevelCategories) {
     links.push({ href: `/demo/${demoSlug}/category/${category.slug}`, label: category.title });
   }

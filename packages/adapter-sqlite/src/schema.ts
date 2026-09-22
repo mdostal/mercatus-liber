@@ -36,9 +36,11 @@ CREATE TABLE IF NOT EXISTS categories (
   slug TEXT NOT NULL UNIQUE,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
-  parent_id TEXT REFERENCES categories(id) -- NULL for a top-level category
+  parent_id TEXT REFERENCES categories(id), -- NULL for a top-level category
+  demo_slug TEXT -- demo-scoping epic (row 61), optional/additive, see Category.demoSlug's doc comment
 );
 CREATE INDEX IF NOT EXISTS idx_categories_parent_id ON categories(parent_id);
+CREATE INDEX IF NOT EXISTS idx_categories_demo_slug ON categories(demo_slug);
 
 -- Many-to-many product<->category assignment. product_id intentionally has no
 -- REFERENCES products(id): marketing-catalog's ProductCategoryRepository is a

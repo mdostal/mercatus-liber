@@ -1066,6 +1066,7 @@ export async function seedNorthlineDemo(
       title: category.title,
       description: category.description,
       parentId: null,
+      demoSlug: "northline",
     });
     categoryIdBySlug.set(category.slug, created.id);
   }
@@ -1136,6 +1137,7 @@ export async function seedNorthlineDemo(
       title: subcategory.title,
       description: subcategory.description,
       parentId,
+      demoSlug: "northline",
     });
     for (const serviceSlug of subcategory.serviceSlugs) {
       const productId = productIdBySlug.get(serviceSlug);

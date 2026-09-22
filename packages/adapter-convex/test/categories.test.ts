@@ -66,6 +66,34 @@ describe("createConvexCategoryRepository", () => {
     expect(parent?.parentId).toBeNull();
     expect(child?.parentId).toBe("c1");
   });
+
+  /**
+   * demo-scoping epic (row 61): added to all 4 real adapters for full
+   * consistency, even though Broadleaf (this adapter's only live consumer)
+   * isn't part of the confirmed live bug -- it already runs on its own
+   * dedicated Convex deployment, never shared with another demo. Proves
+   * list(filter) scopes by demoSlug, and an unscoped list() still returns
+   * everything.
+   */
+  it("list(filter) scopes by demoSlug -- two demos' categories never bleed into each other's results", async () => {
+    const broadleaf: Category = { ...cables, id: "bl1", slug: "plants", title: "Plants", demoSlug: "broadleaf" };
+    const otherDemo: Category = { ...cables, id: "od1", slug: "widgets", title: "Widgets", demoSlug: "other-demo" };
+    await categories.save(broadleaf);
+    await categories.save(otherDemo);
+
+    expect(await categories.list({ demoSlug: "broadleaf" })).toEqual([broadleaf]);
+    expect(await categories.list({ demoSlug: "other-demo" })).toEqual([otherDemo]);
+
+    const everything = await categories.list();
+    expect(everything.map((c) => c.id).sort()).toEqual(["bl1", "od1"]);
+  });
+
+  it("round-trips demoSlug through save/get, and omits it entirely when never set (backward compatible)", async () => {
+    await categories.save(cables);
+    const found = await categories.get("c1");
+    expect(found?.demoSlug).toBeUndefined();
+    expect(found).not.toHaveProperty("demoSlug");
+  });
 });
 
 describe("createConvexProductCategoryRepository", () => {

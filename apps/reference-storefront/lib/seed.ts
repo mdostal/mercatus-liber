@@ -637,30 +637,35 @@ async function seedCategories(marketingCatalog: MarketingCatalogService): Promis
     title: "Embroidery",
     description: "Totes, caps, and more, embroidered to order with your own text or a small custom design.",
     parentId: null,
+    demoSlug: "print-shop",
   });
   const customCoasters = await upsertCategory(marketingCatalog, {
     slug: "custom-coasters",
     title: "Custom Coasters",
     description: "Stoneware and cork-backed coaster sets, from a monogrammed custom order to our standard in-house prints.",
     parentId: null,
+    demoSlug: "print-shop",
   });
   const apparel = await upsertCategory(marketingCatalog, {
     slug: "apparel",
     title: "Apparel",
     description: "Hoodies and tees, embroidered on the chest with your own text or design.",
     parentId: null,
+    demoSlug: "print-shop",
   });
   const drinkware = await upsertCategory(marketingCatalog, {
     slug: "drinkware",
     title: "Drinkware",
     description: "Mugs and tumblers, custom-printed with your own text, photo, or design.",
     parentId: null,
+    demoSlug: "print-shop",
   });
   const stickersPatches = await upsertCategory(marketingCatalog, {
     slug: "stickers-patches",
     title: "Stickers & Patches",
     description: "Embroidered and woven patches, plus vinyl stickers -- custom-cut to order or ready to ship as-is.",
     parentId: null,
+    demoSlug: "print-shop",
   });
 
   return new Map([
@@ -709,6 +714,7 @@ async function seedSubcategories(
       title: "Hoodies & Sweatshirts",
       description: "Heavyweight fleece pullovers and crewnecks, embroidered or screen-printed to order.",
       parentId: apparelId,
+      demoSlug: "print-shop",
     });
     await assignToSubcategory(hoodiesSweatshirts.id, [
       "embroidered-fleece-hoodie",
@@ -721,6 +727,7 @@ async function seedSubcategories(
       title: "T-Shirts & Tees",
       description: "Ringspun cotton crewneck tees, embroidered on the chest to order for adults and kids alike.",
       parentId: apparelId,
+      demoSlug: "print-shop",
     });
     await assignToSubcategory(tShirtsTees.id, ["embroidered-cotton-tee", "kids-embroidered-tee"]);
   }
@@ -732,6 +739,7 @@ async function seedSubcategories(
       title: "Mugs",
       description: "Ceramic and enamel camp mugs, full-color printed edge-to-edge with your own text, photo, or design.",
       parentId: drinkwareId,
+      demoSlug: "print-shop",
     });
     await assignToSubcategory(mugs.id, ["custom-printed-ceramic-mug", "custom-printed-enamel-camp-mug"]);
 
@@ -740,6 +748,7 @@ async function seedSubcategories(
       title: "Tumblers & Bottles",
       description: "Insulated stainless steel tumblers and water bottles built for travel, hot or cold.",
       parentId: drinkwareId,
+      demoSlug: "print-shop",
     });
     await assignToSubcategory(tumblersBottles.id, [
       "custom-printed-travel-tumbler",

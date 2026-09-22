@@ -7,6 +7,8 @@ interface CategoryDoc {
   title: string;
   description: string;
   parentId: string | null;
+  /** Optional, additive -- demo-scoping epic (row 61), see @mercatus-liber/marketing-catalog's Category.demoSlug doc comment. No migration needed: MongoDB is schemaless, a document simply lacks this field until written. */
+  demoSlug?: string;
 }
 
 /**
@@ -33,7 +35,14 @@ interface ProductCategoryAssignmentDoc {
 }
 
 function docToCategory(doc: CategoryDoc): Category {
-  return { id: doc._id, slug: doc.slug, title: doc.title, description: doc.description, parentId: doc.parentId };
+  return {
+    id: doc._id,
+    slug: doc.slug,
+    title: doc.title,
+    description: doc.description,
+    parentId: doc.parentId,
+    ...(doc.demoSlug !== undefined ? { demoSlug: doc.demoSlug } : {}),
+  };
 }
 
 /**
@@ -60,8 +69,8 @@ export async function createMongoCategoryRepository(db: DbLike): Promise<Categor
       const doc = await categoriesCol.findOne({ slug });
       return doc ? docToCategory(doc) : null;
     },
-    async list(): Promise<Category[]> {
-      const docs = await categoriesCol.find({}).toArray();
+    async list(filter?: { demoSlug?: string }): Promise<Category[]> {
+      const docs = await categoriesCol.find(filter?.demoSlug ? { demoSlug: filter.demoSlug } : {}).toArray();
       return docs.map(docToCategory);
     },
     async save(category: Category): Promise<void> {

@@ -54,6 +54,16 @@ CREATE TABLE IF NOT EXISTS categories (
   parent_id TEXT REFERENCES categories(id)
 );
 CREATE INDEX IF NOT EXISTS idx_categories_parent_id ON categories(parent_id);
+-- demo-scoping epic (row 61): real, confirmed live bug -- print-shop and
+-- Northline Home Tech genuinely share this one table (both resolve the
+-- same global DATABASE_URL-backed pool with no per-demo persistence
+-- override configured), so an unscoped list() returned both demos'
+-- categories combined to whichever demo's nav asked. Optional/additive,
+-- same idempotent-ADD-COLUMN-IF-NOT-EXISTS pattern the image-cdn epic
+-- already used for products.images above -- a no-op against a database
+-- that already has this column.
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS demo_slug TEXT;
+CREATE INDEX IF NOT EXISTS idx_categories_demo_slug ON categories(demo_slug);
 
 CREATE TABLE IF NOT EXISTS product_category_assignments (
   product_id TEXT NOT NULL,

@@ -15,7 +15,7 @@ export default async function NewCmsPagePage({ params }: { params: Promise<{ dem
   if (!isDemoSlug(demoSlug)) notFound();
   const { cms, catalog, marketingCatalog } = await getServicesForDemo(demoSlug);
   const componentTypes = cms.components.list();
-  const [categories, products] = await Promise.all([marketingCatalog.listCategories(), catalog.listProducts()]);
+  const [categories, products] = await Promise.all([marketingCatalog.listCategories({ demoSlug }), catalog.listProducts()]);
   const categoryOptions = categories.map((c) => ({ value: c.slug, label: `${c.title} (${c.slug})` }));
   const productOptions = products.map((p) => ({ value: p.id, label: `${p.title} (${p.slug})` }));
 

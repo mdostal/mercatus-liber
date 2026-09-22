@@ -44,7 +44,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     });
 
-    const categories = await marketingCatalog.listCategories();
+    // Same real cross-demo-bleed bug as buildNavLinks (app/demo/[demoSlug]/
+    // layout.tsx), in the sitemap: unscoped, this generated a
+    // /demo/${demoSlug}/category/<slug> sitemap entry for EVERY demo's
+    // categories, not just this one's own -- see epic-backlog.md row 61.
+    const categories = await marketingCatalog.listCategories({ demoSlug });
     for (const category of categories) {
       entries.push({
         url: canonicalUrl(`/demo/${demoSlug}/category/${category.slug}`),

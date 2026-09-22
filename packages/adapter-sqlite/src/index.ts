@@ -106,6 +106,14 @@ export function openSqliteDb(path: string): Database.Database {
     // already has the column -- expected on every fresh DB and every DB
     // that already ran this migration once.
   }
+  // demo-scoping epic (row 61): same defensive best-effort ALTER, for the
+  // same reason, for categories.demo_slug -- see
+  // @mercatus-liber/marketing-catalog's Category.demoSlug doc comment.
+  try {
+    db.exec("ALTER TABLE categories ADD COLUMN demo_slug TEXT");
+  } catch {
+    // already has the column.
+  }
   return db;
 }
 
