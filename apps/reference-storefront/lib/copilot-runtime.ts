@@ -15,6 +15,14 @@
  * app/demo/[demoSlug]/admin/copilot/page.tsx renders the honest
  * "not configured" state instead of this module's real path.
  *
+ * GUARDRAIL, explicit user decision 2026-09-22 -- do not "fix" this by
+ * adding a shared ANTHROPIC_API_KEY to the public commerce.mdostal.com
+ * deployment. That would let any anonymous visitor burn real API spend on
+ * the site owner's account. This env-var-truthy check IS the intended
+ * mechanism for "bring your own key" -- a self-hoster sets it in their own
+ * environment; the shared public demo must keep it unset, permanently. See
+ * README.md's "AI content copilot" Configuration section.
+ *
  * `runDemoCopilotTurn`/`applyCopilotOption` both take an optional
  * `overrides` param for an injected AnthropicClient/SanityContextClient --
  * the exact same injectable-fake seam scc-06's own test suite
