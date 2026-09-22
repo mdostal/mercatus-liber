@@ -5,12 +5,35 @@ export interface Category extends CategoryRef {
   description: string;
   /** null for a top-level category. */
   parentId: string | null;
+  /**
+   * Optional, additive: which demo store this category belongs to (e.g.
+   * "print-shop", "northline", "broadleaf"). Real, confirmed live bug
+   * (2026-09-22, found while closing out the sibling CMS demo-scoping fix,
+   * see epic-backlog.md row 61): print-shop and Northline Home Tech
+   * genuinely share ONE Postgres `categories`/`product_category_assignments`
+   * pair of tables (both demos resolve the same global `DATABASE_URL`-backed
+   * pool when neither has a per-demo persistence override configured -- see
+   * apps/reference-storefront/lib/services.ts's resolveDemoPersistenceEnv),
+   * and `CategoryRepository.list()`/`MarketingCatalogService
+   * .listChildCategories()` had no demo-scoping concept at all -- every
+   * demo's nav (`buildNavLinks()` in
+   * app/demo/[demoSlug]/layout.tsx) called `listChildCategories(null)` with
+   * zero demo filter, so print-shop's nav showed Northline's top-level
+   * categories mixed in (and vice versa), each linking to a
+   * `/demo/<wrong-demo>/category/<slug>` href that doesn't belong to that
+   * store. This is the exact same bug class @mercatus-liber/cms's
+   * `Page.demoSlug` already fixed (epic 60) -- same shape here: optional and
+   * additive everywhere (every existing caller that never sets/filters by
+   * it keeps working byte-for-byte, including the in-memory default and any
+   * admin surface that legitimately wants every demo's categories at once).
+   */
+  demoSlug?: string;
 }
 
 export interface CategoryRepository {
   get(id: string): Promise<Category | null>;
   getBySlug(slug: string): Promise<Category | null>;
-  list(): Promise<Category[]>;
+  list(filter?: { demoSlug?: string }): Promise<Category[]>;
   save(category: Category): Promise<void>;
 }
 

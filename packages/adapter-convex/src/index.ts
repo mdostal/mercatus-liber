@@ -44,6 +44,8 @@ interface CategoryDoc {
   title: string;
   description: string;
   parentId: string | null;
+  /** Optional, additive -- demo-scoping epic (row 61), see @mercatus-liber/marketing-catalog's Category.demoSlug doc comment. */
+  demoSlug?: string;
 }
 
 /**
@@ -95,6 +97,7 @@ function docToCategory(doc: CategoryDoc): Category {
     title: doc.title,
     description: doc.description,
     parentId: doc.parentId,
+    ...(doc.demoSlug !== undefined ? { demoSlug: doc.demoSlug } : {}),
   };
 }
 
@@ -185,8 +188,11 @@ export function createConvexCategoryRepository(client: ConvexClientLike): Catego
       const doc = (await client.query("categories:getBySlug", { slug })) as CategoryDoc | null;
       return doc ? docToCategory(doc) : null;
     },
-    async list(): Promise<Category[]> {
-      const docs = (await client.query("categories:list", {})) as CategoryDoc[];
+    async list(filter?: { demoSlug?: string }): Promise<Category[]> {
+      const docs = (await client.query(
+        "categories:list",
+        filter?.demoSlug ? { demoSlug: filter.demoSlug } : {},
+      )) as CategoryDoc[];
       return docs.map(docToCategory);
     },
     async save(category: Category): Promise<void> {

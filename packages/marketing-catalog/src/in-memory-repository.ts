@@ -13,8 +13,10 @@ export function createInMemoryCategoryRepository(): CategoryRepository {
       }
       return null;
     },
-    async list() {
-      return [...categories.values()].map((c) => structuredClone(c));
+    async list(filter) {
+      let result = [...categories.values()];
+      if (filter?.demoSlug) result = result.filter((c) => c.demoSlug === filter.demoSlug);
+      return result.map((c) => structuredClone(c));
     },
     async save(category) {
       categories.set(category.id, structuredClone(category));

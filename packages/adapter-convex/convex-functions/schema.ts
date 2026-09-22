@@ -54,9 +54,17 @@ export default defineSchema({
     // null for a top-level category (mirrors Category.parentId in
     // @mercatus-liber/marketing-catalog's types.ts).
     parentId: v.union(v.string(), v.null()),
+    // Optional, additive -- demo-scoping epic (row 61), mirrors
+    // @mercatus-liber/marketing-catalog's Category.demoSlug doc comment.
+    // Broadleaf isn't part of the confirmed live bug (it already runs on
+    // its own dedicated Convex deployment, never shared with another
+    // demo), but this field is added here too for full consistency across
+    // all 4 real adapters, same shape as every other backend.
+    demoSlug: v.optional(v.string()),
   })
     .index("by_external_id", ["externalId"])
-    .index("by_slug", ["slug"]),
+    .index("by_slug", ["slug"])
+    .index("by_demo_slug", ["demoSlug"]),
 
   // Many-to-many product<->category assignment. productId/categoryId are
   // this framework's own real Product.id/Category.id strings, never

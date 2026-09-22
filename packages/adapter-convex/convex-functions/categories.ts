@@ -26,9 +26,18 @@ export const getBySlug = query({
   },
 });
 
+// Optional demoSlug filter (demo-scoping epic, row 61) -- when omitted,
+// returns every category exactly as before (fully backward compatible),
+// mirroring CategoryRepository.list()'s own optional filter shape.
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { demoSlug: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    if (args.demoSlug) {
+      return await ctx.db
+        .query("categories")
+        .withIndex("by_demo_slug", (q) => q.eq("demoSlug", args.demoSlug))
+        .collect();
+    }
     return await ctx.db.query("categories").collect();
   },
 });
@@ -40,6 +49,7 @@ export const save = mutation({
     title: v.string(),
     description: v.string(),
     parentId: v.union(v.string(), v.null()),
+    demoSlug: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db

@@ -603,6 +603,7 @@ async function seedSubcategories(
       title: subcategory.title,
       description: subcategory.description,
       parentId,
+      demoSlug: "broadleaf",
     });
 
     for (const productSlug of subcategory.productSlugs) {
@@ -1066,6 +1067,7 @@ export async function seedBroadleafDemo(
       title: category.title,
       description: category.description,
       parentId: null,
+      demoSlug: "broadleaf",
     });
     categoryIdBySlug.set(category.slug, created.id);
   }

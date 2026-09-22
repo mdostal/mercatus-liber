@@ -87,4 +87,68 @@ describe("marketing catalog service", () => {
     const product = await catalog.createProduct({ slug: "p5", title: "P5", description: "d", identifyingAttributeKeys: [] });
     expect(await marketingCatalog.suggestCategories(product.id)).toEqual([]);
   });
+
+  /**
+   * Real, confirmed live bug (2026-09-22, epic-backlog.md row 61): print-shop
+   * and Northline Home Tech genuinely share one Postgres categories table
+   * (both resolve the same global DATABASE_URL-backed pool with no per-demo
+   * persistence override configured -- see
+   * apps/reference-storefront/lib/services.ts's resolveDemoPersistenceEnv).
+   * listChildCategories(null) (the exact call buildNavLinks() in
+   * app/demo/[demoSlug]/layout.tsx uses to build a demo's shop-category nav)
+   * had no demo-scoping concept at all, so print-shop's nav showed
+   * Northline's top-level categories mixed in, and vice versa. This proves
+   * the fix: two different demos' top-level categories never bleed into
+   * each other's demoSlug-scoped listChildCategories/listCategories
+   * results, and an unscoped call (e.g. a legitimate cross-demo admin view)
+   * still returns everything, fully backward compatible -- same shape as
+   * @mercatus-liber/cms's analogous Page.demoSlug test (epic 60).
+   */
+  it("listChildCategories/listCategories scope by demoSlug -- two different demos' categories never bleed into each other's results", async () => {
+    const printShopEmbroidery = await marketingCatalog.createCategory({
+      slug: "embroidery",
+      title: "Embroidery",
+      description: "",
+      parentId: null,
+      demoSlug: "print-shop",
+    });
+    const printShopApparel = await marketingCatalog.createCategory({
+      slug: "apparel",
+      title: "Apparel",
+      description: "",
+      parentId: null,
+      demoSlug: "print-shop",
+    });
+
+    const northlineTv = await marketingCatalog.createCategory({
+      slug: "tv-home-theater",
+      title: "TV & Home Theater",
+      description: "",
+      parentId: null,
+      demoSlug: "northline",
+    });
+
+    const printShopTopLevel = await marketingCatalog.listChildCategories(null, { demoSlug: "print-shop" });
+    expect(printShopTopLevel.map((c) => c.slug).sort()).toEqual(["apparel", "embroidery"]);
+    expect(printShopTopLevel.some((c) => c.slug === "tv-home-theater")).toBe(false);
+
+    const northlineTopLevel = await marketingCatalog.listChildCategories(null, { demoSlug: "northline" });
+    expect(northlineTopLevel.map((c) => c.slug)).toEqual(["tv-home-theater"]);
+
+    const northlineAll = await marketingCatalog.listCategories({ demoSlug: "northline" });
+    expect(northlineAll.map((c) => c.id)).toEqual([northlineTv.id]);
+
+    // Unscoped listCategories()/listChildCategories() (no demoSlug filter)
+    // legitimately still return every demo's categories -- backward
+    // compatible, for admin surfaces that genuinely want the whole
+    // cross-demo picture.
+    const everything = await marketingCatalog.listCategories();
+    expect(everything.map((c) => c.id).sort()).toEqual(
+      [printShopEmbroidery.id, printShopApparel.id, northlineTv.id].sort(),
+    );
+    const everyTopLevel = await marketingCatalog.listChildCategories(null);
+    expect(everyTopLevel.map((c) => c.id).sort()).toEqual(
+      [printShopEmbroidery.id, printShopApparel.id, northlineTv.id].sort(),
+    );
+  });
 });

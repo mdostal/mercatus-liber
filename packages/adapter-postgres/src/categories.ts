@@ -7,6 +7,7 @@ interface CategoryRow {
   title: string;
   description: string;
   parent_id: string | null;
+  demo_slug: string | null;
 }
 
 interface AssignmentRow {
@@ -21,6 +22,7 @@ function rowToCategory(row: CategoryRow): Category {
     title: row.title,
     description: row.description,
     parentId: row.parent_id,
+    ...(row.demo_slug ? { demoSlug: row.demo_slug } : {}),
   };
 }
 
@@ -43,20 +45,23 @@ export function createPostgresCategoryRepository(pool: Pool): CategoryRepository
       const result = await pool.query<CategoryRow>("SELECT * FROM categories WHERE slug = $1", [slug]);
       return result.rows[0] ? rowToCategory(result.rows[0]) : null;
     },
-    async list(): Promise<Category[]> {
-      const result = await pool.query<CategoryRow>("SELECT * FROM categories");
+    async list(filter?: { demoSlug?: string }): Promise<Category[]> {
+      const result = filter?.demoSlug
+        ? await pool.query<CategoryRow>("SELECT * FROM categories WHERE demo_slug = $1", [filter.demoSlug])
+        : await pool.query<CategoryRow>("SELECT * FROM categories");
       return result.rows.map(rowToCategory);
     },
     async save(category: Category): Promise<void> {
       await pool.query(
-        `INSERT INTO categories (id, slug, title, description, parent_id)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO categories (id, slug, title, description, parent_id, demo_slug)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (id) DO UPDATE SET
            slug = EXCLUDED.slug,
            title = EXCLUDED.title,
            description = EXCLUDED.description,
-           parent_id = EXCLUDED.parent_id`,
-        [category.id, category.slug, category.title, category.description, category.parentId],
+           parent_id = EXCLUDED.parent_id,
+           demo_slug = EXCLUDED.demo_slug`,
+        [category.id, category.slug, category.title, category.description, category.parentId, category.demoSlug ?? null],
       );
     },
   };
