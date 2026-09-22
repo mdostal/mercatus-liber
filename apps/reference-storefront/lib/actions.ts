@@ -787,7 +787,7 @@ export async function createCmsPageAction(formData: FormData): Promise<void> {
 
   const { cms } = await getServicesForDemo(demoSlug);
   const sections = parseCmsSectionFormData(formData, cms.components.list());
-  await cms.createPage({ pageType, slug, title, sections });
+  await cms.createPage({ pageType, slug, title, sections, demoSlug });
   revalidatePath(`/demo/${demoSlug}/admin/cms`);
   redirect(`/demo/${demoSlug}/admin/cms`);
 }
@@ -816,6 +816,7 @@ export async function createMarketingPageAction(formData: FormData): Promise<voi
     startDate,
     endDate: endDate.length > 0 ? endDate : null,
     productIds,
+    demoSlug,
   });
   revalidatePath(`/demo/${demoSlug}/admin/cms`);
   redirect(`/demo/${demoSlug}/admin/cms`);

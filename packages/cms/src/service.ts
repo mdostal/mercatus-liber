@@ -15,6 +15,8 @@ export interface NewPageInput {
   slug: string;
   title: string;
   sections: ComponentInstance[];
+  /** Optional, additive -- see Page.demoSlug's doc comment in types.ts for why this exists. */
+  demoSlug?: string;
 }
 
 export interface NewMarketingPageInput {
@@ -25,6 +27,8 @@ export interface NewMarketingPageInput {
   startDate: string;
   endDate: string | null;
   productIds: string[];
+  /** Optional, additive -- threaded onto the underlying Page a marketing page IS (see createMarketingPage below). See Page.demoSlug's doc comment in types.ts. */
+  demoSlug?: string;
 }
 
 export interface CmsService {
@@ -33,7 +37,7 @@ export interface CmsService {
   publishPage(id: string): Promise<Page>;
   getPage(id: string): Promise<Page | null>;
   getPageBySlug(slug: string): Promise<Page | null>;
-  listPages(filter?: { pageType?: PageType; status?: PageStatus }): Promise<Page[]>;
+  listPages(filter?: { pageType?: PageType; status?: PageStatus; demoSlug?: string }): Promise<Page[]>;
 
   createMarketingPage(input: NewMarketingPageInput): Promise<{ page: Page; meta: MarketingPageMeta }>;
   getMarketingPageMeta(pageId: string): Promise<MarketingPageMeta | null>;
@@ -63,6 +67,9 @@ export function createCmsService(deps: {
         title: input.title,
         status: "draft",
         sections: input.sections,
+        // exactOptionalPropertyTypes: only set the key when a real value was
+        // given, rather than assigning `undefined` to it explicitly.
+        ...(input.demoSlug !== undefined ? { demoSlug: input.demoSlug } : {}),
       };
       await pages.save(page);
       return page;
@@ -102,6 +109,7 @@ export function createCmsService(deps: {
         title: input.title,
         status: "draft",
         sections: input.sections,
+        ...(input.demoSlug !== undefined ? { demoSlug: input.demoSlug } : {}),
       };
       await pages.save(page);
 

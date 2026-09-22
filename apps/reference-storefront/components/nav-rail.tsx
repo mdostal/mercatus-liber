@@ -25,12 +25,20 @@ const RAIL_WIDTH_PX = 240;
  * so this file can be restyled freely with zero risk to the other 9
  * bundles. `mx-`-prefixed classes throughout per this epic's
  * collision-avoidance convention.
+ *
+ * cms-demo-scoping-and-nav-cleanup fix: this rail no longer renders
+ * "Admin: Plugins" / "<- Mercatus Liber home" / "Switch to {other demo}" --
+ * those now render once in the shared secondary utility strip
+ * app/demo/[demoSlug]/layout.tsx renders above every NavChrome. The rail's
+ * own link list is now purely real shop navigation (categories/
+ * service-areas/campaigns via `navLinks`, plus Cart/Search/Account) -- the
+ * genuine structured "menu you actually see" the user asked for, without
+ * framework/docs links mixed in.
  */
 export function NavRail({
   demoSlug,
   displayName,
   navLinks,
-  otherDemos,
   bundles,
   activeThemeKey,
   children,
@@ -38,7 +46,6 @@ export function NavRail({
   demoSlug: DemoSlug;
   displayName: string;
   navLinks: Array<{ href: string; label: string }>;
-  otherDemos: Array<{ slug: DemoSlug; displayName: string }>;
   bundles: ThemeBundle[];
   activeThemeKey: string;
   children: ReactNode;
@@ -141,18 +148,6 @@ export function NavRail({
           <li>
             <a href={`/demo/${demoSlug}/account`}>Account</a>
           </li>
-          <li>
-            <a href={`/demo/${demoSlug}/admin/plugins`}>Admin: Plugins</a>
-          </li>
-          <li className="mx-rail-divider" aria-hidden="true" />
-          <li>
-            <a href="/">&larr; Mercatus Liber home</a>
-          </li>
-          {otherDemos.map((other) => (
-            <li key={other.slug}>
-              <a href={`/demo/${other.slug}`}>Switch to {other.displayName}</a>
-            </li>
-          ))}
         </ul>
         <div className="mx-rail-switcher">
           <ThemeSwitcher demoSlug={demoSlug} bundles={bundles} activeKey={activeThemeKey} />

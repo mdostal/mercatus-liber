@@ -17,6 +17,7 @@ export function createInMemoryPageRepository(): PageRepository {
       let result = [...pages.values()];
       if (filter?.pageType) result = result.filter((p) => p.pageType === filter.pageType);
       if (filter?.status) result = result.filter((p) => p.status === filter.status);
+      if (filter?.demoSlug) result = result.filter((p) => p.demoSlug === filter.demoSlug);
       return result.map((p) => structuredClone(p));
     },
     async save(page) {

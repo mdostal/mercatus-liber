@@ -31,12 +31,18 @@ import type { DemoSlug } from "../lib/demos";
  * Mono Google Fonts load lives in that layout's own <head>, gated on
  * `activeTheme.key === "datasheet"`, matching the isEditorial/isMaximalist
  * pattern already established there -- not duplicated here.)
+ *
+ * cms-demo-scoping-and-nav-cleanup fix: this navbar no longer renders
+ * "Admin" / "<- Home" / "-> {other demo}" -- those now render once in the
+ * shared secondary utility strip app/demo/[demoSlug]/layout.tsx renders
+ * above every NavChrome. `.ds-nav-links` is now purely real shop
+ * navigation (categories/service-areas/campaigns via `navLinks`, plus
+ * Search/Account) -- Cart keeps its own dedicated `.ds-nav-cart` slot.
  */
 export function NavBlueprintBar({
   demoSlug,
   displayName,
   navLinks,
-  otherDemos,
   bundles,
   activeThemeKey,
   children,
@@ -44,7 +50,6 @@ export function NavBlueprintBar({
   demoSlug: DemoSlug;
   displayName: string;
   navLinks: Array<{ href: string; label: string }>;
-  otherDemos: Array<{ slug: DemoSlug; displayName: string }>;
   bundles: ThemeBundle[];
   activeThemeKey: string;
   children: ReactNode;
@@ -144,13 +149,6 @@ export function NavBlueprintBar({
           ))}
           <a href={`/demo/${demoSlug}/search`}>Search</a>
           <a href={`/demo/${demoSlug}/account`}>Account</a>
-          <a href={`/demo/${demoSlug}/admin/plugins`}>Admin</a>
-          <a href="/">&larr; Home</a>
-          {otherDemos.map((other) => (
-            <a key={other.slug} href={`/demo/${other.slug}`}>
-              &rarr; {other.displayName}
-            </a>
-          ))}
         </div>
         <div className="ds-nav-utility">
           <a href={`/demo/${demoSlug}/cart`} className="ds-nav-cart">

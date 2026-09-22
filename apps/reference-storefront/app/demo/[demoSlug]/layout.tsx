@@ -27,7 +27,6 @@ type NavChromeProps = {
   demoSlug: DemoSlug;
   displayName: string;
   navLinks: Array<{ href: string; label: string }>;
-  otherDemos: Array<{ slug: DemoSlug; displayName: string }>;
   bundles: typeof THEME_BUNDLES;
   activeThemeKey: string;
   children: ReactNode;
@@ -116,7 +115,15 @@ async function buildNavLinks(demoSlug: DemoSlug): Promise<Array<{ href: string; 
     links.push({ href: `/demo/${demoSlug}/locations`, label: "Service Areas" });
   }
 
-  const marketingPages = await cms.listPages({ pageType: "marketing", status: "published" });
+  // Real, confirmed live bug (2026-09-22, user report: print-shop's "Fall
+  // Sale" campaign also showed up in Broadleaf's and Northline's nav):
+  // under the shared, global Sanity CMS backend all 3 demos persist into,
+  // this listPages call had zero demo scoping -- it returned every demo's
+  // marketing/campaign pages combined, every time, for every demo's nav.
+  // `demoSlug` (packages/cms's Page.demoSlug, set by each seed function
+  // above) is the real, structural fix -- not a slug-prefix convention,
+  // which only helps a single targeted lookup, never a list query.
+  const marketingPages = await cms.listPages({ pageType: "marketing", status: "published", demoSlug });
   for (const page of marketingPages) {
     links.push({ href: `/demo/${demoSlug}/campaign/${page.slug}`, label: page.title });
   }
@@ -135,11 +142,23 @@ async function buildNavLinks(demoSlug: DemoSlug): Promise<Array<{ href: string; 
  * get genuine "multiple root layouts" (a full page reload navigating
  * to/from the landing page) instead of a soft client-side transition.
  *
- * Every link below is prefixed with `/demo/${demoSlug}` (read from the
- * route's own params, not a hardcoded/default slug), plus two additions
- * beyond the original nav: a link back to the root landing page, and a
- * link to switch straight to browsing the OTHER live demo without a stop
- * at the landing page first.
+ * Every real shop link (categories/service-areas/campaigns/cart/search/
+ * account) is prefixed with `/demo/${demoSlug}` (read from the route's own
+ * params, not a hardcoded/default slug).
+ *
+ * cms-demo-scoping-and-nav-cleanup fix (2026-09-22, user report: the primary
+ * shop nav read as "a wall of ~30 wrapped text links" mixing real product
+ * categories with framework/meta links -- "Admin: Plugins", "<- Mercatus
+ * Liber home", "Switch to {other demo}"): those 3 meta links used to be
+ * rendered inline, in the SAME flat link list as categories/cart/account, by
+ * every one of nav-top-bar.tsx/nav-rail.tsx/nav-blueprint-bar.tsx. Per the
+ * user's explicit direction ("the demo stores don't link to the rest of the
+ * docs and whatnot" -- they should stay real, useful, but clearly
+ * secondary), they're now rendered ONCE, here, in the same small
+ * already-existing top-right utility strip that already carried "Start here
+ * / How this works" -- never duplicated into NavChrome's own `navLinks`
+ * (which stays purely real shop navigation: categories, service areas,
+ * campaigns) or into any nav template's own primary link list.
  */
 export default async function DemoLayout({
   children,
@@ -275,17 +294,20 @@ export default async function DemoLayout({
         }}
       >
         {/*
-          landing-visual-glow-up (architecture story): "additively" links
-          every demo route to the new /architecture story page, same as the
-          real nav-meta links (Admin: Plugins / <- Mercatus Liber home /
-          Switch to {other demo}) those three nav templates already render.
-          Deliberately rendered HERE rather than inside nav-top-bar.tsx/
-          nav-rail.tsx/nav-blueprint-bar.tsx -- this epic's own scope rules
-          exclude editing any nav-*.tsx component file, so this is a small,
-          self-contained addition at the one shared call site instead, kept
-          unobtrusive (a single right-aligned line) so it reads consistently
-          across all three nav templates without needing to touch any of
-          them.
+          landing-visual-glow-up (architecture story) + cms-demo-scoping-and-
+          nav-cleanup fix: the one shared, clearly-secondary utility strip
+          for every cross-demo/framework/docs link this app has -- "Start
+          here" / "How this works" / any discoverable alternate storefront
+          view (original), plus (as of this fix) "Admin: Plugins", "<-
+          Mercatus Liber home", and "Switch to {other demo}", RELOCATED here
+          out of the primary shop nav (nav-top-bar.tsx/nav-rail.tsx/
+          nav-blueprint-bar.tsx no longer render any of the 3 meta links --
+          real live bug, confirmed by user screenshot: mixing them into the
+          same flat list as product categories/cart/account made the nav
+          read as a wall of ~30 wrapped text links instead of a real store's
+          navigation). Rendered ONCE, HERE, at the one shared call site
+          every nav template sits inside -- never duplicated into any nav
+          template's own primary link list.
         */}
         <div
           style={{
@@ -316,13 +338,35 @@ export default async function DemoLayout({
                 Also see: {view.name} &rarr;
               </a>
             </span>
+          ))}{" "}
+          &middot;{" "}
+          <a
+            href={`/demo/${demoSlug}/admin/plugins`}
+            style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}
+          >
+            Admin: Plugins
+          </a>{" "}
+          &middot;{" "}
+          <a href="/" style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}>
+            &larr; Mercatus Liber home
+          </a>
+          {otherDemos.map((other) => (
+            <span key={other.slug}>
+              {" "}
+              &middot;{" "}
+              <a
+                href={`/demo/${other.slug}`}
+                style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}
+              >
+                Switch to {other.displayName}
+              </a>
+            </span>
           ))}
         </div>
         <NavChrome
           demoSlug={demoSlug}
           displayName={DEMO_REGISTRY[demoSlug].displayName}
           navLinks={navLinks}
-          otherDemos={otherDemos}
           bundles={THEME_BUNDLES}
           activeThemeKey={activeTheme.key}
         >

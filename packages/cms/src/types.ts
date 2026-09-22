@@ -15,12 +15,33 @@ export interface Page {
   title: string;
   status: PageStatus;
   sections: ComponentInstance[];
+  /**
+   * Optional, additive: which demo store this page belongs to (e.g.
+   * "print-shop", "northline", "broadleaf"). Real, confirmed live bug
+   * (2026-09-22): under a SHARED persistent CMS backend (e.g. one Sanity
+   * project/dataset used by all 3 demo stores, see
+   * apps/reference-storefront/lib/services.ts), `PageRepository.list()` had
+   * no way to scope a query to just one demo's own pages -- every demo's
+   * nav (app/demo/[demoSlug]/layout.tsx's buildNavLinks) called
+   * `listPages({ pageType: "marketing", status: "published" })` with zero
+   * demo scoping, so print-shop's "Fall Sale" campaign page showed up in
+   * Broadleaf's and Northline's nav too, even though it isn't their
+   * campaign. Slug-prefixing (the "home-${demoSlug}" convention `getPage
+   * BySlug` already used) only helps a single targeted lookup by exact
+   * slug -- it does nothing for a *list* query, which still returns every
+   * demo's matching pages regardless of slug shape. This field is the real,
+   * structural fix: optional and additive everywhere (every existing
+   * caller that never sets/filters by it keeps working byte-for-byte,
+   * including the in-memory default and any admin surface that
+   * legitimately wants every demo's pages at once).
+   */
+  demoSlug?: string;
 }
 
 export interface PageRepository {
   get(id: string): Promise<Page | null>;
   getBySlug(slug: string): Promise<Page | null>;
-  list(filter?: { pageType?: PageType; status?: PageStatus }): Promise<Page[]>;
+  list(filter?: { pageType?: PageType; status?: PageStatus; demoSlug?: string }): Promise<Page[]>;
   save(page: Page): Promise<void>;
 }
 

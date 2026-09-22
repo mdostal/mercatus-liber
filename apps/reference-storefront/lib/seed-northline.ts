@@ -1155,6 +1155,7 @@ export async function seedNorthlineDemo(
     pageType: "home",
     slug: "home-northline",
     title: "Northline Home Tech",
+    demoSlug: "northline",
     sections: [
       {
         componentType: "hero-banner",
@@ -1183,6 +1184,7 @@ export async function seedNorthlineDemo(
       pageType: "location",
       slug: area.slug,
       title: area.name,
+      demoSlug: "northline",
       sections: [
         {
           componentType: "service-area-info",

@@ -18,12 +18,19 @@ import type { DemoSlug } from "../lib/demos";
  * renders the exact original plain markup, byte-for-byte, so this file's
  * visual-fidelity work can never regress the 8 bundles that merely fall
  * back to this same component.
+ *
+ * cms-demo-scoping-and-nav-cleanup fix: this template no longer renders
+ * "Admin: Plugins" / "<- Mercatus Liber home" / "Switch to {other demo}" --
+ * those cross-demo/framework links now render exactly once, in the shared
+ * secondary utility strip app/demo/[demoSlug]/layout.tsx already renders
+ * above every NavChrome (see that file's own doc comment). This nav is now
+ * purely real shop navigation: categories/service-areas/campaigns
+ * (`navLinks`) plus Cart/Search/Account.
  */
 export function NavTopBar({
   demoSlug,
   displayName,
   navLinks,
-  otherDemos,
   bundles,
   activeThemeKey,
   children,
@@ -31,7 +38,6 @@ export function NavTopBar({
   demoSlug: DemoSlug;
   displayName: string;
   navLinks: Array<{ href: string; label: string }>;
-  otherDemos: Array<{ slug: DemoSlug; displayName: string }>;
   bundles: ThemeBundle[];
   activeThemeKey: string;
   children: ReactNode;
@@ -42,7 +48,6 @@ export function NavTopBar({
         demoSlug={demoSlug}
         displayName={displayName}
         navLinks={navLinks}
-        otherDemos={otherDemos}
         bundles={bundles}
         activeThemeKey={activeThemeKey}
       >
@@ -77,22 +82,6 @@ export function NavTopBar({
         <a href={`/demo/${demoSlug}/account`} style={{ color: "var(--color-primary)" }}>
           Account
         </a>
-        {" · "}
-        <a href={`/demo/${demoSlug}/admin/plugins`} style={{ color: "var(--color-primary)" }}>
-          Admin: Plugins
-        </a>
-        {" · "}
-        <a href="/" style={{ color: "var(--color-primary)" }}>
-          &larr; Mercatus Liber home
-        </a>
-        {otherDemos.map((other) => (
-          <span key={other.slug}>
-            {" · "}
-            <a href={`/demo/${other.slug}`} style={{ color: "var(--color-primary)" }}>
-              Switch to {other.displayName}
-            </a>
-          </span>
-        ))}
 
         <ThemeSwitcher demoSlug={demoSlug} bundles={bundles} activeKey={activeThemeKey} />
       </header>
@@ -117,7 +106,6 @@ function EditorialNavTopBar({
   demoSlug,
   displayName,
   navLinks,
-  otherDemos,
   bundles,
   activeThemeKey,
   children,
@@ -125,7 +113,6 @@ function EditorialNavTopBar({
   demoSlug: DemoSlug;
   displayName: string;
   navLinks: Array<{ href: string; label: string }>;
-  otherDemos: Array<{ slug: DemoSlug; displayName: string }>;
   bundles: ThemeBundle[];
   activeThemeKey: string;
   children: ReactNode;
@@ -146,9 +133,6 @@ function EditorialNavTopBar({
         .ed-nav-actions { display: flex; align-items: center; gap: 1.1rem; font-family: var(--font-family); font-size: .78rem; font-weight: 600; }
         .ed-nav-actions a { color: var(--color-muted, #55493A); text-decoration: none; }
         .ed-nav-actions a:hover { color: var(--color-primary); }
-        .ed-nav-meta { width: 100%; display: flex; align-items: center; gap: 1.1rem; font-family: var(--font-family); font-size: .72rem; font-weight: 600; color: var(--color-muted, #7A6C58); border-top: 1px dashed var(--color-border, #DACFAF); padding: .55rem 1.5rem 0; margin-top: .5rem; flex-wrap: wrap; }
-        .ed-nav-meta a { color: var(--color-muted, #7A6C58); text-decoration: none; }
-        .ed-nav-meta a:hover { color: var(--color-primary); }
       `}</style>
       <header className="ed-nav">
         <div className="ed-nav-inner">
@@ -176,15 +160,6 @@ function EditorialNavTopBar({
             <a href={`/demo/${demoSlug}/cart`}>Cart</a>
             <ThemeSwitcher demoSlug={demoSlug} bundles={bundles} activeKey={activeThemeKey} />
           </div>
-        </div>
-        <div className="ed-nav-meta">
-          <a href={`/demo/${demoSlug}/admin/plugins`}>Admin: Plugins</a>
-          <a href="/">&larr; Mercatus Liber home</a>
-          {otherDemos.map((other) => (
-            <a key={other.slug} href={`/demo/${other.slug}`}>
-              Switch to {other.displayName}
-            </a>
-          ))}
         </div>
       </header>
       {children}
