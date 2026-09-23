@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { DEMO_SLUGS } from "../lib/demos";
+import { DEMO_SLUGS, listProductsForDemo } from "../lib/demos";
 import { getServicesForDemo } from "../lib/services";
 import { canonicalUrl } from "../lib/site-url";
 
@@ -59,8 +59,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // "active" is catalog's own published status (draft -> active via
     // publishProduct) -- a draft/archived product has no real public PDP
-    // worth indexing.
-    const products = await catalog.listProducts({ status: "active" });
+    // worth indexing. Scoped via this demo's own real Catalog entity (see
+    // lib/demos.ts's listProductsForDemo doc comment) -- the same real
+    // cross-demo-bleed bug as the two fixes above, for products: an
+    // unscoped catalog.listProducts() generated a
+    // /demo/${demoSlug}/products/<slug> sitemap entry for EVERY demo's
+    // products, not just this one's own.
+    const products = await listProductsForDemo(catalog, demoSlug, { status: "active" });
     for (const product of products) {
       entries.push({
         url: canonicalUrl(`/demo/${demoSlug}/products/${product.slug}`),

@@ -346,7 +346,7 @@ export default async function ProductPage({
         activeSku={activeSku}
         optionSelection={optionSelection}
       />
-      {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
+      {recommendationShelf ? <RecommendationShelf demoSlug={demoSlug} {...recommendationShelf} /> : null}
     </>
   );
 }

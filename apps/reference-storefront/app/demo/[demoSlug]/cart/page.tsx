@@ -119,7 +119,7 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
         themeKey={activeTheme.key}
         paymentsMode={confirmSandboxPayment ? "sandbox" : "stripe"}
       />
-      {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
+      {recommendationShelf ? <RecommendationShelf demoSlug={demoSlug} {...recommendationShelf} /> : null}
     </>
   );
 }
