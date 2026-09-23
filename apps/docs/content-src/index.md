@@ -7,15 +7,15 @@ Mercatus Liber," but "how Mercatus Liber actually works, and how to run one."
 
 ## Start here
 
-- **[Getting started](/getting-started)** — the fastest way in: run one of the two live demo
+- **[Getting started](/getting-started)** — the fastest way in: run one of the three live demo
   storefronts already seeded in this repo, or provision your own store with the `create-store`
   CLI.
 - **[Architecture](/architecture)** — design principles, the subsystem map, repo shape, and the
   prime directive (no subsystem imports another subsystem's internals).
-- **[Subsystem reference](/subsystems/00-core-schema)** — one doc per subsystem (22 total),
+- **[Subsystem reference](/subsystems/00-core-schema)** — one doc per subsystem (26 total),
   each covering purpose, dependencies, responsibilities, explicit non-responsibilities, and
   open questions. Browse the sidebar for the full list, from `00-core-schema` through
-  `21-admin-auth`.
+  `25-storefront-views`.
 - **[Planning corpus](/planning-index)** — the real design-discussion behind every epic this
   project has shipped: the actual reasoning, rejected alternatives, and evidence, not just
   conclusions. Browse the sidebar's "planning" section for the full list.
