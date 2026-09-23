@@ -1092,6 +1092,37 @@ export async function createStorefrontViewAction(formData: FormData): Promise<vo
   redirect(`/demo/${demoSlug}/admin/storefront-views`);
 }
 
+/**
+ * gap-audit-3-storefront-view-edit: the previously-missing counterpart to
+ * createStorefrontViewAction above -- StorefrontViewsService.updateView was
+ * a real, exported service method with zero call site anywhere in this app
+ * (see audit-findings.md §7). Same "no separate parse function" reuse of
+ * parseStorefrontViewFormData as create, and same
+ * requireAdminPermission(demoSlug, "mutate")-first shape as every other
+ * mutation in this file. Works regardless of the view's current status
+ * (draft/active/archived) -- editing an archived view is deliberately
+ * allowed, same as every other admin-CRUD family in this repo never blocks
+ * editing a terminal-state record, just re-activating one (see
+ * publishView's own draft-only transition, unaffected by this).
+ * Deliberately no redirect() -- same "revalidatePath only, stays on the
+ * page it was submitted from" shape as publishStorefrontViewAction/
+ * archiveStorefrontViewAction above (the edit page re-renders in place with
+ * the now-persisted values), rather than updatePromotionAction's
+ * redirect()-to-list shape; this also keeps the golden path directly
+ * testable here (see admin-mutation-guard.test.ts), the same reasoning
+ * setPageTemplateAction/markFulfillmentLineShippedAction's own doc comments
+ * give for staying redirect-free.
+ */
+export async function updateStorefrontViewAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const id = String(formData.get("id"));
+  const { storefrontViews } = await getServicesForDemo(demoSlug);
+  await storefrontViews.updateView(id, parseStorefrontViewFormData(formData));
+  revalidatePath(`/demo/${demoSlug}/admin/storefront-views`);
+  revalidatePath(`/demo/${demoSlug}/admin/storefront-views/${id}`);
+}
+
 /** draft -> active. Admin-gated, same shape as publishCmsPageAction above -- no redirect, this stays on the admin list page it was submitted from. */
 export async function publishStorefrontViewAction(formData: FormData): Promise<void> {
   const demoSlug = requireDemoSlug(formData);

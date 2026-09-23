@@ -56,6 +56,15 @@
  * reads back theming.getConfiguredDefault(pageType) afterward, proving the
  * real ThemingService.setDefaultTemplate call actually happened, not just
  * that no error was thrown.
+ *
+ * gap-audit-3-storefront-view-edit: also covers updateStorefrontViewAction's
+ * own requireAdminPermission guard, same "real, in-memory-backed
+ * StorefrontViewsService, mocked adminAuth only" shape as every domain
+ * above -- this action was the fix for audit-findings.md §7
+ * (StorefrontViewsService.updateView had zero call site and zero test
+ * coverage anywhere in the repo). The "succeeds normally" case reads the
+ * view back via storefrontViews.getView(id) afterward, proving the real
+ * updateView patch actually persisted (not just that no error was thrown).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminAuthAdapter, AdminRole, AdminSession } from "@mercatus-liber/admin-auth";
@@ -76,6 +85,7 @@ import {
 } from "@mercatus-liber/fulfillment";
 import { createInMemoryInventoryAdapter } from "@mercatus-liber/inventory";
 import { createInMemoryPromotionRepository, createPromotionsService } from "@mercatus-liber/promotions";
+import { createInMemoryStorefrontViewRepository, createStorefrontViewsService } from "@mercatus-liber/storefront-views";
 import { createThemingService } from "@mercatus-liber/theming";
 import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 
@@ -91,6 +101,7 @@ const bundles = createBundlesService({
 const advertising = createAdvertisingService({ repository: createInMemoryCampaignRepository() });
 const cms = createCmsService({ persistence: createInMemoryCmsAdapter(), components: createComponentRegistry() });
 const theming = createThemingService();
+const storefrontViews = createStorefrontViewsService({ repository: createInMemoryStorefrontViewRepository() });
 /**
  * pc-03: a real, in-memory-backed (sqlite ":memory:", same precedent as
  * packages/catalog/test/catalog.test.ts) CatalogService for
@@ -140,6 +151,7 @@ vi.mock("../lib/services.js", () => ({
     theming,
     catalog,
     inventory,
+    storefrontViews,
   })),
 }));
 
@@ -151,6 +163,7 @@ const {
   generateSkuComboAction,
   markFulfillmentLineShippedAction,
   setPageTemplateAction,
+  updateStorefrontViewAction,
 } = await import("../lib/actions.js");
 
 function sessionFor(role: AdminRole): AdminSession {
@@ -571,6 +584,130 @@ describe("admin mutation guard (admin-auth-03)", () => {
       second.set("templateKey", "pdp.spec-sheet");
       await setPageTemplateAction(second);
       expect(theming.getConfiguredDefault("pdp")).toBe("pdp.spec-sheet");
+    });
+  });
+
+  describe("updateStorefrontViewAction (storefront-views)", () => {
+    it("rejects a viewer-role session before mutating", async () => {
+      const view = await storefrontViews.createView({
+        demoSlug: "print-shop",
+        slug: "guard-test-view",
+        name: "Guard Test View",
+        heroHeadline: "Original headline",
+        heroSubheadline: "Original subheadline",
+        categoryIds: ["cat-1"],
+      });
+      currentSession = sessionFor("viewer");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("id", view.id);
+      formData.set("slug", view.slug);
+      formData.set("name", "Hijacked Name");
+      formData.set("heroHeadline", "Hijacked headline");
+      formData.set("heroSubheadline", "Hijacked subheadline");
+      await expect(updateStorefrontViewAction(formData)).rejects.toThrow(/not authorized/i);
+
+      const unchanged = await storefrontViews.getView(view.id);
+      expect(unchanged?.name).toBe("Guard Test View");
+      expect(unchanged?.heroHeadline).toBe("Original headline");
+    });
+
+    it("rejects when there is no session at all", async () => {
+      const view = await storefrontViews.createView({
+        demoSlug: "print-shop",
+        slug: "guard-test-view-null",
+        name: "Guard Test View Null",
+        heroHeadline: "Original headline",
+        heroSubheadline: "Original subheadline",
+        categoryIds: [],
+      });
+      currentSession = null;
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("id", view.id);
+      formData.set("slug", view.slug);
+      formData.set("name", "Hijacked Name");
+      formData.set("heroHeadline", "Hijacked headline");
+      formData.set("heroSubheadline", "Hijacked subheadline");
+      await expect(updateStorefrontViewAction(formData)).rejects.toThrow(/not authorized/i);
+
+      const unchanged = await storefrontViews.getView(view.id);
+      expect(unchanged?.name).toBe("Guard Test View Null");
+    });
+
+    it("succeeds for an admin-role session, with the real patch persisted", async () => {
+      const view = await storefrontViews.createView({
+        demoSlug: "print-shop",
+        slug: "guard-test-view-admin",
+        name: "Guard Test View Admin",
+        heroHeadline: "Original headline",
+        heroSubheadline: "Original subheadline",
+        categoryIds: ["cat-1"],
+      });
+      currentSession = sessionFor("admin");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("id", view.id);
+      formData.set("slug", view.slug);
+      formData.set("name", "Updated Name");
+      formData.set("heroHeadline", "Updated headline");
+      formData.set("heroSubheadline", "Updated subheadline");
+      formData.set("categoryIds", "cat-2, cat-3");
+      formData.set("themeKey", "seasonal-2026");
+      formData.set("isDefaultOverride", "on");
+      await updateStorefrontViewAction(formData);
+
+      // gap-audit-3-storefront-view-edit: queries the view back through the
+      // real StorefrontViewsService (not just asserting no error was
+      // thrown), proving updateView's patch actually persisted -- this is
+      // exactly the previously-untested path audit-findings.md §7 flagged.
+      const updated = await storefrontViews.getView(view.id);
+      expect(updated?.name).toBe("Updated Name");
+      expect(updated?.heroHeadline).toBe("Updated headline");
+      expect(updated?.heroSubheadline).toBe("Updated subheadline");
+      expect(updated?.categoryIds).toEqual(["cat-2", "cat-3"]);
+      expect(updated?.themeKey).toBe("seasonal-2026");
+      expect(updated?.isDefaultOverride).toBe(true);
+      // Fields never present in the edit form's patch (id, status,
+      // createdAt, demoSlug) are untouched by the update.
+      expect(updated?.id).toBe(view.id);
+      expect(updated?.status).toBe("draft");
+      expect(updated?.demoSlug).toBe("print-shop");
+    });
+
+    it("succeeds for an owner-role session, and a later edit overrides the earlier one", async () => {
+      const view = await storefrontViews.createView({
+        demoSlug: "print-shop",
+        slug: "guard-test-view-owner",
+        name: "Guard Test View Owner",
+        heroHeadline: "Original headline",
+        heroSubheadline: "Original subheadline",
+        categoryIds: [],
+      });
+      currentSession = sessionFor("owner");
+
+      const first = new FormData();
+      first.set("demoSlug", "print-shop");
+      first.set("id", view.id);
+      first.set("slug", view.slug);
+      first.set("name", "First Edit");
+      first.set("heroHeadline", "First headline");
+      first.set("heroSubheadline", "First subheadline");
+      await updateStorefrontViewAction(first);
+      expect((await storefrontViews.getView(view.id))?.name).toBe("First Edit");
+
+      const second = new FormData();
+      second.set("demoSlug", "print-shop");
+      second.set("id", view.id);
+      second.set("slug", view.slug);
+      second.set("name", "Second Edit");
+      second.set("heroHeadline", "Second headline");
+      second.set("heroSubheadline", "Second subheadline");
+      await updateStorefrontViewAction(second);
+      expect((await storefrontViews.getView(view.id))?.name).toBe("Second Edit");
     });
   });
 });
