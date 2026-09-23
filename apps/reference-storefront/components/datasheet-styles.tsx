@@ -71,7 +71,7 @@ export const DS_ATOMS_CSS = `
     font-size: 10.5px;
     letter-spacing: 0.11em;
     text-transform: uppercase;
-    color: var(--color-muted, #8891A0);
+    color: var(--color-muted, #626B78);
   }
   .ds-titleblock {
     display: flex;
@@ -98,7 +98,7 @@ export const DS_ATOMS_CSS = `
   .ds-titleblock .ds-meta {
     font-family: ${DS_FONT_MONO};
     font-size: 10.5px;
-    color: var(--color-muted, #8891A0);
+    color: var(--color-muted, #626B78);
     letter-spacing: 0.06em;
     display: flex;
     gap: 18px;
@@ -135,7 +135,7 @@ export const DS_ATOMS_CSS = `
     font-size: 9.5px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--color-muted, #8891A0);
+    color: var(--color-muted, #626B78);
     border: 1px solid var(--color-border, #D2D7E0);
     padding: 2px 6px;
     display: inline-block;

@@ -325,7 +325,33 @@ export default async function DemoLayout({
           every nav template sits inside -- never duplicated into any nav
           template's own primary link list.
         */}
-        <div
+        {/*
+          a11y-audit: this strip is a cluster of navigation links sitting
+          directly under <body>, ahead of <NavChrome>'s own <header>/<nav> --
+          axe-core's "region" rule (WCAG 2.4.1-adjacent best practice) flagged
+          it live on print-shop as page content not contained by any
+          landmark. A <div> was never semantically wrong (nothing here is
+          interactive beyond the links themselves), but it wasn't right
+          either -- these ARE navigation links, so <nav> is the honest
+          element, not a wrapper-for-wrapping's-sake. aria-label distinguishes
+          it from NavChrome's own primary <nav> so screen-reader users get
+          two named landmarks, not two unlabeled "navigation" regions.
+
+          Also a11y-audit: these links' color used to fall back to
+          var(--color-muted, var(--color-primary)) -- fine for the 4 bundles that
+          define --color-muted, but the 6 that don't (dark/minimal/vibrant/retro/
+          high-contrast/northline) fell through to --color-primary instead, a color
+          meant for buttons/CTAs, not small secondary nav text. Confirmed live via
+          axe-core on broadleaf's default "vibrant" theme: #f97316-on-#fff7ed
+          measured 2.64:1 across all 15 links here, a severe WCAG AA fail (needs
+          4.5:1). Every bundle's --color-text already passes 4.5:1 against its own
+          --color-background by a wide margin (verified for all 10 bundles by hand,
+          worst case 12.05:1), so the fallback below is now --color-text, not
+          --color-primary -- closes the gap for every current and future bundle
+          that skips defining --color-muted, without needing a token added to each.
+        */}
+        <nav
+          aria-label="Site utility links"
           style={{
             textAlign: "right",
             fontSize: "0.74rem",
@@ -335,12 +361,12 @@ export default async function DemoLayout({
         >
           <a
             href={`/demo/${demoSlug}/start`}
-            style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none", fontWeight: 600 }}
+            style={{ color: "var(--color-muted, var(--color-text))", textDecoration: "none", fontWeight: 600 }}
           >
             Start here &rarr;
           </a>{" "}
           &middot;{" "}
-          <a href="/architecture" style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}>
+          <a href="/architecture" style={{ color: "var(--color-muted, var(--color-text))", textDecoration: "none" }}>
             How this works &rarr;
           </a>
           {discoverableViews.map((view) => (
@@ -349,7 +375,7 @@ export default async function DemoLayout({
               &middot;{" "}
               <a
                 href={`/demo/${demoSlug}/site/${view.slug}`}
-                style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}
+                style={{ color: "var(--color-muted, var(--color-text))", textDecoration: "none" }}
               >
                 Also see: {view.name} &rarr;
               </a>
@@ -358,12 +384,12 @@ export default async function DemoLayout({
           &middot;{" "}
           <a
             href={`/demo/${demoSlug}/admin/plugins`}
-            style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}
+            style={{ color: "var(--color-muted, var(--color-text))", textDecoration: "none" }}
           >
             Admin: Plugins
           </a>{" "}
           &middot;{" "}
-          <a href="/" style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}>
+          <a href="/" style={{ color: "var(--color-muted, var(--color-text))", textDecoration: "none" }}>
             &larr; Mercatus Liber home
           </a>
           {otherDemos.map((other) => (
@@ -372,13 +398,13 @@ export default async function DemoLayout({
               &middot;{" "}
               <a
                 href={`/demo/${other.slug}`}
-                style={{ color: "var(--color-muted, var(--color-primary))", textDecoration: "none" }}
+                style={{ color: "var(--color-muted, var(--color-text))", textDecoration: "none" }}
               >
                 Switch to {other.displayName}
               </a>
             </span>
           ))}
-        </div>
+        </nav>
         <NavChrome
           demoSlug={demoSlug}
           displayName={DEMO_REGISTRY[demoSlug].displayName}

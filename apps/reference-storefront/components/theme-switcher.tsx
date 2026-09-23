@@ -98,7 +98,15 @@ const THEME_SWITCHER_CSS = `
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--color-muted, var(--color-text));
-    opacity: 0.75;
+    /* a11y-audit: opacity: 0.75 used to sit on top of var(--color-muted, ...),
+       silently compositing the already-muted token further toward the page
+       background -- confirmed live via axe-core on maximalist's own
+       --color-muted (#55503f, a real 7.00:1 AA pass on its own) rendering at
+       an effective #7b7869/3.85:1 once 0.75 opacity was applied, a real AA
+       fail (needs 4.5:1). Removing the opacity can only ever increase (never
+       reduce) contrast against the background for every bundle -- the muted
+       color choice itself already provides the "de-emphasized" visual
+       effect this opacity was redundantly layering on top of. */
   }
   .ts-select {
     appearance: none;

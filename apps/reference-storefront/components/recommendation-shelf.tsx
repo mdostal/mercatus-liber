@@ -180,8 +180,22 @@ export async function resolveCartRecommendations(
  * exception, on every demo, since the epic that first built it.
  */
 export function RecommendationShelf({ demoSlug, label, products }: RecommendationShelfData & { demoSlug: string }) {
+  // a11y-audit: this shelf renders as a sibling AFTER the PDP template's own
+  // <main> (products/[slug]/page.tsx composes <>...<Component/>...<Recommend
+  // ationShelf/></>, and every PDP template owns its own <main> --
+  // RecommendationShelf was never inside it, by design, since it's related-
+  // but-secondary content, not part of the product detail itself). A bare
+  // <section> with no accessible name isn't a landmark in the accessibility
+  // tree, though, so axe-core's "region" rule correctly flagged this whole
+  // shelf (confirmed live on northline's tv-wall-mounting PDP, 2 nodes) as
+  // page content outside any landmark. aria-labelledby pointing at this
+  // shelf's own <h2> turns it into a real, properly-named "region" landmark
+  // -- the semantically correct fix (a labelled sibling region, not folded
+  // into <main>), not a markup-shape change.
+  const headingId = `recommendation-shelf-${label.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
   return (
     <section
+      aria-labelledby={headingId}
       style={{
         marginTop: "var(--space-md, 32px)",
         borderTop: "1px solid var(--color-border, #e5e5e5)",
@@ -192,7 +206,7 @@ export function RecommendationShelf({ demoSlug, label, products }: Recommendatio
         eventName="recommendation_shelf_viewed"
         properties={{ label, productSlugs: products.map((product) => product.slug) }}
       />
-      <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>{label}</h2>
+      <h2 id={headingId} style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>{label}</h2>
       <ul style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-sm, 16px)", listStyle: "none", padding: 0, margin: 0 }}>
         {products.map((product) => (
           <li

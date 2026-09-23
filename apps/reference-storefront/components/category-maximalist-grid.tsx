@@ -49,7 +49,11 @@ export async function CategoryMaximalistGrid({ demoSlug, products }: { demoSlug:
               <span className="mx-card-tag">{product.status}</span>
             </div>
             <div className="mx-card-body">
-              <h3>{product.title}</h3>
+              {/* a11y-audit: category/[slug]/page.tsx renders this category's own <h1>
+                  and nothing else before this grid -- an <h3> here skipped a level,
+                  confirmed live via axe-core's heading-order rule (maximalist theme).
+                  <h2> is correct (each card is a same-level sibling section). */}
+              <h2>{product.title}</h2>
               <div className="mx-card-foot">
                 <span className="mx-price">{priceLabel ?? "—"}</span>
                 <span className="mx-quickadd">View</span>
@@ -88,7 +92,7 @@ const MX_CATEGORY_CSS = `
     font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; padding: 3px 9px; text-transform: uppercase;
   }
   .mx-card-body { padding: 18px 18px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-  .mx-card-body h3 {
+  .mx-card-body h2 {
     font-family: var(--font-family, 'Archivo', sans-serif); font-weight: 800; font-size: 17px;
     text-transform: none; letter-spacing: 0; margin: 0;
   }

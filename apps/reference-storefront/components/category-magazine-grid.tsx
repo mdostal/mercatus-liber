@@ -69,8 +69,8 @@ export function CategoryMagazineGrid({
         .ed-card .ed-ph { aspect-ratio: 5/3.3; border-bottom: 1px solid var(--color-border, #C7B586); background: linear-gradient(160deg, hsl(25 20% 55%), hsl(25 25% 35%)); }
         .ed-card-feature .ed-ph { aspect-ratio: 4/3.4; }
         .ed-card .ed-card-body { padding: 1rem; }
-        .ed-card h3 { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: 1.1rem; line-height: 1.25; margin: 0; }
-        .ed-card-feature h3 { font-size: 1.4rem; }
+        .ed-card h2 { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: 1.1rem; line-height: 1.25; margin: 0; }
+        .ed-card-feature h2 { font-size: 1.4rem; }
         .ed-card p { font-family: var(--font-family); font-size: .9rem; color: var(--color-muted, #55493A); line-height: 1.5; margin: .4rem 0 0; }
         .ed-overflow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1.25rem; }
         @media (max-width: 780px) {
@@ -111,7 +111,15 @@ export function CategoryMagazineGrid({
                   <div className="ed-ph" />
                 )}
                 <div className="ed-card-body">
-                  <h3>{product.title}</h3>
+                  {/* a11y-audit: this category's own page.tsx renders exactly one <h1> and
+                      the "feature" tile above (when present) renders one <h2> -- but the
+                      "feature" is optional ({feature && ...}), so any category without a
+                      spotlighted product previously hit this <h3> as the first heading
+                      after the page's <h1>, skipping a level (real, code-inspection-
+                      confirmed; not reproduced live today only because this demo's seeded
+                      categories all happen to have a feature product). <h2> keeps every
+                      card a same-level sibling of the feature tile's own <h2>. */}
+                  <h2>{product.title}</h2>
                   {product.description && <p>{product.description}</p>}
                 </div>
               </a>
@@ -132,7 +140,15 @@ export function CategoryMagazineGrid({
                   <div className="ed-ph" />
                 )}
                 <div className="ed-card-body">
-                  <h3>{product.title}</h3>
+                  {/* a11y-audit: this category's own page.tsx renders exactly one <h1> and
+                      the "feature" tile above (when present) renders one <h2> -- but the
+                      "feature" is optional ({feature && ...}), so any category without a
+                      spotlighted product previously hit this <h3> as the first heading
+                      after the page's <h1>, skipping a level (real, code-inspection-
+                      confirmed; not reproduced live today only because this demo's seeded
+                      categories all happen to have a feature product). <h2> keeps every
+                      card a same-level sibling of the feature tile's own <h2>. */}
+                  <h2>{product.title}</h2>
                 </div>
               </a>
             );

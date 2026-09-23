@@ -130,6 +130,7 @@ export function PdpTabbedDetail({
                 name="quantity"
                 defaultValue={1}
                 min={1}
+                aria-label="Quantity"
                 style={{ width: 48 }}
               />{" "}
               {customizable && (
@@ -183,6 +184,7 @@ export function PdpTabbedDetail({
                 name="quantity"
                 defaultValue={1}
                 min={1}
+                aria-label="Quantity"
                 style={{ width: 48 }}
               />{" "}
               {customizable && (

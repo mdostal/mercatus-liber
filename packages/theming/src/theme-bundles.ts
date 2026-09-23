@@ -191,7 +191,20 @@ export const THEME_BUNDLES: ThemeBundle[] = [
       "--color-text": "#241C14",
       "--color-primary": "#B14B2A",
       "--color-accent": "#5E6E45",
-      "--color-muted": "#7A6C58",
+      // a11y-audit: the original #7A6C58 measured 4.23:1 against
+      // --color-background (#F2E9D8) via axe-core, live on print-shop's own
+      // top utility nav (11.84px normal-weight text) -- failing WCAG AA's
+      // 4.5:1 normal-text minimum by a hair. The first re-measure, #6F6250
+      // (4.92:1 against the raw page background), still failed
+      // (4.23:1 -- coincidentally the exact original ratio) against the
+      // theme-switcher's own ".ts-pill" background, which is
+      // color-mix(in srgb, var(--color-background) 92%, var(--color-text)
+      // 8%) (#E2D9C8, not the raw #F2E9D8) -- a second, real "tokens
+      // combined in ways the first fix didn't check" case, confirmed live
+      // via axe-core after deploying the first fix. #635747 passes both:
+      // 5.84:1 against the raw background, 5.02:1 against the darkened
+      // pill background.
+      "--color-muted": "#635747",
       "--color-border": "#C7B586",
       "--font-family": "'Newsreader', 'Iowan Old Style', Georgia, serif",
       // Additive, backward-compatible token -- only "editorial" defines it. Always
@@ -260,7 +273,14 @@ export const THEME_BUNDLES: ThemeBundle[] = [
       "--color-text": "#12151B",
       "--color-primary": "#C8460A",
       "--color-accent": "#5A6170",
-      "--color-muted": "#8891A0",
+      // a11y-audit: the original #8891A0 measured 2.86:1 against
+      // --color-background (#F1F3F6) via axe-core, live on print-shop's own
+      // top utility nav and the theme-switcher's ".ts-label" text -- a
+      // severe fail of WCAG AA's 4.5:1 normal-text minimum (16 real nodes
+      // flagged on one page). #626B78 stays in the same cool blue-slate
+      // family as this bundle's own --color-accent (#5A6170) but reaches
+      // 4.85:1, a real pass with margin.
+      "--color-muted": "#626B78",
       "--color-border": "#D2D7E0",
       "--font-family": "'IBM Plex Sans', system-ui, sans-serif",
       "--radius": "2px",

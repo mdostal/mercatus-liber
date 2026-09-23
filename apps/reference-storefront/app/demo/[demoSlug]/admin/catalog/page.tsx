@@ -27,7 +27,10 @@ export default async function AdminCatalogPage({ params }: { params: Promise<{ d
             <th>ID</th>
             <th>Title</th>
             <th>Status</th>
-            <th></th>
+            {/* a11y-audit: an empty <th> has no text visible to screen readers --
+                confirmed live via axe-core's "empty-table-header" rule. This column
+                holds each row's "SKU matrix" link, so that's its real name. */}
+            <th>SKU matrix</th>
           </tr>
         </thead>
         <tbody>

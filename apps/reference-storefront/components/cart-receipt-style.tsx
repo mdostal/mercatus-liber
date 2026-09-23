@@ -35,25 +35,25 @@ export function CartReceiptStyle({
         .ed-cart h1 { font-family: var(--font-family-display, var(--font-family)); font-size: var(--font-size-heading-lg, 2.5rem); border-bottom: 1px solid var(--color-border, #C7B586); padding-bottom: 1rem; margin-bottom: 1.5rem !important; }
         .ed-cart-layout { display: grid; grid-template-columns: 1.7fr 1fr; gap: 2.5rem; align-items: start; }
         .ed-cart-table { width: 100%; border-collapse: collapse; font-family: var(--font-family); }
-        .ed-cart-table thead th { text-align: left; font-family: var(--font-family); font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-muted, #7A6C58); padding-bottom: .5rem; border-bottom: 1px solid var(--color-border, #C7B586); }
+        .ed-cart-table thead th { text-align: left; font-family: var(--font-family); font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-muted, #635747); padding-bottom: .5rem; border-bottom: 1px solid var(--color-border, #C7B586); }
         .ed-cart-table th.ed-num, .ed-cart-table td.ed-num { text-align: right; }
         .ed-cart-table td { padding: 1rem 0; border-bottom: 1px dashed var(--color-border, #DACFAF); vertical-align: top; }
         .ed-item-row { display: flex; align-items: center; gap: .75rem; }
         .ed-item-thumb { width: 3.5rem; height: 3.5rem; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; }
         .ed-item-title { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: 1.05rem; }
-        .ed-item-variant { font-family: var(--font-family); font-style: italic; color: var(--color-muted, #7A6C58); font-size: .88rem; margin-top: .2rem; }
+        .ed-item-variant { font-family: var(--font-family); font-style: italic; color: var(--color-muted, #635747); font-size: .88rem; margin-top: .2rem; }
         .ed-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
         .ed-line-total { font-weight: 700; }
-        .ed-line-controls { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; font-family: var(--font-family); font-size: .82rem; color: var(--color-muted, #7A6C58); }
+        .ed-line-controls { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; font-family: var(--font-family); font-size: .82rem; color: var(--color-muted, #635747); }
         .ed-line-controls input[type="number"] { width: 3.2rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .2rem .3rem; font-family: var(--font-family); }
         .ed-btn-ghost { font-family: var(--font-family); font-size: .78rem; font-weight: 700; letter-spacing: .02em; background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); border-radius: var(--radius); padding: .3rem .65rem; cursor: pointer; }
         .ed-btn-ghost:hover { background: var(--color-primary); color: var(--color-background); }
         .ed-coupon-form { margin-top: 2rem; display: flex; gap: .6rem; align-items: center; }
         .ed-coupon-form input[type="text"] { flex: 1; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .55rem .75rem; font-family: var(--font-family); }
-        .ed-coupon-note { font-family: var(--font-family); color: var(--color-muted, #7A6C58); font-size: .88rem; margin-top: .5rem !important; }
+        .ed-coupon-note { font-family: var(--font-family); color: var(--color-muted, #635747); font-size: .88rem; margin-top: .5rem !important; }
         .ed-summary { background: var(--color-surface, #FBF6E9); border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow-card, none); }
         .ed-summary .ed-row { display: flex; justify-content: space-between; font-family: var(--font-family); font-size: .92rem; padding: .5rem 0; }
-        .ed-summary .ed-row.ed-muted { color: var(--color-muted, #7A6C58); font-size: .84rem; }
+        .ed-summary .ed-row.ed-muted { color: var(--color-muted, #635747); font-size: .84rem; }
         .ed-summary .ed-row + .ed-row { border-top: 1px dashed var(--color-border, #DACFAF); }
         .ed-summary .ed-row.ed-total { border-top: 1px solid var(--color-text); margin-top: .3rem; padding-top: .9rem; font-weight: 800; font-size: 1.15rem; }
         .ed-btn-checkout { display: block; width: 100%; margin-top: 1.5rem; background: var(--color-primary); color: var(--color-background); border: 1px solid var(--color-primary); border-radius: var(--radius); font-family: var(--font-family); font-weight: 700; font-size: .92rem; letter-spacing: .02em; padding: 1rem; cursor: pointer; text-align: center; }
@@ -90,7 +90,16 @@ export function CartReceiptStyle({
                       <form action={updateCartItemQuantityAction} style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
                         <input type="hidden" name="demoSlug" value={demoSlug} />
                         <input type="hidden" name="skuId" value={line.skuId} />
-                        <input type="number" name="quantity" defaultValue={line.quantity} min={1} />
+                        {/* a11y-audit: same unlabeled-quantity-input pattern found live via
+                            axe-core (see cart-standard.tsx's own doc comment for the full
+                            writeup) -- per-line aria-label disambiguates multiple cart rows. */}
+                        <input
+                          type="number"
+                          name="quantity"
+                          defaultValue={line.quantity}
+                          min={1}
+                          aria-label={`Quantity for ${line.title}`}
+                        />
                         <button type="submit" className="ed-btn-ghost">
                           Update
                         </button>

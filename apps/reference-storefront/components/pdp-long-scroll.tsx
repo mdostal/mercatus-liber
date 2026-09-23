@@ -142,7 +142,7 @@ export async function PdpLongScroll({
             <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
               {stockBySkuId[activeSku.id] == null ? "Available" : `In stock: ${stockBySkuId[activeSku.id]}`}
             </div>
-            <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
+            <input type="number" name="quantity" defaultValue={1} min={1} aria-label="Quantity" style={{ width: 48 }} />{" "}
             {customizable && (
               <div style={{ marginTop: "var(--space-xs, 8px)" }}>
                 <label
@@ -196,7 +196,7 @@ export async function PdpLongScroll({
             <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
               {stockBySkuId[sku.id] == null ? "Available" : `In stock: ${stockBySkuId[sku.id]}`}
             </div>
-            <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
+            <input type="number" name="quantity" defaultValue={1} min={1} aria-label="Quantity" style={{ width: 48 }} />{" "}
             {customizable && (
               <div style={{ marginTop: "var(--space-xs, 8px)" }}>
                 <label
@@ -352,21 +352,21 @@ function EditorialPdpLongScroll({
         .ed-pdp-title { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: clamp(1.9rem, 3.2vw, 2.7rem); line-height: 1.05; margin-top: .4rem; }
         .ed-pdp-options { display: flex; gap: 1.75rem; flex-wrap: wrap; margin-top: 1.75rem; padding: 1.25rem 0; border-top: 1px solid var(--color-border, #DACFAF); border-bottom: 1px solid var(--color-border, #DACFAF); }
         .ed-opt { display: flex; flex-direction: column; gap: .4rem; font-family: var(--font-family); }
-        .ed-opt-label { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-muted, #7A6C58); }
+        .ed-opt-label { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-muted, #635747); }
         .ed-opt-value { display: flex; flex-wrap: wrap; gap: .4rem; }
         .ed-opt-tag { border: 1px solid var(--color-text); border-radius: var(--radius); padding: .18rem .6rem; font-size: .82rem; font-weight: 600; }
         .ed-pdp-desc { font-family: var(--font-family); font-size: 1.05rem; line-height: 1.7; color: var(--color-muted, #55493A); margin-top: 1.5rem; max-width: 54ch; }
         .ed-dropcap { float: left; font-family: var(--font-family-display, var(--font-family)); font-weight: 700; font-size: 3.2rem; line-height: .8; padding: .1em .12em 0 0; color: var(--color-primary); }
         .ed-sku-block { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px dashed var(--color-border, #DACFAF); }
         .ed-sku-block:first-of-type { border-top: none; margin-top: 1.5rem; padding-top: 0; }
-        .ed-sku-attrs { font-family: var(--font-family); color: var(--color-muted, #7A6C58); font-size: .9rem; }
+        .ed-sku-attrs { font-family: var(--font-family); color: var(--color-muted, #635747); font-size: .9rem; }
         .ed-sku-price { font-family: var(--font-family); font-weight: 800; font-size: 1.35rem; margin-top: .25rem; }
         .ed-sku-stock { margin-top: .5rem; font-family: var(--font-family); font-weight: 700; font-size: .84rem; display: flex; align-items: center; gap: .4rem; color: var(--color-accent, #5E6E45); }
         .ed-sku-stock::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--color-accent, #5E6E45); }
         .ed-sku-stock.ed-low::before { background: var(--color-primary); }
         .ed-sku-stock.ed-low { color: var(--color-primary); }
         .ed-qty-input { margin-top: .75rem; width: 3.5rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .3rem .4rem; font-family: var(--font-family); }
-        .ed-personalize-label { display: block; margin-top: .75rem; font-family: var(--font-family); font-size: .85rem; color: var(--color-muted, #7A6C58); }
+        .ed-personalize-label { display: block; margin-top: .75rem; font-family: var(--font-family); font-size: .85rem; color: var(--color-muted, #635747); }
         .ed-personalize-input { width: 100%; max-width: 360px; margin-top: .3rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .5rem .65rem; font-family: var(--font-family); }
         .ed-btn-add { margin-top: 1.25rem; display: inline-flex; align-self: flex-start; background: var(--color-primary); color: var(--color-background); border: 1px solid var(--color-primary); border-radius: var(--radius); font-family: var(--font-family); font-weight: 700; font-size: .92rem; letter-spacing: .02em; padding: .85rem 1.75rem; cursor: pointer; }
         .ed-btn-add:hover { filter: brightness(0.9); }
@@ -376,9 +376,9 @@ function EditorialPdpLongScroll({
         .ed-reviews-title { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: 1.4rem; }
         .ed-review { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--color-border, #DACFAF); }
         .ed-review:first-of-type { border-top: none; }
-        .ed-review-meta { font-family: var(--font-family); color: var(--color-muted, #7A6C58); font-size: .85rem; }
+        .ed-review-meta { font-family: var(--font-family); color: var(--color-muted, #635747); font-size: .85rem; }
         .ed-review-body { font-family: var(--font-family); font-size: .98rem; line-height: 1.6; margin-top: .3rem; }
-        .ed-review-form label { display: block; margin-top: .75rem; font-family: var(--font-family); font-size: .85rem; color: var(--color-muted, #7A6C58); }
+        .ed-review-form label { display: block; margin-top: .75rem; font-family: var(--font-family); font-size: .85rem; color: var(--color-muted, #635747); }
         .ed-review-form input[type="text"], .ed-review-form select, .ed-review-form textarea { width: 100%; max-width: 420px; margin-top: .3rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .5rem .65rem; font-family: var(--font-family); }
         @media (max-width: 900px) {
           .ed-pdp-layout { grid-template-columns: 1fr; }
@@ -447,7 +447,7 @@ function EditorialPdpLongScroll({
                     <div className={`ed-sku-stock${isLow ? " ed-low" : ""}`}>
                       {stock == null ? "Available" : stock > 0 ? `In stock: ${stock}` : "Out of stock"}
                     </div>
-                    <input type="number" name="quantity" defaultValue={1} min={1} className="ed-qty-input" />
+                    <input type="number" name="quantity" defaultValue={1} min={1} aria-label="Quantity" className="ed-qty-input" />
                     {customizable && (
                       <div>
                         <label className="ed-personalize-label" htmlFor={`customizationNote-${activeSku.id}`}>
@@ -488,7 +488,7 @@ function EditorialPdpLongScroll({
                   <div className={`ed-sku-stock${isLow ? " ed-low" : ""}`}>
                     {stock == null ? "Available" : stock > 0 ? `In stock: ${stock}` : "Out of stock"}
                   </div>
-                  <input type="number" name="quantity" defaultValue={1} min={1} className="ed-qty-input" />
+                  <input type="number" name="quantity" defaultValue={1} min={1} aria-label="Quantity" className="ed-qty-input" />
                   {customizable && (
                     <div>
                       <label className="ed-personalize-label" htmlFor={`customizationNote-${sku.id}`}>

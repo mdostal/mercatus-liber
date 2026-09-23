@@ -136,7 +136,16 @@ const LANDING_CSS = `
        non-cool) soft/faint steps for secondary text and hairlines. */
     --ml-ink: #1a1a1d;
     --ml-ink-soft: #5a5a5e;
-    --ml-ink-faint: #8c8c90;
+    /* a11y-audit: the original #8c8c90 was never contrast-checked against its real
+       usage (footer column headings, footer legal text, FAQ "+" glyphs, architecture
+       table headers/pair-arrows, theme-key labels -- all rendered on #ffffff/--ml-bg-
+       alt) -- axe-core measured 3.34:1, failing WCAG AA's 4.5:1 normal-text minimum
+       (the footer h3 text is bold but at 12.48px, well under the 18.66px bold "large
+       text" threshold that would allow 3:1). #6b6b6f keeps the same true-neutral hue
+       family and stays visually distinct/"fainter" than --ml-ink-soft, but reaches
+       5.30:1 against #ffffff (verified by hand: WCAG relative-luminance formula), a
+       real AA pass with margin, not a bare-minimum 4.5.0. */
+    --ml-ink-faint: #6b6b6f;
     --ml-border: #dedcd9;
     /* Ledger Indigo (primary) -- colors.primary: the system's one confident
        accent (primary CTAs, links, focus states, active nav state). */

@@ -60,7 +60,7 @@ export function CartSpecTable({
           font-size: 10px;
           letter-spacing: 0.1em;
           text-transform: uppercase;
-          color: var(--color-muted, #8891A0);
+          color: var(--color-muted, #626B78);
         }
         .ds-cart-row { padding: 16px 20px; border-bottom: 1px solid var(--color-border, #D2D7E0); }
         .ds-cart-prod { display: flex; align-items: center; gap: 10px; }
@@ -69,7 +69,7 @@ export function CartSpecTable({
         .ds-cart-prod-text .ds-note {
           font-family: ${DS_FONT_MONO};
           font-size: 10.5px;
-          color: var(--color-muted, #8891A0);
+          color: var(--color-muted, #626B78);
           text-transform: uppercase;
           letter-spacing: 0.04em;
         }
@@ -113,7 +113,7 @@ export function CartSpecTable({
           font-size: 10.5px;
           letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: var(--color-muted, #8891A0);
+          color: var(--color-muted, #626B78);
           padding-bottom: 14px;
           margin-bottom: 6px;
           border-bottom: 1px dashed var(--color-muted, #AAB1BF);
@@ -176,7 +176,16 @@ export function CartSpecTable({
                 <form action={updateCartItemQuantityAction} className="ds-qty">
                   <input type="hidden" name="demoSlug" value={demoSlug} />
                   <input type="hidden" name="skuId" value={line.skuId} />
-                  <input type="number" name="quantity" defaultValue={line.quantity} min={1} />
+                  {/* a11y-audit: same unlabeled-quantity-input pattern found live via
+                      axe-core (see cart-standard.tsx's own doc comment for the full
+                      writeup) -- per-line aria-label disambiguates multiple cart rows. */}
+                  <input
+                    type="number"
+                    name="quantity"
+                    defaultValue={line.quantity}
+                    min={1}
+                    aria-label={`Quantity for ${line.title}`}
+                  />
                 </form>
                 <span className="ds-price">
                   {(line.priceSnapshot.amount / 100).toFixed(2)} {line.priceSnapshot.currency}

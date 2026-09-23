@@ -36,10 +36,20 @@ export function BundleTierSelector({
   activeProductId: string;
   activeSkuId: string;
 }) {
+  // a11y-audit: same "bare <section>, no accessible name, outside <main>"
+  // pattern as recommendation-shelf.tsx (see that component's own doc
+  // comment for the full writeup) -- products/[slug]/page.tsx renders this
+  // as a sibling ABOVE <Component>'s own <main>, since a bundle applies
+  // across the whole product, not inside one PDP template's markup.
+  // Confirmed live via axe-core on northline's tv-wall-mounting PDP (a real
+  // bundle, "TV Mount Install Packages"): 4 nodes flagged as page content
+  // outside any landmark. aria-labelledby -> this section's own <h2> turns
+  // it into a real, named "region" landmark.
+  const headingId = `bundle-tier-selector-${bundle.id}`;
   return (
-    <section style={{ marginBottom: "var(--space-sm, 16px)" }}>
+    <section aria-labelledby={headingId} style={{ marginBottom: "var(--space-sm, 16px)" }}>
       <InteractionTracker eventName="bundle_viewed" properties={{ bundleId: bundle.id, title: bundle.title }} />
-      <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>{bundle.title}</h2>
+      <h2 id={headingId} style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>{bundle.title}</h2>
       {bundle.tiers.map((tier) => {
         const pricing = pricingByTierId[tier.id];
         return (
