@@ -55,9 +55,19 @@ export async function createPostgresInventoryAdapter(pool: Pool): Promise<Invent
     },
 
     async commit(skuId: string, quantity: number): Promise<void> {
+      // $2::integer casts -- a bare unary "-$2" applied straight to an
+      // untyped ("unknown"-typed) libpq parameter inside a VALUES list is
+      // genuinely ambiguous to Postgres's operator resolver (it can't tell
+      // which numeric "-" overload to bind before it knows the operand's
+      // type), and fails at query time with "operator is not unique: -
+      // unknown" -- confirmed live against real Supabase Postgres
+      // (checkout-order-paid-crash investigation). The ON CONFLICT ... SET
+      // clause's own "stock_levels.on_hand - $2" is never ambiguous (one
+      // operand is already the real, typed `on_hand` column), so only the
+      // VALUES-list occurrences below needed the explicit cast.
       await pool.query(
         `INSERT INTO stock_levels (sku_id, on_hand, reserved)
-         VALUES ($1, -$2, -$2)
+         VALUES ($1, -$2::integer, -$2::integer)
          ON CONFLICT (sku_id) DO UPDATE SET
            on_hand = stock_levels.on_hand - $2,
            reserved = stock_levels.reserved - $2`,
@@ -66,9 +76,11 @@ export async function createPostgresInventoryAdapter(pool: Pool): Promise<Invent
     },
 
     async release(skuId: string, quantity: number): Promise<void> {
+      // See commit()'s comment above -- same "-$2::integer" fix for the same
+      // "operator is not unique: - unknown" failure mode.
       await pool.query(
         `INSERT INTO stock_levels (sku_id, on_hand, reserved)
-         VALUES ($1, 0, -$2)
+         VALUES ($1, 0, -$2::integer)
          ON CONFLICT (sku_id) DO UPDATE SET reserved = stock_levels.reserved - $2`,
         [skuId, quantity],
       );
