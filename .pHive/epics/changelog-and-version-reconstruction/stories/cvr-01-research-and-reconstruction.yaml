@@ -1,0 +1,73 @@
+id: cvr-01-research-and-reconstruction
+epic: changelog-and-version-reconstruction
+title: Read every epic-backlog.md row 26-64 + linked epic.yaml, produce a structured epic -> category -> changelog-entry -> version-bump working doc
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read `.pHive/planning/epic-backlog.md` rows 26-64 in full (not summarized), and every
+  `.pHive/epics/<name>/epic.yaml` that exists for those 39 epics (25 of the 39 have one --
+  see this epic's own design-discussion.md §3a for the pre-gathered list of which
+  `version_bump` value each already declares). For the 14 epics with no `epic.yaml` at all
+  anywhere in git history (design-discussion.md §3b lists all 14 by number/name, already
+  confirmed via `git log --all -- ".pHive/epics/<name>"` returning zero commits each),
+  determine the correct `version_bump` from real evidence -- the epic's own epic-backlog.md
+  row text, and where still reachable, the real commit history on its own named branch --
+  using the same categorization convention the 25 known-bump epics establish (new
+  subsystem/package = minor; a small settings/admin surface, a live bug fix, or a fix-only
+  audit epic = patch, per epic 17 `commerce-gap-audit`'s own on-record `patch` precedent for
+  this exact epic shape; a pure-docs/research/verification-only epic with zero shipped code =
+  none). Every one of the 14 must cite its actual evidence in the working doc -- no bare
+  guesses.
+
+  Apply design-discussion.md §3c's resolution for the 4 epics whose own `version_bump` is
+  `none` (30, 55, 59, 63): each still gets a real changelog entry, folded under the next
+  epic in sequence that does carry a real bump (or the prior real version if it's the last
+  in-range epic with no later one to fold into), never silently dropped.
+
+  Produce a single structured working doc, `docs/reconstruction-working-doc.md` in this
+  epic's own folder, with one row per epic 26-64: epic number, epic id, resolved
+  `version_bump` (minor/patch/none, with its source -- "from epic.yaml" or "inferred,
+  evidence: ..."), the resolved semver version header it lands on (computed by walking the
+  full sequence in epic-number order starting from 0.6.1), which category(ies) its entry
+  belongs under (Added/Changed/Fixed/Security), and the actual drafted changelog bullet text
+  (bold feature name, package/subsystem citation, 1-3 real sentences -- matching the existing
+  six entries' own voice, not generic). This working doc is story 2's entire input -- it
+  should not need to re-research anything, only transcribe.
+
+acceptance_criteria:
+  - "Given all 39 epic-backlog.md rows 26-64, when the working doc is produced, then every one has exactly one row (no epic skipped, none duplicated)"
+  - "Given the 25 epics with a real epic.yaml version_bump field, when the working doc cites their bump, then it matches the field exactly (verified by re-grepping .pHive/epics/*/epic.yaml, not trusted from memory)"
+  - "Given the 14 epics with no epic.yaml, when the working doc resolves a version_bump for each, then it cites real evidence (epic-backlog.md row text and/or real commit history), never an unstated guess"
+  - "Given epics 30/55/59/63 (version_bump: none), when the working doc handles each, then it still produces a real changelog entry text for each, explicitly stating which later (or, if last in-range, prior) version header it folds under"
+  - "Given the full 26-64 sequence, when versions are computed epic-by-epic in order starting from 0.6.1, then the resulting semver sequence is gapless and internally consistent (no epic skipped a version it should have bumped, no duplicate version numbers)"
+  - "Given epic 27 (admin-auth-clerk, a real fix for a live, unauthenticated /admin gap), when categorized, then the working doc makes an explicit, reasoned call on whether it belongs under ### Security (not silently defaulted to ### Added)"
+
+steps:
+  - id: implement
+    description: Read every epic-backlog.md row 26-64 and every available epic.yaml; resolve version_bump for the 14 epics lacking one; draft every changelog entry; compute the full version sequence; write the working doc.
+    agent: developer
+  - id: review
+    description: Independently re-check the working doc against epic-backlog.md and the epic.yaml files for completeness (no skipped/duplicated epic) and that every inferred version_bump cites real evidence.
+    agent: reviewer
+    depends_on: [implement]
+  - id: integrate
+    description: Commit the working doc to feat/changelog-and-version-reconstruction.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Source of truth for what each epic 26-64 actually did -- rows must be read in full, not summarized"
+    - path: CHANGELOG.md
+      purpose: "Existing six-entry precedent -- format, voice, and category conventions this story's drafted entries must match"
+    - path: .pHive/epics/commerce-gap-audit-2/docs/audit-findings.md
+      purpose: "Precedent for how epics 20-25 were originally reconstructed (five minor, one patch, sequential from a 0.1.0 baseline)"
+    - path: .pHive/epics/commerce-gap-audit-3/docs/audit-findings.md
+      purpose: "This epic's own origin -- finding 10 (the gap itself) and finding 9 (the epic-backlog.md-not-edited precedent)"
+    - path: .pHive/epics/changelog-and-version-reconstruction/docs/design-discussion.md
+      purpose: "This epic's own scope, the pre-gathered 25-epic version_bump table (§3a), the 14-epic no-epic.yaml gap (§3b), and the version_bump:none fold-forward resolution (§3c)"

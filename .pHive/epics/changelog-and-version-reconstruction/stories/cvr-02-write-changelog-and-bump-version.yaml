@@ -1,0 +1,65 @@
+id: cvr-02-write-changelog-and-bump-version
+epic: changelog-and-version-reconstruction
+title: Write the real CHANGELOG.md entries and bump package.json's version through the correct sequence
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [cvr-01-research-and-reconstruction]
+
+description: |
+  Transcribe story 1's working doc (`docs/reconstruction-working-doc.md`) into real
+  `CHANGELOG.md` entries, appended after the existing `[0.6.1]` entry, oldest-first, exactly
+  matching the existing file's format: `## [x.y.z] - YYYY-MM-DD` headers, `### Added` /
+  `### Changed` / `### Fixed` / `### Security` subsections as the working doc resolved per
+  epic, bold feature name + package/subsystem citation + real descriptive sentences per
+  bullet. Use each epic's own real merge/closeout date from epic-backlog.md (not a single
+  blanket date) where that's recorded; where an epic's exact date isn't recorded, use the
+  best-evidenced date from its own docs/commit history, and disclose in the working doc (not
+  invented as a guess with no basis).
+
+  Bump `package.json`'s `"version"` field through the full resolved sequence, ending at the
+  final version the working doc computed for epic 64 (and folding epic 65/this epic's own
+  `patch` bump, per its own epic.yaml `version_bump: patch`, on top as the very last step --
+  the reconstruction epic itself also gets one real changelog entry, dated to its own
+  closeout, documenting that this changelog/version history was reconstructed).
+
+  Update `CHANGELOG.md`'s existing preamble sentence (currently: "This changelog covers the
+  six epics that merged in this wave (epics 20-25). Earlier epics (1-19) have no retroactive
+  changelog or version history...") so it no longer describes only epics 20-25 once entries
+  past it exist -- state plainly what range is now covered (20-65) and that epics 1-19 remain
+  the one disclosed, still-out-of-scope gap.
+
+acceptance_criteria:
+  - "Given the working doc's per-epic entries, when CHANGELOG.md is written, then every epic that resolved to a real version_bump (minor or patch) gets exactly one version header, in strict epic-number order, oldest first"
+  - "Given epics 30/55/59/63 (version_bump: none), when CHANGELOG.md is written, then each has a real entry folded under its resolved header per the working doc -- not silently missing"
+  - "Given the full new version sequence, when computed, then it is a valid, gapless semver progression starting immediately after 0.6.1 with no skipped or duplicated version numbers"
+  - "Given package.json's version field, when this story ends, then it exactly equals CHANGELOG.md's final (latest) version header"
+  - "Given CHANGELOG.md's preamble, when read after this story, then it accurately describes the newly-extended coverage range, not just epics 20-25"
+  - "Given this story's diff, when reviewed, then it touches exactly two files in the whole repo: CHANGELOG.md and package.json (plus this epic's own working doc/story files already committed in story 1)"
+
+steps:
+  - id: implement
+    description: Write the new CHANGELOG.md entries and bump package.json's version through the full resolved sequence, ending with this epic's own closeout entry.
+    agent: developer
+  - id: test
+    description: "Programmatically verify: every ## [x.y.z] header parses as valid semver, the sequence is strictly increasing with no gaps, and package.json's version matches the last header exactly."
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Spot-check a sample of entries against the working doc and against the real epic-backlog.md rows they summarize, for accuracy and correct categorization.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/changelog-and-version-reconstruction.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: CHANGELOG.md
+      purpose: "The file this story appends to -- existing six entries must stay byte-unchanged, only new content appended"
+    - path: package.json
+      purpose: "The version field this story bumps -- root-level only, this is a private monorepo root package, not a published one"
+    - path: .pHive/epics/changelog-and-version-reconstruction/docs/reconstruction-working-doc.md
+      purpose: "Story 1's output -- this story's entire input, should require no new research"

@@ -1,0 +1,19 @@
+name: changelog-and-version-reconstruction
+title: Reconstruct CHANGELOG.md and package.json's version through 38 undocumented epics (26-64)
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: patch
+
+stories:
+  - id: cvr-01-research-and-reconstruction
+    title: Read every epic-backlog.md row 26-64 + linked epic.yaml, produce a structured epic -> category -> changelog-entry -> version-bump working doc
+    complexity: medium
+    depends_on: []
+  - id: cvr-02-write-changelog-and-bump-version
+    title: Write the real CHANGELOG.md entries and bump package.json's version through the correct sequence
+    complexity: medium
+    depends_on: [cvr-01-research-and-reconstruction]
+  - id: cvr-03-closeout-verify-and-merge
+    title: Verify the full monorepo build, confirm no deploy is needed, merge and push, close out the epic
+    complexity: low
+    depends_on: [cvr-02-write-changelog-and-bump-version]
