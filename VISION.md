@@ -40,8 +40,10 @@ blow-by-blow ledger this summarizes.
 
 ## Where things stand today
 
-**Done — the real, working core** (see `.pHive/planning/epic-backlog.md` epics 1–47 for the
-full detail on every item below; only backlog epic 48 remains genuinely open):
+**Done — the real, working core** (see `.pHive/planning/epic-backlog.md` for the full detail
+on every item below; **updated 2026-09-22 by `commerce-gap-audit-3`** — every backlog epic
+through 63 is done except three explicitly disclosed, credential- or account-blocked items,
+see "Still open, blocked on something real" below):
 
 - Catalog, cart, checkout, Stripe payments, orders — the base commerce loop, with two real
   reference persistence adapters (SQLite, Postgres) proving the interface is genuinely
@@ -91,7 +93,7 @@ full detail on every item below; only backlog epic 48 remains genuinely open):
   in `packages/adapter-sqlite` built on better-sqlite3's native Online Backup API rather than an
   unsafe raw file copy. Live-verified surviving a genuine server restart and a real backup/restore
   round-trip with byte-for-byte matching data. This work also surfaced a real follow-up gap in
-  demo-seeding idempotency, now tracked as backlog epic 48 — see "Queued, not yet started" below.
+  demo-seeding idempotency (backlog epic 48), fixed for real 2026-09-11/12 — see below.
 - **SEO & AEO infrastructure** (epic 45) — real per-page `generateMetadata` (product/category/
   search/home titles and descriptions, replacing one static "Shop" title every route previously
   shared), canonical URLs, a live-queried `sitemap.xml` (53 real URLs) and `robots.txt`,
@@ -117,37 +119,90 @@ full detail on every item below; only backlog epic 48 remains genuinely open):
 - **`apps/docs` deployed live for the first time** — its own real Vercel project
   (`mercatus-liber-docs`), wired into `commerce.mdostal.com`'s `NEXT_PUBLIC_DOCS_URL` in
   production, closing epic 33's original disclosed deployment gap.
+- **Product reviews & star ratings** (epic 49) — reverses this document's own earlier
+  "community-plugin territory" call on reviews, on explicit user direction. `@mercatus-liber/reviews`
+  ships a real moderation queue (every submitted review starts `"pending"`; only an explicit
+  admin `moderateReview` call makes it publicly visible), PDP display, the admin moderation
+  page, the public submission form, and real per-store seeded review content across all 3 demos.
+- **Storefront views / multi-catalog demonstration** (epic 50) — a real, first-class
+  `@mercatus-liber/storefront-views` subsystem: a curated categoryIds + optional theme + own
+  `/site/<slug>` route + an `isDefaultOverride` home-page-takeover mechanic, proving the
+  Caterpillar-split/shared-catalog/multi-brand patterns this epic set out to demonstrate.
+- **A battery of new persistence adapters** — a Postgres-backed inventory (IMS) alternate
+  (epic 51), and MongoDB/Convex catalog-persistence adapters (epics 52–53) proving the
+  interface holds up against genuinely different database paradigms, not just
+  Postgres-vs-SQLite. All 3 are real, tested code; Convex and Postgres are both genuinely live
+  in production today (see "Real, live per-demo backend diversity" below) — MongoDB remains
+  built and tested but not live, blocked on a real account's Atlas Network Access setting (see
+  "Still open" below).
+- **Demo-seed idempotency** (epic 48) — fixed for real, not just planned: every seed function
+  now checks-by-slug before creating instead of creating unconditionally, closing a real gap
+  that would otherwise permanently crash a demo on any process restart against real persisted
+  storage (`SQLITE_CONSTRAINT_UNIQUE` on `products.slug`) — verified against a genuine
+  file-backed SQLite database run through each seed function twice.
+- **Real, live per-demo backend diversity** (epic 57) — the actual "fully different DB types,
+  live, not just resilient code" goal: print-shop runs on real production Postgres/Supabase,
+  Broadleaf & Co. runs on a genuinely separate, real, deployed Convex project
+  (`kindhearted-corgi-798`) — 2 of 3 backends live and distinct today. Northline was meant to
+  run on MongoDB Atlas; that remains built, tested, and wired but not live (see "Still open").
+- **A full commerce-persistence audit** (epic 58) — extended real Postgres persistence from 3
+  subsystems (catalog, categories, inventory) to all 16: cart, orders, customer accounts,
+  promotions, reviews, storefront-views, bundles, recommendations, advertising, service-areas,
+  and the internal-BI event log, plus a new first-class `Catalog` entity (real metadata, not
+  implicit from which database a product happens to live in) every demo's products are now
+  genuinely assigned to.
+- **The Sanity Challenge submission** (epic 59) — Path Two (a real per-page-type
+  `LayoutTemplate`/CMS-content dashboard, `/admin/content-layout`) and Path One (this repo's
+  first LLM/MCP-client integration — a real Anthropic-SDK tool-calling admin copilot at
+  `/admin/copilot`, gated by the same `requireAdminPermission("mutate")` discipline every other
+  admin mutation uses) are both built, merged, deployed, and live-verified. DEV.to publishing
+  itself remains blocked — no DEV.to API key exists in this environment (see "Still open").
+- **Three real, live, user-reported production bugs found and fixed** (epics 60–62,
+  2026-09-22) — a shared-Postgres-backend cross-demo content bleed in CMS pages (a "Fall Sale"
+  campaign duplicated ~16x and leaking into every demo's nav), the same bleed class in
+  marketing-catalog categories, and a real Postgres SQL-ambiguity bug
+  (`operator is not unique: - unknown`, an untyped unary-minus parameter in the inventory
+  adapter) that crashed every real checkout against Postgres-backed inventory. All three
+  found, root-caused, fixed, regression-tested, and live-verified on production.
+- **The framework's own brand identity** (epic 55) — a real token system (Ledger Indigo/Garnet/
+  Carbon Ink/Paper Neutral, Public Sans + JetBrains Mono), applied to the framework landing
+  page, the docs site, and a real generated favicon — deliberately never touching any of the 3
+  demo stores' own independent themes. Live-verified with real hex/font values extracted from
+  production HTML/CSS.
+- **A real, live, interactive multi-axis product configurator** (epic 63) — a real 2-color x
+  3-size variant picker (`components/variant-picker.tsx`) wired into all 3 PDP templates
+  (progressively enhanced, `<noscript>`-safe), an admin SKU-matrix + add-combination surface at
+  `/admin/products/[productId]/skus`, and a real seeded 2-axis product
+  (`embroidered-performance-polo`, print-shop) proving it end to end — server-resolved
+  per-combination price/stock, a real add-to-cart landing the exactly-resolved SKU in the cart.
+- **A third gap audit** (`commerce-gap-audit-3`, 2026-09-22) — found and fixed the same
+  shared-Postgres-backend cross-demo-bleed bug class in 4 more places epics 60–62 didn't reach:
+  advertising campaigns (a live bug — Northline's ad creative rendering on print-shop's home
+  page), promotion/coupon codes (a live bug — either demo's real code was redeemable at the
+  other's checkout), `catalog.listProducts()` (a live SEO bug — every demo's sitemap listed
+  every OTHER demo's product URLs too), and service areas. Also fixed a site-wide broken-link
+  bug (every "Customers also bought" card 404'd, missing its `/demo/<slug>` route prefix) found
+  by live-browsing all 3 production demos. See
+  `.pHive/epics/commerce-gap-audit-3/docs/audit-findings.md` for the full report, including
+  what was fixed directly vs. written up as new backlog-epic candidates (not yet added to
+  `epic-backlog.md` — that's this audit's own explicit convention, matching audits 1 and 2).
 
-**In progress:**
+**Still open, blocked on something real (not forgotten, not silently dropped):**
 
-- **Product reviews & star ratings** (backlog epic 49) — **2026-09-11: reverses this document's
-  own earlier "community-plugin territory" call on reviews**, on explicit user direction ("we
-  have BARE BASICS that are necessary for any site -- reviews... build all of that"). A new
-  `@mercatus-liber/reviews` subsystem with a real moderation queue (every submitted review starts
-  `"pending"`; only an explicit admin `moderateReview` call makes it publicly visible) shipped
-  first (commit `3370c16`); PDP display, the admin moderation page, and the public submission form
-  are being wired next, followed by real per-store review content.
-- **Storefront views / multi-catalog demonstration** (backlog epic 50) — explicit user ask to show
-  the framework can run a Caterpillar-style split site, a shared-inventory/two-different-
-  storefronts pairing, and a Wayfair-style multi-brand tenancy, all as real, reusable patterns —
-  not yet designed; likely needs a real planning pass before it's built.
-- **A battery of new adapters** — a Postgres-backed inventory (IMS) alternate (epic 51), and
-  MongoDB/Convex persistence adapters (epics 52–53) proving the persistence interface holds up
-  against genuinely different database paradigms, not just Postgres-vs-SQLite. Buildable now
-  without any external account; live-verification against a real account is a separate, later
-  step (see epic 56 / the "Provider Setup Checklist" artifact).
-- **Demo-seed idempotency** (backlog epic 48) — a real gap surfaced by epic 39's live persistence
-  verification, and confirmed worse on a fuller audit than first logged: within one running
-  process repeated seed calls are memoized and safe, but an actual **process restart** against a
-  persisted `SQLITE_FILE_PATH`/`DATABASE_URL` throws an unhandled `SQLITE_CONSTRAINT_UNIQUE` on
-  `products.slug` and permanently breaks that demo for the rest of the process's life (sibling
-  demos stay healthy), since every demo's seed function creates products unconditionally instead
-  of checking first. Harmless under the in-memory default (production's current state — real
-  persistence isn't enabled on `commerce.mdostal.com` yet); a real blocker the moment it is.
-
-**Deliberately deferred, not forgotten:** per-store onboarding/landing pages and the framework's
-own `/brand` visual-identity pass (backlog epics 54–55) are sequenced *after* the items above —
-explicit user call (2026-09-11): "once we have all these things, we can start to show it off."
+- **Real external-provider credentials** — Cloudinary, GA4, Shippo, Printful, Printify, and a
+  real (non-sandbox) Stripe key. Every adapter for these is real, built, and unit-tested against
+  current provider docs; each is honestly disclosed as live-unverified rather than claimed
+  working end to end, the same posture this document has held throughout.
+- **MongoDB, live** — built, tested, wired into `services.ts`'s adapter-priority chain; blocked
+  on the user opening the real MongoDB Atlas cluster's Network Access list (an IP-allowlist
+  restriction, diagnosed via a real production `MongoServerSelectionError`/TLS handshake
+  failure connecting from Vercel's serverless egress ranges), not a code fix.
+- **DEV.to publishing** (epic 59's own remaining piece) — both submission drafts are ready and
+  accurate; blocked on either the user pasting them in directly, or a real DEV.to API key
+  landing in the `mercatus-liber-commerce` Portunus vault.
+- **Clerk in production, fully verified** (epic 56) — real per-person login and a genuine
+  read-only viewer account are live and working; a handful of lower-priority items on the same
+  provider-setup checklist (the "CADEX Legacy" PAT reference, notably) remain unconfirmed.
 
 ## Wanted, not started — the community plugin frontier
 
