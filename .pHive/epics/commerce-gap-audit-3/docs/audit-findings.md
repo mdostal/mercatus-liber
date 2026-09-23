@@ -33,7 +33,7 @@ taken on faith. This is reported plainly as a real environment condition, not sw
 | 8 | Test coverage gaps: `variant-picker.tsx`, admin SKU-matrix page render, landing page | Low–Medium | **Documented, not fixed** |
 | 9 | `epic-backlog.md` row 49's "no dedicated test file exists for reviews" note is stale | Low | **Documented, not fixed** (can't edit `epic-backlog.md` per this task's own scope) |
 | 10 | `CHANGELOG.md`/`package.json` version frozen at epic 25 (`0.6.1`, 2026-09-08) — 38 epics of shipped work since (including this session's brand system, product-configurator, and 4 bug fixes) are undocumented | Medium | **New-epic-candidate**: `changelog-and-version-reconstruction` |
-| 11 | `VISION.md`'s "Where things stand today" section is substantially stale — frozen around epic ~53, claims "only epic 48 remains genuinely open," reviews/storefront-views/adapters still listed "in progress" though done, zero mention of epics 54–63 | Medium | **Documented, not fixed** (too large/risky a rewrite to do safely mid-audit given the concurrent-agent hazard above; recommend a dedicated follow-up pass) |
+| 11 | `VISION.md`'s "Where things stand today" and `README.md`'s "Status" section were both substantially stale — frozen around epic ~1 (README) / ~53 (VISION), claims "only epic 48 remains genuinely open," reviews/storefront-views/adapters still listed "in progress" though done | Medium | **FIXED** (`915e26f`, by the concurrent session, independently re-verified) |
 | 12 | `apps/docs/content-src/index.md` said "two live demo storefronts" (there are three) and "22 total" subsystem docs through `21-admin-auth` (there are 26, through `25-storefront-views`) | Low | **FIXED** (`d5a4229`) |
 | 13 | Bundle tier selector vs. product-configurator composability: no live product has both a bundle and multiple variant SKUs; if one did, a bundle tier's hardcoded `skuIds` would silently ignore whatever variant the shopper picked | Low (currently unreachable) | **Documented, not fixed** |
 | 14 | Live demo store browse (all 3, every major route) | — | **NOT A GAP** — all 200s, no other visible brokenness found |
@@ -182,34 +182,24 @@ duplicated/missing entries) deserves a dedicated pass rather than a rushed audit
 Epic-id-style name: `changelog-and-version-reconstruction`. Depends on: none (pure documentation
 archaeology over already-shipped, already-merged work).
 
-## 11. `VISION.md` drift — documented, then observed being fixed concurrently (not by this session)
+## 11. `VISION.md`/`README.md` drift — now fixed (by the concurrent session, verified)
 
-**Update, same session, before this document's final commit:** while this document was being
-written, `README.md` and `VISION.md` were both observed with real, substantial uncommitted
-working-tree changes (`git diff --stat`: README.md +24/-8, VISION.md +105/-42) that directly
-address the exact drift described below — a refreshed "Where things stand today" section citing
-epics through 63, a corrected "only epic 48 remains open" claim, and real per-demo backend-
-diversity/Sanity-copilot/bug-fix content. This is the same concurrent-agent session disclosed at
-the top of this document, not this audit's own work, and was **not committed as of this
-document's own last commit** — so it's reported here as an observed-in-progress fix, not claimed
-as done. If it lands, the finding below is resolved without this audit needing to touch it; if it
-doesn't, the finding stands as originally written.
+**Final update:** the concurrent-agent session disclosed at the top of this document committed
+`915e26f` ("fix severely stale README status line and VISION.md progress section") shortly after
+this finding was first written, independently confirming and fixing the exact drift described
+below — plus a second, real finding of its own that this audit missed: `README.md`'s own opening
+"Status" paragraph still read "pre-alpha — core-foundation epic underway," describing epic 1's
+state 62 epics ago. Both files' "Where things stand today"/status sections are now genuinely
+current through epic 63, with a new honest "Still open, blocked on something real" section
+replacing the stale "In progress"/"Deliberately deferred" framing. Independently re-verified by
+this session after that commit landed: `pnpm turbo run typecheck test build --force` still
+127/127 green. **No further action needed** — finding fully resolved, not by this audit's own
+hand, but verified and folded into this branch's final state.
 
-`VISION.md`'s "Where things stand today" section is substantially stale: it opens with "only
-backlog epic 48 remains genuinely open" (false — epics 56, 57, and 59 are all still explicitly
-"in progress" per `epic-backlog.md`, and epics 49–63 in general are mostly unmentioned), still
-lists reviews (epic 49), storefront-views (epic 50), and the Mongo/Convex/Postgres-inventory
-adapters (epics 51–53) under "**In progress**" though all are long done, and its "Deliberately
-deferred" note about per-store landing pages and the brand system (epics 54–55) is stale now that
-both are done. There is zero mention anywhere in the file of epics 56–63: per-demo backend
-diversity, the full persistence audit, the Sanity AI copilot, the brand system's real shipped
-form, the product configurator, or any of this session's 4 live bug fixes. **Not fixed in this
-pass**: correctly rewriting a "Where things stand today" section spanning 15+ epics is
-substantial prose work, and — given this audit's own disclosed concurrent-agent hazard (finding
-above) — attempting a large edit to a file another live session might also be touching right now
-carries real risk of a lost or conflicting write. **Recommend**: a dedicated, single-session
-`VISION.md` refresh pass (same shape as epic 47's original `vision-and-community-roadmap` epic),
-run when no other session is concurrently active in this checkout.
+Original drift, for the record (now fixed): the section opened with "only backlog epic 48
+remains genuinely open" (false — epics 56/57/59 are still genuinely in progress, and epics 49–63
+were mostly unmentioned), listed reviews/storefront-views/the Mongo+Convex+Postgres-inventory
+adapters under "In progress" though all are long done, and had zero mention of epics 54–63.
 
 ## 12. Docs-site index page — fixed
 
