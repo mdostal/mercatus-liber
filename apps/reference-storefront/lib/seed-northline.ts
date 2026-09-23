@@ -675,6 +675,7 @@ async function seedInstallBundle(
       { id: randomUUID(), label: "+ Cable Concealment", skuIds: [mountSkuId, concealmentSkuId] },
       { id: randomUUID(), label: "+ Soundbar Setup", skuIds: [mountSkuId, concealmentSkuId, soundbarSkuId] },
     ],
+    demoSlug: "northline",
   });
 }
 
@@ -703,6 +704,7 @@ async function seedRecommendations(recommendations: RecommendationsService, prod
       label: "Customers also add",
       placement: "both",
       targetProductIds: [concealmentId],
+      demoSlug: "northline",
     });
   }
   if (meshId && hubId) {
@@ -711,6 +713,7 @@ async function seedRecommendations(recommendations: RecommendationsService, prod
       label: "Frequently paired with",
       placement: "both",
       targetProductIds: [hubId],
+      demoSlug: "northline",
     });
   }
 }

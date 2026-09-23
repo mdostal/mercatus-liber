@@ -21,7 +21,7 @@ export interface BundlesService {
    * this returns whichever active bundle sorts first, not an error.
    */
   getBundleForProduct(productId: string): Promise<Bundle | null>;
-  listBundles(): Promise<Bundle[]>;
+  listBundles(filter?: { demoSlug?: string }): Promise<Bundle[]>;
   /** Merges the given fields into an existing bundle; null if no bundle has this id. Id is never overwritten. Re-validates the merged tiers exactly as createBundle does. */
   updateBundle(id: string, input: Partial<CreateBundleInput>): Promise<Bundle | null>;
   deactivateBundle(id: string): Promise<Bundle | null>;
@@ -84,8 +84,8 @@ export function createBundlesService(deps: { repository: BundleRepository; skuLo
       return bundles.find((bundle) => bundle.productId === productId && bundle.status === "active") ?? null;
     },
 
-    async listBundles(): Promise<Bundle[]> {
-      return repository.list();
+    async listBundles(filter?: { demoSlug?: string }): Promise<Bundle[]> {
+      return repository.list(filter);
     },
 
     async updateBundle(id: string, input: Partial<CreateBundleInput>): Promise<Bundle | null> {

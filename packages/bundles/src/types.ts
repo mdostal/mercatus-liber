@@ -31,12 +31,27 @@ export interface Bundle {
   title: string;
   tiers: BundleTier[];
   status: BundleStatus;
+  /**
+   * Which demo store this bundle belongs to. Optional/additive, same shape
+   * and reason as `Page.demoSlug` (epic 60), `Category.demoSlug` (epic 61),
+   * and `ServiceArea.demoSlug` (commerce-gap-audit-3) -- a real, disclosed
+   * gap found by `commerce-gap-audit-3` §13: `BundleRepository.list()` had
+   * no demo-scoping concept at all, so under the shared Postgres backend
+   * print-shop and Northline Home Tech both resolve to, an operator in
+   * print-shop's own `/admin/bundles` list saw Northline's bundles mixed
+   * into their own list (admin-only bleed -- `getBundleForProduct` is
+   * deliberately left unscoped since it already resolves correctly by
+   * `productId`, which is itself already demo-scoped on the PDP).
+   * `undefined`/missing behaves exactly as before this fix (an unscoped
+   * call still sees every bundle).
+   */
+  demoSlug?: string;
 }
 
 /** Adapter pattern, as everywhere else in this codebase. */
 export interface BundleRepository {
   get(id: string): Promise<Bundle | null>;
-  list(): Promise<Bundle[]>;
+  list(filter?: { demoSlug?: string }): Promise<Bundle[]>;
   save(bundle: Bundle): Promise<void>;
 }
 

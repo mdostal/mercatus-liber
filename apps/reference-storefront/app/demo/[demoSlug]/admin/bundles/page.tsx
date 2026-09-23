@@ -10,7 +10,10 @@ export default async function AdminBundlesPage({ params }: { params: Promise<{ d
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { bundles, catalog } = await getServicesForDemo(demoSlug);
-  const allBundles = await bundles.listBundles();
+  // commerce-gap-audit-3 finding 13: scoped to this demo's own bundles --
+  // before this fix, this page listed every demo's bundles combined (see
+  // Bundle.demoSlug's doc comment).
+  const allBundles = await bundles.listBundles({ demoSlug });
 
   return (
     <main>

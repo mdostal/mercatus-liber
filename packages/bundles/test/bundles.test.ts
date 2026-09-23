@@ -258,4 +258,33 @@ describe("bundles service", () => {
       expect(await bundles.deactivateBundle("missing")).toBeNull();
     });
   });
+
+  /**
+   * commerce-gap-audit-3 finding 13: a real, disclosed gap -- listBundles()
+   * carried no demo filter at all, so an operator in one demo's own
+   * `/admin/bundles` list saw every other demo's bundles mixed in too.
+   * Same bug class/fix shape as service-areas/advertising/promotions'
+   * demoSlug tests (commerce-gap-audit-3 findings 1-3).
+   */
+  describe("demo scoping", () => {
+    it("listBundles(filter) scopes by demoSlug -- two demos' bundles never bleed into each other's results", async () => {
+      const printShop = await bundles.createBundle(
+        threeTierBundleInput({ productId: "product-print-shop", demoSlug: "print-shop" }),
+      );
+      const northline = await bundles.createBundle(
+        threeTierBundleInput({ productId: "product-northline", demoSlug: "northline" }),
+      );
+
+      const printShopOnly = await bundles.listBundles({ demoSlug: "print-shop" });
+      expect(printShopOnly.map((b) => b.id)).toEqual([printShop.id]);
+
+      const northlineOnly = await bundles.listBundles({ demoSlug: "northline" });
+      expect(northlineOnly.map((b) => b.id)).toEqual([northline.id]);
+
+      // Unscoped listBundles() (no demoSlug filter) legitimately still
+      // returns every demo's bundles -- backward compatible.
+      const everything = await bundles.listBundles();
+      expect(everything.map((b) => b.id).sort()).toEqual([printShop.id, northline.id].sort());
+    });
+  });
 });

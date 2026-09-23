@@ -10,7 +10,10 @@ export default async function AdminRecommendationsPage({ params }: { params: Pro
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { recommendations, catalog } = await getServicesForDemo(demoSlug);
-  const allRules = await recommendations.listRules();
+  // commerce-gap-audit-3 finding 13: scoped to this demo's own rules --
+  // before this fix, this page listed every demo's recommendation rules
+  // combined (see RecommendationRule.demoSlug's doc comment).
+  const allRules = await recommendations.listRules({ demoSlug });
 
   return (
     <main>

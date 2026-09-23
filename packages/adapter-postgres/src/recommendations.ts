@@ -22,6 +22,16 @@ const RECOMMENDATION_RULES_DDL = `
     status TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_recommendation_rules_source_product_id ON recommendation_rules(source_product_id);
+  -- commerce-gap-audit-3 finding 13: recommendation_rules had no
+  -- demo-scoping concept at all, so under the shared Postgres backend
+  -- print-shop and Northline Home Tech both resolve to, print-shop's own
+  -- /admin/recommendations list mixed in Northline's rules too -- same bug
+  -- class/fix shape as bundles.demo_slug and service_areas.demo_slug
+  -- (commerce-gap-audit-3) before it. Optional/additive: ADD COLUMN IF NOT
+  -- EXISTS is safe against the already-live production
+  -- "recommendation_rules" table.
+  ALTER TABLE recommendation_rules ADD COLUMN IF NOT EXISTS demo_slug TEXT;
+  CREATE INDEX IF NOT EXISTS idx_recommendation_rules_demo_slug ON recommendation_rules(demo_slug);
 `;
 
 interface RecommendationRuleRow {
@@ -31,6 +41,7 @@ interface RecommendationRuleRow {
   placement: string;
   target_product_ids: string[];
   status: string;
+  demo_slug: string | null;
 }
 
 function rowToRecommendationRule(row: RecommendationRuleRow): RecommendationRule {
@@ -41,6 +52,7 @@ function rowToRecommendationRule(row: RecommendationRuleRow): RecommendationRule
     placement: row.placement as RecommendationRule["placement"],
     targetProductIds: row.target_product_ids,
     status: row.status as RecommendationRule["status"],
+    ...(row.demo_slug ? { demoSlug: row.demo_slug } : {}),
   };
 }
 
@@ -72,22 +84,27 @@ export function createPostgresRecommendationRepository(pool: Pool): Recommendati
       );
       return result.rows[0] ? rowToRecommendationRule(result.rows[0]) : null;
     },
-    async list(): Promise<RecommendationRule[]> {
+    async list(filter?: { demoSlug?: string }): Promise<RecommendationRule[]> {
       await ready;
-      const result = await pool.query<RecommendationRuleRow>("SELECT * FROM recommendation_rules");
+      const result = filter?.demoSlug
+        ? await pool.query<RecommendationRuleRow>("SELECT * FROM recommendation_rules WHERE demo_slug = $1", [
+            filter.demoSlug,
+          ])
+        : await pool.query<RecommendationRuleRow>("SELECT * FROM recommendation_rules");
       return result.rows.map(rowToRecommendationRule);
     },
     async save(rule: RecommendationRule): Promise<void> {
       await ready;
       await pool.query(
-        `INSERT INTO recommendation_rules (id, source_product_id, label, placement, target_product_ids, status)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO recommendation_rules (id, source_product_id, label, placement, target_product_ids, status, demo_slug)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (id) DO UPDATE SET
            source_product_id = EXCLUDED.source_product_id,
            label = EXCLUDED.label,
            placement = EXCLUDED.placement,
            target_product_ids = EXCLUDED.target_product_ids,
-           status = EXCLUDED.status`,
+           status = EXCLUDED.status,
+           demo_slug = EXCLUDED.demo_slug`,
         [
           rule.id,
           rule.sourceProductId,
@@ -95,6 +112,7 @@ export function createPostgresRecommendationRepository(pool: Pool): Recommendati
           rule.placement,
           JSON.stringify(rule.targetProductIds),
           rule.status,
+          rule.demoSlug ?? null,
         ],
       );
     },
