@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mercatus Liber — Framework Brand Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #4338A0;
+    --secondary: #A13A3A;
+    --neutral: #1A1A1D;
+    --surface: #F3F3F1;
+    --heading-font: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --body-font: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --accent-font: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --r-sm: 2px; --r-md: 4px; --r-lg: 8px; --r-full: 9999px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #e9e9e6;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 40px 24px 96px;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  section {
+    background: white;
+    padding: 40px;
+    margin-bottom: 24px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  section > h2 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #888;
+    font-weight: 700;
+  }
+
+  section > p.section-intro {
+    margin: 0 0 28px 0;
+    color: #555;
+    max-width: 720px;
+    line-height: 1.55;
+    font-size: 14px;
+  }
+
+  code {
+    font-family: var(--accent-font);
+    font-size: 12px;
+    background: #f0f0ee;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  /* ---- Header ---- */
+  .brand-header {
+    background: var(--surface);
+    padding: 64px 48px;
+    text-align: left;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .brand-header .eyebrow {
+    font-family: var(--accent-font);
+    font-size: 12px;
+    color: var(--primary);
+    letter-spacing: 0.5px;
+    margin: 0 0 16px 0;
+    text-transform: lowercase;
+  }
+  .brand-header h1 {
+    font-family: var(--heading-font);
+    font-weight: 700;
+    font-size: 56px;
+    color: var(--neutral);
+    margin: 0 0 20px 0;
+    letter-spacing: -0.5px;
+  }
+  .brand-header .personality-statement {
+    font-family: var(--body-font);
+    font-size: 19px;
+    color: var(--neutral);
+    max-width: 640px;
+    line-height: 1.55;
+    margin: 0 0 16px 0;
+  }
+  .brand-header .tone {
+    font-family: var(--accent-font);
+    font-size: 13px;
+    color: var(--secondary);
+    margin: 0;
+  }
+  .grounding-note {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid #ddd8cf;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.6;
+    max-width: 760px;
+  }
+  .grounding-note strong { color: var(--neutral); }
+
+  /* ---- Colors ---- */
+  .color-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+  .color-card { border: 1px solid #eee; border-radius: 10px; overflow: hidden; }
+  .swatch { height: 140px; }
+  .color-info { padding: 18px 20px; }
+  .color-info h3 { margin: 0 0 2px 0; font-size: 17px; }
+  .color-info .hexline { font-family: var(--accent-font); font-size: 13px; color: #888; margin: 0 0 14px 0; }
+  .color-info dl { display: grid; grid-template-columns: 60px 1fr; row-gap: 4px; margin: 0 0 12px 0; font-size: 12px; }
+  .color-info dt { color: #999; }
+  .color-info dd { margin: 0; }
+  .color-info .usage { font-size: 13px; color: #444; line-height: 1.5; margin: 0 0 14px 0; }
+  .contrast-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge { font-family: var(--accent-font); font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid; }
+  .badge.pass { color: #146c2e; border-color: #146c2e; background: #eaf7ee; }
+  .badge.fail { color: #8a2c2c; border-color: #8a2c2c; background: #fbeaea; }
+
+  /* ---- Typography ---- */
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 32px; }
+  .type-column h3 { font-size: 15px; margin: 0 0 2px 0; }
+  .type-column .font-role { font-family: var(--accent-font); font-size: 12px; color: var(--primary); margin: 0 0 20px 0; }
+  .weight-sample { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #f0f0f0; }
+  .weight-sample .big-aa { font-size: 44px; display: block; line-height: 1.1; color: var(--neutral); }
+  .weight-sample .weight-label { font-family: var(--accent-font); font-size: 11px; color: #999; }
+  .weight-sample p.sample { margin: 6px 0 0 0; font-size: 14px; color: #333; }
+  .scale-samples p { margin: 6px 0; color: var(--neutral); }
+  .rationale-box { grid-column: 1 / -1; background: var(--surface); border-radius: 8px; padding: 20px 24px; font-size: 13px; color: #333; line-height: 1.6; margin-top: 8px; }
+  .rationale-box strong { font-family: var(--accent-font); color: var(--primary); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ---- Logos ---- */
+  .disclosure {
+    background: #fbeaea;
+    border: 1px solid #e3b8b8;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 13px;
+    color: #6b2222;
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+  .disclosure code { background: #f6d9d9; }
+  .logo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 32px; }
+  .logo-card { border: 1px solid #eee; border-radius: 10px; overflow: hidden; }
+  .logo-display { height: 160px; display: flex; align-items: center; justify-content: center; }
+  .logo-card p.concept-description { padding: 14px 18px; margin: 0; font-size: 13px; color: #444; line-height: 1.5; }
+  .logo-card h3 { padding: 14px 18px 0 18px; margin: 0; font-size: 14px; }
+  .logo-bg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .logo-bg-cell { height: 100px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid #eee; }
+
+  /* ---- Spacing ---- */
+  .spacing-row { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 8px; }
+  .spacing-sample { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .spacing-sample .box { background: var(--primary); }
+  .spacing-sample .label { font-family: var(--accent-font); font-size: 11px; color: #888; }
+  .radius-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 8px; }
+  .radius-sample { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .radius-sample .box { width: 88px; height: 64px; background: var(--surface); border: 2px solid var(--primary); display: flex; align-items: center; justify-content: center; font-family: var(--accent-font); font-size: 11px; color: var(--neutral); }
+  .radius-sample .label { font-family: var(--accent-font); font-size: 11px; color: #888; }
+
+  /* ---- Context ---- */
+  .example-buttons { display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+  .btn-primary { background: var(--primary); color: white; padding: 12px 22px; font-family: var(--body-font); font-weight: 600; font-size: 14px; border: none; border-radius: var(--r-md); cursor: default; }
+  .btn-secondary { background: transparent; color: var(--primary); padding: 12px 22px; font-family: var(--body-font); font-weight: 600; font-size: 14px; border: 2px solid var(--primary); border-radius: var(--r-md); cursor: default; }
+  .btn-danger { background: var(--secondary); color: white; padding: 12px 22px; font-family: var(--body-font); font-weight: 600; font-size: 14px; border: none; border-radius: var(--r-md); cursor: default; }
+  .context-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .example-card {
+    background: var(--surface); padding: 28px; border-radius: var(--r-lg);
+    border: 1px solid #e2e2de;
+  }
+  .example-card .pill {
+    display: inline-block; font-family: var(--accent-font); font-size: 11px;
+    background: var(--neutral); color: var(--surface); padding: 3px 9px; border-radius: var(--r-full);
+    margin-bottom: 14px;
+  }
+  .example-card h3 { font-family: var(--heading-font); font-weight: 700; color: var(--neutral); margin: 0 0 10px 0; font-size: 20px; }
+  .example-card p { font-family: var(--body-font); color: #444; font-size: 14px; line-height: 1.55; margin: 0 0 18px 0; }
+  .example-hero {
+    background: var(--neutral); color: var(--surface); padding: 48px 40px; border-radius: var(--r-lg);
+    grid-column: 1 / -1;
+  }
+  .example-hero .tag { font-family: var(--accent-font); font-size: 12px; color: #9d92e8; margin: 0 0 14px 0; }
+  .example-hero h3 { font-family: var(--heading-font); font-weight: 700; font-size: 30px; margin: 0 0 14px 0; }
+  .example-hero p { font-family: var(--body-font); color: #cfcfd6; font-size: 15px; max-width: 560px; line-height: 1.6; margin: 0 0 20px 0; }
+  .example-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    background: white; border: 1px solid #eee; border-radius: var(--r-md);
+    padding: 14px 20px; margin-bottom: 24px; font-family: var(--accent-font); font-size: 13px;
+  }
+  .example-nav .nav-links { display: flex; gap: 22px; color: #555; }
+  .example-nav .nav-links span.active { color: var(--primary); font-weight: 700; }
+
+  @media (max-width: 800px) {
+    .type-grid { grid-template-columns: 1fr; }
+    .context-row { grid-template-columns: 1fr; }
+    .brand-header h1 { font-size: 38px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="brand-header">
+    <p class="eyebrow">.pHive/brand/brand-guide.html — framework-level brand, not a demo-store theme</p>
+    <h1>Mercatus Liber</h1>
+    <p class="personality-statement">Mercatus Liber is real, free infrastructure — not a demo, not a funnel. It reads like the code it ships: direct, exact, and built to be taken apart.</p>
+    <p class="tone">// direct · precise · unembellished · confident</p>
+    <div class="grounding-note">
+      <strong>Scope:</strong> this is the framework's own identity — the landing page and docs site
+      it will eventually apply to — <strong>not</strong> a replacement for or edit to
+      <code>packages/theming</code>'s 10 existing demo-store <code>ThemeBundle</code>s
+      (classic/dark/minimal/vibrant/retro/high-contrast/northline/editorial/maximalist/datasheet).
+      Every color and font choice below was diffed against those 10 bundles' actual token values
+      (read-only comparison — nothing in <code>packages/theming</code> was touched) specifically to
+      avoid collision, not just checked against generic "AI design tell" advice. See
+      <code>brand-system.yaml</code>'s <code>grounding</code> block for the full findings.
+    </div>
+  </header>
+
+  <!-- ============ COLORS ============ -->
+  <section class="colors">
+    <h2>Color Palette</h2>
+    <p class="section-intro">Four roles, one confident accent. Contrast ratios computed against pure white (#FFFFFF) and pure black (#000000) per WCAG 2.1 — not estimated.</p>
+    <div class="color-grid">
+
+      <article class="color-card">
+        <div class="swatch" style="background:#4338A0;"></div>
+        <div class="color-info">
+          <h3>Ledger Indigo</h3>
+          <p class="hexline">primary · #4338A0</p>
+          <dl>
+            <dt>HEX</dt><dd><code>#4338A0</code></dd>
+            <dt>RGB</dt><dd><code>rgb(67, 56, 160)</code></dd>
+            <dt>CMYK</dt><dd><code>cmyk(58, 65, 0, 37)</code></dd>
+            <dt>PMS</dt><dd><code>2685 C (approx.)</code></dd>
+          </dl>
+          <p class="usage">Primary actions, CTAs, links, focus states. The system's one confident accent — used sparingly everywhere else so it keeps its weight. Unclaimed hue family across all 10 demo bundles.</p>
+          <div class="contrast-badges">
+            <span class="badge pass">vs white 9.08:1 — AAA</span>
+            <span class="badge fail">vs black 2.31:1 — fail</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="color-card">
+        <div class="swatch" style="background:#A13A3A;"></div>
+        <div class="color-info">
+          <h3>Garnet</h3>
+          <p class="hexline">secondary · #A13A3A</p>
+          <dl>
+            <dt>HEX</dt><dd><code>#A13A3A</code></dd>
+            <dt>RGB</dt><dd><code>rgb(161, 58, 58)</code></dd>
+            <dt>CMYK</dt><dd><code>cmyk(0, 64, 64, 37)</code></dd>
+            <dt>PMS</dt><dd><code>7621 C (approx.)</code></dd>
+          </dl>
+          <p class="usage">Alerts, destructive actions, rare emphasis. Muted brick/garnet — deliberately not the rust/terracotta orange already used by 4 of the 10 demo bundles.</p>
+          <div class="contrast-badges">
+            <span class="badge pass">vs white 6.60:1 — AA</span>
+            <span class="badge fail">vs black 3.18:1 — fail (large text only)</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="color-card">
+        <div class="swatch" style="background:#1A1A1D;"></div>
+        <div class="color-info">
+          <h3>Carbon Ink</h3>
+          <p class="hexline">neutral · #1A1A1D</p>
+          <dl>
+            <dt>HEX</dt><dd><code>#1A1A1D</code></dd>
+            <dt>RGB</dt><dd><code>rgb(26, 26, 29)</code></dd>
+            <dt>CMYK</dt><dd><code>cmyk(10, 10, 0, 89)</code></dd>
+            <dt>PMS</dt><dd><code>Black 6 C (approx.)</code></dd>
+          </dl>
+          <p class="usage">Body text and headings. A true neutral near-black — neither the warm near-blacks (classic/editorial/maximalist) nor the cool near-blacks (northline/datasheet) any demo bundle already uses.</p>
+          <div class="contrast-badges">
+            <span class="badge pass">vs white 17.36:1 — AAA</span>
+            <span class="badge fail">vs black 1.21:1 — n/a (is the near-black)</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="color-card">
+        <div class="swatch" style="background:#F3F3F1; border-bottom:1px solid #e5e5e2;"></div>
+        <div class="color-info">
+          <h3>Paper Neutral</h3>
+          <p class="hexline">surface · #F3F3F1</p>
+          <dl>
+            <dt>HEX</dt><dd><code>#F3F3F1</code></dd>
+            <dt>RGB</dt><dd><code>rgb(243, 243, 241)</code></dd>
+            <dt>CMYK</dt><dd><code>cmyk(0, 0, 1, 5)</code></dd>
+            <dt>PMS</dt><dd><code>Cool Gray 1 C (approx.)</code></dd>
+          </dl>
+          <p class="usage">Page background, cards, containers. A true neutral gray-white — not the warm ivory 4 demo bundles already use, not the cool slate 2 others already use.</p>
+          <div class="contrast-badges">
+            <span class="badge pass">vs black 18.90:1 — AAA (near-black text on this surface)</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ TYPOGRAPHY ============ -->
+  <section class="typography">
+    <h2>Typography</h2>
+    <p class="section-intro">One plain text face for everything you read, one mono face reserved for code-adjacent chrome. Restraint in type mirrors restraint in color.</p>
+    <div class="type-grid">
+
+      <article class="type-column">
+        <h3 style="font-family:'Public Sans';">Public Sans</h3>
+        <p class="font-role">heading + body</p>
+        <div class="weight-sample">
+          <span class="big-aa" style="font-family:'Public Sans'; font-weight:400;">Aa</span>
+          <span class="weight-label">Regular 400 — body text, captions</span>
+          <p class="sample" style="font-family:'Public Sans'; font-weight:400;">Schema-first catalog. Adapter-swappable everything.</p>
+        </div>
+        <div class="weight-sample">
+          <span class="big-aa" style="font-family:'Public Sans'; font-weight:500;">Aa</span>
+          <span class="weight-label">Medium 500 — labels, nav, table headers</span>
+          <p class="sample" style="font-family:'Public Sans'; font-weight:500;">Schema-first catalog. Adapter-swappable everything.</p>
+        </div>
+        <div class="weight-sample">
+          <span class="big-aa" style="font-family:'Public Sans'; font-weight:600;">Aa</span>
+          <span class="weight-label">SemiBold 600 — subheadings, emphasis</span>
+          <p class="sample" style="font-family:'Public Sans'; font-weight:600;">Schema-first catalog. Adapter-swappable everything.</p>
+        </div>
+        <div class="weight-sample">
+          <span class="big-aa" style="font-family:'Public Sans'; font-weight:700;">Aa</span>
+          <span class="weight-label">Bold 700 — headings, hero copy, CTAs</span>
+          <p class="sample" style="font-family:'Public Sans'; font-weight:700;">Schema-first catalog. Adapter-swappable everything.</p>
+        </div>
+      </article>
+
+      <article class="type-column">
+        <h3 style="font-family:'JetBrains Mono';">JetBrains Mono</h3>
+        <p class="font-role">accent — code-adjacent chrome</p>
+        <div class="weight-sample">
+          <span class="big-aa" style="font-family:'JetBrains Mono'; font-weight:400;">Aa</span>
+          <span class="weight-label">Regular 400 — inline code, version tags</span>
+          <p class="sample" style="font-family:'JetBrains Mono'; font-weight:400;">@mercatus-liber/core</p>
+        </div>
+        <div class="weight-sample">
+          <span class="big-aa" style="font-family:'JetBrains Mono'; font-weight:500;">Aa</span>
+          <span class="weight-label">Medium 500 — nav labels, badges</span>
+          <p class="sample" style="font-family:'JetBrains Mono'; font-weight:500;">pre-alpha · MIT</p>
+        </div>
+        <div class="weight-sample">
+          <span class="big-aa" style="font-family:'JetBrains Mono'; font-weight:700;">Aa</span>
+          <span class="weight-label">Bold 700 — rare, for a mono display moment</span>
+          <p class="sample" style="font-family:'JetBrains Mono'; font-weight:700;">free market.</p>
+        </div>
+        <div class="weight-sample" style="border-bottom:none;">
+          <p class="sample" style="margin-top:0; font-style: normal;">Never used for body copy at length — nav labels, badges/pills, version numbers, inline code, and the wordmark's tagline lockup only. If in doubt, use Public Sans instead.</p>
+        </div>
+      </article>
+
+      <div class="rationale-box">
+        <strong>Why these two, together</strong><br><br>
+        Public Sans was chosen over Inter/Space Grotesk specifically because those are the two
+        "safe default" faces already named as generic-AI-design tells in this project's own
+        artifact-design guidance — and over IBM Plex Sans / Archivo because datasheet and
+        maximalist (two of the 10 demo bundles) already claim those. Public Sans is USWDS's own
+        civic-infrastructure typeface, built for maximum neutral legibility rather than trend —
+        a real fit for "free, MIT, no marketing veneer." JetBrains Mono is load-bearing, not
+        decorative: it's a typeface literally designed for reading code day-to-day, which is
+        exactly this framework's own stated differentiator (schema-first, adapter-swappable,
+        AI-and-human-equal interfaces).
+      </div>
+
+      <div style="grid-column: 1 / -1;">
+        <h3 style="margin-top:8px; font-size:15px;">Type scale — Public Sans</h3>
+        <div class="scale-samples">
+          <p style="font-size:64px; font-weight:700;">Scale 64</p>
+          <p style="font-size:48px; font-weight:700;">Scale 48</p>
+          <p style="font-size:32px; font-weight:700;">Scale 32</p>
+          <p style="font-size:24px; font-weight:600;">Scale 24</p>
+          <p style="font-size:18px; font-weight:600;">Scale 18</p>
+          <p style="font-size:16px; font-weight:400;">Scale 16 — default body size</p>
+          <p style="font-size:14px; font-weight:400;">Scale 14</p>
+          <p style="font-size:12px; font-weight:500;">Scale 12 — labels, captions</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ LOGO CONCEPTS ============ -->
+  <section class="logos">
+    <h2>Logo Concepts</h2>
+    <div class="disclosure">
+      <strong>Disclosed substitution, not a fake or a skip:</strong> <code>plugin-hive:logo-exploration</code>'s
+      image-generation path requires the <code>openai-image</code> MCP tool. Checked live in this
+      session — not assumed from the epic's earlier planning note — it reports
+      <code>CONNECTION_CLOSED</code>, and separately this repo's own <code>.mcp.json</code> doesn't
+      list an <code>openai-image</code> server entry at all, so logo-exploration is unavailable by
+      both the live-connectivity check and the config-presence check the brand-system skill itself
+      uses to decide its primary vs. fallback path. Per the epic's design discussion §2b, what
+      follows is a real, well-reasoned <strong>typographic wordmark</strong> — not an icon mark, and
+      not a placeholder. Wordmark-only identities are a legitimate, common choice for real
+      open-source infrastructure projects. When <code>openai-image</code> reconnects, icon-mark
+      exploration (see <code>concept_directions</code> in <code>brand-system.yaml</code>) is genuine,
+      disclosed follow-on work — not something already claimed done here.
+    </div>
+
+    <div class="logo-grid">
+      <article class="logo-card">
+        <h3>Primary lockup</h3>
+        <div class="logo-display" style="background:#fff;">
+          <svg viewBox="0 0 320 90" width="300" height="84">
+            <text x="10" y="48" font-family="'Public Sans'" font-weight="700" font-size="40" fill="#4338A0">Mercatus Liber</text>
+            <text x="12" y="72" font-family="'JetBrains Mono'" font-weight="500" font-size="13" fill="#1A1A1D" opacity="0.6">// free, forever</text>
+          </svg>
+        </div>
+        <p class="concept-description">Public Sans Bold carries the name — the system's one accent color, used once, at full weight. A JetBrains Mono tagline underneath, styled like a code comment, is the only mono in the lockup.</p>
+      </article>
+
+      <article class="logo-card">
+        <h3>Compact / nav &amp; footer chrome</h3>
+        <div class="logo-display" style="background:#fff;">
+          <svg viewBox="0 0 320 60" width="300" height="56">
+            <text x="10" y="36" font-family="'JetBrains Mono'" font-weight="500" font-size="22" fill="#1A1A1D">mercatus liber</text>
+          </svg>
+        </div>
+        <p class="concept-description">All-lowercase, set entirely in the mono accent face — for contexts that are already mono-chrome (nav bar, footer, terminal-styled examples) where the primary lockup would be too heavy.</p>
+      </article>
+
+      <article class="logo-card">
+        <h3>Package-identifier lockup</h3>
+        <div class="logo-display" style="background:#fff;">
+          <svg viewBox="0 0 320 60" width="300" height="56">
+            <text x="10" y="36" font-family="'JetBrains Mono'" font-weight="700" font-size="21" fill="#4338A0">@mercatus-liber</text>
+            <text x="10" y="58" font-family="'JetBrains Mono'" font-weight="400" font-size="15" fill="#1A1A1D" opacity="0.55">/framework</text>
+          </svg>
+        </div>
+        <p class="concept-description">Styled like the real pnpm package scope this repo already ships (<code>@mercatus-liber/core</code>, <code>@mercatus-liber/adapter-sqlite</code>, …) — a wordmark treatment that's specific to how this project is actually built, not a generic lettermark.</p>
+      </article>
+    </div>
+
+    <h3 style="font-size:15px; margin: 8px 0 16px 0;">Background variants — primary lockup on each system color</h3>
+    <div class="logo-bg-grid">
+      <div class="logo-bg-cell" style="background:#F3F3F1;">
+        <svg viewBox="0 0 220 40" width="200" height="36"><text x="0" y="28" font-family="'Public Sans'" font-weight="700" font-size="24" fill="#4338A0">Mercatus Liber</text></svg>
+      </div>
+      <div class="logo-bg-cell" style="background:#1A1A1D;">
+        <svg viewBox="0 0 220 40" width="200" height="36"><text x="0" y="28" font-family="'Public Sans'" font-weight="700" font-size="24" fill="#F3F3F1">Mercatus Liber</text></svg>
+      </div>
+      <div class="logo-bg-cell" style="background:#4338A0;">
+        <svg viewBox="0 0 220 40" width="200" height="36"><text x="0" y="28" font-family="'Public Sans'" font-weight="700" font-size="24" fill="#FFFFFF">Mercatus Liber</text></svg>
+      </div>
+      <div class="logo-bg-cell" style="background:#FFFFFF; border:1px solid #ddd;">
+        <svg viewBox="0 0 220 40" width="200" height="36"><text x="0" y="28" font-family="'Public Sans'" font-weight="700" font-size="24" fill="#1A1A1D">Mercatus Liber</text></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SPACING & RADIUS ============ -->
+  <section class="spacing">
+    <h2>Spacing Scale</h2>
+    <p class="section-intro">4px base grid, 9-step scale. Shared grid convention with packages/theming's own bundles (not distinctive on its own) — the specific scale and radius values below are this system's own.</p>
+    <div class="spacing-row">
+      <div class="spacing-sample"><div class="box" style="width:4px;height:4px;"></div><span class="label">4</span></div>
+      <div class="spacing-sample"><div class="box" style="width:8px;height:8px;"></div><span class="label">8</span></div>
+      <div class="spacing-sample"><div class="box" style="width:12px;height:12px;"></div><span class="label">12</span></div>
+      <div class="spacing-sample"><div class="box" style="width:16px;height:16px;"></div><span class="label">16</span></div>
+      <div class="spacing-sample"><div class="box" style="width:24px;height:24px;"></div><span class="label">24</span></div>
+      <div class="spacing-sample"><div class="box" style="width:32px;height:32px;"></div><span class="label">32</span></div>
+      <div class="spacing-sample"><div class="box" style="width:48px;height:48px;"></div><span class="label">48</span></div>
+      <div class="spacing-sample"><div class="box" style="width:64px;height:64px;"></div><span class="label">64</span></div>
+      <div class="spacing-sample"><div class="box" style="width:96px;height:96px;"></div><span class="label">96</span></div>
+    </div>
+
+    <h2 style="margin-top:36px;">Border Radius</h2>
+    <p class="section-intro">Tighter than every demo bundle except "minimal" (0px) — classic uses 6px, vibrant 12px. Sharp-but-not-stark corners read as precise and structured rather than soft/friendly-retail.</p>
+    <div class="radius-row">
+      <div class="radius-sample"><div class="box" style="border-radius:2px;">small</div><span class="label">2px</span></div>
+      <div class="radius-sample"><div class="box" style="border-radius:4px;">medium</div><span class="label">4px</span></div>
+      <div class="radius-sample"><div class="box" style="border-radius:8px;">large</div><span class="label">8px</span></div>
+      <div class="radius-sample"><div class="box" style="border-radius:9999px;">full</div><span class="label">9999px</span></div>
+    </div>
+  </section>
+
+  <!-- ============ BRAND IN CONTEXT ============ -->
+  <section class="context">
+    <h2>Brand in Context</h2>
+    <p class="section-intro">Colors and type look different in isolation than in composition — this section shows the system working together.</p>
+
+    <div class="example-nav">
+      <span style="font-weight:700; color:#1A1A1D;">mercatus liber</span>
+      <div class="nav-links">
+        <span class="active">docs</span>
+        <span>adapters</span>
+        <span>demo stores</span>
+        <span style="background:#1A1A1D; color:#F3F3F1; padding:3px 9px; border-radius:9999px; font-size:11px;">MIT</span>
+      </div>
+    </div>
+
+    <div class="example-buttons">
+      <button class="btn-primary">Read the docs</button>
+      <button class="btn-secondary">View on GitHub</button>
+      <button class="btn-danger">Remove adapter</button>
+    </div>
+
+    <div class="context-row">
+      <div class="example-hero">
+        <p class="tag">// schema-first catalog</p>
+        <h3>A marketing catalog genuinely separate from your sales catalog.</h3>
+        <p>Adapter-swappable payments, persistence, CMS, and analytics. Free, MIT-licensed, pre-alpha and honest about it.</p>
+        <button class="btn-primary" style="background:#4338A0;">Get started</button>
+      </div>
+
+      <div class="example-card">
+        <span class="pill">adapter-postgres</span>
+        <h3>Real Postgres inventory adapter</h3>
+        <p>commit()/release() fixed against a real live database, not a mock. Every subsystem talks through shared core types or a typed event bus — never another subsystem's internals.</p>
+        <button class="btn-secondary">View subsystem docs</button>
+      </div>
+
+      <div class="example-card">
+        <span class="pill" style="background:#A13A3A;">destructive</span>
+        <h3>Disconnect adapter</h3>
+        <p>This removes the adapter binding for this environment. Existing data is untouched, but nothing will read or write through it until reconnected.</p>
+        <button class="btn-danger">Confirm disconnect</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
