@@ -708,6 +708,7 @@ async function seedServiceBundle(
       { id: randomUUID(), label: "+ Pro Setup", skuIds: [install.skuId, proSetup.skuId] },
       { id: randomUUID(), label: "Complete Overhaul", skuIds: [install.skuId, proSetup.skuId, overhaul.skuId] },
     ],
+    demoSlug: "print-shop",
   });
 }
 
@@ -1005,6 +1006,7 @@ async function seedRecommendations(
     label: "Customers also bought",
     placement: "both",
     targetProductIds: [capId],
+    demoSlug: "print-shop",
   });
 }
 

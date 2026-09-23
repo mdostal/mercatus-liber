@@ -185,4 +185,33 @@ describe("recommendations service", () => {
       expect(fetched!.targetProductIds).toEqual(["p2", "p3"]);
     });
   });
+
+  /**
+   * commerce-gap-audit-3 finding 13: a real, disclosed gap -- listRules()
+   * carried no demo filter at all, so an operator in one demo's own
+   * `/admin/recommendations` list saw every other demo's rules mixed in
+   * too. Same bug class/fix shape as service-areas/advertising/promotions'
+   * demoSlug tests (commerce-gap-audit-3 findings 1-3).
+   */
+  describe("demo scoping", () => {
+    it("listRules(filter) scopes by demoSlug -- two demos' rules never bleed into each other's results", async () => {
+      const printShop = await recommendations.createRule(
+        ruleInput({ sourceProductId: "p-print-shop", demoSlug: "print-shop" }),
+      );
+      const northline = await recommendations.createRule(
+        ruleInput({ sourceProductId: "p-northline", demoSlug: "northline" }),
+      );
+
+      const printShopOnly = await recommendations.listRules({ demoSlug: "print-shop" });
+      expect(printShopOnly.map((rule) => rule.id)).toEqual([printShop.id]);
+
+      const northlineOnly = await recommendations.listRules({ demoSlug: "northline" });
+      expect(northlineOnly.map((rule) => rule.id)).toEqual([northline.id]);
+
+      // Unscoped listRules() (no demoSlug filter) legitimately still
+      // returns every demo's rules -- backward compatible.
+      const everything = await recommendations.listRules();
+      expect(everything.map((rule) => rule.id).sort()).toEqual([printShop.id, northline.id].sort());
+    });
+  });
 });

@@ -670,6 +670,7 @@ async function seedStarterBundle(
         skuIds: [pothosSmallSkuId, planterSkuId, candleSkuId],
       },
     ],
+    demoSlug: "broadleaf",
   });
 }
 
@@ -692,6 +693,7 @@ async function seedRecommendations(
       label: "Pairs well with",
       placement: "both",
       targetProductIds: [planterId],
+      demoSlug: "broadleaf",
     });
   }
 
@@ -703,6 +705,7 @@ async function seedRecommendations(
       label: "Customers also bought",
       placement: "both",
       targetProductIds: [printId],
+      demoSlug: "broadleaf",
     });
   }
 }

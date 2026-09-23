@@ -23,6 +23,16 @@ CREATE TABLE IF NOT EXISTS bundles (
   status TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_bundles_product_id ON bundles(product_id);
+-- commerce-gap-audit-3 finding 13: bundles had no demo-scoping concept at
+-- all, so under the shared Postgres backend print-shop and Northline Home
+-- Tech both resolve to, print-shop's own /admin/bundles list mixed in
+-- Northline's bundles too -- same bug class/fix shape as
+-- service_areas.demo_slug (commerce-gap-audit-3 findings 1-3) and
+-- categories.demo_slug (epic 61)/pages.demo_slug (epic 60) before it.
+-- Optional/additive: ADD COLUMN IF NOT EXISTS is safe against the
+-- already-live production "bundles" table.
+ALTER TABLE bundles ADD COLUMN IF NOT EXISTS demo_slug TEXT;
+CREATE INDEX IF NOT EXISTS idx_bundles_demo_slug ON bundles(demo_slug);
 `;
 
 interface BundleRow {
@@ -31,6 +41,7 @@ interface BundleRow {
   title: string;
   tiers: BundleTier[]; // JSONB -- already parsed by the pg driver
   status: string;
+  demo_slug: string | null;
 }
 
 function rowToBundle(row: BundleRow): Bundle {
@@ -40,6 +51,7 @@ function rowToBundle(row: BundleRow): Bundle {
     title: row.title,
     tiers: row.tiers,
     status: row.status as BundleStatus,
+    ...(row.demo_slug ? { demoSlug: row.demo_slug } : {}),
   };
 }
 
@@ -62,23 +74,26 @@ export function createPostgresBundleRepository(pool: Pool): BundleRepository {
       return result.rows[0] ? rowToBundle(result.rows[0]) : null;
     },
 
-    async list(): Promise<Bundle[]> {
+    async list(filter?: { demoSlug?: string }): Promise<Bundle[]> {
       await schemaReady;
-      const result = await pool.query<BundleRow>("SELECT * FROM bundles");
+      const result = filter?.demoSlug
+        ? await pool.query<BundleRow>("SELECT * FROM bundles WHERE demo_slug = $1", [filter.demoSlug])
+        : await pool.query<BundleRow>("SELECT * FROM bundles");
       return result.rows.map(rowToBundle);
     },
 
     async save(bundle: Bundle): Promise<void> {
       await schemaReady;
       await pool.query(
-        `INSERT INTO bundles (id, product_id, title, tiers, status)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO bundles (id, product_id, title, tiers, status, demo_slug)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (id) DO UPDATE SET
            product_id = EXCLUDED.product_id,
            title = EXCLUDED.title,
            tiers = EXCLUDED.tiers,
-           status = EXCLUDED.status`,
-        [bundle.id, bundle.productId, bundle.title, JSON.stringify(bundle.tiers), bundle.status],
+           status = EXCLUDED.status,
+           demo_slug = EXCLUDED.demo_slug`,
+        [bundle.id, bundle.productId, bundle.title, JSON.stringify(bundle.tiers), bundle.status, bundle.demoSlug ?? null],
       );
     },
   };

@@ -38,12 +38,23 @@ function createFakeBundlesPool(): FakePool {
         return { rows: (row ? [row] : []) as T[] };
       }
 
+      if (sql === "SELECT * FROM bundles WHERE demo_slug = $1") {
+        return { rows: [...bundles.values()].filter((b) => b.demo_slug === values[0]) as T[] };
+      }
+
       if (sql === "SELECT * FROM bundles") {
         return { rows: [...bundles.values()] as T[] };
       }
 
       if (sql.startsWith("INSERT INTO bundles")) {
-        const [id, productId, title, tiers, status] = values as [string, string, string, string, string];
+        const [id, productId, title, tiers, status, demoSlug] = values as [
+          string,
+          string,
+          string,
+          string,
+          string,
+          string | null,
+        ];
         bundles.set(id, {
           id,
           product_id: productId,
@@ -53,6 +64,7 @@ function createFakeBundlesPool(): FakePool {
           // fake-pool.ts's products.identifying_attribute_keys is.
           tiers: JSON.parse(tiers),
           status,
+          demo_slug: demoSlug,
         });
         return { rows: [] };
       }
@@ -123,5 +135,35 @@ describe("createPostgresBundleRepository", () => {
     const found = await bundles.get("b1");
     expect(found?.tiers).toEqual([setupBundle.tiers[0]]);
     expect(found?.tiers).toHaveLength(1);
+  });
+
+  /**
+   * commerce-gap-audit-3 finding 13: a real, disclosed gap -- the Postgres
+   * `bundles` table had no demo-scoping concept at all. Proves the fix:
+   * list(filter) scopes by demo_slug, and an unscoped list() (no filter)
+   * still returns everything -- same shape as service-areas.test.ts's own
+   * demoSlug test.
+   */
+  it("list(filter) scopes by demoSlug -- two demos' bundles never bleed into each other's results", async () => {
+    const printShop: Bundle = { ...setupBundle, id: "b-print-shop", demoSlug: "print-shop" };
+    const northline: Bundle = { ...setupBundle, id: "b-northline", demoSlug: "northline" };
+    await bundles.save(printShop);
+    await bundles.save(northline);
+
+    const printShopOnly = await bundles.list({ demoSlug: "print-shop" });
+    expect(printShopOnly).toEqual([printShop]);
+
+    const northlineOnly = await bundles.list({ demoSlug: "northline" });
+    expect(northlineOnly).toEqual([northline]);
+
+    const everything = await bundles.list();
+    expect(everything.map((b) => b.id).sort()).toEqual(["b-northline", "b-print-shop"]);
+  });
+
+  it("round-trips demoSlug through save/get, and omits it entirely when never set (backward compatible)", async () => {
+    await bundles.save(setupBundle);
+    const found = await bundles.get("b1");
+    expect(found?.demoSlug).toBeUndefined();
+    expect(found).not.toHaveProperty("demoSlug");
   });
 });
