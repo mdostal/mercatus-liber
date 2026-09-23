@@ -144,6 +144,10 @@ export function PdpSpecSheet({
           margin: 0;
         }
         .ds-pdp-price-row { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+        /* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+           left untouched deliberately -- 30px is past the WCAG large-text
+           24px threshold regardless of weight, so this already passes 3:1
+           at datasheet's original 4.356:1. */
         .ds-pdp-price { font-family: ${DS_FONT_MONO}; font-size: 30px; font-weight: 600; color: var(--color-primary, #C8460A); }
         .ds-pdp-desc { color: var(--color-accent, #5A6170); font-size: 14.5px; line-height: 1.7; max-width: 58ch; margin: 0; }
         .ds-datasheet-table { border: 1px solid var(--color-border, #D2D7E0); }
@@ -184,7 +188,10 @@ export function PdpSpecSheet({
           margin-bottom: var(--space-xs, 8px);
         }
         .ds-sku-attrs { font-family: ${DS_FONT_MONO}; font-size: 12px; color: var(--color-text, #12151B); flex: 1; min-width: 180px; }
-        .ds-sku-price { font-family: ${DS_FONT_MONO}; font-size: 14px; color: var(--color-primary, #C8460A); font-weight: 600; }
+        /* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+           14px, well under the large-text threshold -- needs the full
+           4.5:1, which datasheet's raw --color-primary (4.356:1) misses. */
+        .ds-sku-price { font-family: ${DS_FONT_MONO}; font-size: 14px; color: var(--color-primary-text, var(--color-primary, #C8460A)); font-weight: 600; }
         .ds-custom-note label { display: block; font-size: 12px; color: var(--color-accent, #5A6170); margin-bottom: 4px; }
         .ds-custom-note input[type="text"] {
           font-family: var(--font-family, sans-serif);
@@ -194,7 +201,7 @@ export function PdpSpecSheet({
           max-width: 320px;
         }
         .ds-rating { font-family: ${DS_FONT_MONO}; font-size: 12.5px; color: var(--color-accent, #5A6170); }
-        .ds-rating-stars { color: var(--color-primary, #C8460A); }
+        .ds-rating-stars { color: var(--color-primary-text, var(--color-primary, #C8460A)); }
         .ds-reviews { margin-top: 24px; border: 1px solid var(--color-border, #D2D7E0); padding: clamp(20px, 3vw, 32px); background: #FFFFFF; }
         .ds-review { padding: 12px 0; border-top: 1px solid var(--color-border, #D2D7E0); }
         .ds-review:first-of-type { border-top: none; padding-top: 0; }

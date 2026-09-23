@@ -43,11 +43,18 @@ export function HomeSpecGrid({ demoSlug, sections }: { demoSlug: DemoSlug; secti
           gap: 16px;
           flex-wrap: wrap;
         }
+        /* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+           datasheet's raw --color-primary measures 4.356:1 against
+           --color-background -- found by this epic's own required full
+           10-bundle re-verification. ".ds-home h1 em" below is left
+           untouched: it's a large (clamp 26-42px), 900-weight heading word,
+           already past the WCAG large-text 3:1 threshold at the original
+           4.356:1. */
         .ds-home-eyebrow {
           display: flex;
           align-items: center;
           gap: 10px;
-          color: var(--color-primary, #C8460A);
+          color: var(--color-primary-text, var(--color-primary, #C8460A));
         }
         .ds-home-eyebrow .ds-dot { width: 7px; height: 7px; background: var(--color-primary, #C8460A); flex-shrink: 0; }
         .ds-home h1 {

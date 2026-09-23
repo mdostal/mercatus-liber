@@ -133,6 +133,22 @@ export const THEME_BUNDLES: ThemeBundle[] = [
       "--color-accent": "#ec4899",
       "--font-family": "system-ui, sans-serif",
       "--radius": "12px",
+      // brand-primary-foreground-contrast-audit (a11y-audit finding #17): raw
+      // --color-primary (#f97316) measures 2.64:1 against --color-background
+      // (#fff7ed) -- a real, confirmed-live axe-core color-contrast failure
+      // everywhere --color-primary is used as small/body-sized foreground
+      // text (nav-top-bar.tsx's shop nav links; the Add-to-cart/Submit-review
+      // button ink in pdp-long-scroll.tsx, paired with the *unchanged*
+      // --color-primary fill). Additive, same-hue derived token -- NOT a
+      // replacement for --color-primary itself, which stays #f97316
+      // everywhere it's still a correct fill/border/decorative accent.
+      // #4F2102 is the same hue/saturation, darkened until it clears 4.5:1
+      // AA against *both* --color-background (12.75:1, huge margin) *and*
+      // the bundle's own unchanged --color-primary fill (4.83:1, real
+      // margin) -- the second constraint is what lets this one value double
+      // as safe ink directly on top of an unmodified --color-primary button
+      // fill, not just as text on the page background.
+      "--color-primary-text": "#4F2102",
     },
     defaultTemplatesByPageType: { pdp: "pdp.long-scroll" },
   },
@@ -146,6 +162,15 @@ export const THEME_BUNDLES: ThemeBundle[] = [
       "--color-accent": "#cb4b16",
       "--font-family": "'Courier New', monospace",
       "--radius": "2px",
+      // brand-primary-foreground-contrast-audit (a11y-audit finding #17,
+      // "by hand-calculation... also a fail"): raw --color-primary
+      // (#b58900) measures 2.98:1 against --color-background (#fdf6e3),
+      // same broken pattern as vibrant above (nav-top-bar.tsx shop nav
+      // links; pdp-tabbed-detail.tsx's CTA button ink). #2E2300 is the same
+      // hue/saturation, darkened until it clears 4.5:1 AA against both
+      // --color-background (14.35:1) and the unchanged --color-primary fill
+      // (4.82:1).
+      "--color-primary-text": "#2E2300",
     },
     defaultTemplatesByPageType: { pdp: "pdp.tabbed-detail" },
   },
@@ -221,6 +246,26 @@ export const THEME_BUNDLES: ThemeBundle[] = [
       "--font-size-heading-md": "1.5rem",
       "--font-size-body": "1rem",
       "--shadow-card": "0 1px 2px rgba(36,28,20,0.08), 0 4px 12px rgba(36,28,20,0.10)",
+      // brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+      // raw --color-primary (#B14B2A) measures 4.457:1 against
+      // --color-background (#F2E9D8) -- just under the 4.5:1 AA line,
+      // confirmed live on cart-receipt-style.tsx's ".ed-btn-ghost" buttons
+      // and (while re-verifying finding #16's fix) the CTA button ink in
+      // pdp-long-scroll.tsx's EditorialPdpLongScroll. Unlike vibrant/retro/
+      // maximalist, editorial's own --color-primary is dark enough that NO
+      // same-hue ink -- not even pure black -- reaches 4.5:1 against the
+      // *unchanged* --color-primary fill (black-on-#B14B2A only reaches
+      // 3.91:1), so this value is used two ways: (a) directly as ink for the
+      // ghost buttons/sku-low-stock text/rating stars, where it's read
+      // against --color-background as before, and (b) as the FILL itself
+      // for the CTA/checkout buttons (cart-receipt-style.tsx's
+      // ".ed-btn-checkout", pdp-long-scroll.tsx's ".ed-btn-add"), with the
+      // existing --color-background ink left untouched -- swapping which
+      // side of that pair is "primary" rather than trying to out-darken an
+      // impossible ink choice. #A44627 is the same hue/saturation as
+      // #B14B2A, darkened just enough to clear 4.5:1 against
+      // --color-background (5.00:1, real margin) in both roles.
+      "--color-primary-text": "#A44627",
     },
     defaultTemplatesByPageType: {
       pdp: "pdp.long-scroll",
@@ -251,6 +296,19 @@ export const THEME_BUNDLES: ThemeBundle[] = [
       "--font-size-heading-md": "1.75rem",
       "--font-size-body": "1rem",
       "--shadow-card": "6px 6px 0 #17130F",
+      // brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+      // raw --color-primary (#FF4515) measures 2.98:1 against
+      // --color-background (#EEF0E6), confirmed live on pdp-tabbed-detail.
+      // tsx's CTA button ink (paired with the unchanged --color-primary
+      // fill). NOTE: this does NOT touch ".mx-pop" (home-maximalist-grid.
+      // tsx's hero "pop" word) -- that usage keeps raw --color-primary
+      // deliberately, per this epic's own scope: it already has a real,
+      // if axe-invisible, mitigation (a 2px text-stroke) and is the
+      // bundle's signature large-display treatment, not a body-text
+      // regression. #3F0D00 is the same hue/saturation, darkened until it
+      // clears 4.5:1 AA against both --color-background (14.38:1) and the
+      // unchanged --color-primary fill (4.82:1).
+      "--color-primary-text": "#3F0D00",
     },
     defaultTemplatesByPageType: {
       pdp: "pdp.tabbed-detail",
@@ -292,6 +350,22 @@ export const THEME_BUNDLES: ThemeBundle[] = [
       "--font-size-heading-md": "1.375rem",
       "--font-size-body": "1rem",
       "--shadow-card": "none",
+      // brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+      // NOT one of the audit's originally-named bundles, found by this
+      // epic's own required full re-verification of all 10 bundles. Raw
+      // --color-primary (#C8460A) measures 4.356:1 against
+      // --color-background (#F1F3F6) -- also just under 4.5:1 AA, live in
+      // datasheet-styles.tsx's ".ds-titleblock .ds-num"/".ds-stock-badge.
+      // out", home-spec-grid.tsx's ".ds-home-eyebrow", category-spec-grid.
+      // tsx's ".ds-specsheet .ds-row.price .ds-v", and pdp-spec-sheet.tsx's
+      // ".ds-sku-price"/".ds-rating-stars" (this bundle's own real Add-to-
+      // cart button, ".ds-btn-accent", already uses literal white ink at
+      // 4.84:1 and needs no change). #A93B08 is the same hue/saturation,
+      // darkened until it clears 4.5:1 against --color-background (5.70:1)
+      // *and* against ".ds-stock-badge.out"'s own literal #F3E1DC chip
+      // background (5.01:1) -- two different real backgrounds this token
+      // is read against.
+      "--color-primary-text": "#A93B08",
     },
     defaultTemplatesByPageType: {
       // visual-fidelity-datasheet: previously pointed pdp/nav at the

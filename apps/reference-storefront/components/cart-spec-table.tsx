@@ -98,7 +98,11 @@ export function CartSpecTable({
           cursor: pointer;
           color: var(--color-accent, #5A6170);
         }
-        .ds-cart-row button:hover { color: var(--color-primary, #C8460A); border-color: var(--color-primary, #C8460A); }
+        /* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+           10px hover text, well under the large-text threshold -- needs the
+           full 4.5:1, which datasheet's raw --color-primary (4.356:1)
+           misses. border-color stays raw --color-primary (decorative). */
+        .ds-cart-row button:hover { color: var(--color-primary-text, var(--color-primary, #C8460A)); border-color: var(--color-primary, #C8460A); }
         .ds-cart-summary {
           background: #FFFFFF;
           padding: 22px;

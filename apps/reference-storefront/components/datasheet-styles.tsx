@@ -94,7 +94,11 @@ export const DS_ATOMS_CSS = `
     align-items: baseline;
     gap: 10px;
   }
-  .ds-titleblock .ds-num { color: var(--color-primary, #C8460A); }
+  /* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+     datasheet's raw --color-primary measures 4.356:1 against
+     --color-background -- found by this epic's own required full 10-bundle
+     re-verification (not one of the audit's originally-named bundles). */
+  .ds-titleblock .ds-num { color: var(--color-primary-text, var(--color-primary, #C8460A)); }
   .ds-titleblock .ds-meta {
     font-family: ${DS_FONT_MONO};
     font-size: 10.5px;
@@ -156,7 +160,12 @@ export const DS_ATOMS_CSS = `
     color: #1D7A4C;
     border: 1px solid #1D7A4C;
   }
-  .ds-stock-badge.out { background: #F3E1DC; color: var(--color-primary, #C8460A); border-color: var(--color-primary, #C8460A); }
+  /* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+     confirmed 3.83:1 against this literal #F3E1DC chip background (a
+     different, third real background this token is read against --
+     --color-primary-text (#A93B08) was verified to clear 4.5:1 here too,
+     5.01:1). border-color/background stay untouched (decorative). */
+  .ds-stock-badge.out { background: #F3E1DC; color: var(--color-primary-text, var(--color-primary, #C8460A)); border-color: var(--color-primary, #C8460A); }
   .ds-stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--color-muted, #AAB1BF); }
   .ds-stepper input {
     width: 52px;

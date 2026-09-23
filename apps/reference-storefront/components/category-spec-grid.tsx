@@ -94,7 +94,11 @@ export function CategorySpecGrid({
         .ds-specsheet .ds-row { display: flex; justify-content: space-between; gap: 8px; }
         .ds-specsheet .ds-row .ds-k { color: var(--color-muted, #626B78); text-transform: uppercase; letter-spacing: 0.04em; }
         .ds-specsheet .ds-row .ds-v { color: var(--color-text, #12151B); text-align: right; }
-        .ds-specsheet .ds-row.price .ds-v { color: var(--color-primary, #C8460A); font-weight: 600; font-size: 13px; }
+        /* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+           13px/600-weight text -- well under the large-text threshold, so
+           this needs the full 4.5:1, which datasheet's raw --color-primary
+           (4.356:1) misses. */
+        .ds-specsheet .ds-row.price .ds-v { color: var(--color-primary-text, var(--color-primary, #C8460A)); font-weight: 600; font-size: 13px; }
         .ds-p-card-foot { display: flex; border-top: 1px solid var(--color-border, #D2D7E0); }
         .ds-p-card-foot a {
           flex: 1;
@@ -107,7 +111,7 @@ export function CategorySpecGrid({
           color: var(--color-accent, #5A6170);
           text-decoration: none;
         }
-        .ds-p-card-foot a:hover { color: var(--color-primary, #C8460A); background: var(--color-background, #E7EAF0); }
+        .ds-p-card-foot a:hover { color: var(--color-primary-text, var(--color-primary, #C8460A)); background: var(--color-background, #E7EAF0); }
       `}</style>
 
       <div className="ds-titleblock">

@@ -46,8 +46,14 @@ export function CartReceiptStyle({
         .ed-line-total { font-weight: 700; }
         .ed-line-controls { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; font-family: var(--font-family); font-size: .82rem; color: var(--color-muted, #635747); }
         .ed-line-controls input[type="number"] { width: 3.2rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .2rem .3rem; font-family: var(--font-family); }
-        .ed-btn-ghost { font-family: var(--font-family); font-size: .78rem; font-weight: 700; letter-spacing: .02em; background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); border-radius: var(--radius); padding: .3rem .65rem; cursor: pointer; }
-        .ed-btn-ghost:hover { background: var(--color-primary); color: var(--color-background); }
+        {/* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+            confirmed live on print-shop's real (non-empty) cart, editorial's
+            own primary measuring 4.45-4.46:1 -- just under 4.5:1 AA. Ink
+            swap only (text sits directly on the page background here); the
+            border stays raw --color-primary, a decorative outline this fix
+            doesn't touch. */}
+        .ed-btn-ghost { font-family: var(--font-family); font-size: .78rem; font-weight: 700; letter-spacing: .02em; background: transparent; color: var(--color-primary-text, var(--color-primary)); border: 1px solid var(--color-primary); border-radius: var(--radius); padding: .3rem .65rem; cursor: pointer; }
+        .ed-btn-ghost:hover { background: var(--color-primary-text, var(--color-primary)); color: var(--color-background); }
         .ed-coupon-form { margin-top: 2rem; display: flex; gap: .6rem; align-items: center; }
         .ed-coupon-form input[type="text"] { flex: 1; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .55rem .75rem; font-family: var(--font-family); }
         .ed-coupon-note { font-family: var(--font-family); color: var(--color-muted, #635747); font-size: .88rem; margin-top: .5rem !important; }
@@ -56,7 +62,14 @@ export function CartReceiptStyle({
         .ed-summary .ed-row.ed-muted { color: var(--color-muted, #635747); font-size: .84rem; }
         .ed-summary .ed-row + .ed-row { border-top: 1px dashed var(--color-border, #DACFAF); }
         .ed-summary .ed-row.ed-total { border-top: 1px solid var(--color-text); margin-top: .3rem; padding-top: .9rem; font-weight: 800; font-size: 1.15rem; }
-        .ed-btn-checkout { display: block; width: 100%; margin-top: 1.5rem; background: var(--color-primary); color: var(--color-background); border: 1px solid var(--color-primary); border-radius: var(--radius); font-family: var(--font-family); font-weight: 700; font-size: .92rem; letter-spacing: .02em; padding: 1rem; cursor: pointer; text-align: center; }
+        {/* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+            same fill-swap reasoning as pdp-long-scroll.tsx's ".ed-btn-add"
+            -- editorial's --color-primary is too dark for any same-hue ink
+            (even black) to reach 4.5:1 against it unchanged, so the FILL
+            becomes --color-primary-text instead, keeping the existing
+            --color-background ink (which now passes against the new,
+            darker fill). */}
+        .ed-btn-checkout { display: block; width: 100%; margin-top: 1.5rem; background: var(--color-primary-text, var(--color-primary)); color: var(--color-background); border: 1px solid var(--color-primary-text, var(--color-primary)); border-radius: var(--radius); font-family: var(--font-family); font-weight: 700; font-size: .92rem; letter-spacing: .02em; padding: 1rem; cursor: pointer; text-align: center; }
         .ed-btn-checkout:hover { filter: brightness(0.92); }
         @media (max-width: 900px) {
           .ed-cart-layout { grid-template-columns: 1fr; }

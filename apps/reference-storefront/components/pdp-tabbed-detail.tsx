@@ -98,7 +98,7 @@ export function PdpTabbedDetail({
 
       {ratingSummary && ratingSummary.count > 0 && (
         <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
-          <span style={{ color: "var(--color-primary)" }}>{ratingStars(ratingSummary.average)}</span>{" "}
+          <span style={{ color: "var(--color-primary-text, var(--color-primary))" }}>{ratingStars(ratingSummary.average)}</span>{" "}
           {ratingSummary.average.toFixed(1)} ({ratingSummary.count} review{ratingSummary.count === 1 ? "" : "s"})
         </p>
       )}
@@ -155,7 +155,15 @@ export function PdpTabbedDetail({
                 type="submit"
                 style={{
                   background: "var(--color-primary)",
-                  color: "var(--color-background)",
+                  // brand-primary-foreground-contrast-audit (a11y-audit
+                  // finding #17): confirmed live on maximalist at 2.98:1
+                  // (retro fails the same way, 2.98:1 by calculation) --
+                  // maximalist's own ".mx-pdp-addtocart" class (applied via
+                  // isMaximalist above) already forces color:var(--color-
+                  // text) !important here, so this inline value only ever
+                  // actually governs retro/classic/dark/northline; harmless
+                  // no-op for the 3 bundles that don't define the token.
+                  color: "var(--color-primary-text, var(--color-background))",
                   borderRadius: "var(--radius)",
                   border: "none",
                   padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
@@ -209,7 +217,15 @@ export function PdpTabbedDetail({
                 type="submit"
                 style={{
                   background: "var(--color-primary)",
-                  color: "var(--color-background)",
+                  // brand-primary-foreground-contrast-audit (a11y-audit
+                  // finding #17): confirmed live on maximalist at 2.98:1
+                  // (retro fails the same way, 2.98:1 by calculation) --
+                  // maximalist's own ".mx-pdp-addtocart" class (applied via
+                  // isMaximalist above) already forces color:var(--color-
+                  // text) !important here, so this inline value only ever
+                  // actually governs retro/classic/dark/northline; harmless
+                  // no-op for the 3 bundles that don't define the token.
+                  color: "var(--color-primary-text, var(--color-background))",
                   borderRadius: "var(--radius)",
                   border: "none",
                   padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
@@ -234,7 +250,7 @@ export function PdpTabbedDetail({
                 marginTop: "var(--space-xs, 8px)",
               }}
             >
-              <div style={{ color: "var(--color-primary)" }}>{ratingStars(review.rating)}</div>
+              <div style={{ color: "var(--color-primary-text, var(--color-primary))" }}>{ratingStars(review.rating)}</div>
               <strong style={{ fontSize: "var(--font-size-body, 1rem)" }}>{review.title}</strong>
               <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
                 {review.authorName} -- {review.createdAt}
@@ -291,7 +307,7 @@ export function PdpTabbedDetail({
             type="submit"
             style={{
               background: "var(--color-primary)",
-              color: "var(--color-background)",
+              color: "var(--color-primary-text, var(--color-background))",
               borderRadius: "var(--radius)",
               border: "none",
               padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
