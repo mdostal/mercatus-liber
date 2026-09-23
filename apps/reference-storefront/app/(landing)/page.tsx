@@ -337,23 +337,28 @@ export default function LandingPage() {
 }
 
 const PAGE_CSS = `
+  /* bs-02-landing-page-brand: the one dark hero panel now grounds its background
+     in Carbon Ink (--ml-ink, #1A1A1D) with a Ledger Indigo (--ml-primary) glow as
+     the system's single confident accent, rather than the previous bespoke
+     navy/purple -- same "one dark section on an otherwise light, Paper-Neutral
+     page" shape as before, just built from the real brand tokens now. */
   .mlp-hero {
-    background: radial-gradient(1200px 480px at 15% -10%, #23264a 0%, transparent 60%), linear-gradient(160deg, #14161f 0%, #191c2b 100%);
-    color: #f4f3ef;
+    background: radial-gradient(1200px 480px at 15% -10%, rgba(67,56,160,0.4) 0%, transparent 60%), linear-gradient(160deg, #1a1a1d 0%, #202126 100%);
+    color: #f3f3f1;
     padding: 88px 0 76px;
   }
   .mlp-hero-inner { max-width: 760px; }
-  .mlp-eyebrow-dark { background: rgba(255,255,255,0.08); color: #d9d6ff; }
+  .mlp-eyebrow-dark { background: rgba(243,243,241,0.1); color: #cac5ef; }
   .mlp-hero-title {
     font-size: clamp(2.6rem, 6vw, 4rem);
     letter-spacing: -0.02em;
     color: #ffffff;
     margin-bottom: 0.35em;
   }
-  .mlp-hero-tagline { font-size: 1.15rem; color: #c7c8d6; max-width: 58ch; margin-bottom: 2em; }
+  .mlp-hero-tagline { font-size: 1.15rem; color: #c9c8c5; max-width: 58ch; margin-bottom: 2em; }
   .mlp-hero-tagline em { color: #fff; font-style: normal; font-weight: 600; }
   .mlp-hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
-  .mlp-btn-light { background: #fff; color: #14161f; }
+  .mlp-btn-light { background: #fff; color: #1a1a1d; }
   .mlp-btn-light:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.35); }
   .mlp-btn-outline-light { border-color: rgba(255,255,255,0.28); color: #fff; }
   .mlp-btn-outline-light:hover { border-color: #fff; }
@@ -365,7 +370,7 @@ const PAGE_CSS = `
   .mlp-status-line strong { color: var(--ml-ink); }
 
   .mlp-demo-card { text-decoration: none; display: flex; flex-direction: column; gap: 10px; transition: transform 140ms ease, box-shadow 140ms ease; }
-  .mlp-demo-card:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(20,22,31,0.12); }
+  .mlp-demo-card:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(26,26,29,0.12); }
   .mlp-demo-name { font-family: var(--ml-font-display); font-weight: 600; font-size: 1.15rem; }
   .mlp-demo-desc { font-size: 0.92rem; margin: 0; flex: 1; }
   .mlp-demo-cta { font-size: 0.86rem; font-weight: 600; color: var(--ml-primary); }

@@ -313,7 +313,7 @@ const ARCHITECTURE_CSS = `
   .mla-detail { color: var(--ml-ink-soft); font-size: 0.86rem; }
 
   .mla-code {
-    background: #14161f; color: #e6e6f0; font-family: var(--ml-font-mono); font-size: 0.82rem;
+    background: #1a1a1d; color: #e7e6ea; font-family: var(--ml-font-mono); font-size: 0.82rem;
     padding: 18px 20px; border-radius: var(--ml-radius-sm); overflow-x: auto; line-height: 1.6;
   }
 

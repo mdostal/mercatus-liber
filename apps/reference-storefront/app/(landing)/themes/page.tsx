@@ -136,7 +136,7 @@ const THEMES_CSS = `
   .mlt-key { font-family: var(--ml-font-mono); font-size: 0.76rem; color: var(--ml-ink-faint); }
 
   .mlt-swatch {
-    flex-shrink: 0; width: 64px; height: 64px; border-radius: 12px; border: 1px solid;
+    flex-shrink: 0; width: 64px; height: 64px; border-radius: var(--ml-radius); border: 1px solid;
     display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; overflow: hidden;
   }
   .mlt-chip { display: block; }

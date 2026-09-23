@@ -25,28 +25,39 @@ export default async function SignInPage({
   const hasError = params.error === "1";
 
   return (
+    /*
+     * bs-02-landing-page-brand: this page's inline styles (Next.js's App
+     * Router boundary pages can't rely on app/(landing)/layout.tsx's LANDING_CSS
+     * classes being the styling *system* here, just its fonts/root, since this
+     * form predates that shared CSS) now use the real brand tokens directly --
+     * Carbon Ink #1A1A1D for ink, Ledger Indigo #4338A0 for the primary CTA
+     * (colors.primary usage: "primary CTAs"), Garnet #A13A3A for the error
+     * state (colors.secondary usage: "alerts"), Public Sans (loaded globally
+     * by the shared (landing) root layout's <head>), and the brand's tight
+     * 4px medium radius.
+     */
     <main
       style={{
         maxWidth: 360,
         margin: "80px auto",
         padding: 24,
-        fontFamily: "system-ui, sans-serif",
+        fontFamily: "'Public Sans', system-ui, sans-serif",
       }}
     >
-      <h1 style={{ fontSize: 20, marginBottom: 8 }}>Admin Sign In</h1>
-      <p style={{ color: "#666", fontSize: 14, marginBottom: 20 }}>
+      <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: "#1a1a1d" }}>Admin Sign In</h1>
+      <p style={{ color: "#5a5a5e", fontSize: 14, marginBottom: 20 }}>
         Dev-default authentication. Enter the owner password (<code>ADMIN_DEV_PASSWORD</code>) for full access, or
         the read-only viewer password (<code>ADMIN_VIEWER_PASSWORD</code>, when configured) to look around without
         being able to change anything.
       </p>
       {hasError ? (
-        <p style={{ color: "#b91c1c", fontSize: 14, marginBottom: 12 }}>
+        <p style={{ color: "#a13a3a", fontSize: 14, marginBottom: 12 }}>
           Incorrect password. Try again.
         </p>
       ) : null}
       <form action={signInDevAction}>
         <input type="hidden" name="redirect_url" value={redirectUrl} />
-        <label htmlFor="password" style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
+        <label htmlFor="password" style={{ display: "block", fontSize: 14, marginBottom: 4, color: "#1a1a1d" }}>
           Password
         </label>
         <input
@@ -59,7 +70,7 @@ export default async function SignInPage({
             width: "100%",
             padding: "8px 10px",
             fontSize: 14,
-            border: "1px solid #ccc",
+            border: "1px solid #dedcd9",
             borderRadius: 4,
             marginBottom: 12,
             boxSizing: "border-box",
@@ -72,7 +83,7 @@ export default async function SignInPage({
             padding: "8px 10px",
             fontSize: 14,
             fontWeight: 600,
-            background: "#1c1917",
+            background: "#4338a0",
             color: "#fff",
             border: "none",
             borderRadius: 4,
@@ -83,7 +94,7 @@ export default async function SignInPage({
         </button>
       </form>
       <p style={{ marginTop: 20 }}>
-        <a href="/" style={{ fontSize: 13, color: "#666" }}>
+        <a href="/" style={{ fontSize: 13, color: "#5a5a5e" }}>
           &larr; Back to Mercatus Liber
         </a>
       </p>
