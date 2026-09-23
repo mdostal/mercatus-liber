@@ -103,7 +103,7 @@ export async function PdpLongScroll({
 
       {ratingSummary && ratingSummary.count > 0 && (
         <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
-          <span style={{ color: "var(--color-primary)" }}>{ratingStars(ratingSummary.average)}</span>{" "}
+          <span style={{ color: "var(--color-primary-text, var(--color-primary))" }}>{ratingStars(ratingSummary.average)}</span>{" "}
           {ratingSummary.average.toFixed(1)} ({ratingSummary.count} review{ratingSummary.count === 1 ? "" : "s"})
         </p>
       )}
@@ -164,7 +164,13 @@ export async function PdpLongScroll({
               type="submit"
               style={{
                 background: "var(--color-primary)",
-                color: "var(--color-background)",
+                // brand-primary-foreground-contrast-audit (a11y-audit finding
+                // #17): vibrant's --color-background ink measured 2.64:1
+                // against this unchanged --color-primary fill --
+                // var(--color-primary-text, ...) is a no-op for minimal/
+                // high-contrast (undefined there, already pass) and a real
+                // AA fix for vibrant (4.83:1 against the same fill).
+                color: "var(--color-primary-text, var(--color-background))",
                 borderRadius: "var(--radius)",
                 border: "none",
                 padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
@@ -218,7 +224,13 @@ export async function PdpLongScroll({
               type="submit"
               style={{
                 background: "var(--color-primary)",
-                color: "var(--color-background)",
+                // brand-primary-foreground-contrast-audit (a11y-audit finding
+                // #17): vibrant's --color-background ink measured 2.64:1
+                // against this unchanged --color-primary fill --
+                // var(--color-primary-text, ...) is a no-op for minimal/
+                // high-contrast (undefined there, already pass) and a real
+                // AA fix for vibrant (4.83:1 against the same fill).
+                color: "var(--color-primary-text, var(--color-background))",
                 borderRadius: "var(--radius)",
                 border: "none",
                 padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
@@ -241,7 +253,7 @@ export async function PdpLongScroll({
               marginTop: "var(--space-xs, 8px)",
             }}
           >
-            <div style={{ color: "var(--color-primary)" }}>{ratingStars(review.rating)}</div>
+            <div style={{ color: "var(--color-primary-text, var(--color-primary))" }}>{ratingStars(review.rating)}</div>
             <strong style={{ fontSize: "var(--font-size-body, 1rem)" }}>{review.title}</strong>
             <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
               {review.authorName} -- {review.createdAt}
@@ -296,7 +308,7 @@ export async function PdpLongScroll({
           type="submit"
           style={{
             background: "var(--color-primary)",
-            color: "var(--color-background)",
+            color: "var(--color-primary-text, var(--color-background))",
             borderRadius: "var(--radius)",
             border: "none",
             padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
@@ -364,14 +376,14 @@ function EditorialPdpLongScroll({
         .ed-sku-stock { margin-top: .5rem; font-family: var(--font-family); font-weight: 700; font-size: .84rem; display: flex; align-items: center; gap: .4rem; color: var(--color-accent, #5E6E45); }
         .ed-sku-stock::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--color-accent, #5E6E45); }
         .ed-sku-stock.ed-low::before { background: var(--color-primary); }
-        .ed-sku-stock.ed-low { color: var(--color-primary); }
+        .ed-sku-stock.ed-low { color: var(--color-primary-text, var(--color-primary)); }
         .ed-qty-input { margin-top: .75rem; width: 3.5rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .3rem .4rem; font-family: var(--font-family); }
         .ed-personalize-label { display: block; margin-top: .75rem; font-family: var(--font-family); font-size: .85rem; color: var(--color-muted, #635747); }
         .ed-personalize-input { width: 100%; max-width: 360px; margin-top: .3rem; border: 1px solid var(--color-border, #C7B586); border-radius: var(--radius); background: var(--color-background); color: var(--color-text); padding: .5rem .65rem; font-family: var(--font-family); }
-        .ed-btn-add { margin-top: 1.25rem; display: inline-flex; align-self: flex-start; background: var(--color-primary); color: var(--color-background); border: 1px solid var(--color-primary); border-radius: var(--radius); font-family: var(--font-family); font-weight: 700; font-size: .92rem; letter-spacing: .02em; padding: .85rem 1.75rem; cursor: pointer; }
+        .ed-btn-add { margin-top: 1.25rem; display: inline-flex; align-self: flex-start; background: var(--color-primary-text, var(--color-primary)); color: var(--color-background); border: 1px solid var(--color-primary-text, var(--color-primary)); border-radius: var(--radius); font-family: var(--font-family); font-weight: 700; font-size: .92rem; letter-spacing: .02em; padding: .85rem 1.75rem; cursor: pointer; }
         .ed-btn-add:hover { filter: brightness(0.9); }
         .ed-rating { margin-top: .5rem; font-family: var(--font-family); color: var(--color-muted, #55493A); font-size: .95rem; }
-        .ed-rating-stars { color: var(--color-primary); }
+        .ed-rating-stars { color: var(--color-primary-text, var(--color-primary)); }
         .ed-reviews { margin-top: 3rem; border-top: 1px solid var(--color-border, #DACFAF); padding-top: 1.5rem; }
         .ed-reviews-title { font-family: var(--font-family-display, var(--font-family)); font-weight: 600; font-size: 1.4rem; }
         .ed-review { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--color-border, #DACFAF); }

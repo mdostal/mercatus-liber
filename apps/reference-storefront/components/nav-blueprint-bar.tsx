@@ -108,7 +108,12 @@ export function NavBlueprintBar({
           border-right: 1px solid var(--color-border, #D2D7E0);
           white-space: nowrap;
         }
-        .ds-nav-links a:hover { color: var(--color-primary, #C8460A); background: var(--color-background, #E7EAF0); }
+        {/* brand-primary-foreground-contrast-audit (a11y-audit finding #17):
+            datasheet's raw --color-primary measures 4.356:1 against
+            --color-background -- found by this epic's own required full
+            10-bundle re-verification (not one of the audit's originally-
+            named bundles). */}
+        .ds-nav-links a:hover { color: var(--color-primary-text, var(--color-primary, #C8460A)); background: var(--color-background, #E7EAF0); }
         .ds-nav-utility { display: flex; align-items: stretch; flex-shrink: 0; margin-left: auto; }
         .ds-nav-cart {
           display: flex;

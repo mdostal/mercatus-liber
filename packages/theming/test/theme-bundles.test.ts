@@ -93,11 +93,57 @@ describe("theme bundles", () => {
 
     for (const key of untouchedKeys) {
       const bundle = getThemeBundle(key)!;
-      expect(Object.keys(bundle.tokens)).toHaveLength(6);
       for (const newKey of newTokenKeys) {
         expect(bundle.tokens[newKey]).toBeUndefined();
       }
     }
+  });
+
+  // brand-primary-foreground-contrast-audit (a11y-audit finding #17): additive
+  // --color-primary-text, defined ONLY on the 5 bundles whose raw --color-primary
+  // fails WCAG AA (4.5:1) as small/body-sized foreground text against
+  // --color-background -- vibrant/retro/maximalist (confirmed/by-calculation in
+  // the audit) plus editorial/datasheet (found by this epic's own required
+  // full 10-bundle re-verification). The other 5 (classic/dark/minimal/
+  // high-contrast/northline) already pass and are left with exactly their
+  // original 6 (or, for classic, 16) tokens -- untouched, not just "equal by
+  // coincidence".
+  describe("--color-primary-text (brand-primary-foreground-contrast-audit)", () => {
+    const passingKeys = ["classic", "dark", "minimal", "high-contrast", "northline"];
+    it.each(passingKeys)("%s does NOT define --color-primary-text (its raw --color-primary already passes AA)", (key) => {
+      expect(getThemeBundle(key)!.tokens["--color-primary-text"]).toBeUndefined();
+    });
+
+    it("vibrant/retro/maximalist/editorial/datasheet each define a real, distinct --color-primary-text value", () => {
+      expect(getThemeBundle("vibrant")!.tokens["--color-primary-text"]).toBe("#4F2102");
+      expect(getThemeBundle("retro")!.tokens["--color-primary-text"]).toBe("#2E2300");
+      expect(getThemeBundle("maximalist")!.tokens["--color-primary-text"]).toBe("#3F0D00");
+      expect(getThemeBundle("editorial")!.tokens["--color-primary-text"]).toBe("#A44627");
+      expect(getThemeBundle("datasheet")!.tokens["--color-primary-text"]).toBe("#A93B08");
+    });
+
+    it("every defined --color-primary-text passes real WCAG AA (>=4.5:1) against its own bundle's --color-background", () => {
+      function relLum(hex: string): number {
+        const n = parseInt(hex.slice(1), 16);
+        const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
+          const s = c / 255;
+          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      }
+      function contrast(a: string, b: string): number {
+        const [l1, l2] = [relLum(a), relLum(b)];
+        const [lighter, darker] = l1 > l2 ? [l1, l2] : [l2, l1];
+        return (lighter + 0.05) / (darker + 0.05);
+      }
+
+      for (const key of ["vibrant", "retro", "maximalist", "editorial", "datasheet"]) {
+        const bundle = getThemeBundle(key)!;
+        const text = bundle.tokens["--color-primary-text"]!;
+        const bg = bundle.tokens["--color-background"];
+        expect(contrast(text, bg)).toBeGreaterThanOrEqual(4.5);
+      }
+    });
   });
 
   it("northline (epic 15b's public demo bundle) applies correctly and is a real 7th bundle, not a variant of an existing one", () => {
@@ -165,6 +211,7 @@ describe("theme bundles", () => {
         "--font-size-heading-md": "1.5rem",
         "--font-size-body": "1rem",
         "--shadow-card": "0 1px 2px rgba(36,28,20,0.08), 0 4px 12px rgba(36,28,20,0.10)",
+        "--color-primary-text": "#A44627",
       });
 
       expect(theming.resolveTemplate("pdp")).toBe("pdp.long-scroll");
@@ -196,6 +243,7 @@ describe("theme bundles", () => {
         "--font-size-heading-md": "1.75rem",
         "--font-size-body": "1rem",
         "--shadow-card": "6px 6px 0 #17130F",
+        "--color-primary-text": "#3F0D00",
       });
 
       expect(theming.resolveTemplate("pdp")).toBe("pdp.tabbed-detail");
@@ -227,6 +275,7 @@ describe("theme bundles", () => {
         "--font-size-heading-md": "1.375rem",
         "--font-size-body": "1rem",
         "--shadow-card": "none",
+        "--color-primary-text": "#A93B08",
       });
 
       // visual-fidelity-datasheet: previously "pdp.tabbed-detail"/

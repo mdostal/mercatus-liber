@@ -1,7 +1,32 @@
 import type { Bundle, TierPricing } from "@mercatus-liber/bundles";
 import { addBundleTierToCartAction } from "../lib/actions";
 import type { DemoSlug } from "../lib/demos";
+import { readActiveThemeBundle } from "../lib/theme-cookie";
 import { InteractionTracker } from "./interaction-tracker";
+
+/**
+ * brand-primary-foreground-contrast-audit (a11y-audit finding #17): this
+ * component is composed at the page layer regardless of active theme (see
+ * the doc comment below) -- unlike pdp-tabbed-detail.tsx/pdp-long-scroll.tsx,
+ * whose CTA buttons only ever need an INK swap (their button fill is always
+ * either raw --color-primary at a bundle that already passes, or one of
+ * vibrant/retro/maximalist, where a same-hue-darkened --color-primary-text
+ * value passes 4.5:1 AA against BOTH the page background and the unchanged
+ * --color-primary fill), this button can also render for editorial/
+ * datasheet, whose --color-primary is dark enough that NO same-hue ink --
+ * not even pure black -- reaches 4.5:1 against their unchanged
+ * --color-primary fill (verified: black-on-editorial's-#B14B2A only reaches
+ * 3.91:1, black-on-datasheet's-#C8460A only reaches 4.34:1). Those two
+ * bundles need the FILL swapped to --color-primary-text instead (keeping the
+ * existing --color-background ink, which -- by the same contrast-is-
+ * symmetric math used to derive --color-primary-text in the first place --
+ * automatically passes 4.5:1 against that new, darker fill). This is the one
+ * real fill exception carved out of the "leave every --color-primary fill
+ * untouched" rule: only for the bundles where an ink-only fix is
+ * mathematically impossible, and only for this exact broken text-on-fill
+ * pattern, never for --color-primary's other decorative/border/accent uses.
+ */
+const BUNDLES_NEEDING_CTA_FILL_SWAP = new Set(["editorial", "datasheet"]);
 
 /**
  * Renders one <form> per Bundle tier -- the multi-SKU sibling of the
@@ -23,7 +48,7 @@ import { InteractionTracker } from "./interaction-tracker";
  * tier with no overlap -- see resolveTierCartSkuIds' own doc comment), never
  * optional here, so no caller can forget to wire this.
  */
-export function BundleTierSelector({
+export async function BundleTierSelector({
   demoSlug,
   bundle,
   pricingByTierId,
@@ -36,6 +61,8 @@ export function BundleTierSelector({
   activeProductId: string;
   activeSkuId: string;
 }) {
+  const activeTheme = await readActiveThemeBundle(demoSlug);
+  const needsFillSwap = BUNDLES_NEEDING_CTA_FILL_SWAP.has(activeTheme.key);
   // a11y-audit: same "bare <section>, no accessible name, outside <main>"
   // pattern as recommendation-shelf.tsx (see that component's own doc
   // comment for the full writeup) -- products/[slug]/page.tsx renders this
@@ -79,8 +106,12 @@ export function BundleTierSelector({
             <button
               type="submit"
               style={{
-                background: "var(--color-primary)",
-                color: "var(--color-background)",
+                // brand-primary-foreground-contrast-audit (a11y-audit finding
+                // #17): confirmed live on maximalist at 2.98:1 -- see this
+                // file's top-level doc comment for why editorial/datasheet
+                // need the FILL swapped instead of the ink.
+                background: needsFillSwap ? "var(--color-primary-text, var(--color-primary))" : "var(--color-primary)",
+                color: needsFillSwap ? "var(--color-background)" : "var(--color-primary-text, var(--color-background))",
                 borderRadius: "var(--radius)",
                 border: "none",
                 padding: "var(--space-xs, 8px) var(--space-sm, 16px)",

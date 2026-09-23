@@ -68,27 +68,33 @@ export function NavTopBar({
         aria-label="Store navigation"
         style={{ marginBottom: 24, borderBottom: "1px solid var(--color-accent)", paddingBottom: 12 }}
       >
-        <a href={`/demo/${demoSlug}`} style={{ fontWeight: 700, textDecoration: "none", color: "var(--color-primary)" }}>
+        {/* brand-primary-foreground-contrast-audit (a11y-audit finding #17): raw
+            --color-primary confirmed live at 2.64:1 on vibrant (and by
+            calculation 2.98:1 on retro) against --color-background here --
+            var(--color-primary-text, var(--color-primary)) is a no-op for the
+            5 bundles that don't define the new token (already pass) and a
+            real AA fix for vibrant/retro. */}
+        <a href={`/demo/${demoSlug}`} style={{ fontWeight: 700, textDecoration: "none", color: "var(--color-primary-text, var(--color-primary))" }}>
           {displayName}
         </a>
         {navLinks.map((link) => (
           <span key={link.href}>
             {" · "}
-            <a href={link.href} style={{ color: "var(--color-primary)" }}>
+            <a href={link.href} style={{ color: "var(--color-primary-text, var(--color-primary))" }}>
               {link.label}
             </a>
           </span>
         ))}
         {" · "}
-        <a href={`/demo/${demoSlug}/cart`} style={{ color: "var(--color-primary)" }}>
+        <a href={`/demo/${demoSlug}/cart`} style={{ color: "var(--color-primary-text, var(--color-primary))" }}>
           Cart
         </a>
         {" · "}
-        <a href={`/demo/${demoSlug}/search`} style={{ color: "var(--color-primary)" }}>
+        <a href={`/demo/${demoSlug}/search`} style={{ color: "var(--color-primary-text, var(--color-primary))" }}>
           Search
         </a>
         {" · "}
-        <a href={`/demo/${demoSlug}/account`} style={{ color: "var(--color-primary)" }}>
+        <a href={`/demo/${demoSlug}/account`} style={{ color: "var(--color-primary-text, var(--color-primary))" }}>
           Account
         </a>
 
@@ -141,7 +147,7 @@ function EditorialNavTopBar({
         .ed-nav-links a:hover::after { transform: scaleX(1); }
         .ed-nav-actions { display: flex; align-items: center; gap: 1.1rem; font-family: var(--font-family); font-size: .78rem; font-weight: 600; }
         .ed-nav-actions a { color: var(--color-muted, #55493A); text-decoration: none; }
-        .ed-nav-actions a:hover { color: var(--color-primary); }
+        .ed-nav-actions a:hover { color: var(--color-primary-text, var(--color-primary)); }
       `}</style>
       {/* a11y-audit: same duplicate-banner reasoning as the plain header above --
           see that comment for the full writeup. */}
