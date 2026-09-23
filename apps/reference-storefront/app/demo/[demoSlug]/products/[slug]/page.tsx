@@ -129,11 +129,16 @@ export default async function ProductPage({
   searchParams,
 }: {
   params: Promise<{ demoSlug: string; slug: string }>;
-  searchParams: Promise<{ template?: string }>;
+  // pc-01: broadened beyond `template` alone -- a multi-SKU product's
+  // variant-picker (components/variant-picker.tsx) submits its selection as
+  // one query param per identifying-attribute key (e.g. `?color=navy&size=
+  // medium`), read below to resolve the active SKU. Any param this route
+  // doesn't recognize is simply ignored.
+  searchParams: Promise<{ template?: string; [key: string]: string | undefined }>;
 }) {
   const { demoSlug, slug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const { template } = await searchParams;
+  const { template, ...selectionParams } = await searchParams;
   const { pdp, theming, inventory, bundles, recommendations, catalog, marketingCatalog, media, reviews } =
     await getServicesForDemo(demoSlug);
 
@@ -149,6 +154,40 @@ export default async function ProductPage({
 
   const viewModel = await pdp.getViewModel(slug, templateOverride);
   if (!viewModel) notFound();
+
+  // pc-01: the real, live call site for pdp.resolveSelection (previously
+  // dead code -- see design-discussion.md §2, zero call sites outside its
+  // own package's tests). Only meaningful for a product with 2+ SKUs (a
+  // single-SKU product has nothing to pick, and the variant-picker never
+  // renders for it -- see each PDP template's own `skus.length > 1` guard,
+  // which keeps its rendering byte-identical to before this story). For
+  // every identifying-attribute key, reads the matching query param off the
+  // already-parsed `selectionParams` above (falling back to the first real
+  // SKU's own value for that key whenever the param is missing OR isn't one
+  // of this product's real, available values for that key -- e.g. a first
+  // visit with no selection yet, or a stale/hand-edited URL) so the
+  // selection passed to resolveSelection is always fully populated, never
+  // partial. `resolveSelection` delegates straight to
+  // `catalog.resolveVariant`, which does the real identifying-attribute
+  // matching -- this route never reimplements that logic. A selection that
+  // (in principle) doesn't correspond to any real SKU -- e.g. a product
+  // whose available per-key values aren't a full cartesian product -- falls
+  // back to the first real SKU rather than rendering a blank/broken PDP.
+  let activeSku = viewModel.skus[0];
+  let optionSelection: Record<string, string> | undefined;
+  if (viewModel.skus.length > 1) {
+    const selection = viewModel.optionValues.map((option) => {
+      const requested = selectionParams[option.key];
+      const availableValues = option.values.map(String);
+      const value = requested && availableValues.includes(requested) ? requested : String(option.values[0]);
+      return { key: option.key, value };
+    });
+    const resolved = await pdp.resolveSelection(viewModel.product.id, selection);
+    // `viewModel.skus[0]` is guaranteed to exist here -- this branch only
+    // runs when `viewModel.skus.length > 1`.
+    activeSku = resolved ?? viewModel.skus[0]!;
+    optionSelection = Object.fromEntries(activeSku.identifyingAttributes.map((attr) => [attr.key, String(attr.value)]));
+  }
 
   // Stock is deliberately NOT part of pdp's view model (see pt-02's design
   // decision -- no inventory epic existed yet); composed here at the app
@@ -298,6 +337,14 @@ export default async function ProductPage({
         // absent before this task).
         ratingSummary={ratingSummary}
         reviews={publishedReviews}
+        // pc-01: additive/optional -- only meaningful (and only ever passed
+        // as non-undefined) when this product has 2+ SKUs; see the
+        // resolveSelection block above. A single-SKU product's `Component`
+        // call receives `optionSelection={undefined}`, and every template's
+        // own `skus.length > 1` guard means neither prop is read at all for
+        // it -- byte-identical to this story's pre-existing rendering.
+        activeSku={activeSku}
+        optionSelection={optionSelection}
       />
       {recommendationShelf ? <RecommendationShelf {...recommendationShelf} /> : null}
     </>

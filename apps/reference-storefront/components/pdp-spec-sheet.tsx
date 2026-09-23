@@ -1,7 +1,9 @@
+import type { Sku } from "@mercatus-liber/core";
 import type { PdpViewModel } from "@mercatus-liber/pdp";
 import { addToCartAction, submitReviewAction } from "../lib/actions";
 import type { DemoSlug } from "../lib/demos";
 import { DS_ATOMS_CSS, DS_FONT_MONO } from "./datasheet-styles";
+import { VariantPicker } from "./variant-picker";
 
 /** "★★★★☆"-style rendering of a rating (rounded to the nearest whole star), same convention as pdp-tabbed-detail.tsx's own ratingStars. */
 function ratingStars(value: number): string {
@@ -29,10 +31,15 @@ function ratingStars(value: number): string {
  *
  * Same real `PdpViewModel` shape as pdp-tabbed-detail.tsx (product + real
  * SKUs, no invented fields) -- works generically across every demo's real
- * product data, not just a single hardcoded example. Multi-SKU products
- * (e.g. a cap in several colors) render one add-to-cart row per real SKU,
- * same as pdp-tabbed-detail.tsx, since this repo has no client-side
- * variant-picker state today.
+ * product data, not just a single hardcoded example.
+ *
+ * pc-01: a 2+-SKU product now renders the real interactive variant-picker
+ * (one real `<select>` per identifying-attribute key) plus a single
+ * add-to-cart row for whichever SKU the page has resolved the current
+ * selection to (`activeSku`) -- same pattern as pdp-tabbed-detail.tsx and
+ * pdp-long-scroll.tsx, see either's doc comment for the full mechanism. A
+ * single-SKU product still renders exactly one add-to-cart row with no
+ * picker chrome, byte-identical to before this story.
  */
 export function PdpSpecSheet({
   demoSlug,
@@ -43,6 +50,8 @@ export function PdpSpecSheet({
   imageAlt,
   ratingSummary = null,
   reviews = [],
+  activeSku,
+  optionSelection,
 }: {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
@@ -56,8 +65,12 @@ export function PdpSpecSheet({
   ratingSummary?: { average: number; count: number; distribution: Record<number, number> } | null;
   /** bare-basics epic: same additive/optional published-reviews prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   reviews?: { id: string; rating: number; authorName: string; title: string; body: string; createdAt: string }[];
+  /** pc-01: same additive/optional resolved-SKU/selection props as pdp-tabbed-detail.tsx -- see that component's doc comment. */
+  activeSku?: Sku;
+  optionSelection?: Record<string, string>;
 }) {
-  const { product, skus } = viewModel;
+  const { product, skus, optionValues } = viewModel;
+  const basePath = `/demo/${demoSlug}/products/${product.slug}`;
 
   const amounts = skus.map((sku) => sku.price.amount);
   const currency = skus[0]?.price.currency ?? "USD";
@@ -243,39 +256,76 @@ export function PdpSpecSheet({
           </div>
 
           <div className="ds-label">Options</div>
-          {skus.map((sku) => (
-            <form action={addToCartAction} key={sku.id} className="ds-sku-row">
-              <input type="hidden" name="demoSlug" value={demoSlug} />
-              <input type="hidden" name="skuId" value={sku.id} />
-              <div className="ds-sku-attrs">
-                {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(" · ")}
-                <br />
-                <span className="ds-label">
-                  {stockBySkuId[sku.id] == null ? "available" : `in stock: ${stockBySkuId[sku.id]}`}
-                </span>
-              </div>
-              <span className="ds-sku-price">
-                {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
-              </span>
-              <div className="ds-stepper">
-                <input type="number" name="quantity" defaultValue={1} min={1} aria-label="Quantity" />
-              </div>
-              {customizable && (
-                <div className="ds-custom-note">
-                  <label htmlFor={`customizationNote-${sku.id}`}>Personalize (e.g. embroidery text, thread color)</label>
-                  <input
-                    id={`customizationNote-${sku.id}`}
-                    type="text"
-                    name="customizationNote"
-                    placeholder="e.g. Text: Sarah -- thread color: navy"
-                  />
+          {skus.length > 1 && activeSku ? (
+            <>
+              <VariantPicker basePath={basePath} optionValues={optionValues} selection={optionSelection ?? {}} />
+              <form action={addToCartAction} className="ds-sku-row">
+                <input type="hidden" name="demoSlug" value={demoSlug} />
+                <input type="hidden" name="skuId" value={activeSku.id} />
+                <div className="ds-sku-attrs">
+                  {activeSku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(" · ")}
+                  <br />
+                  <span className="ds-label">
+                    {stockBySkuId[activeSku.id] == null ? "available" : `in stock: ${stockBySkuId[activeSku.id]}`}
+                  </span>
                 </div>
-              )}
-              <button type="submit" className="ds-btn ds-btn-accent">
-                Add to cart
-              </button>
-            </form>
-          ))}
+                <span className="ds-sku-price">
+                  {(activeSku.price.amount / 100).toFixed(2)} {activeSku.price.currency}
+                </span>
+                <div className="ds-stepper">
+                  <input type="number" name="quantity" defaultValue={1} min={1} aria-label="Quantity" />
+                </div>
+                {customizable && (
+                  <div className="ds-custom-note">
+                    <label htmlFor={`customizationNote-${activeSku.id}`}>Personalize (e.g. embroidery text, thread color)</label>
+                    <input
+                      id={`customizationNote-${activeSku.id}`}
+                      type="text"
+                      name="customizationNote"
+                      placeholder="e.g. Text: Sarah -- thread color: navy"
+                    />
+                  </div>
+                )}
+                <button type="submit" className="ds-btn ds-btn-accent">
+                  Add to cart
+                </button>
+              </form>
+            </>
+          ) : (
+            skus.map((sku) => (
+              <form action={addToCartAction} key={sku.id} className="ds-sku-row">
+                <input type="hidden" name="demoSlug" value={demoSlug} />
+                <input type="hidden" name="skuId" value={sku.id} />
+                <div className="ds-sku-attrs">
+                  {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(" · ")}
+                  <br />
+                  <span className="ds-label">
+                    {stockBySkuId[sku.id] == null ? "available" : `in stock: ${stockBySkuId[sku.id]}`}
+                  </span>
+                </div>
+                <span className="ds-sku-price">
+                  {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
+                </span>
+                <div className="ds-stepper">
+                  <input type="number" name="quantity" defaultValue={1} min={1} aria-label="Quantity" />
+                </div>
+                {customizable && (
+                  <div className="ds-custom-note">
+                    <label htmlFor={`customizationNote-${sku.id}`}>Personalize (e.g. embroidery text, thread color)</label>
+                    <input
+                      id={`customizationNote-${sku.id}`}
+                      type="text"
+                      name="customizationNote"
+                      placeholder="e.g. Text: Sarah -- thread color: navy"
+                    />
+                  </div>
+                )}
+                <button type="submit" className="ds-btn ds-btn-accent">
+                  Add to cart
+                </button>
+              </form>
+            ))
+          )}
         </div>
       </div>
 

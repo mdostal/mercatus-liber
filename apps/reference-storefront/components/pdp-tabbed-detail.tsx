@@ -1,6 +1,8 @@
+import type { Sku } from "@mercatus-liber/core";
 import type { PdpViewModel } from "@mercatus-liber/pdp";
 import { addToCartAction, submitReviewAction } from "../lib/actions";
 import type { DemoSlug } from "../lib/demos";
+import { VariantPicker } from "./variant-picker";
 
 /** "★★★★☆"-style rendering of a rating (rounded to the nearest whole star -- ratings/averages are never fractional stars, only a real computed nearest-integer glyph count). */
 function ratingStars(value: number): string {
@@ -27,6 +29,8 @@ export function PdpTabbedDetail({
   imageAlt,
   ratingSummary = null,
   reviews = [],
+  activeSku,
+  optionSelection,
 }: {
   demoSlug: DemoSlug;
   viewModel: PdpViewModel;
@@ -58,9 +62,21 @@ export function PdpTabbedDetail({
   ratingSummary?: { average: number; count: number; distribution: Record<number, number> } | null;
   /** bare-basics epic: additive/optional -- the product's real published reviews (ReviewsService.listPublishedReviewsForProduct). An empty array renders the "no reviews yet" empty state, never a fabricated review. */
   reviews?: { id: string; rating: number; authorName: string; title: string; body: string; createdAt: string }[];
+  /**
+   * pc-01: additive/optional -- the one real SKU the variant-picker's
+   * current selection resolves to (via pdp.resolveSelection, computed by
+   * the page), only ever passed for a 2+-SKU product. `optionSelection` is
+   * that same SKU's identifying attributes as a `{ key: value }` map, used
+   * to give each `<select>` its current value. A single-SKU product never
+   * receives either prop as non-undefined (see the `skus.length > 1` guard
+   * below), so its rendering is untouched by this story.
+   */
+  activeSku?: Sku;
+  optionSelection?: Record<string, string>;
 }) {
-  const { product, skus } = viewModel;
+  const { product, skus, optionValues } = viewModel;
   const isMaximalist = themeKey === "maximalist";
+  const basePath = `/demo/${demoSlug}/products/${product.slug}`;
 
   return (
     <main className={isMaximalist ? "mx-pdp" : undefined}>
@@ -94,58 +110,114 @@ export function PdpTabbedDetail({
 
       <details open>
         <summary style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Options</summary>
-        {skus.map((sku) => (
-          <form action={addToCartAction} key={sku.id} style={{ marginBottom: "var(--space-sm, 16px)" }}>
-            <input type="hidden" name="demoSlug" value={demoSlug} />
-            <input type="hidden" name="skuId" value={sku.id} />
-            <span
-              className={isMaximalist ? "mx-pdp-price" : undefined}
-              style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}
-            >
-              {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")} --{" "}
-              {(sku.price.amount / 100).toFixed(2)} {sku.price.currency} --{" "}
-              {stockBySkuId[sku.id] == null ? "available" : `in stock: ${stockBySkuId[sku.id]}`}
-            </span>{" "}
-            <input
-              className={isMaximalist ? "mx-pdp-qty" : undefined}
-              type="number"
-              name="quantity"
-              defaultValue={1}
-              min={1}
-              style={{ width: 48 }}
-            />{" "}
-            {customizable && (
-              <div style={{ marginTop: "var(--space-xs, 8px)" }}>
-                <label
-                  htmlFor={`customizationNote-${sku.id}`}
-                  style={{ display: "block", fontSize: "var(--font-size-body, 1rem)", color: "var(--color-muted, #666)" }}
-                >
-                  Personalize this item (e.g. embroidery text, thread color)
-                </label>
-                <input
-                  id={`customizationNote-${sku.id}`}
-                  type="text"
-                  name="customizationNote"
-                  placeholder="e.g. Text: Sarah -- thread color: navy"
-                  style={{ width: "100%", maxWidth: 360 }}
-                />
-              </div>
-            )}
-            <button
-              className={isMaximalist ? "mx-pdp-addtocart" : undefined}
-              type="submit"
-              style={{
-                background: "var(--color-primary)",
-                color: "var(--color-background)",
-                borderRadius: "var(--radius)",
-                border: "none",
-                padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
-              }}
-            >
-              Add to cart
-            </button>
-          </form>
-        ))}
+        {skus.length > 1 && activeSku ? (
+          <>
+            <VariantPicker basePath={basePath} optionValues={optionValues} selection={optionSelection ?? {}} />
+            <form action={addToCartAction} style={{ marginBottom: "var(--space-sm, 16px)" }}>
+              <input type="hidden" name="demoSlug" value={demoSlug} />
+              <input type="hidden" name="skuId" value={activeSku.id} />
+              <span
+                className={isMaximalist ? "mx-pdp-price" : undefined}
+                style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}
+              >
+                {activeSku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")} --{" "}
+                {(activeSku.price.amount / 100).toFixed(2)} {activeSku.price.currency} --{" "}
+                {stockBySkuId[activeSku.id] == null ? "available" : `in stock: ${stockBySkuId[activeSku.id]}`}
+              </span>{" "}
+              <input
+                className={isMaximalist ? "mx-pdp-qty" : undefined}
+                type="number"
+                name="quantity"
+                defaultValue={1}
+                min={1}
+                style={{ width: 48 }}
+              />{" "}
+              {customizable && (
+                <div style={{ marginTop: "var(--space-xs, 8px)" }}>
+                  <label
+                    htmlFor={`customizationNote-${activeSku.id}`}
+                    style={{ display: "block", fontSize: "var(--font-size-body, 1rem)", color: "var(--color-muted, #666)" }}
+                  >
+                    Personalize this item (e.g. embroidery text, thread color)
+                  </label>
+                  <input
+                    id={`customizationNote-${activeSku.id}`}
+                    type="text"
+                    name="customizationNote"
+                    placeholder="e.g. Text: Sarah -- thread color: navy"
+                    style={{ width: "100%", maxWidth: 360 }}
+                  />
+                </div>
+              )}
+              <button
+                className={isMaximalist ? "mx-pdp-addtocart" : undefined}
+                type="submit"
+                style={{
+                  background: "var(--color-primary)",
+                  color: "var(--color-background)",
+                  borderRadius: "var(--radius)",
+                  border: "none",
+                  padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+                }}
+              >
+                Add to cart
+              </button>
+            </form>
+          </>
+        ) : (
+          skus.map((sku) => (
+            <form action={addToCartAction} key={sku.id} style={{ marginBottom: "var(--space-sm, 16px)" }}>
+              <input type="hidden" name="demoSlug" value={demoSlug} />
+              <input type="hidden" name="skuId" value={sku.id} />
+              <span
+                className={isMaximalist ? "mx-pdp-price" : undefined}
+                style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}
+              >
+                {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")} --{" "}
+                {(sku.price.amount / 100).toFixed(2)} {sku.price.currency} --{" "}
+                {stockBySkuId[sku.id] == null ? "available" : `in stock: ${stockBySkuId[sku.id]}`}
+              </span>{" "}
+              <input
+                className={isMaximalist ? "mx-pdp-qty" : undefined}
+                type="number"
+                name="quantity"
+                defaultValue={1}
+                min={1}
+                style={{ width: 48 }}
+              />{" "}
+              {customizable && (
+                <div style={{ marginTop: "var(--space-xs, 8px)" }}>
+                  <label
+                    htmlFor={`customizationNote-${sku.id}`}
+                    style={{ display: "block", fontSize: "var(--font-size-body, 1rem)", color: "var(--color-muted, #666)" }}
+                  >
+                    Personalize this item (e.g. embroidery text, thread color)
+                  </label>
+                  <input
+                    id={`customizationNote-${sku.id}`}
+                    type="text"
+                    name="customizationNote"
+                    placeholder="e.g. Text: Sarah -- thread color: navy"
+                    style={{ width: "100%", maxWidth: 360 }}
+                  />
+                </div>
+              )}
+              <button
+                className={isMaximalist ? "mx-pdp-addtocart" : undefined}
+                type="submit"
+                style={{
+                  background: "var(--color-primary)",
+                  color: "var(--color-background)",
+                  borderRadius: "var(--radius)",
+                  border: "none",
+                  padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+                }}
+              >
+                Add to cart
+              </button>
+            </form>
+          ))
+        )}
       </details>
 
       <details open style={{ marginTop: "var(--space-md, 24px)" }}>
