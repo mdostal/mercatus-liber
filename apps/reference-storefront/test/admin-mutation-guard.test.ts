@@ -61,6 +61,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminAuthAdapter, AdminRole, AdminSession } from "@mercatus-liber/admin-auth";
 import { createAdvertisingService, createInMemoryCampaignRepository } from "@mercatus-liber/advertising";
 import { createBundlesService, createInMemoryBundleRepository } from "@mercatus-liber/bundles";
+import {
+  createCatalogService,
+  createInMemoryCatalogRepository,
+  createInMemoryProductCatalogRepository,
+} from "@mercatus-liber/catalog";
 import { createComponentRegistry, createCmsService, createInMemoryCmsAdapter } from "@mercatus-liber/cms";
 import { createInMemoryEventBus } from "@mercatus-liber/core";
 import {
@@ -69,8 +74,10 @@ import {
   createManualFulfillmentAdapter,
   MANUAL_FULFILLMENT_PROVIDER,
 } from "@mercatus-liber/fulfillment";
+import { createInMemoryInventoryAdapter } from "@mercatus-liber/inventory";
 import { createInMemoryPromotionRepository, createPromotionsService } from "@mercatus-liber/promotions";
 import { createThemingService } from "@mercatus-liber/theming";
+import { createSqliteAdapter } from "@mercatus-liber/adapter-sqlite";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -84,6 +91,21 @@ const bundles = createBundlesService({
 const advertising = createAdvertisingService({ repository: createInMemoryCampaignRepository() });
 const cms = createCmsService({ persistence: createInMemoryCmsAdapter(), components: createComponentRegistry() });
 const theming = createThemingService();
+/**
+ * pc-03: a real, in-memory-backed (sqlite ":memory:", same precedent as
+ * packages/catalog/test/catalog.test.ts) CatalogService for
+ * generateSkuComboAction's own guard coverage below -- proves the real
+ * catalog.generateSkus call is actually gated, not just that no error is
+ * thrown.
+ */
+const catalogEvents = createInMemoryEventBus();
+const catalog = createCatalogService({
+  persistence: createSqliteAdapter(":memory:"),
+  events: catalogEvents,
+  catalogs: createInMemoryCatalogRepository(),
+  productCatalogs: createInMemoryProductCatalogRepository(),
+});
+const inventory = createInMemoryInventoryAdapter();
 
 /** A minimal, real OrderLookup -- fulfillment reads orders structurally, never imports checkout-orders (see docs/subsystems/22-fulfillment.md). */
 const fakeOrders = {
@@ -116,6 +138,8 @@ vi.mock("../lib/services.js", () => ({
     cms,
     fulfillment,
     theming,
+    catalog,
+    inventory,
   })),
 }));
 
@@ -124,6 +148,7 @@ const {
   deactivateBundleAction,
   deactivateCampaignAction,
   deactivatePromotionAction,
+  generateSkuComboAction,
   markFulfillmentLineShippedAction,
   setPageTemplateAction,
 } = await import("../lib/actions.js");
@@ -266,6 +291,63 @@ describe("admin mutation guard (admin-auth-03)", () => {
       await deactivateBundleAction(formData);
 
       expect((await bundles.getBundle(bundle.id))?.status).toBe("inactive");
+    });
+  });
+
+  /**
+   * pc-03: generateSkuComboAction always calls redirect() on both its
+   * success path and its caught-InvalidIdentifyingAttributesError path --
+   * same "real next/navigation redirect(), not mocked" situation
+   * createCmsPageAction is in (see this file's own header comment), so only
+   * the viewer/no-session rejection path (which throws before any redirect
+   * is reached) is exercised here; generateSkus itself is already unit-
+   * tested by packages/catalog/test/catalog.test.ts, and the create/
+   * invalid-combination-error paths are live-verified against a real dev
+   * server per pc-03's acceptance criteria.
+   */
+  describe("generateSkuComboAction (catalog)", () => {
+    it("rejects a viewer-role session before mutating", async () => {
+      const product = await catalog.createProduct({
+        slug: "guard-test-sku-combo",
+        title: "Guard Test SKU Combo Product",
+        description: "x",
+        identifyingAttributeKeys: ["color", "size"],
+      });
+      await catalog.publishProduct(product.id);
+      currentSession = sessionFor("viewer");
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("productId", product.id);
+      formData.set("attr_color", "red");
+      formData.set("attr_size", "medium");
+      formData.set("price", "1000");
+      formData.set("currency", "USD");
+      await expect(generateSkuComboAction(formData)).rejects.toThrow(/not authorized/i);
+
+      expect(await catalog.listSkusByProduct(product.id)).toHaveLength(0);
+    });
+
+    it("rejects when there is no session at all", async () => {
+      const product = await catalog.createProduct({
+        slug: "guard-test-sku-combo-null",
+        title: "Guard Test SKU Combo Product Null",
+        description: "x",
+        identifyingAttributeKeys: ["color", "size"],
+      });
+      await catalog.publishProduct(product.id);
+      currentSession = null;
+
+      const formData = new FormData();
+      formData.set("demoSlug", "print-shop");
+      formData.set("productId", product.id);
+      formData.set("attr_color", "red");
+      formData.set("attr_size", "medium");
+      formData.set("price", "1000");
+      formData.set("currency", "USD");
+      await expect(generateSkuComboAction(formData)).rejects.toThrow(/not authorized/i);
+
+      expect(await catalog.listSkusByProduct(product.id)).toHaveLength(0);
     });
   });
 

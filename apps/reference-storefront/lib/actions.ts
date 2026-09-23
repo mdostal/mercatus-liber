@@ -13,6 +13,8 @@ import {
   type AdminRole,
 } from "@mercatus-liber/admin-auth";
 import type { BundleTier, CreateBundleInput } from "@mercatus-liber/bundles";
+import type { AttributeValue, Money } from "@mercatus-liber/core";
+import { InvalidIdentifyingAttributesError } from "@mercatus-liber/catalog";
 import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising";
 import type { ComponentDefinition, ComponentFieldSchema, ComponentInstance, PageType } from "@mercatus-liber/cms";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
@@ -485,6 +487,91 @@ export async function deactivateBundleAction(formData: FormData): Promise<void> 
   const { bundles } = await getServicesForDemo(demoSlug);
   await bundles.deactivateBundle(id);
   revalidatePath(`/demo/${demoSlug}/admin/bundles`);
+}
+
+/**
+ * pc-03: the "admin combination rules" half of the product-configurator
+ * epic's original ask -- lets an admin add a new SKU combination to an
+ * existing product's real SKU matrix. Renders one `attr_<key>` text input
+ * per the product's own real identifyingAttributeKeys (see the SKU-matrix
+ * page component, which reads those keys off the real product and builds
+ * the form), so this parses exactly the keys that product actually declares
+ * -- never a hardcoded color/size pair, since a non-apparel product may use
+ * entirely different keys (see core schema's own IdentifyingAttribute doc
+ * comment).
+ *
+ * Deliberately calls catalog.generateSkus directly rather than
+ * reimplementing any of its validation -- generateSkus already throws
+ * InvalidIdentifyingAttributesError when the submitted key set doesn't
+ * exactly match the product's identifyingAttributeKeys (missing or
+ * unexpected key), and this action's own job is only to surface that as a
+ * legible admin-facing message instead of an unhandled 500: caught here and
+ * redirected back to the SKU-matrix page with `?error=<message>` in the
+ * query string (the page reads it via searchParams and renders it), the
+ * simplest form-plus-redirect mechanism consistent with this file's
+ * existing "plain HTML form -> server action -> redirect" convention (no
+ * new state/flash-message library introduced for this one case).
+ *
+ * valuesByKey is built from whichever `attr_*` fields the submission
+ * actually contains, NOT normalized against product.identifyingAttributeKeys
+ * first -- genuinely forwarding whatever key set was submitted is what lets
+ * generateSkus's own missing/unexpected-key check ever actually fire here
+ * (confirmed live: an earlier version of this action derived the key set
+ * from product.identifyingAttributeKeys directly, which made a real
+ * key-mismatch structurally unreachable through this form -- every
+ * submission trivially "matched" by construction). The rendered form always
+ * emits exactly the right `attr_<key>` fields for a normal admin (see the
+ * SKU-matrix page component), so a real mismatch here only ever comes from
+ * a tampered/stale submission -- exactly the case InvalidIdentifyingAttributesError
+ * exists to catch, never reachable in this app's own honest UI flow.
+ *
+ * Initial stock is optional -- catalog.sku.created already zero-initializes
+ * stock via the inventory subscriber (same as every seed call site, see
+ * lib/seed.ts), so a blank "stock" field simply leaves the new SKU at 0,
+ * exactly like a freshly seeded one; a real value calls inventory.setStock
+ * directly afterward, same "generateSkus then setStock" two-step already
+ * used by lib/seed.ts's own DEMO_MULTI_AXIS_VARIANT_PRODUCTS loop.
+ */
+export async function generateSkuComboAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const productId = String(formData.get("productId") ?? "").trim();
+  const { catalog, inventory } = await getServicesForDemo(demoSlug);
+
+  const product = await catalog.getProduct(productId);
+  if (!product) throw new Error(`No such product: ${productId}`);
+
+  const valuesByKey: Record<string, AttributeValue[]> = {};
+  for (const [name, value] of formData.entries()) {
+    if (!name.startsWith("attr_")) continue;
+    valuesByKey[name.slice("attr_".length)] = [String(value).trim()];
+  }
+  const price: Money = {
+    amount: Number(formData.get("price") ?? 0),
+    currency: String(formData.get("currency") ?? "USD").trim() || "USD",
+  };
+  const stockRaw = String(formData.get("stock") ?? "").trim();
+
+  const matrixPath = `/demo/${demoSlug}/admin/products/${productId}/skus`;
+
+  let created;
+  try {
+    created = await catalog.generateSkus(productId, valuesByKey, price);
+  } catch (err) {
+    const message =
+      err instanceof InvalidIdentifyingAttributesError || err instanceof Error ? err.message : String(err);
+    redirect(`${matrixPath}?error=${encodeURIComponent(message)}`);
+  }
+
+  if (stockRaw.length > 0 && created) {
+    const stock = Number(stockRaw);
+    for (const sku of created) {
+      await inventory.setStock(sku.id, stock);
+    }
+  }
+
+  revalidatePath(matrixPath);
+  redirect(matrixPath);
 }
 
 /**

@@ -23,6 +23,7 @@ export default async function AdminCatalogPage({ params }: { params: Promise<{ d
             <th>ID</th>
             <th>Title</th>
             <th>Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -31,6 +32,9 @@ export default async function AdminCatalogPage({ params }: { params: Promise<{ d
               <td>{product.id}</td>
               <td>{product.title}</td>
               <td>{product.status}</td>
+              <td>
+                <Link href={`/demo/${demoSlug}/admin/products/${product.id}/skus`}>SKU matrix</Link>
+              </td>
             </tr>
           ))}
         </tbody>
