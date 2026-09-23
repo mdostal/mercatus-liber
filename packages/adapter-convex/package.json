@@ -25,11 +25,11 @@
   "dependencies": {
     "@mercatus-liber/core": "workspace:*",
     "@mercatus-liber/marketing-catalog": "workspace:*",
-    "convex": "^1.45.0"
+    "convex": "^1.46.0"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   }
 }
