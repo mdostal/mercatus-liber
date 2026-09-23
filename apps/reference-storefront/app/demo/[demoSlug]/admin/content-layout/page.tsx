@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { isDemoSlug } from "../../../../../lib/demos";
+import { isDemoSlug, listProductsForDemo } from "../../../../../lib/demos";
 import { setPageTemplateAction, updateCmsPageAction } from "../../../../../lib/actions";
 import { getContentLayoutStatus } from "../../../../../lib/content-layout-status";
 import { getServicesForDemo } from "../../../../../lib/services";
@@ -53,7 +53,13 @@ export default async function AdminContentLayoutPage({ params }: { params: Promi
   const homeSlug = `home-${demoSlug}`;
   const homePage = await cms.getPageBySlug(homeSlug);
   const componentTypes = cms.components.list();
-  const [categories, products] = await Promise.all([marketingCatalog.listCategories({ demoSlug }), catalog.listProducts()]);
+  // commerce-gap-audit-3: products scoped to this demo's own Catalog too,
+  // same fix as categories already got -- see lib/demos.ts's
+  // listProductsForDemo doc comment.
+  const [categories, products] = await Promise.all([
+    marketingCatalog.listCategories({ demoSlug }),
+    listProductsForDemo(catalog, demoSlug),
+  ]);
   const categoryOptions = categories.map((c) => ({ value: c.slug, label: `${c.title} (${c.slug})` }));
   const productOptions = products.map((p) => ({ value: p.id, label: `${p.title} (${p.slug})` }));
 

@@ -14,8 +14,10 @@ export function createInMemoryPromotionRepository(): PromotionRepository {
       const promotion = promotions.get(id);
       return promotion ? structuredClone(promotion) : null;
     },
-    async list(): Promise<Promotion[]> {
-      return Array.from(promotions.values()).map((promotion) => structuredClone(promotion));
+    async list(filter?: { demoSlug?: string }): Promise<Promotion[]> {
+      const all = Array.from(promotions.values());
+      const filtered = filter?.demoSlug ? all.filter((promotion) => promotion.demoSlug === filter.demoSlug) : all;
+      return filtered.map((promotion) => structuredClone(promotion));
     },
     async save(promotion: Promotion): Promise<void> {
       promotions.set(promotion.id, structuredClone(promotion));

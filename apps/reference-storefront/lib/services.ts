@@ -633,7 +633,16 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     events,
     pricing: {
       async computeAdjustment(input) {
-        const evaluation = await promotions.evaluate(input);
+        // commerce-gap-audit-3: this demo's own demoSlug (closed over from
+        // this file's per-demo build function) is threaded into evaluate()
+        // so coupon-code lookup only considers THIS demo's promotions --
+        // before this fix, print-shop's and Northline's checkout each
+        // resolved to the same shared Postgres `promotions` table with no
+        // filter at all, so either demo's code was redeemable at the
+        // other's checkout. checkout-orders' own PricingAdjuster interface
+        // is unchanged; demoSlug is added only at this app-composition
+        // boundary.
+        const evaluation = await promotions.evaluate({ ...input, demoSlug });
         if (evaluation.appliedCode && evaluation.appliedPromotionId) {
           promotionIdByAppliedCode.set(evaluation.appliedCode, evaluation.appliedPromotionId);
         }

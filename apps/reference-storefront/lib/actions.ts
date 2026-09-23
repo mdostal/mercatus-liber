@@ -400,7 +400,11 @@ export async function createPromotionAction(formData: FormData): Promise<void> {
   const demoSlug = requireDemoSlug(formData);
   await requireAdminPermission(demoSlug, "mutate");
   const { promotions } = await getServicesForDemo(demoSlug);
-  await promotions.createPromotion(parsePromotionFormData(formData));
+  // commerce-gap-audit-3: stamp this promotion with the demo it was created
+  // from -- without this, an admin-authored coupon code would be
+  // redeemable at every demo's checkout (see Promotion.demoSlug's doc
+  // comment).
+  await promotions.createPromotion({ ...parsePromotionFormData(formData), demoSlug });
   revalidatePath(`/demo/${demoSlug}/admin/promotions`);
   redirect(`/demo/${demoSlug}/admin/promotions`);
 }
@@ -687,7 +691,10 @@ export async function createCampaignAction(formData: FormData): Promise<void> {
   const demoSlug = requireDemoSlug(formData);
   await requireAdminPermission(demoSlug, "mutate");
   const { advertising } = await getServicesForDemo(demoSlug);
-  await advertising.createCampaign(parseCampaignFormData(formData));
+  // commerce-gap-audit-3: stamp this campaign with the demo it was created
+  // from -- without this, an admin-authored campaign would render on every
+  // demo's ad slots (see Campaign.demoSlug's doc comment).
+  await advertising.createCampaign({ ...parseCampaignFormData(formData), demoSlug });
   revalidatePath(`/demo/${demoSlug}/admin/advertising`);
   redirect(`/demo/${demoSlug}/admin/advertising`);
 }

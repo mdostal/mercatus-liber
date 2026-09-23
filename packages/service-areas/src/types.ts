@@ -15,12 +15,28 @@ export interface ServiceArea {
   description: string;
   /** null if this area has no dedicated contact number. */
   phone: string | null;
+  /**
+   * Which demo store this service area belongs to. Optional/additive, same
+   * shape and reason as `Page.demoSlug` (epic 60) and `Category.demoSlug`
+   * (epic 61) -- a real, live gap found by `commerce-gap-audit-3`:
+   * `ServiceAreaRepository.list()` had no demo-scoping concept at all, so
+   * under the shared Postgres backend print-shop and Northline Home Tech
+   * both resolve to, print-shop's own local-pickup service areas (Portland
+   * OR / Austin TX / Chicago IL) and Northline's 8 installer service areas
+   * were returned combined to whichever demo asked -- confirmed live
+   * against commerce.mdostal.com before this fix: print-shop's own
+   * `/locations` page listed all 11 cities from both businesses, and its
+   * nav showed a "Service Areas" link purely because Northline's areas
+   * made `areas.length > 0` true. `undefined`/missing behaves exactly as
+   * before this fix (an unscoped call still sees every area).
+   */
+  demoSlug?: string;
 }
 
 export interface ServiceAreaRepository {
   get(id: string): Promise<ServiceArea | null>;
   getBySlug(slug: string): Promise<ServiceArea | null>;
-  list(): Promise<ServiceArea[]>;
+  list(filter?: { demoSlug?: string }): Promise<ServiceArea[]>;
   save(area: ServiceArea): Promise<void>;
 }
 

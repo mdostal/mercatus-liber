@@ -44,19 +44,23 @@ function createFakePgPool(): FakePool {
         const row = [...serviceAreas.values()].find((a) => a.slug === values[0]);
         return { rows: (row ? [row] : []) as T[] };
       }
+      if (sql === "SELECT * FROM service_areas WHERE demo_slug = $1") {
+        return { rows: [...serviceAreas.values()].filter((a) => a.demo_slug === values[0]) as T[] };
+      }
       if (sql === "SELECT * FROM service_areas") {
         return { rows: [...serviceAreas.values()] as T[] };
       }
       if (sql.startsWith("INSERT INTO service_areas")) {
-        const [id, slug, name, region, description, phone] = values as [
+        const [id, slug, name, region, description, phone, demoSlug] = values as [
           string,
           string,
           string,
           string,
           string,
           string | null,
+          string | null,
         ];
-        serviceAreas.set(id, { id, slug, name, region, description, phone });
+        serviceAreas.set(id, { id, slug, name, region, description, phone, demo_slug: demoSlug });
         return { rows: [] };
       }
 
@@ -154,6 +158,40 @@ describe("createPostgresServiceAreaRepository", () => {
     await serviceAreas.save(royseCity);
     const found = await serviceAreas.get("sa1");
     expect(found?.phone).toBe("555-0100");
+  });
+
+  /**
+   * commerce-gap-audit-3: a real, live finding -- print-shop's own 3
+   * local-pickup service areas and Northline Home Tech's 8 installer
+   * service areas both live in the same shared Postgres `service_areas`
+   * table (both demos resolve the same global DATABASE_URL pool with no
+   * per-demo persistence override configured). An unscoped list() returned
+   * both demos' areas combined -- confirmed live against
+   * commerce.mdostal.com before this fix. Proves the fix: list(filter)
+   * scopes by demo_slug, and an unscoped list() (no filter) still returns
+   * everything -- same shape as categories.test.ts's own demoSlug test.
+   */
+  it("list(filter) scopes by demoSlug -- two demos' service areas never bleed into each other's results", async () => {
+    const printShop: ServiceArea = { ...royseCity, id: "sa-print-shop", slug: "portland-or", demoSlug: "print-shop" };
+    const northline: ServiceArea = { ...royseCity, id: "sa-northline", slug: "cedarbrook-oh", demoSlug: "northline" };
+    await serviceAreas.save(printShop);
+    await serviceAreas.save(northline);
+
+    const printShopOnly = await serviceAreas.list({ demoSlug: "print-shop" });
+    expect(printShopOnly).toEqual([printShop]);
+
+    const northlineOnly = await serviceAreas.list({ demoSlug: "northline" });
+    expect(northlineOnly).toEqual([northline]);
+
+    const everything = await serviceAreas.list();
+    expect(everything.map((a) => a.id).sort()).toEqual(["sa-northline", "sa-print-shop"]);
+  });
+
+  it("round-trips demoSlug through save/get, and omits it entirely when never set (backward compatible)", async () => {
+    await serviceAreas.save(royseCity);
+    const found = await serviceAreas.get("sa1");
+    expect(found?.demoSlug).toBeUndefined();
+    expect(found).not.toHaveProperty("demoSlug");
   });
 });
 

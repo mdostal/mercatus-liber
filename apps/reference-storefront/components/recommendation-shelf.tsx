@@ -169,8 +169,17 @@ export async function resolveCartRecommendations(
  * matches this app's plain-HTML/inline-style conventions (see
  * bundle-tier-selector.tsx). Pure render, no data fetching, same "page
  * resolves data, component renders it" split as BundleTierSelector.
+ *
+ * commerce-gap-audit-3: `demoSlug` is required (not optional) -- a real,
+ * live bug found by browsing all 3 demos: every recommended-product link
+ * was a bare `/products/<slug>` with no `/demo/<demoSlug>` prefix, so
+ * clicking any "Customers also bought" card on ANY demo (PDP or cart) 404'd
+ * against the demo-agnostic root instead of landing on that product's real
+ * page. Every other link this app renders (nav, bundles, ads, CMS
+ * sections) already carries this prefix; this shelf was the one
+ * exception, on every demo, since the epic that first built it.
  */
-export function RecommendationShelf({ label, products }: RecommendationShelfData) {
+export function RecommendationShelf({ demoSlug, label, products }: RecommendationShelfData & { demoSlug: string }) {
   return (
     <section
       style={{
@@ -196,7 +205,7 @@ export function RecommendationShelf({ label, products }: RecommendationShelfData
             }}
           >
             <a
-              href={`/products/${product.slug}`}
+              href={`/demo/${demoSlug}/products/${product.slug}`}
               style={{ textDecoration: "none", color: "inherit", fontSize: "var(--font-size-body, 1rem)" }}
             >
               {product.imageUrl && (

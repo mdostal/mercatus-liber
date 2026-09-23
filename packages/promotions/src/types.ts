@@ -32,12 +32,28 @@ export interface Promotion {
   usageLimit: number | null;
   redemptionCount: number;
   status: PromotionStatus;
+  /**
+   * Which demo store this coupon/promotion belongs to. Optional/additive,
+   * same shape and reason as `Page.demoSlug` (epic 60) and
+   * `Category.demoSlug` (epic 61) -- a real gap found by
+   * `commerce-gap-audit-3`: `PromotionRepository.list()`/
+   * `PromotionsService.evaluate()`'s coupon-code lookup had no demo-scoping
+   * concept at all, so under the shared Postgres backend print-shop and
+   * Northline Home Tech both resolve to, either demo's coupon code was
+   * genuinely redeemable at the OTHER demo's checkout (confirmed by direct
+   * code inspection: both demos seed an unconditional, unscoped
+   * `scope: "cart"` 15%-off code, and `evaluate()`'s `repository.list()`
+   * carried no filter at all before this fix). `undefined`/missing behaves
+   * exactly as before this fix (an unscoped call still sees every
+   * promotion) -- only a `demoSlug`-scoped call is restricted.
+   */
+  demoSlug?: string;
 }
 
 /** Adapter pattern, as everywhere else in this codebase. */
 export interface PromotionRepository {
   get(id: string): Promise<Promotion | null>;
-  list(): Promise<Promotion[]>;
+  list(filter?: { demoSlug?: string }): Promise<Promotion[]>;
   save(promotion: Promotion): Promise<void>;
 }
 
@@ -51,6 +67,13 @@ export interface EvaluateInput {
   items: EvaluateLineItem[];
   /** A supplied code takes precedence over any auto-applied promotion. */
   couponCode?: string | null;
+  /**
+   * Restricts coupon-code lookup and auto-applied-promotion resolution to
+   * this demo (see `Promotion.demoSlug`'s doc comment). Omitted/undefined
+   * considers every promotion regardless of which demo it belongs to,
+   * matching this method's pre-fix behavior.
+   */
+  demoSlug?: string;
 }
 
 /**

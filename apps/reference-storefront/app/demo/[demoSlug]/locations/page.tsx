@@ -9,7 +9,10 @@ export default async function LocationsIndexPage({ params }: { params: Promise<{
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { serviceAreas } = await getServicesForDemo(demoSlug);
-  const areas = await serviceAreas.listServiceAreas();
+  // commerce-gap-audit-3: scoped to this demo's own service areas -- before
+  // this fix, this page listed every demo's cities combined (see
+  // ServiceArea.demoSlug's doc comment).
+  const areas = await serviceAreas.listServiceAreas({ demoSlug });
 
   return (
     <main>

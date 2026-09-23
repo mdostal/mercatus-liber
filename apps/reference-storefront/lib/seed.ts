@@ -929,6 +929,7 @@ async function seedServiceAreas(
     region: "Pacific Northwest",
     description: "Local pickup and delivery for Portland-area customers.",
     phone: "(555) 555-0110",
+    demoSlug: "print-shop",
   });
   const austin = await upsertServiceArea(serviceAreas, {
     slug: "austin-tx",
@@ -936,6 +937,7 @@ async function seedServiceAreas(
     region: "Texas",
     description: "Local pickup and delivery for the Austin area.",
     phone: "(555) 555-0120",
+    demoSlug: "print-shop",
   });
   const chicago = await upsertServiceArea(serviceAreas, {
     slug: "chicago-il",
@@ -943,6 +945,7 @@ async function seedServiceAreas(
     region: "Midwest",
     description: "Local pickup for Chicago-area customers.",
     phone: null,
+    demoSlug: "print-shop",
   });
 
   const toteId = productIdBySlug.get("embroidered-canvas-tote");
@@ -1018,6 +1021,7 @@ async function seedRecommendations(
 async function seedAdvertising(advertising: AdvertisingService, targetedServiceAreaId?: string): Promise<void> {
   await advertising.createCampaign({
     name: "Print Shop Sale",
+    demoSlug: "print-shop",
     startsAt: null,
     endsAt: null,
     targeting: { serviceAreaId: null, pageSlug: null },
@@ -1050,6 +1054,7 @@ async function seedAdvertising(advertising: AdvertisingService, targetedServiceA
 
   await advertising.createCampaign({
     name: "Portland Print Shop Pop-Up",
+    demoSlug: "print-shop",
     startsAt: null,
     endsAt: null,
     targeting: { serviceAreaId: targetedServiceAreaId, pageSlug: null },
@@ -1093,6 +1098,7 @@ const PROMO_CODE = "STITCH15";
 async function seedPromotions(promotions: PromotionsService): Promise<void> {
   await promotions.createPromotion({
     code: PROMO_CODE,
+    demoSlug: "print-shop",
     kind: "percentage",
     scope: "cart",
     value: 15,

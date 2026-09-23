@@ -333,4 +333,56 @@ describe("advertising service", () => {
       expect(result!.creative.id).toBe("negative");
     });
   });
+
+  /**
+   * commerce-gap-audit-3: a real, live finding -- confirmed against
+   * commerce.mdostal.com before this fix, print-shop's own untargeted
+   * "Print Shop Sale" campaign and Northline's own untargeted "Northline
+   * Fall Install Special" campaign both live in the same shared Postgres
+   * `campaigns` table (print-shop and Northline Home Tech both resolve to
+   * the same DATABASE_URL, per lib/services.ts's resolveDemoPersistenceEnv)
+   * -- getActiveCreativeForSlot's repository.list() carried no demo filter
+   * at all, so either demo's untargeted campaign was eligible on the OTHER
+   * demo's ad slots too. Same bug class/fix shape as
+   * @mercatus-liber/marketing-catalog's Category.demoSlug test (epic 61)
+   * and @mercatus-liber/cms's Page.demoSlug test (epic 60).
+   */
+  describe("demo scoping", () => {
+    it("listCampaigns/getActiveCreativeForSlot scope by demoSlug -- two different demos' campaigns never bleed into each other's results", async () => {
+      const printShop = await advertising.createCampaign(
+        campaignInput({
+          name: "Print Shop Sale",
+          demoSlug: "print-shop",
+          creatives: [{ id: "print-shop-1", headline: "Print Shop", body: "B", imageUrl: null, linkHref: "/demo/print-shop" }],
+        }),
+      );
+      const northline = await advertising.createCampaign(
+        campaignInput({
+          name: "Northline Fall Install Special",
+          demoSlug: "northline",
+          creatives: [{ id: "northline-1", headline: "Northline", body: "B", imageUrl: null, linkHref: "/demo/northline" }],
+        }),
+      );
+
+      const printShopCampaigns = await advertising.listCampaigns({ demoSlug: "print-shop" });
+      expect(printShopCampaigns.map((c) => c.id)).toEqual([printShop.id]);
+
+      const northlineCampaigns = await advertising.listCampaigns({ demoSlug: "northline" });
+      expect(northlineCampaigns.map((c) => c.id)).toEqual([northline.id]);
+
+      // The actual live bug: an untargeted campaign rendering on the wrong
+      // demo's ad slot. Deterministic random() so only one entry can win.
+      const printShopSlot = await advertising.getActiveCreativeForSlot({ demoSlug: "print-shop", random: () => 0 });
+      expect(printShopSlot!.campaign.id).toBe(printShop.id);
+
+      const northlineSlot = await advertising.getActiveCreativeForSlot({ demoSlug: "northline", random: () => 0 });
+      expect(northlineSlot!.campaign.id).toBe(northline.id);
+
+      // Unscoped calls (no demoSlug filter) legitimately still see
+      // everything -- backward compatible, matching the precedent's own
+      // "unscoped call still returns everything" guarantee.
+      const everything = await advertising.listCampaigns();
+      expect(everything.map((c) => c.id).sort()).toEqual([printShop.id, northline.id].sort());
+    });
+  });
 });

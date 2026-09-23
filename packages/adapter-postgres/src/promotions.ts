@@ -33,6 +33,15 @@ const PROMOTIONS_DDL = `
     status TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_promotions_code ON promotions(code);
+  -- commerce-gap-audit-3: promotions had no demo-scoping concept at all, so
+  -- under the shared Postgres backend print-shop and Northline Home Tech
+  -- both resolve to, either demo's coupon code was genuinely redeemable at
+  -- the OTHER demo's checkout -- same bug class/fix shape as
+  -- categories.demo_slug (epic 61) and pages.demo_slug (epic 60). Optional/
+  -- additive: ADD COLUMN IF NOT EXISTS is safe against the already-live
+  -- production "promotions" table.
+  ALTER TABLE promotions ADD COLUMN IF NOT EXISTS demo_slug TEXT;
+  CREATE INDEX IF NOT EXISTS idx_promotions_demo_slug ON promotions(demo_slug);
 `;
 
 interface PromotionRow {
@@ -54,6 +63,7 @@ interface PromotionRow {
   usage_limit: number | null;
   redemption_count: number;
   status: string;
+  demo_slug: string | null;
 }
 
 function toIsoOrNull(value: Date | null): string | null {
@@ -75,6 +85,7 @@ function rowToPromotion(row: PromotionRow): Promotion {
     usageLimit: row.usage_limit,
     redemptionCount: row.redemption_count,
     status: row.status as Promotion["status"],
+    ...(row.demo_slug ? { demoSlug: row.demo_slug } : {}),
   };
 }
 
@@ -100,9 +111,11 @@ export function createPostgresPromotionRepository(pool: Pool): PromotionReposito
       const result = await pool.query<PromotionRow>("SELECT * FROM promotions WHERE id = $1", [id]);
       return result.rows[0] ? rowToPromotion(result.rows[0]) : null;
     },
-    async list(): Promise<Promotion[]> {
+    async list(filter?: { demoSlug?: string }): Promise<Promotion[]> {
       await ready;
-      const result = await pool.query<PromotionRow>("SELECT * FROM promotions");
+      const result = filter?.demoSlug
+        ? await pool.query<PromotionRow>("SELECT * FROM promotions WHERE demo_slug = $1", [filter.demoSlug])
+        : await pool.query<PromotionRow>("SELECT * FROM promotions");
       return result.rows.map(rowToPromotion);
     },
     async save(promotion: Promotion): Promise<void> {
@@ -110,9 +123,9 @@ export function createPostgresPromotionRepository(pool: Pool): PromotionReposito
       await pool.query(
         `INSERT INTO promotions (
            id, code, kind, scope, value, currency, target_sku_ids, min_cart_amount,
-           starts_at, ends_at, usage_limit, redemption_count, status
+           starts_at, ends_at, usage_limit, redemption_count, status, demo_slug
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          ON CONFLICT (id) DO UPDATE SET
            code = EXCLUDED.code,
            kind = EXCLUDED.kind,
@@ -125,7 +138,8 @@ export function createPostgresPromotionRepository(pool: Pool): PromotionReposito
            ends_at = EXCLUDED.ends_at,
            usage_limit = EXCLUDED.usage_limit,
            redemption_count = EXCLUDED.redemption_count,
-           status = EXCLUDED.status`,
+           status = EXCLUDED.status,
+           demo_slug = EXCLUDED.demo_slug`,
         [
           promotion.id,
           promotion.code,
@@ -140,6 +154,7 @@ export function createPostgresPromotionRepository(pool: Pool): PromotionReposito
           promotion.usageLimit,
           promotion.redemptionCount,
           promotion.status,
+          promotion.demoSlug ?? null,
         ],
       );
     },

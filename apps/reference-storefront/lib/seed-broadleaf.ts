@@ -623,6 +623,7 @@ async function seedSubcategories(
 async function seedPromotions(promotions: PromotionsService): Promise<void> {
   await promotions.createPromotion({
     code: BLOOM_PROMO_CODE,
+    demoSlug: "broadleaf",
     kind: "percentage",
     scope: "cart",
     value: BLOOM_PROMO_PERCENT_OFF,
@@ -717,6 +718,7 @@ async function seedRecommendations(
 async function seedMarketingCampaign(advertising: AdvertisingService): Promise<void> {
   await advertising.createCampaign({
     name: "Broadleaf Bloom Sale",
+    demoSlug: "broadleaf",
     startsAt: null,
     endsAt: null,
     targeting: { serviceAreaId: null, pageSlug: null },

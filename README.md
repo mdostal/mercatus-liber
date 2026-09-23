@@ -5,19 +5,27 @@ Saleor/etc. -- headless, AI-agent-accessible, and built to be stood up with a si
 
 A free, MIT-licensed, headless commerce framework: schema-first product/SKU catalog with
 pluggable database adapters, a **marketing catalog genuinely separate from the sales
-catalog** (the gap no existing free/OSS commerce platform actually fills), a per-page CMS
-instead of forced whole-site theming, a long-lived cart, adapter-based payments (Stripe first),
-analytics on by default (PostHog, config-swappable), and a plugin system for everything else
-(OMS, fulfillment, notifications).
+catalog** (the gap no existing free/OSS commerce platform actually fills), a real interactive
+multi-axis product configurator (e.g. color x size) resolving to real per-combination
+price/stock server-side, a per-page CMS instead of forced whole-site theming, a long-lived
+cart, adapter-based payments (Stripe first), analytics on by default (PostHog,
+config-swappable), and a plugin system for everything else (OMS, fulfillment, notifications).
 
 Built as an **AI *and* human commerce tool from the ground up** — every capability exposed to a
 human storefront/admin UI is equally exposed to AI agents via a documented skills/tool catalog
 and an MCP server, calling the exact same subsystem interfaces. No shadow API, no reduced
 agent-only surface.
 
-**Status:** pre-alpha — core-foundation epic underway (`@mercatus-liber/core` schema +
-`@mercatus-liber/adapter-sqlite` done; catalog/cart/payments/checkout-orders/reference-storefront
-in progress). See `.pHive/planning/epic-backlog.md` for the full build-out backlog.
+**Status (updated 2026-09-22):** far past the original core-foundation stage this paragraph
+used to describe — the full commerce loop (catalog, marketing catalog, search, PDP, CMS, cart,
+checkout, Stripe payments, orders, accounts, inventory, plugins) is done, four real reference
+persistence adapters exist (SQLite, Postgres, MongoDB, Convex, plus a Shopify commerce-backend
+adapter), admin auth/promotions/bundles/recommendations/advertising/reviews/internal-BI/
+fulfillment/shipping/SEO are all real and shipped, and three genuinely distinct, live demo
+stores (`print-shop`, `northline`, `broadleaf`) run in production at `commerce.mdostal.com`
+today, two of them on different real database backends (Postgres and Convex). See
+`.pHive/planning/epic-backlog.md` for the full, currently 63-epic build-out backlog and
+`VISION.md` for a narrative "where things stand today."
 
 ## Why
 Evaluated against every serious free/OSS option (Medusa, Saleor, Vendure, Spree/Solidus,
@@ -32,7 +40,7 @@ here to consume.
 
 ## Read next
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — design principles, subsystem map, repo shape.
-- [`docs/subsystems/`](docs/subsystems/) — one doc per subsystem (15 total), each covering
+- [`docs/subsystems/`](docs/subsystems/) — one doc per subsystem (26 total), each covering
   purpose, dependencies, responsibilities, explicit non-responsibilities, and open questions.
 - [`docs/NAMING-CANDIDATES.md`](docs/NAMING-CANDIDATES.md) — naming history (decided: Mercatus Liber).
 

@@ -1,6 +1,7 @@
 import type { AdvertisingService } from "@mercatus-liber/advertising";
 import type { BundlesService } from "@mercatus-liber/bundles";
 import type { CatalogService } from "@mercatus-liber/catalog";
+import type { Product } from "@mercatus-liber/core";
 import type { CmsService } from "@mercatus-liber/cms";
 import type { InventoryAdapter } from "@mercatus-liber/inventory";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
@@ -49,6 +50,56 @@ export function isDemoSlug(value: string): value is DemoSlug {
  * `params.demoSlug`, never this constant.
  */
 export const DEFAULT_DEMO_SLUG: DemoSlug = "print-shop";
+
+/**
+ * The real, named `Catalog` entity slug each demo's own seed function
+ * assigns every one of its products to (see `full-commerce-persistence-
+ * audit`'s `@mercatus-liber/catalog` `catalog-entity.ts` and each of
+ * `lib/seed.ts`/`seed-northline.ts`/`seed-broadleaf.ts`'s own
+ * `seedRealCatalog` -- every real product is genuinely assigned via
+ * `catalog.assignProductToCatalog`). Previously this map only existed
+ * privately inside `lib/reset-demo-data.ts` (for scoping its own deletes);
+ * exported here so `listProductsForDemo` below and any other real caller
+ * can resolve the same demo -> catalog-slug mapping without duplicating it.
+ */
+export const DEMO_CATALOG_SLUG: Record<DemoSlug, string> = {
+  "print-shop": "the-print-shop",
+  northline: "northline-home-tech",
+  broadleaf: "broadleaf-and-co",
+};
+
+/**
+ * commerce-gap-audit-3: a real, live gap -- `CatalogService.listProducts()`
+ * has no demo-scoping concept (unlike `marketingCatalog.listCategories()`/
+ * `cms.listPages()`, both scoped by `demoSlug` per epics 60/61), so under
+ * the shared Postgres backend print-shop and Northline Home Tech both
+ * resolve to, every real call site that used the raw, unscoped
+ * `catalog.listProducts()` for a specific demo (the sitemap's per-demo
+ * product entries, and 5 separate admin product-picker dropdowns) actually
+ * listed EVERY demo's products, not just that demo's own -- confirmed live:
+ * print-shop's `/sitemap.xml` carried real `/demo/print-shop/products/
+ * <northline-product-slug>` entries for every one of Northline's products
+ * too, submitting broken URLs to search engines (the PDP route resolves by
+ * demoSlug+slug together, so these 404). Rather than adding a parallel
+ * `demoSlug` field to `Product` (a second, competing scoping mechanism next
+ * to the real, already-built, already-populated `Catalog` entity every
+ * demo's own products are genuinely assigned to), this resolves each
+ * demo's own `Catalog` by its real slug (`DEMO_CATALOG_SLUG` above) and
+ * calls the already-existing but never-actually-called-from-a-real-route
+ * `CatalogService.listProductsInCatalog(catalogId)` -- the exact
+ * "resolveSelection built, tested, but never wired up" pattern this audit
+ * was asked to look for, just for a different function.
+ */
+export async function listProductsForDemo(
+  catalog: CatalogService,
+  demoSlug: DemoSlug,
+  filter?: { status?: Product["status"] },
+): Promise<Product[]> {
+  const demoCatalog = await catalog.getCatalogBySlug(DEMO_CATALOG_SLUG[demoSlug]);
+  if (!demoCatalog) return [];
+  const products = await catalog.listProductsInCatalog(demoCatalog.id);
+  return filter?.status ? products.filter((product) => product.status === filter.status) : products;
+}
 
 /**
  * The full set of already-constructed services a demo's seed function might

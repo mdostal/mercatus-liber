@@ -39,6 +39,10 @@ function createFakePromotionsPool(): FakePool {
         return { rows: (row ? [row] : []) as T[] };
       }
 
+      if (sql === "SELECT * FROM promotions WHERE demo_slug = $1") {
+        return { rows: [...promotions.values()].filter((p) => p.demo_slug === values[0]) as T[] };
+      }
+
       if (sql === "SELECT * FROM promotions") {
         return { rows: [...promotions.values()] as T[] };
       }
@@ -58,6 +62,7 @@ function createFakePromotionsPool(): FakePool {
           usageLimit,
           redemptionCount,
           status,
+          demoSlug,
         ] = values as [
           string,
           string | null,
@@ -72,6 +77,7 @@ function createFakePromotionsPool(): FakePool {
           number | null,
           number,
           string,
+          string | null,
         ];
         promotions.set(id, {
           id,
@@ -93,6 +99,7 @@ function createFakePromotionsPool(): FakePool {
           usage_limit: usageLimit,
           redemption_count: redemptionCount,
           status,
+          demo_slug: demoSlug,
         });
         return { rows: [] };
       }
@@ -199,5 +206,40 @@ describe("createPostgresPromotionRepository", () => {
     expect(found?.redemptionCount).toBe(4);
     expect(found?.status).toBe("inactive");
     expect(await promotions.list()).toHaveLength(1);
+  });
+
+  /**
+   * commerce-gap-audit-3: a real, live-reachable finding -- print-shop and
+   * Northline Home Tech both resolve to the same shared Postgres
+   * `promotions` table (both demos resolve the same global DATABASE_URL
+   * pool with no per-demo persistence override configured). An unscoped
+   * list() returned both demos' coupon codes combined, and
+   * PromotionsService.evaluate()'s coupon lookup (which calls list() under
+   * the hood) let either demo's real code be redeemed at the OTHER demo's
+   * checkout. Proves the fix: list(filter) scopes by demo_slug, and an
+   * unscoped list() (no filter) still returns everything -- same shape as
+   * categories.test.ts's/advertising.test.ts's own demoSlug tests.
+   */
+  it("list(filter) scopes by demoSlug -- two demos' promotions never bleed into each other's results", async () => {
+    const printShop: Promotion = { ...summerSale, id: "promo-print-shop", code: "STITCH15", demoSlug: "print-shop" };
+    const northline: Promotion = { ...summerSale, id: "promo-northline", code: "NORTHLINE15", demoSlug: "northline" };
+    await promotions.save(printShop);
+    await promotions.save(northline);
+
+    const printShopOnly = await promotions.list({ demoSlug: "print-shop" });
+    expect(printShopOnly).toEqual([printShop]);
+
+    const northlineOnly = await promotions.list({ demoSlug: "northline" });
+    expect(northlineOnly).toEqual([northline]);
+
+    const everything = await promotions.list();
+    expect(everything.map((p) => p.id).sort()).toEqual(["promo-northline", "promo-print-shop"]);
+  });
+
+  it("round-trips demoSlug through save/get, and omits it entirely when never set (backward compatible)", async () => {
+    await promotions.save(summerSale);
+    const found = await promotions.get("promo1");
+    expect(found?.demoSlug).toBeUndefined();
+    expect(found).not.toHaveProperty("demoSlug");
   });
 });

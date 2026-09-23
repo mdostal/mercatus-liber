@@ -5,6 +5,15 @@ import type { Campaign, CampaignRepository, CreateCampaignInput, Creative } from
 export interface GetActiveCreativeForSlotInput {
   pageSlug?: string;
   serviceAreaId?: string;
+  /**
+   * Restricts eligible campaigns to this demo (see `Campaign.demoSlug`'s
+   * doc comment for why this exists). Omitted/undefined considers every
+   * campaign regardless of which demo it belongs to, matching this
+   * method's pre-fix behavior -- callers that render more than one demo's
+   * worth of ad slots (i.e. every real caller today, since print-shop and
+   * Northline Home Tech share one Postgres backend) must pass this.
+   */
+  demoSlug?: string;
   /** Defaults to `new Date()`. Injectable so date-range eligibility is deterministically testable. */
   now?: Date;
   /** Defaults to `Math.random`. Injectable so the weighted-random pick is deterministically testable -- see design-discussion.md §3. */
@@ -20,7 +29,7 @@ export interface ActiveCreativeResult {
 export interface AdvertisingService {
   createCampaign(input: CreateCampaignInput): Promise<Campaign>;
   getCampaign(id: string): Promise<Campaign | null>;
-  listCampaigns(): Promise<Campaign[]>;
+  listCampaigns(filter?: { demoSlug?: string }): Promise<Campaign[]>;
   /** Merges the given fields into an existing campaign; null if no campaign has this id. Id is never overwritten. Re-validates the merged campaign exactly as createCampaign does. */
   updateCampaign(id: string, input: Partial<CreateCampaignInput>): Promise<Campaign | null>;
   deactivateCampaign(id: string): Promise<Campaign | null>;
@@ -118,8 +127,8 @@ export function createAdvertisingService(deps: { repository: CampaignRepository 
       return repository.get(id);
     },
 
-    async listCampaigns(): Promise<Campaign[]> {
-      return repository.list();
+    async listCampaigns(filter?: { demoSlug?: string }): Promise<Campaign[]> {
+      return repository.list(filter);
     },
 
     async updateCampaign(id: string, input: Partial<CreateCampaignInput>): Promise<Campaign | null> {
@@ -148,7 +157,7 @@ export function createAdvertisingService(deps: { repository: CampaignRepository 
       const now = input.now ?? new Date();
       const random = input.random ?? Math.random;
 
-      const campaigns = await repository.list();
+      const campaigns = await repository.list(input.demoSlug ? { demoSlug: input.demoSlug } : undefined);
       const eligibleCampaigns = campaigns.filter((campaign) =>
         isEligible(campaign, { pageSlug: input.pageSlug, serviceAreaId: input.serviceAreaId, now }),
       );

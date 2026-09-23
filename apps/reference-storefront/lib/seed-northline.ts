@@ -631,6 +631,7 @@ const NORTHLINE_PROMO_CODE = "NORTHLINE15";
 async function seedPromotions(promotions: PromotionsService): Promise<void> {
   await promotions.createPromotion({
     code: NORTHLINE_PROMO_CODE,
+    demoSlug: "northline",
     kind: "percentage",
     scope: "cart",
     value: 15,
@@ -724,6 +725,7 @@ async function seedRecommendations(recommendations: RecommendationsService, prod
 async function seedAdvertising(advertising: AdvertisingService): Promise<void> {
   await advertising.createCampaign({
     name: "Northline Fall Install Special",
+    demoSlug: "northline",
     startsAt: null,
     endsAt: null,
     targeting: { serviceAreaId: null, pageSlug: null },
@@ -1073,7 +1075,14 @@ export async function seedNorthlineDemo(
 
   const areas = await Promise.all(
     DEMO_SERVICE_AREAS.map((area) =>
-      upsertServiceArea(serviceAreas, { slug: area.slug, name: area.name, region: area.region, description: `Local installation service for ${area.name}.`, phone: area.phone }),
+      upsertServiceArea(serviceAreas, {
+        slug: area.slug,
+        name: area.name,
+        region: area.region,
+        description: `Local installation service for ${area.name}.`,
+        phone: area.phone,
+        demoSlug: "northline",
+      }),
     ),
   );
 

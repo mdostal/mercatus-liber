@@ -14,8 +14,10 @@ export function createInMemoryCampaignRepository(): CampaignRepository {
       const campaign = campaigns.get(id);
       return campaign ? structuredClone(campaign) : null;
     },
-    async list(): Promise<Campaign[]> {
-      return Array.from(campaigns.values()).map((campaign) => structuredClone(campaign));
+    async list(filter?: { demoSlug?: string }): Promise<Campaign[]> {
+      const all = Array.from(campaigns.values());
+      const filtered = filter?.demoSlug ? all.filter((campaign) => campaign.demoSlug === filter.demoSlug) : all;
+      return filtered.map((campaign) => structuredClone(campaign));
     },
     async save(campaign: Campaign): Promise<void> {
       campaigns.set(campaign.id, structuredClone(campaign));
