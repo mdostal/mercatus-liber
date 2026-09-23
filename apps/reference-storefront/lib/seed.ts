@@ -929,6 +929,7 @@ async function seedServiceAreas(
     region: "Pacific Northwest",
     description: "Local pickup and delivery for Portland-area customers.",
     phone: "(555) 555-0110",
+    demoSlug: "print-shop",
   });
   const austin = await upsertServiceArea(serviceAreas, {
     slug: "austin-tx",
@@ -936,6 +937,7 @@ async function seedServiceAreas(
     region: "Texas",
     description: "Local pickup and delivery for the Austin area.",
     phone: "(555) 555-0120",
+    demoSlug: "print-shop",
   });
   const chicago = await upsertServiceArea(serviceAreas, {
     slug: "chicago-il",
@@ -943,6 +945,7 @@ async function seedServiceAreas(
     region: "Midwest",
     description: "Local pickup for Chicago-area customers.",
     phone: null,
+    demoSlug: "print-shop",
   });
 
   const toteId = productIdBySlug.get("embroidered-canvas-tote");

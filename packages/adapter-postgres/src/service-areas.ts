@@ -20,12 +20,14 @@ export interface ServiceArea {
   region: string;
   description: string;
   phone: string | null;
+  /** commerce-gap-audit-3: see @mercatus-liber/service-areas' ServiceArea.demoSlug doc comment. */
+  demoSlug?: string;
 }
 
 export interface ServiceAreaRepository {
   get(id: string): Promise<ServiceArea | null>;
   getBySlug(slug: string): Promise<ServiceArea | null>;
-  list(): Promise<ServiceArea[]>;
+  list(filter?: { demoSlug?: string }): Promise<ServiceArea[]>;
   save(area: ServiceArea): Promise<void>;
 }
 
@@ -43,6 +45,7 @@ interface ServiceAreaRow {
   region: string;
   description: string;
   phone: string | null;
+  demo_slug: string | null;
 }
 
 interface AssignmentRow {
@@ -74,6 +77,15 @@ CREATE TABLE IF NOT EXISTS service_area_product_assignments (
   PRIMARY KEY (product_id, service_area_id)
 );
 CREATE INDEX IF NOT EXISTS idx_sapa_service_area_id ON service_area_product_assignments(service_area_id);
+-- commerce-gap-audit-3: service_areas had no demo-scoping concept at all, so
+-- under the shared Postgres backend print-shop and Northline Home Tech both
+-- resolve to, print-shop's own /locations page and nav showed all 11
+-- cities from both businesses combined -- same bug class/fix shape as
+-- categories.demo_slug (epic 61) and pages.demo_slug (epic 60). Optional/
+-- additive: ADD COLUMN IF NOT EXISTS is safe against the already-live
+-- production "service_areas" table.
+ALTER TABLE service_areas ADD COLUMN IF NOT EXISTS demo_slug TEXT;
+CREATE INDEX IF NOT EXISTS idx_service_areas_demo_slug ON service_areas(demo_slug);
 `;
 
 function rowToServiceArea(row: ServiceAreaRow): ServiceArea {
@@ -84,6 +96,7 @@ function rowToServiceArea(row: ServiceAreaRow): ServiceArea {
     region: row.region,
     description: row.description,
     phone: row.phone,
+    ...(row.demo_slug ? { demoSlug: row.demo_slug } : {}),
   };
 }
 
@@ -107,23 +120,26 @@ export function createPostgresServiceAreaRepository(pool: Pool): ServiceAreaRepo
       const result = await pool.query<ServiceAreaRow>("SELECT * FROM service_areas WHERE slug = $1", [slug]);
       return result.rows[0] ? rowToServiceArea(result.rows[0]) : null;
     },
-    async list(): Promise<ServiceArea[]> {
+    async list(filter?: { demoSlug?: string }): Promise<ServiceArea[]> {
       await ready;
-      const result = await pool.query<ServiceAreaRow>("SELECT * FROM service_areas");
+      const result = filter?.demoSlug
+        ? await pool.query<ServiceAreaRow>("SELECT * FROM service_areas WHERE demo_slug = $1", [filter.demoSlug])
+        : await pool.query<ServiceAreaRow>("SELECT * FROM service_areas");
       return result.rows.map(rowToServiceArea);
     },
     async save(area: ServiceArea): Promise<void> {
       await ready;
       await pool.query(
-        `INSERT INTO service_areas (id, slug, name, region, description, phone)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO service_areas (id, slug, name, region, description, phone, demo_slug)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (id) DO UPDATE SET
            slug = EXCLUDED.slug,
            name = EXCLUDED.name,
            region = EXCLUDED.region,
            description = EXCLUDED.description,
-           phone = EXCLUDED.phone`,
-        [area.id, area.slug, area.name, area.region, area.description, area.phone],
+           phone = EXCLUDED.phone,
+           demo_slug = EXCLUDED.demo_slug`,
+        [area.id, area.slug, area.name, area.region, area.description, area.phone, area.demoSlug ?? null],
       );
     },
   };

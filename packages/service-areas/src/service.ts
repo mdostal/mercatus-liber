@@ -8,13 +8,15 @@ export interface NewServiceAreaInput {
   region: string;
   description: string;
   phone: string | null;
+  /** See `ServiceArea.demoSlug`'s doc comment in types.ts for why this exists. */
+  demoSlug?: string;
 }
 
 export interface ServiceAreaService {
   createServiceArea(input: NewServiceAreaInput): Promise<ServiceArea>;
   getServiceArea(id: string): Promise<ServiceArea | null>;
   getServiceAreaBySlug(slug: string): Promise<ServiceArea | null>;
-  listServiceAreas(): Promise<ServiceArea[]>;
+  listServiceAreas(filter?: { demoSlug?: string }): Promise<ServiceArea[]>;
 
   assignProductToServiceArea(productId: string, serviceAreaId: string): Promise<void>;
   unassignProductFromServiceArea(productId: string, serviceAreaId: string): Promise<void>;
@@ -43,6 +45,7 @@ export function createServiceAreaService(deps: {
         region: input.region,
         description: input.description,
         phone: input.phone,
+        ...(input.demoSlug !== undefined ? { demoSlug: input.demoSlug } : {}),
       };
       await areas.save(area);
       return area;
@@ -56,8 +59,8 @@ export function createServiceAreaService(deps: {
       return areas.getBySlug(slug);
     },
 
-    async listServiceAreas() {
-      return areas.list();
+    async listServiceAreas(filter) {
+      return areas.list(filter);
     },
 
     async assignProductToServiceArea(productId, serviceAreaId) {

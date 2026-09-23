@@ -78,4 +78,50 @@ describe("service area service", () => {
   it("throws ServiceAreaNotFoundError when assigning to a nonexistent service area", async () => {
     await expect(serviceAreas.assignProductToServiceArea("prod-4", "missing")).rejects.toThrow(ServiceAreaNotFoundError);
   });
+
+  /**
+   * commerce-gap-audit-3: a real, live finding -- confirmed against
+   * commerce.mdostal.com before this fix, print-shop's own 3 local-pickup
+   * service areas (Portland OR / Austin TX / Chicago IL) and Northline
+   * Home Tech's 8 installer service areas both live in the same shared
+   * Postgres `service_areas` table (both demos resolve the same
+   * DATABASE_URL pool with no per-demo persistence override configured) --
+   * listServiceAreas() carried no demo filter at all, so print-shop's own
+   * `/locations` page listed all 11 cities from both businesses combined,
+   * and its nav showed a "Service Areas" link purely because Northline's
+   * areas existed. Same bug class/fix shape as
+   * @mercatus-liber/marketing-catalog's Category.demoSlug test (epic 61)
+   * and @mercatus-liber/cms's Page.demoSlug test (epic 60).
+   */
+  describe("demo scoping", () => {
+    it("listServiceAreas scopes by demoSlug -- two demos' service areas never bleed into each other's results", async () => {
+      const portland = await serviceAreas.createServiceArea({
+        slug: "portland-or",
+        name: "Portland, OR",
+        region: "Pacific Northwest",
+        description: "",
+        phone: null,
+        demoSlug: "print-shop",
+      });
+      const cedarbrook = await serviceAreas.createServiceArea({
+        slug: "cedarbrook-oh",
+        name: "Cedarbrook, OH",
+        region: "Midwest",
+        description: "",
+        phone: null,
+        demoSlug: "northline",
+      });
+
+      const printShopAreas = await serviceAreas.listServiceAreas({ demoSlug: "print-shop" });
+      expect(printShopAreas.map((a) => a.id)).toEqual([portland.id]);
+
+      const northlineAreas = await serviceAreas.listServiceAreas({ demoSlug: "northline" });
+      expect(northlineAreas.map((a) => a.id)).toEqual([cedarbrook.id]);
+
+      // Unscoped listServiceAreas() (no demoSlug filter) legitimately still
+      // returns every demo's areas -- backward compatible.
+      const everything = await serviceAreas.listServiceAreas();
+      expect(everything.map((a) => a.id).sort()).toEqual([portland.id, cedarbrook.id].sort());
+    });
+  });
 });

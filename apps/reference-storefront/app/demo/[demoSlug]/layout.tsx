@@ -119,7 +119,14 @@ async function buildNavLinks(demoSlug: DemoSlug): Promise<Array<{ href: string; 
     links.push({ href: `/demo/${demoSlug}/category/${category.slug}`, label: category.title });
   }
 
-  const areas = await serviceAreas.listServiceAreas();
+  // commerce-gap-audit-3: real, live finding -- ServiceAreaRepository.list()
+  // had no demo-scoping concept at all, same bug class as the
+  // categories/CMS-pages fix just above/below in this same file. Confirmed
+  // live before this fix: print-shop's nav showed a "Service Areas" link
+  // purely because Northline's 8 areas (a completely different business)
+  // made this unscoped call's length > 0, and print-shop's own
+  // `/locations` page listed all 11 cities from both businesses combined.
+  const areas = await serviceAreas.listServiceAreas({ demoSlug });
   if (areas.length > 0) {
     links.push({ href: `/demo/${demoSlug}/locations`, label: "Service Areas" });
   }

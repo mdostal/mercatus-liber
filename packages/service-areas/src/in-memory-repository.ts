@@ -13,8 +13,10 @@ export function createInMemoryServiceAreaRepository(): ServiceAreaRepository {
       }
       return null;
     },
-    async list() {
-      return [...areas.values()].map((a) => structuredClone(a));
+    async list(filter?: { demoSlug?: string }) {
+      const all = [...areas.values()];
+      const filtered = filter?.demoSlug ? all.filter((a) => a.demoSlug === filter.demoSlug) : all;
+      return filtered.map((a) => structuredClone(a));
     },
     async save(area) {
       areas.set(area.id, structuredClone(area));

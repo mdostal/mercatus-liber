@@ -1075,7 +1075,14 @@ export async function seedNorthlineDemo(
 
   const areas = await Promise.all(
     DEMO_SERVICE_AREAS.map((area) =>
-      upsertServiceArea(serviceAreas, { slug: area.slug, name: area.name, region: area.region, description: `Local installation service for ${area.name}.`, phone: area.phone }),
+      upsertServiceArea(serviceAreas, {
+        slug: area.slug,
+        name: area.name,
+        region: area.region,
+        description: `Local installation service for ${area.name}.`,
+        phone: area.phone,
+        demoSlug: "northline",
+      }),
     ),
   );
 
