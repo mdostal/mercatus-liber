@@ -24,15 +24,18 @@ describe("seeded marketing catalog + search", () => {
     const embroideryProductIds = await marketingCatalog.listProductIdsInCategory(embroidery!.id);
     // Original 3 (tote, cap, hoodie) + demo-store-catalog-depth's 7 new
     // embroidered products (zip pouch, luggage tag, baby onesie, canvas
-    // apron, quarter-zip pullover, kids' tee, iron-on patch set).
-    expect(embroideryProductIds).toHaveLength(10);
+    // apron, quarter-zip pullover, kids' tee, iron-on patch set) +
+    // product-configurator's 1 new 2-axis product (Embroidered Performance
+    // Polo, lib/seed.ts's DEMO_MULTI_AXIS_VARIANT_PRODUCTS).
+    expect(embroideryProductIds).toHaveLength(11);
 
     const apparel = await marketingCatalog.getCategoryBySlug("apparel");
     const apparelProductIds = await marketingCatalog.listProductIdsInCategory(apparel!.id);
     // Original 2 (hoodie, tee) + demo-store-catalog-depth's 5 new apparel
     // products (baby onesie, canvas apron, quarter-zip pullover, kids' tee,
-    // screen-printed sweatshirt).
-    expect(apparelProductIds).toHaveLength(7);
+    // screen-printed sweatshirt) + product-configurator's 1 new 2-axis
+    // product (Embroidered Performance Polo).
+    expect(apparelProductIds).toHaveLength(8);
 
     const hoodie = await catalog.getProductBySlug("embroidered-fleece-hoodie");
     expect(embroideryProductIds).toContain(hoodie!.id);
@@ -50,11 +53,13 @@ describe("seeded marketing catalog + search", () => {
     const results = await search.query({ text: "embroidered" });
     expect(results.length).toBeGreaterThanOrEqual(4);
     const titles = results.map((r) => r.title).sort();
-    // Original 4 + demo-store-catalog-depth's 7 new products whose title
-    // literally says "Embroidered" (see lib/seed.ts's DEMO_PRODUCTS/
-    // DEMO_VARIANT_PRODUCTS doc comments) -- the woven (non-embroidered)
-    // patch set is deliberately excluded here, proving this is a real
-    // substring match, not "everything in the embroidery category".
+    // Original 4 + demo-store-catalog-depth's 7 new products + product-
+    // configurator's 1 new 2-axis product, all with a title that literally
+    // says "Embroidered" (see lib/seed.ts's DEMO_PRODUCTS/
+    // DEMO_VARIANT_PRODUCTS/DEMO_MULTI_AXIS_VARIANT_PRODUCTS doc comments) --
+    // the woven (non-embroidered) patch set is deliberately excluded here,
+    // proving this is a real substring match, not "everything in the
+    // embroidery category".
     expect(titles).toEqual([
       "Embroidered Baby Onesie",
       "Embroidered Canvas Apron",
@@ -64,6 +69,7 @@ describe("seeded marketing catalog + search", () => {
       "Embroidered Fleece Hoodie",
       "Embroidered Iron-On Patch Set (Set of 3)",
       "Embroidered Luggage Tag",
+      "Embroidered Performance Polo",
       "Embroidered Quarter-Zip Pullover",
       "Embroidered Zip Pouch",
       "Kids' Embroidered Tee",

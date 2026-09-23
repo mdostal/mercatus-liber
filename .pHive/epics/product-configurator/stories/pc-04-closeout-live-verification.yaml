@@ -1,0 +1,40 @@
+id: pc-04-closeout-live-verification
+epic: product-configurator
+title: Live-verify, deploy, close out the epic
+status: pending
+complexity: low
+methodology: classic
+depends_on: [pc-02-multi-axis-seed-product, pc-03-admin-sku-matrix]
+
+description: |
+  Run the full monorepo check, merge feat/product-configurator to master, push to origin
+  (this repo is genuinely public on GitHub -- pushing every merge is a hard, standing
+  rule), deploy apps/reference-storefront (npx vercel@latest deploy --prod --yes),
+  live-verify on real production URLs: pick the new multi-axis product's real PDP on
+  commerce.mdostal.com, select a real combination via the picker, confirm price/stock
+  update and Add to cart adds the exactly-resolved SKU to a real cart, confirm the admin
+  SKU-matrix view is live and functional, confirm every other product/demo is unaffected.
+  Add a new row 63 to .pHive/planning/epic-backlog.md with the real, final, live-verified
+  outcome, citing real commit hashes.
+
+acceptance_criteria:
+  - "Given the full monorepo check, when run, then it's clean"
+  - "Given the new multi-axis product's live PDP, when a real combination is selected and added to cart, then the cart line matches the exactly-resolved SKU, verified live on commerce.mdostal.com"
+  - "Given the admin SKU-matrix view, when visited live post-deploy, then it renders and functions correctly"
+  - "Given every other existing product/demo, when visited live post-deploy, then each is unaffected by this epic"
+  - "Given epic-backlog.md, when read after this story, then a new row 63 reflects the real, complete, live-verified outcome"
+
+steps:
+  - id: implement
+    description: Merge, push, deploy, live-verify, update the backlog.
+    agent: developer
+  - id: integrate
+    description: Final commit + push.
+    agent: developer
+    depends_on: [implement]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "New row 63 -- the closeout target"

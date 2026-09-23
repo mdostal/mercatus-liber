@@ -1,0 +1,47 @@
+id: pc-02-multi-axis-seed-product
+epic: product-configurator
+title: A real 2+-axis seeded variant product to demo the picker against
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+
+description: |
+  Every existing seeded multi-SKU product (apps/reference-storefront/lib/seed.ts's
+  DEMO_VARIANT_PRODUCTS) varies on only one axis in practice -- identifyingAttributeKeys is
+  ["color", "size"] but every tier of a given product shares the same fixed color, so no
+  product today actually has 2+ distinct values on 2+ axes at once. Add at least one real
+  product, in at least one demo (print-shop is the natural fit -- it already owns the
+  color+size convention), with genuine 2-axis variance (e.g. 2 colors x 3 sizes = 6 real
+  SKUs, each with its own real price/stock), so pc-01's picker is demoed against data that
+  actually proves the "pick color AND size, get the one matching SKU" claim.
+
+  Must use the existing idempotent-seed pattern (upsertProduct, check-by-slug before
+  create) already used by every other product in this file -- never an unconditional
+  create that would duplicate on repeat seed runs / serverless cold starts.
+
+acceptance_criteria:
+  - "Given the updated seed data, when seeded against a real backend, then at least one product has 2+ distinct values on 2+ identifying-attribute keys, with a real SKU (price+stock) for each real combination"
+  - "Given a repeat seed run against an already-seeded backend, when it runs again, then zero duplicate products/SKUs are created (idempotent, matching every other product in this file)"
+  - "Given the new product's PDP, when rendered with pc-01's picker, then selecting each real combination resolves to its own distinct price/stock"
+
+steps:
+  - id: implement
+    description: Add a real 2+-axis seeded variant product using the existing idempotent pattern.
+    agent: developer
+  - id: test
+    description: Live-verify against a real backend -- seed twice, confirm no duplicates; confirm each combination resolves correctly.
+    agent: tester
+    depends_on: [implement]
+  - id: integrate
+    description: Commit to feat/product-configurator.
+    agent: developer
+    depends_on: [test]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/seed.ts
+      purpose: "DEMO_VARIANT_PRODUCTS -- the existing single-axis-in-practice pattern to extend"
+    - path: apps/reference-storefront/lib/idempotent-seed.ts
+      purpose: "upsertProduct -- the required idempotent pattern"

@@ -1,7 +1,9 @@
+import type { Sku } from "@mercatus-liber/core";
 import type { PdpViewModel } from "@mercatus-liber/pdp";
 import { addToCartAction, submitReviewAction } from "../lib/actions";
 import type { DemoSlug } from "../lib/demos";
 import { readActiveThemeBundle } from "../lib/theme-cookie";
+import { VariantPicker } from "./variant-picker";
 
 /** "★★★★☆"-style rendering of a rating (rounded to the nearest whole star), same convention as pdp-tabbed-detail.tsx's own ratingStars. */
 function ratingStars(value: number): string {
@@ -26,6 +28,9 @@ type PdpLongScrollProps = {
   ratingSummary?: PdpReviewSummary | null;
   /** bare-basics epic: same additive/optional published-reviews prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   reviews?: PdpReview[];
+  /** pc-01: same additive/optional resolved-SKU/selection props as pdp-tabbed-detail.tsx -- see that component's doc comment. Threaded through to both the shared branch below and EditorialPdpLongScroll. */
+  activeSku?: Sku;
+  optionSelection?: Record<string, string>;
 };
 
 /**
@@ -55,6 +60,8 @@ export async function PdpLongScroll({
   imageAlt = null,
   ratingSummary = null,
   reviews = [],
+  activeSku,
+  optionSelection,
 }: PdpLongScrollProps) {
   const activeTheme = await readActiveThemeBundle(demoSlug);
   if (activeTheme.key === "editorial") {
@@ -68,11 +75,14 @@ export async function PdpLongScroll({
         imageAlt={imageAlt}
         ratingSummary={ratingSummary}
         reviews={reviews}
+        activeSku={activeSku}
+        optionSelection={optionSelection}
       />
     );
   }
 
   const { product, skus, optionValues } = viewModel;
+  const basePath = `/demo/${demoSlug}/products/${product.slug}`;
 
   return (
     <main>
@@ -110,59 +120,115 @@ export async function PdpLongScroll({
       </ul>
 
       <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Buy</h2>
-      {skus.map((sku) => (
-        <form
-          action={addToCartAction}
-          key={sku.id}
-          style={{
-            marginBottom: "var(--space-sm, 16px)",
-            borderTop: "1px solid var(--color-border, #e5e5e5)",
-            paddingTop: "var(--space-xs, 8px)",
-          }}
-        >
-          <input type="hidden" name="demoSlug" value={demoSlug} />
-          <input type="hidden" name="skuId" value={sku.id} />
-          <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
-            {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}
-          </div>
-          <div style={{ fontSize: "var(--font-size-body, 1rem)" }}>
-            Price: {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
-          </div>
-          <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
-            {stockBySkuId[sku.id] == null ? "Available" : `In stock: ${stockBySkuId[sku.id]}`}
-          </div>
-          <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
-          {customizable && (
-            <div style={{ marginTop: "var(--space-xs, 8px)" }}>
-              <label
-                htmlFor={`customizationNote-${sku.id}`}
-                style={{ display: "block", fontSize: "var(--font-size-body, 1rem)", color: "var(--color-muted, #666)" }}
-              >
-                Personalize this item (e.g. embroidery text, thread color)
-              </label>
-              <input
-                id={`customizationNote-${sku.id}`}
-                type="text"
-                name="customizationNote"
-                placeholder="e.g. Text: Sarah -- thread color: navy"
-                style={{ width: "100%", maxWidth: 360 }}
-              />
-            </div>
-          )}
-          <button
-            type="submit"
+      {skus.length > 1 && activeSku ? (
+        <>
+          <VariantPicker basePath={basePath} optionValues={optionValues} selection={optionSelection ?? {}} />
+          <form
+            action={addToCartAction}
             style={{
-              background: "var(--color-primary)",
-              color: "var(--color-background)",
-              borderRadius: "var(--radius)",
-              border: "none",
-              padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+              marginBottom: "var(--space-sm, 16px)",
+              borderTop: "1px solid var(--color-border, #e5e5e5)",
+              paddingTop: "var(--space-xs, 8px)",
             }}
           >
-            Add to cart
-          </button>
-        </form>
-      ))}
+            <input type="hidden" name="demoSlug" value={demoSlug} />
+            <input type="hidden" name="skuId" value={activeSku.id} />
+            <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+              {activeSku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}
+            </div>
+            <div style={{ fontSize: "var(--font-size-body, 1rem)" }}>
+              Price: {(activeSku.price.amount / 100).toFixed(2)} {activeSku.price.currency}
+            </div>
+            <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+              {stockBySkuId[activeSku.id] == null ? "Available" : `In stock: ${stockBySkuId[activeSku.id]}`}
+            </div>
+            <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
+            {customizable && (
+              <div style={{ marginTop: "var(--space-xs, 8px)" }}>
+                <label
+                  htmlFor={`customizationNote-${activeSku.id}`}
+                  style={{ display: "block", fontSize: "var(--font-size-body, 1rem)", color: "var(--color-muted, #666)" }}
+                >
+                  Personalize this item (e.g. embroidery text, thread color)
+                </label>
+                <input
+                  id={`customizationNote-${activeSku.id}`}
+                  type="text"
+                  name="customizationNote"
+                  placeholder="e.g. Text: Sarah -- thread color: navy"
+                  style={{ width: "100%", maxWidth: 360 }}
+                />
+              </div>
+            )}
+            <button
+              type="submit"
+              style={{
+                background: "var(--color-primary)",
+                color: "var(--color-background)",
+                borderRadius: "var(--radius)",
+                border: "none",
+                padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+              }}
+            >
+              Add to cart
+            </button>
+          </form>
+        </>
+      ) : (
+        skus.map((sku) => (
+          <form
+            action={addToCartAction}
+            key={sku.id}
+            style={{
+              marginBottom: "var(--space-sm, 16px)",
+              borderTop: "1px solid var(--color-border, #e5e5e5)",
+              paddingTop: "var(--space-xs, 8px)",
+            }}
+          >
+            <input type="hidden" name="demoSlug" value={demoSlug} />
+            <input type="hidden" name="skuId" value={sku.id} />
+            <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+              {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}
+            </div>
+            <div style={{ fontSize: "var(--font-size-body, 1rem)" }}>
+              Price: {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
+            </div>
+            <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
+              {stockBySkuId[sku.id] == null ? "Available" : `In stock: ${stockBySkuId[sku.id]}`}
+            </div>
+            <input type="number" name="quantity" defaultValue={1} min={1} style={{ width: 48 }} />{" "}
+            {customizable && (
+              <div style={{ marginTop: "var(--space-xs, 8px)" }}>
+                <label
+                  htmlFor={`customizationNote-${sku.id}`}
+                  style={{ display: "block", fontSize: "var(--font-size-body, 1rem)", color: "var(--color-muted, #666)" }}
+                >
+                  Personalize this item (e.g. embroidery text, thread color)
+                </label>
+                <input
+                  id={`customizationNote-${sku.id}`}
+                  type="text"
+                  name="customizationNote"
+                  placeholder="e.g. Text: Sarah -- thread color: navy"
+                  style={{ width: "100%", maxWidth: 360 }}
+                />
+              </div>
+            )}
+            <button
+              type="submit"
+              style={{
+                background: "var(--color-primary)",
+                color: "var(--color-background)",
+                borderRadius: "var(--radius)",
+                border: "none",
+                padding: "var(--space-xs, 8px) var(--space-sm, 16px)",
+              }}
+            >
+              Add to cart
+            </button>
+          </form>
+        ))
+      )}
 
       <h2 style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>Reviews</h2>
       {reviews.length > 0 ? (
@@ -264,8 +330,15 @@ function EditorialPdpLongScroll({
   imageAlt,
   ratingSummary,
   reviews,
-}: Required<Omit<PdpLongScrollProps, "viewModel">> & { viewModel: PdpViewModel }) {
+  activeSku,
+  optionSelection,
+}: Required<Omit<PdpLongScrollProps, "viewModel" | "activeSku" | "optionSelection">> & {
+  viewModel: PdpViewModel;
+  activeSku?: Sku;
+  optionSelection?: Record<string, string>;
+}) {
   const { product, skus, optionValues } = viewModel;
+  const basePath = `/demo/${demoSlug}/products/${product.slug}`;
   const firstWord = product.description.trim().slice(0, 1);
   const restOfDescription = product.description.trim().slice(1);
 
@@ -353,45 +426,92 @@ function EditorialPdpLongScroll({
             {restOfDescription}
           </p>
 
-          {skus.map((sku) => {
-            const stock = stockBySkuId[sku.id];
-            const isLow = typeof stock === "number" && stock > 0 && stock <= 3;
-            return (
-              <form action={addToCartAction} key={sku.id} className="ed-sku-block">
-                <input type="hidden" name="demoSlug" value={demoSlug} />
-                <input type="hidden" name="skuId" value={sku.id} />
-                {sku.identifyingAttributes.length > 0 && (
-                  <div className="ed-sku-attrs">{sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}</div>
-                )}
-                <div className="ed-sku-price">
-                  {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
-                </div>
-                <div className={`ed-sku-stock${isLow ? " ed-low" : ""}`}>
-                  {stock == null ? "Available" : stock > 0 ? `In stock: ${stock}` : "Out of stock"}
-                </div>
-                <input type="number" name="quantity" defaultValue={1} min={1} className="ed-qty-input" />
-                {customizable && (
-                  <div>
-                    <label className="ed-personalize-label" htmlFor={`customizationNote-${sku.id}`}>
-                      Personalize this item (e.g. embroidery text, thread color)
-                    </label>
-                    <input
-                      id={`customizationNote-${sku.id}`}
-                      type="text"
-                      name="customizationNote"
-                      placeholder="e.g. Text: Sarah -- thread color: navy"
-                      className="ed-personalize-input"
-                    />
+          {skus.length > 1 && activeSku ? (
+            <>
+              <VariantPicker basePath={basePath} optionValues={optionValues} selection={optionSelection ?? {}} />
+              {(() => {
+                const stock = stockBySkuId[activeSku.id];
+                const isLow = typeof stock === "number" && stock > 0 && stock <= 3;
+                return (
+                  <form action={addToCartAction} className="ed-sku-block">
+                    <input type="hidden" name="demoSlug" value={demoSlug} />
+                    <input type="hidden" name="skuId" value={activeSku.id} />
+                    {activeSku.identifyingAttributes.length > 0 && (
+                      <div className="ed-sku-attrs">
+                        {activeSku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}
+                      </div>
+                    )}
+                    <div className="ed-sku-price">
+                      {(activeSku.price.amount / 100).toFixed(2)} {activeSku.price.currency}
+                    </div>
+                    <div className={`ed-sku-stock${isLow ? " ed-low" : ""}`}>
+                      {stock == null ? "Available" : stock > 0 ? `In stock: ${stock}` : "Out of stock"}
+                    </div>
+                    <input type="number" name="quantity" defaultValue={1} min={1} className="ed-qty-input" />
+                    {customizable && (
+                      <div>
+                        <label className="ed-personalize-label" htmlFor={`customizationNote-${activeSku.id}`}>
+                          Personalize this item (e.g. embroidery text, thread color)
+                        </label>
+                        <input
+                          id={`customizationNote-${activeSku.id}`}
+                          type="text"
+                          name="customizationNote"
+                          placeholder="e.g. Text: Sarah -- thread color: navy"
+                          className="ed-personalize-input"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <button type="submit" className="ed-btn-add">
+                        Add to cart
+                      </button>
+                    </div>
+                  </form>
+                );
+              })()}
+            </>
+          ) : (
+            skus.map((sku) => {
+              const stock = stockBySkuId[sku.id];
+              const isLow = typeof stock === "number" && stock > 0 && stock <= 3;
+              return (
+                <form action={addToCartAction} key={sku.id} className="ed-sku-block">
+                  <input type="hidden" name="demoSlug" value={demoSlug} />
+                  <input type="hidden" name="skuId" value={sku.id} />
+                  {sku.identifyingAttributes.length > 0 && (
+                    <div className="ed-sku-attrs">{sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}</div>
+                  )}
+                  <div className="ed-sku-price">
+                    {(sku.price.amount / 100).toFixed(2)} {sku.price.currency}
                   </div>
-                )}
-                <div>
-                  <button type="submit" className="ed-btn-add">
-                    Add to cart
-                  </button>
-                </div>
-              </form>
-            );
-          })}
+                  <div className={`ed-sku-stock${isLow ? " ed-low" : ""}`}>
+                    {stock == null ? "Available" : stock > 0 ? `In stock: ${stock}` : "Out of stock"}
+                  </div>
+                  <input type="number" name="quantity" defaultValue={1} min={1} className="ed-qty-input" />
+                  {customizable && (
+                    <div>
+                      <label className="ed-personalize-label" htmlFor={`customizationNote-${sku.id}`}>
+                        Personalize this item (e.g. embroidery text, thread color)
+                      </label>
+                      <input
+                        id={`customizationNote-${sku.id}`}
+                        type="text"
+                        name="customizationNote"
+                        placeholder="e.g. Text: Sarah -- thread color: navy"
+                        className="ed-personalize-input"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <button type="submit" className="ed-btn-add">
+                      Add to cart
+                    </button>
+                  </div>
+                </form>
+              );
+            })
+          )}
         </div>
       </div>
 

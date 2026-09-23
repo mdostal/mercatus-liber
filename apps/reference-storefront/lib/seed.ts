@@ -488,10 +488,99 @@ const DEMO_VARIANT_PRODUCTS: DemoVariantProduct[] = [
   },
 ];
 
+interface DemoColorSizeVariant {
+  /** Becomes the SKU's "color" identifying attribute -- e.g. "navy" / "charcoal-heather". */
+  color: string;
+  /** Becomes the SKU's "size" identifying attribute -- e.g. "small" / "medium" / "large". */
+  size: string;
+  /** Human label for the combination (PDP-facing, mirrors DemoProductTier.label). */
+  label: string;
+  priceCents: number;
+  stockUnits: number;
+}
+
 /**
- * Reads the "is this product customizable" flag straight off DEMO_PRODUCTS
- * and DEMO_VARIANT_PRODUCTS above (the single source of truth for the seed
- * data's customizable tag -- see DemoProduct's doc comment) so the PDP
+ * product-configurator epic (pc-02): a real 2-axis variant product -- unlike
+ * DEMO_VARIANT_PRODUCTS above, where `color` is held fixed across every tier
+ * of a given product (only `size` actually varies per generateSkus call, so
+ * identifyingAttributeKeys' declared ["color", "size"] is never genuinely
+ * exercised on both axes at once by any real product), this array's products
+ * vary on BOTH color and size for real. Same "one generateSkus call per real
+ * combination" pattern as DemoVariantProduct's tiers (mirrors
+ * lib/seed-broadleaf.ts's Trailing Pothos precedent), just keyed by
+ * (color, size) pairs instead of size alone, so each of the real combinations
+ * gets its own distinct price/stock -- proving pc-01's variant picker
+ * actually resolves "pick color AND size, get the one matching SKU" against
+ * real seeded data rather than a product where one axis is cosmetic.
+ */
+interface DemoMultiAxisVariantProduct {
+  slug: string;
+  title: string;
+  description: string;
+  categorySlugs: string[];
+  customizable: boolean;
+  variants: DemoColorSizeVariant[];
+  /**
+   * image-cdn epic: one real, topically-matched LoremFlickr photo shared
+   * across every color/size combination of this product (see
+   * DemoProduct.images's doc comment above -- images live on the shared
+   * Product, not per-variant/SKU).
+   */
+  images: { url: string; alt: string }[];
+}
+
+/**
+ * product-configurator epic (pc-02): one real embroidered polo in 2 real
+ * colorways (navy, charcoal-heather) x 3 real sizes (small, medium, large) =
+ * 6 real SKUs, each with its own distinct real price and stock level --
+ * larger sizes cost more fabric (a real, common upcharge), and the heathered
+ * colorway costs slightly more than solid navy (a real heathered-fabric
+ * premium), so all 6 combinations land on genuinely distinct price points,
+ * not just distinct SKU ids.
+ */
+const DEMO_MULTI_AXIS_VARIANT_PRODUCTS: DemoMultiAxisVariantProduct[] = [
+  {
+    slug: "embroidered-performance-polo",
+    title: "Embroidered Performance Polo",
+    description:
+      "A moisture-wicking pique-knit polo with a three-button placket, embroidered on the left chest with your text or a small custom design -- available in two colorways and three sizes.",
+    categorySlugs: ["embroidery", "apparel"],
+    customizable: true,
+    variants: [
+      { color: "navy", size: "small", label: "Navy / Small", priceCents: 4200, stockUnits: 18 },
+      { color: "navy", size: "medium", label: "Navy / Medium", priceCents: 4400, stockUnits: 24 },
+      { color: "navy", size: "large", label: "Navy / Large", priceCents: 4600, stockUnits: 16 },
+      {
+        color: "charcoal-heather",
+        size: "small",
+        label: "Charcoal Heather / Small",
+        priceCents: 4300,
+        stockUnits: 14,
+      },
+      {
+        color: "charcoal-heather",
+        size: "medium",
+        label: "Charcoal Heather / Medium",
+        priceCents: 4500,
+        stockUnits: 20,
+      },
+      {
+        color: "charcoal-heather",
+        size: "large",
+        label: "Charcoal Heather / Large",
+        priceCents: 4700,
+        stockUnits: 10,
+      },
+    ],
+    images: [{ url: "https://loremflickr.com/800/600/polo,embroidery?lock=1", alt: "Embroidered pique-knit polo shirt on a hanger" }],
+  },
+];
+
+/**
+ * Reads the "is this product customizable" flag straight off DEMO_PRODUCTS,
+ * DEMO_VARIANT_PRODUCTS, and DEMO_MULTI_AXIS_VARIANT_PRODUCTS above (the
+ * single source of truth for the seed data's customizable tag -- see
+ * DemoProduct's doc comment) so the PDP
  * (app/demo/[demoSlug]/products/[slug]/page.tsx) can decide whether to show
  * the personalization input without re-declaring the flag anywhere else.
  * Returns false for any slug not in these print-shop-specific arrays (e.g. a
@@ -500,7 +589,8 @@ const DEMO_VARIANT_PRODUCTS: DemoVariantProduct[] = [
  */
 export function isCustomizableProduct(slug: string): boolean {
   if (DEMO_PRODUCTS.some((product) => product.slug === slug && product.customizable)) return true;
-  return DEMO_VARIANT_PRODUCTS.some((product) => product.slug === slug && product.customizable);
+  if (DEMO_VARIANT_PRODUCTS.some((product) => product.slug === slug && product.customizable)) return true;
+  return DEMO_MULTI_AXIS_VARIANT_PRODUCTS.some((product) => product.slug === slug && product.customizable);
 }
 
 interface ServiceDemoSku {
@@ -1382,6 +1472,43 @@ export async function seedCatalog(
         // the inventory subscriber -- this sets the real seeded stock level.
         for (const sku of skus) {
           await inventory.setStock(sku.id, tier.stockUnits);
+        }
+      }
+    }
+
+    for (const categorySlug of demo.categorySlugs) {
+      const categoryId = categoryIdBySlug.get(categorySlug);
+      if (categoryId) await marketingCatalog.assignProductToCategory(product.id, categoryId);
+    }
+  }
+
+  // product-configurator epic (pc-02): the one real 2-axis (color AND size)
+  // variant product -- one generateSkus call per real (color, size)
+  // combination so each of the 6 real combinations gets its own real
+  // price/stock, same idempotent isNew-gated pattern as DEMO_VARIANT_PRODUCTS
+  // above (never regenerated on a re-run against an already-seeded backend).
+  for (const demo of DEMO_MULTI_AXIS_VARIANT_PRODUCTS) {
+    const { product, isNew } = await upsertProduct(catalog, {
+      slug: demo.slug,
+      title: demo.title,
+      description: demo.description,
+      identifyingAttributeKeys: ["color", "size"],
+      images: demo.images,
+    });
+    productIdBySlug.set(demo.slug, product.id);
+    await catalog.publishProduct(product.id);
+
+    if (isNew) {
+      for (const variant of demo.variants) {
+        const skus = await catalog.generateSkus(
+          product.id,
+          { color: [variant.color], size: [variant.size] },
+          { amount: variant.priceCents, currency: "USD" },
+        );
+        // catalog.sku.created already initialized each SKU at onHand=0 via
+        // the inventory subscriber -- this sets the real seeded stock level.
+        for (const sku of skus) {
+          await inventory.setStock(sku.id, variant.stockUnits);
         }
       }
     }
