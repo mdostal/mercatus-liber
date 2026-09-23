@@ -14,10 +14,10 @@
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "turbo": "^2.10.12",
+    "@types/node": "^22.7.5",
+    "turbo": "^2.11.2",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0",
-    "@types/node": "^22.7.5"
+    "vitest": "^5.0.1"
   },
   "packageManager": "pnpm@11.22.0"
 }

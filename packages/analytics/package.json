@@ -23,11 +23,11 @@
   },
   "dependencies": {
     "@mercatus-liber/core": "workspace:*",
-    "posthog-node": "^5.51.7"
+    "posthog-node": "^5.52.5"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   }
 }
