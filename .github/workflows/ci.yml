@@ -25,10 +25,14 @@ jobs:
         with:
           version: 11.22.0
 
+      # pnpm@11.22.0 (pinned above) requires Node >=22.13 to even start --
+      # it shells out to a `node:sqlite` builtin that doesn't exist on Node 20,
+      # crashing before `pnpm install` can run. Confirmed by a real failed run:
+      # https://github.com/mdostal/mercatus-liber/actions/runs/35843263553
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: pnpm
 
       - name: Cache turbo

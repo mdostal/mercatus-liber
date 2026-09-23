@@ -22,7 +22,8 @@ tooling — not generic boilerplate.
 ## Development setup
 
 This is a pnpm workspace monorepo (`pnpm-workspace.yaml`: `packages/*` + `apps/*`), built with
-[Turborepo](https://turbo.build). Requirements: Node >= 20, pnpm (the repo pins
+[Turborepo](https://turbo.build). Requirements: Node >= 22.13 (pnpm@11.22.0, the version this repo
+pins, requires it — an older Node crashes before `pnpm install` can even run), pnpm (the repo pins
 `packageManager: pnpm@11.22.0` in `package.json` — use that version via `corepack`).
 
 ```
