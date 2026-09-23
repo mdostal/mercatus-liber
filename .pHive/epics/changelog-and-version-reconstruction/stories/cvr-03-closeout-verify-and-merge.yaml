@@ -1,0 +1,65 @@
+id: cvr-03-closeout-verify-and-merge
+epic: changelog-and-version-reconstruction
+title: Verify the full monorepo build, confirm no deploy is needed, merge and push, close out the epic
+status: pending
+complexity: low
+methodology: classic
+depends_on: [cvr-02-write-changelog-and-bump-version]
+
+description: |
+  Run the full monorepo check (`pnpm turbo run typecheck test build --force`) and confirm it
+  is clean -- this epic changes zero application code, so this is a real regression guard
+  (confirming the two touched files, CHANGELOG.md and package.json, didn't somehow break
+  anything, e.g. a build step that reads package.json's version), not busywork.
+
+  Re-verify live (don't trust this epic's own design-discussion.md §3c finding uncritically)
+  that `package.json`'s version isn't surfaced anywhere a shopper/admin/developer would
+  actually see it: grep `apps/reference-storefront` and `apps/docs` for any reference to
+  `package.json`'s version field (`packageJson`, `pkg.version`, `process.env.npm_package_version`,
+  or a hardcoded `"0.6.1"`-shaped literal), and specifically check `/architecture`,
+  `/admin/settings` (`lib/adapter-info.ts`), and `app/icon.tsx` since those were the surfaces
+  this design discussion already checked once. If this re-check finds the version genuinely is
+  surfaced live somewhere, a production deploy is required and this story does it
+  (`npx vercel@latest deploy --prod --yes`, matching `framework-brand-system` bs-04's own
+  precedent) and live-verifies the new version renders correctly. If (as expected) nothing live
+  references it, explicitly document that finding and skip the deploy -- this is
+  docs/metadata-only, and this repo's own established convention (this session's other epics)
+  only deploys when a live-facing surface actually changed.
+
+  Merge `feat/changelog-and-version-reconstruction` to `master` and push to origin (this repo
+  is genuinely public on GitHub -- pushing every merge is a hard, standing rule, per
+  `framework-brand-system` bs-04's own precedent). Add one new row to
+  `.pHive/planning/epic-backlog.md` for this epic itself (following this repo's own
+  established closeout convention -- e.g. the most recent commit on `master`,
+  `9b53ab4 docs(epic-backlog): add row 64 -- commerce-gap-audit-3 closeout` -- this is adding
+  this epic's own row, not correcting anyone else's, so it doesn't conflict with finding 9's
+  own "don't edit epic-backlog.md" scope boundary, which was specifically about not correcting
+  a different, already-existing row).
+
+acceptance_criteria:
+  - "Given the full monorepo check, when run after this epic's changes, then it is clean (typecheck/test/build all green)"
+  - "Given a live-surface grep for package.json's version field, when re-run by this story (not assumed from the design discussion), then its result (found or not found) is explicitly recorded, and a deploy happens if and only if it was found"
+  - "Given feat/changelog-and-version-reconstruction, when this story ends, then it is merged to master and master is pushed to origin"
+  - "Given .pHive/planning/epic-backlog.md, when read after this story, then it has exactly one new row for this epic (changelog-and-version-reconstruction), citing real commit hashes and the final version number reached"
+  - "Given the entire epic's diff (all 3 stories combined), when reviewed, then it touches only CHANGELOG.md, package.json, this epic's own .pHive/epics/changelog-and-version-reconstruction/ files, and the one new epic-backlog.md row -- zero files under apps/ or packages/"
+
+steps:
+  - id: implement
+    description: Run the full monorepo check, re-verify no live surface references the version, merge to master, push, add the epic-backlog.md closeout row.
+    agent: developer
+  - id: integrate
+    description: Final commit + push.
+    agent: developer
+    depends_on: [implement]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "This epic's own closeout row goes here, following the row-64 precedent"
+    - path: package.json
+      purpose: "Final version value this story confirms matches CHANGELOG.md's last header"
+    - path: "apps/reference-storefront/app/(landing)/architecture/page.tsx"
+      purpose: "One of the live surfaces re-checked for a version reference (confirmed clean during planning; re-verify, don't assume)"
+    - path: apps/reference-storefront/lib/adapter-info.ts
+      purpose: "Backs /admin/settings -- the other live surface re-checked for a version reference"
