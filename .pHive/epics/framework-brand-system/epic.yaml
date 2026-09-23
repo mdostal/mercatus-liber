@@ -1,0 +1,23 @@
+name: framework-brand-system
+title: A real visual identity for the Mercatus Liber framework (landing page + docs site + favicon)
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: none
+
+stories:
+  - id: bs-01-brand-system-tokens
+    title: Real brand-system.yaml + visual HTML brand guide
+    complexity: low
+    depends_on: []
+  - id: bs-02-landing-page-brand
+    title: Apply the brand system to the framework landing page
+    complexity: medium
+    depends_on: [bs-01-brand-system-tokens]
+  - id: bs-03-docs-site-and-favicon
+    title: Apply the brand system to the docs site + ship a real favicon
+    complexity: medium
+    depends_on: [bs-01-brand-system-tokens]
+  - id: bs-04-closeout-live-verification
+    title: Live-verify both surfaces, deploy, close out the epic
+    complexity: low
+    depends_on: [bs-02-landing-page-brand, bs-03-docs-site-and-favicon]
