@@ -35,11 +35,14 @@ function createFakeAdvertisingPool(): FakePool {
         const row = campaigns.get(values[0] as string);
         return { rows: (row ? [row] : []) as T[] };
       }
+      if (sql === "SELECT * FROM campaigns WHERE demo_slug = $1") {
+        return { rows: [...campaigns.values()].filter((c) => c.demo_slug === values[0]) as T[] };
+      }
       if (sql === "SELECT * FROM campaigns") {
         return { rows: [...campaigns.values()] as T[] };
       }
       if (sql.startsWith("INSERT INTO campaigns")) {
-        const [id, name, status, startsAt, endsAt, targeting, creatives] = values as [
+        const [id, name, status, startsAt, endsAt, targeting, creatives, demoSlug] = values as [
           string,
           string,
           string,
@@ -47,6 +50,7 @@ function createFakeAdvertisingPool(): FakePool {
           string | null,
           string,
           string,
+          string | null,
         ];
         campaigns.set(id, {
           id,
@@ -58,6 +62,7 @@ function createFakeAdvertisingPool(): FakePool {
           // for the driver -- mirrored here.
           targeting: JSON.parse(targeting),
           creatives: JSON.parse(creatives),
+          demo_slug: demoSlug,
         });
         return { rows: [] };
       }
@@ -190,5 +195,40 @@ describe("createPostgresCampaignRepository", () => {
     expect(found?.creatives).toHaveLength(3);
     expect(found?.creatives[2].id).toBe("cr-3");
     expect(await campaigns.list()).toHaveLength(1);
+  });
+
+  /**
+   * commerce-gap-audit-3: a real, live finding -- print-shop and Northline
+   * Home Tech both resolve to the same shared Postgres `campaigns` table
+   * (both demos resolve the same global DATABASE_URL pool with no per-demo
+   * persistence override configured). An unscoped list() returned both
+   * demos' campaigns combined, and getActiveCreativeForSlot (which calls
+   * list() under the hood) let either demo's untargeted campaign render on
+   * the OTHER demo's ad slots -- confirmed live against
+   * commerce.mdostal.com before this fix. Proves the fix: list(filter)
+   * scopes by demo_slug, and an unscoped list() (no filter) still returns
+   * everything -- same shape as categories.test.ts's own demoSlug test.
+   */
+  it("list(filter) scopes by demoSlug -- two demos' campaigns never bleed into each other's results", async () => {
+    const printShop: Campaign = { ...springSale, id: "camp-print-shop", name: "Print Shop Sale", demoSlug: "print-shop" };
+    const northline: Campaign = { ...springSale, id: "camp-northline", name: "Northline Fall Install Special", demoSlug: "northline" };
+    await campaigns.save(printShop);
+    await campaigns.save(northline);
+
+    const printShopOnly = await campaigns.list({ demoSlug: "print-shop" });
+    expect(printShopOnly).toEqual([printShop]);
+
+    const northlineOnly = await campaigns.list({ demoSlug: "northline" });
+    expect(northlineOnly).toEqual([northline]);
+
+    const everything = await campaigns.list();
+    expect(everything.map((c) => c.id).sort()).toEqual(["camp-northline", "camp-print-shop"]);
+  });
+
+  it("round-trips demoSlug through save/get, and omits it entirely when never set (backward compatible)", async () => {
+    await campaigns.save(springSale);
+    const found = await campaigns.get("camp-1");
+    expect(found?.demoSlug).toBeUndefined();
+    expect(found).not.toHaveProperty("demoSlug");
   });
 });

@@ -25,7 +25,11 @@ export default async function AdminAdvertisingPage({ params }: { params: Promise
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { advertising } = await getServicesForDemo(demoSlug);
-  const campaigns = await advertising.listCampaigns();
+  // commerce-gap-audit-3: scoped to this demo's own campaigns, matching the
+  // same demo-scoping fix already applied to /admin/cms (epic 60) and
+  // categories (epic 61) -- an unscoped list() showed every demo's
+  // campaigns mixed together under the shared Postgres backend.
+  const campaigns = await advertising.listCampaigns({ demoSlug });
 
   return (
     <main>

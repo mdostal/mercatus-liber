@@ -10,7 +10,11 @@ export default async function AdminPromotionsPage({ params }: { params: Promise<
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { promotions } = await getServicesForDemo(demoSlug);
-  const allPromotions = await promotions.listPromotions();
+  // commerce-gap-audit-3: scoped to this demo's own promotions, matching
+  // the same demo-scoping fix already applied to /admin/cms (epic 60) and
+  // categories (epic 61) -- an unscoped list() showed every demo's
+  // promotions mixed together under the shared Postgres backend.
+  const allPromotions = await promotions.listPromotions({ demoSlug });
 
   return (
     <main>

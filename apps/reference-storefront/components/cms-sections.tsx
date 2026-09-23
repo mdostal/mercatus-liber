@@ -134,7 +134,14 @@ async function AdSlot({
   serviceAreaId?: string;
 }) {
   const { advertising } = await getServicesForDemo(demoSlug);
-  const result = await advertising.getActiveCreativeForSlot({ pageSlug, serviceAreaId });
+  // commerce-gap-audit-3: demoSlug was already threaded into this component
+  // but never actually passed to getActiveCreativeForSlot -- under the
+  // shared Postgres backend print-shop and Northline Home Tech both resolve
+  // to, that meant every untargeted campaign (seeded by every demo) was
+  // eligible on every OTHER demo's ad slots too. Confirmed live before this
+  // fix: Northline's "Whole-Home WiFi Mesh Installs" creative rendering on
+  // print-shop's own home page.
+  const result = await advertising.getActiveCreativeForSlot({ pageSlug, serviceAreaId, demoSlug });
   if (!result) return null;
 
   const { creative } = result;

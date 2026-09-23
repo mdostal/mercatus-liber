@@ -293,4 +293,49 @@ describe("promotions service", () => {
       expect(redeemedEvents).toHaveLength(0);
     });
   });
+
+  /**
+   * commerce-gap-audit-3: a real, live-reachable finding -- print-shop and
+   * Northline Home Tech both resolve to the same shared Postgres backend
+   * (per lib/services.ts's resolveDemoPersistenceEnv), and until this fix
+   * `evaluate()`'s coupon-code lookup carried no demo filter at all, so
+   * print-shop's real "STITCH15" code (a `scope: "cart"`, unconditional,
+   * unlimited-use 15%-off code -- see lib/seed.ts's seedPromotions) was
+   * genuinely redeemable at Northline's checkout, and vice versa with
+   * Northline's own "NORTHLINE15". Same bug class/fix shape as
+   * @mercatus-liber/marketing-catalog's Category.demoSlug test (epic 61)
+   * and @mercatus-liber/cms's Page.demoSlug test (epic 60).
+   */
+  describe("demo scoping", () => {
+    it("evaluate()'s coupon lookup and listPromotions scope by demoSlug -- one demo's code is never redeemable at another demo's checkout", async () => {
+      await promotions.createPromotion(
+        baseCartPromotion({ code: "STITCH15", demoSlug: "print-shop", kind: "percentage", value: 15 }),
+      );
+      await promotions.createPromotion(
+        baseCartPromotion({ code: "NORTHLINE15", demoSlug: "northline", kind: "percentage", value: 15 }),
+      );
+
+      const items = [{ skuId: "sku-x", quantity: 1, priceSnapshot: { amount: 10000, currency: "USD" } }];
+
+      // The actual live bug: Northline's checkout accepting print-shop's code.
+      const crossDemo = await promotions.evaluate({ items, couponCode: "STITCH15", demoSlug: "northline" });
+      expect(crossDemo.rejectionReason).toBe("unknown_code");
+      expect(crossDemo.discountTotal.amount).toBe(0);
+
+      // The matching demo's own code still works.
+      const sameDemo = await promotions.evaluate({ items, couponCode: "STITCH15", demoSlug: "print-shop" });
+      expect(sameDemo.rejectionReason).toBe("none");
+      expect(sameDemo.discountTotal.amount).toBe(1500);
+
+      const printShopPromotions = await promotions.listPromotions({ demoSlug: "print-shop" });
+      expect(printShopPromotions.map((p) => p.code)).toEqual(["STITCH15"]);
+
+      // An unscoped evaluate()/listPromotions() call (no demoSlug) legitimately
+      // still considers every demo's promotions -- backward compatible.
+      const unscoped = await promotions.evaluate({ items, couponCode: "NORTHLINE15" });
+      expect(unscoped.rejectionReason).toBe("none");
+      const everything = await promotions.listPromotions();
+      expect(everything.map((p) => p.code).sort()).toEqual(["NORTHLINE15", "STITCH15"]);
+    });
+  });
 });

@@ -31,6 +31,14 @@ CREATE TABLE IF NOT EXISTS campaigns (
   targeting JSONB NOT NULL,
   creatives JSONB NOT NULL
 );
+-- commerce-gap-audit-3: campaigns had no demo-scoping concept at all, so
+-- under the shared Postgres backend print-shop and Northline Home Tech
+-- both resolve to, every untargeted campaign rendered on every demo's ad
+-- slots -- same bug class/fix shape as categories.demo_slug (epic 61) and
+-- pages.demo_slug (epic 60). Optional/additive: ADD COLUMN IF NOT EXISTS
+-- is safe against the already-live production "campaigns" table.
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS demo_slug TEXT;
+CREATE INDEX IF NOT EXISTS idx_campaigns_demo_slug ON campaigns(demo_slug);
 `;
 
 interface CampaignRow {
@@ -41,6 +49,7 @@ interface CampaignRow {
   ends_at: string | null;
   targeting: Campaign["targeting"]; // JSONB -- already parsed by the pg driver
   creatives: Campaign["creatives"]; // JSONB
+  demo_slug: string | null;
 }
 
 function rowToCampaign(row: CampaignRow): Campaign {
@@ -52,6 +61,7 @@ function rowToCampaign(row: CampaignRow): Campaign {
     endsAt: row.ends_at,
     targeting: row.targeting,
     creatives: row.creatives,
+    ...(row.demo_slug ? { demoSlug: row.demo_slug } : {}),
   };
 }
 
@@ -75,23 +85,26 @@ export function createPostgresCampaignRepository(pool: Pool): CampaignRepository
       const result = await pool.query<CampaignRow>("SELECT * FROM campaigns WHERE id = $1", [id]);
       return result.rows[0] ? rowToCampaign(result.rows[0]) : null;
     },
-    async list(): Promise<Campaign[]> {
+    async list(filter?: { demoSlug?: string }): Promise<Campaign[]> {
       await ready;
-      const result = await pool.query<CampaignRow>("SELECT * FROM campaigns");
+      const result = filter?.demoSlug
+        ? await pool.query<CampaignRow>("SELECT * FROM campaigns WHERE demo_slug = $1", [filter.demoSlug])
+        : await pool.query<CampaignRow>("SELECT * FROM campaigns");
       return result.rows.map(rowToCampaign);
     },
     async save(campaign: Campaign): Promise<void> {
       await ready;
       await pool.query(
-        `INSERT INTO campaigns (id, name, status, starts_at, ends_at, targeting, creatives)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO campaigns (id, name, status, starts_at, ends_at, targeting, creatives, demo_slug)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name,
            status = EXCLUDED.status,
            starts_at = EXCLUDED.starts_at,
            ends_at = EXCLUDED.ends_at,
            targeting = EXCLUDED.targeting,
-           creatives = EXCLUDED.creatives`,
+           creatives = EXCLUDED.creatives,
+           demo_slug = EXCLUDED.demo_slug`,
         [
           campaign.id,
           campaign.name,
@@ -100,6 +113,7 @@ export function createPostgresCampaignRepository(pool: Pool): CampaignRepository
           campaign.endsAt,
           JSON.stringify(campaign.targeting),
           JSON.stringify(campaign.creatives),
+          campaign.demoSlug ?? null,
         ],
       );
     },

@@ -41,12 +41,33 @@ export interface Campaign {
   targeting: CampaignTargeting;
   /** Must contain at least one creative (see createCampaign/updateCampaign validation). */
   creatives: Creative[];
+  /**
+   * Which demo store this campaign belongs to. Optional/additive, same
+   * shape and reason as `Page.demoSlug` (epic 60, `packages/cms`) and
+   * `Category.demoSlug` (epic 61, `packages/marketing-catalog`) -- a real
+   * gap found by `commerce-gap-audit-3`: `CampaignRepository.list()`/
+   * `AdvertisingService.getActiveCreativeForSlot()` had no demo-scoping
+   * concept at all, so under the shared Postgres backend print-shop and
+   * Northline Home Tech both resolve to, an untargeted campaign seeded for
+   * one demo (`targeting: { serviceAreaId: null, pageSlug: null }`, which
+   * is eligible on every render) rendered live on the OTHER demo's ad
+   * slots too -- confirmed live against commerce.mdostal.com before this
+   * fix (Northline's "Whole-Home WiFi Mesh Installs" creative, linking to
+   * `/demo/northline/...`, rendering on print-shop's own home page).
+   * Optional, not required, for the same backward-compatibility reason as
+   * the two precedents above: `list()`/`getActiveCreativeForSlot()` called
+   * with no `demoSlug` filter still return/consider every campaign
+   * (including ones with no `demoSlug` set), so existing unscoped callers
+   * are unaffected; a `demoSlug`-scoped call only matches campaigns whose
+   * own `demoSlug` equals it.
+   */
+  demoSlug?: string;
 }
 
 /** Adapter pattern, as everywhere else in this codebase. */
 export interface CampaignRepository {
   get(id: string): Promise<Campaign | null>;
-  list(): Promise<Campaign[]>;
+  list(filter?: { demoSlug?: string }): Promise<Campaign[]>;
   save(campaign: Campaign): Promise<void>;
 }
 

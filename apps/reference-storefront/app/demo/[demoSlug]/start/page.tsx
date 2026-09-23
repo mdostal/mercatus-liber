@@ -114,7 +114,10 @@ export default async function StartHerePage({ params }: { params: Promise<{ demo
   const demo = DEMO_REGISTRY[demoSlug];
 
   const { promotions } = await getServicesForDemo(demoSlug);
-  const allPromotions = await promotions.listPromotions();
+  // commerce-gap-audit-3: scoped to this demo's own promotions -- before
+  // this fix, this page could surface another demo's promo code as "the"
+  // real code to try (see Promotion.demoSlug's doc comment).
+  const allPromotions = await promotions.listPromotions({ demoSlug });
   const activeCodes = allPromotions.filter((promo) => promo.code && promo.status === "active");
 
   const adapters = getAdapterInfo(demoSlug);

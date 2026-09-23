@@ -1018,6 +1018,7 @@ async function seedRecommendations(
 async function seedAdvertising(advertising: AdvertisingService, targetedServiceAreaId?: string): Promise<void> {
   await advertising.createCampaign({
     name: "Print Shop Sale",
+    demoSlug: "print-shop",
     startsAt: null,
     endsAt: null,
     targeting: { serviceAreaId: null, pageSlug: null },
@@ -1050,6 +1051,7 @@ async function seedAdvertising(advertising: AdvertisingService, targetedServiceA
 
   await advertising.createCampaign({
     name: "Portland Print Shop Pop-Up",
+    demoSlug: "print-shop",
     startsAt: null,
     endsAt: null,
     targeting: { serviceAreaId: targetedServiceAreaId, pageSlug: null },
@@ -1093,6 +1095,7 @@ const PROMO_CODE = "STITCH15";
 async function seedPromotions(promotions: PromotionsService): Promise<void> {
   await promotions.createPromotion({
     code: PROMO_CODE,
+    demoSlug: "print-shop",
     kind: "percentage",
     scope: "cart",
     value: 15,

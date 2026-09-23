@@ -26,7 +26,7 @@ export interface RecordAppliedPromotionInput {
 export interface PromotionsService {
   createPromotion(input: CreatePromotionInput): Promise<Promotion>;
   getPromotion(id: string): Promise<Promotion | null>;
-  listPromotions(): Promise<Promotion[]>;
+  listPromotions(filter?: { demoSlug?: string }): Promise<Promotion[]>;
   /** Merges the given fields into an existing promotion; null if no promotion has this id. Id/redemptionCount are never overwritten. */
   updatePromotion(id: string, input: Partial<CreatePromotionInput>): Promise<Promotion | null>;
   deactivatePromotion(id: string): Promise<Promotion | null>;
@@ -158,8 +158,8 @@ export function createPromotionsService(deps: { repository: PromotionRepository;
       return repository.get(id);
     },
 
-    async listPromotions(): Promise<Promotion[]> {
-      return repository.list();
+    async listPromotions(filter?: { demoSlug?: string }): Promise<Promotion[]> {
+      return repository.list(filter);
     },
 
     async updatePromotion(id: string, input: Partial<CreatePromotionInput>): Promise<Promotion | null> {
@@ -179,14 +179,19 @@ export function createPromotionsService(deps: { repository: PromotionRepository;
     },
 
     async evaluate(input: EvaluateInput): Promise<PromotionEvaluation> {
-      const { items, couponCode } = input;
+      const { items, couponCode, demoSlug } = input;
       const now = new Date();
       const subtotal = computeSubtotal(items);
       const currency = items[0]?.priceSnapshot.currency ?? "USD";
+      const listFilter = demoSlug ? { demoSlug } : undefined;
 
       if (couponCode) {
-        // Code lookup is case-sensitive exact match.
-        const promotions = await repository.list();
+        // Code lookup is case-sensitive exact match, scoped to this demo
+        // when one is supplied -- see EvaluateInput.demoSlug's doc comment.
+        // Before this fix (commerce-gap-audit-3), this was an unscoped
+        // repository.list(), so any demo sharing the same Postgres backend
+        // could redeem any OTHER demo's coupon code.
+        const promotions = await repository.list(listFilter);
         const promotion = promotions.find((p) => p.code === couponCode) ?? null;
 
         if (!promotion) {
@@ -228,8 +233,9 @@ export function createPromotionsService(deps: { repository: PromotionRepository;
       }
 
       // No code supplied: apply the single highest-discountTotal-value
-      // eligible auto-applied (code === null) promotion, if any.
-      const promotions = await repository.list();
+      // eligible auto-applied (code === null) promotion, if any, scoped to
+      // this demo when one is supplied (see above).
+      const promotions = await repository.list(listFilter);
       const candidates = promotions.filter((p) => p.code === null && isEligible(p, now, subtotal));
       let best: { promotion: Promotion; discountTotal: number } | null = null;
       for (const candidate of candidates) {
