@@ -1,0 +1,38 @@
+/*
+ * Mercatus Liber docs site -- brand token application (bs-03-docs-site-and-favicon).
+ *
+ * Source of truth: .pHive/brand/brand-system.yaml (produced by bs-01-brand-system-tokens).
+ * This stylesheet is intentionally NOT wrapped in a Tailwind `@layer` (nextra-theme-docs'
+ * own vendor CSS declares its custom properties inside `@layer theme` -- see
+ * node_modules/.../nextra-theme-docs/dist/style.css). Per the CSS cascade-layers spec,
+ * unlayered rules always win over layered ones regardless of import order or specificity,
+ * so overriding the same custom-property names here reliably replaces Nextra's defaults
+ * without needing `!important` or fighting source order.
+ *
+ * Color (hue/saturation/lightness) and background are set via the real, documented
+ * `<Head color={...} backgroundColor={...} />` prop API in app/layout.tsx instead of here
+ * (see node_modules/nextra/dist/client/components/head.js) -- that's the mechanism Nextra
+ * actually ships for theming those two tokens. This file covers the tokens that API doesn't
+ * expose: type family and corner radius.
+ */
+
+:root {
+  /* Public Sans (heading/body) + JetBrains Mono (accent/code) replace Nextra's default
+     ui-sans-serif / ui-monospace system stacks -- brand-system.yaml `typography`. */
+  --x-font-sans:
+    'Public Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+  --x-font-mono:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+
+  /* brand-system.yaml `radius`: small 2px / medium 4px / large 8px -- tighter than Nextra's
+     defaults (4px / 6px / 8px), matching the "precise and structured, not soft" rationale
+     recorded in brand-guide.html's Border Radius section. */
+  --x-radius-sm: 2px;
+  --x-radius-md: 4px;
+  --x-radius-lg: 8px;
+
+  /* Note: brand-system.yaml's 4px spacing base already equals Nextra's own
+     `--x-spacing: 0.25rem` (4px) default -- no override needed, already aligned. */
+}
