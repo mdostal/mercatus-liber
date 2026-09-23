@@ -182,7 +182,18 @@ duplicated/missing entries) deserves a dedicated pass rather than a rushed audit
 Epic-id-style name: `changelog-and-version-reconstruction`. Depends on: none (pure documentation
 archaeology over already-shipped, already-merged work).
 
-## 11. `VISION.md` drift — documented, not fixed
+## 11. `VISION.md` drift — documented, then observed being fixed concurrently (not by this session)
+
+**Update, same session, before this document's final commit:** while this document was being
+written, `README.md` and `VISION.md` were both observed with real, substantial uncommitted
+working-tree changes (`git diff --stat`: README.md +24/-8, VISION.md +105/-42) that directly
+address the exact drift described below — a refreshed "Where things stand today" section citing
+epics through 63, a corrected "only epic 48 remains open" claim, and real per-demo backend-
+diversity/Sanity-copilot/bug-fix content. This is the same concurrent-agent session disclosed at
+the top of this document, not this audit's own work, and was **not committed as of this
+document's own last commit** — so it's reported here as an observed-in-progress fix, not claimed
+as done. If it lands, the finding below is resolved without this audit needing to touch it; if it
+doesn't, the finding stands as originally written.
 
 `VISION.md`'s "Where things stand today" section is substantially stale: it opens with "only
 backlog epic 48 remains genuinely open" (false — epics 56, 57, and 59 are all still explicitly
