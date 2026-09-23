@@ -9,7 +9,7 @@ import type {
 export interface RecommendationsService {
   createRule(input: CreateRuleInput): Promise<RecommendationRule>;
   getRule(id: string): Promise<RecommendationRule | null>;
-  listRules(): Promise<RecommendationRule[]>;
+  listRules(filter?: { demoSlug?: string }): Promise<RecommendationRule[]>;
   /** Merges the given fields into an existing rule; null if no rule has this id. Id is never overwritten. Re-validates the merged rule exactly as createRule does. */
   updateRule(id: string, input: Partial<CreateRuleInput>): Promise<RecommendationRule | null>;
   deactivateRule(id: string): Promise<RecommendationRule | null>;
@@ -67,8 +67,8 @@ export function createRecommendationsService(deps: {
       return repository.get(id);
     },
 
-    async listRules(): Promise<RecommendationRule[]> {
-      return repository.list();
+    async listRules(filter?: { demoSlug?: string }): Promise<RecommendationRule[]> {
+      return repository.list(filter);
     },
 
     async updateRule(id: string, input: Partial<CreateRuleInput>): Promise<RecommendationRule | null> {

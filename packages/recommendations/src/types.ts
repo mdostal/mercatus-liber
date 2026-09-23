@@ -23,12 +23,27 @@ export interface RecommendationRule {
   /** Ordered list of recommended product ids. Must contain at least one id, and must never include sourceProductId itself (see createRule/updateRule validation). */
   targetProductIds: string[];
   status: RecommendationRuleStatus;
+  /**
+   * Which demo store this rule belongs to. Optional/additive, same shape and
+   * reason as `Page.demoSlug` (epic 60), `Category.demoSlug` (epic 61), and
+   * `ServiceArea.demoSlug`/`Bundle.demoSlug` (commerce-gap-audit-3) -- a
+   * real, disclosed gap found by `commerce-gap-audit-3` §13:
+   * `RecommendationRepository.list()` had no demo-scoping concept at all, so
+   * under the shared Postgres backend print-shop and Northline Home Tech
+   * both resolve to, an operator in print-shop's own `/admin/recommendations`
+   * list saw Northline's rules mixed into their own list (admin-only bleed
+   * -- `getRecommendationsForProduct` is deliberately left unscoped since it
+   * already resolves correctly by `productId`, which is itself already
+   * demo-scoped on the PDP/cart). `undefined`/missing behaves exactly as
+   * before this fix (an unscoped call still sees every rule).
+   */
+  demoSlug?: string;
 }
 
 /** Adapter pattern, as everywhere else in this codebase. */
 export interface RecommendationRepository {
   get(id: string): Promise<RecommendationRule | null>;
-  list(): Promise<RecommendationRule[]>;
+  list(filter?: { demoSlug?: string }): Promise<RecommendationRule[]>;
   save(rule: RecommendationRule): Promise<void>;
 }
 

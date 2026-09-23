@@ -34,17 +34,21 @@ function createFakeRecommendationsPool(): FakePool {
         const row = rules.get(values[0] as string);
         return { rows: (row ? [row] : []) as T[] };
       }
+      if (sql === "SELECT * FROM recommendation_rules WHERE demo_slug = $1") {
+        return { rows: [...rules.values()].filter((r) => r.demo_slug === values[0]) as T[] };
+      }
       if (sql === "SELECT * FROM recommendation_rules") {
         return { rows: [...rules.values()] as T[] };
       }
       if (sql.startsWith("INSERT INTO recommendation_rules")) {
-        const [id, sourceProductId, label, placement, targetProductIds, status] = values as [
+        const [id, sourceProductId, label, placement, targetProductIds, status, demoSlug] = values as [
           string,
           string,
           string,
           string,
           string,
           string,
+          string | null,
         ];
         rules.set(id, {
           id,
@@ -55,6 +59,7 @@ function createFakeRecommendationsPool(): FakePool {
           // for the driver -- mirrored here.
           target_product_ids: JSON.parse(targetProductIds),
           status,
+          demo_slug: demoSlug,
         });
         return { rows: [] };
       }
@@ -123,5 +128,35 @@ describe("createPostgresRecommendationRepository", () => {
     const found = await recommendations.get("r1");
     expect(found?.status).toBe("inactive");
     expect(await recommendations.list()).toHaveLength(1);
+  });
+
+  /**
+   * commerce-gap-audit-3 finding 13: a real, disclosed gap -- the Postgres
+   * `recommendation_rules` table had no demo-scoping concept at all. Proves
+   * the fix: list(filter) scopes by demo_slug, and an unscoped list() (no
+   * filter) still returns everything -- same shape as
+   * service-areas.test.ts's own demoSlug test.
+   */
+  it("list(filter) scopes by demoSlug -- two demos' rules never bleed into each other's results", async () => {
+    const printShop: RecommendationRule = { ...rule, id: "r-print-shop", demoSlug: "print-shop" };
+    const northline: RecommendationRule = { ...rule, id: "r-northline", demoSlug: "northline" };
+    await recommendations.save(printShop);
+    await recommendations.save(northline);
+
+    const printShopOnly = await recommendations.list({ demoSlug: "print-shop" });
+    expect(printShopOnly).toEqual([printShop]);
+
+    const northlineOnly = await recommendations.list({ demoSlug: "northline" });
+    expect(northlineOnly).toEqual([northline]);
+
+    const everything = await recommendations.list();
+    expect(everything.map((r) => r.id).sort()).toEqual(["r-northline", "r-print-shop"]);
+  });
+
+  it("round-trips demoSlug through save/get, and omits it entirely when never set (backward compatible)", async () => {
+    await recommendations.save(rule);
+    const found = await recommendations.get("r1");
+    expect(found?.demoSlug).toBeUndefined();
+    expect(found).not.toHaveProperty("demoSlug");
   });
 });

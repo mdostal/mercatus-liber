@@ -14,8 +14,10 @@ export function createInMemoryRecommendationRepository(): RecommendationReposito
       const rule = rules.get(id);
       return rule ? structuredClone(rule) : null;
     },
-    async list(): Promise<RecommendationRule[]> {
-      return Array.from(rules.values()).map((rule) => structuredClone(rule));
+    async list(filter?: { demoSlug?: string }): Promise<RecommendationRule[]> {
+      const all = Array.from(rules.values());
+      const filtered = filter?.demoSlug ? all.filter((rule) => rule.demoSlug === filter.demoSlug) : all;
+      return filtered.map((rule) => structuredClone(rule));
     },
     async save(rule: RecommendationRule): Promise<void> {
       rules.set(rule.id, structuredClone(rule));

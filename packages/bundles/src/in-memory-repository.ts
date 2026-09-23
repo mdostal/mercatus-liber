@@ -14,8 +14,10 @@ export function createInMemoryBundleRepository(): BundleRepository {
       const bundle = bundles.get(id);
       return bundle ? structuredClone(bundle) : null;
     },
-    async list(): Promise<Bundle[]> {
-      return Array.from(bundles.values()).map((bundle) => structuredClone(bundle));
+    async list(filter?: { demoSlug?: string }): Promise<Bundle[]> {
+      const all = Array.from(bundles.values());
+      const filtered = filter?.demoSlug ? all.filter((bundle) => bundle.demoSlug === filter.demoSlug) : all;
+      return filtered.map((bundle) => structuredClone(bundle));
     },
     async save(bundle: Bundle): Promise<void> {
       bundles.set(bundle.id, structuredClone(bundle));
