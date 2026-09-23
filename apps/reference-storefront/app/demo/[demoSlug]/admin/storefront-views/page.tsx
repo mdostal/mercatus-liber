@@ -8,6 +8,7 @@ import {
   publishStorefrontViewAction,
 } from "../../../../../lib/actions";
 import { getServicesForDemo } from "../../../../../lib/services";
+import { StorefrontViewFormFields } from "./StorefrontViewFormFields";
 
 export const dynamic = "force-dynamic";
 
@@ -37,67 +38,7 @@ export default async function AdminStorefrontViewsPage({ params }: { params: Pro
       <h2>+ New view</h2>
       <form action={createStorefrontViewAction}>
         <input type="hidden" name="demoSlug" value={demoSlug} />
-        <p>
-          <label>
-            Slug (becomes /site/&lt;slug&gt;)
-            <br />
-            <input type="text" name="slug" required />
-          </label>
-        </p>
-        <p>
-          <label>
-            Name
-            <br />
-            <input type="text" name="name" required />
-          </label>
-        </p>
-        <p>
-          <label>
-            Hero headline
-            <br />
-            <input type="text" name="heroHeadline" required />
-          </label>
-        </p>
-        <p>
-          <label>
-            Hero subheadline
-            <br />
-            <input type="text" name="heroSubheadline" />
-          </label>
-        </p>
-        <p>
-          <label>
-            Category ids (comma-separated, this store's own real category ids)
-            <br />
-            <input type="text" name="categoryIds" />
-          </label>
-        </p>
-        <p>
-          <label>
-            Theme key override (blank = inherit the store's current theme)
-            <br />
-            <input type="text" name="themeKey" />
-          </label>
-        </p>
-        <p>
-          <label>
-            <input type="checkbox" name="isDefaultOverride" /> Replace the store's home page while this view is live
-          </label>
-        </p>
-        <p>
-          <label>
-            Starts at (blank = live as soon as published)
-            <br />
-            <input type="datetime-local" name="startsAt" />
-          </label>
-        </p>
-        <p>
-          <label>
-            Ends at (blank = no expiry)
-            <br />
-            <input type="datetime-local" name="endsAt" />
-          </label>
-        </p>
+        <StorefrontViewFormFields />
         <p>
           <button type="submit">Create view (draft)</button>
         </p>
@@ -111,6 +52,7 @@ export default async function AdminStorefrontViewsPage({ params }: { params: Pro
             <th>Default override</th>
             <th>Window</th>
             <th>Status</th>
+            <th></th>
             <th></th>
           </tr>
         </thead>
@@ -128,6 +70,9 @@ export default async function AdminStorefrontViewsPage({ params }: { params: Pro
               <td>{view.isDefaultOverride ? "yes" : "no"}</td>
               <td>{view.startsAt || view.endsAt ? `${view.startsAt ?? "…"} – ${view.endsAt ?? "…"}` : "always"}</td>
               <td>{view.status}</td>
+              <td>
+                <Link href={`/demo/${demoSlug}/admin/storefront-views/${view.id}`}>Edit</Link>
+              </td>
               <td>
                 {view.status === "draft" ? (
                   <form action={publishStorefrontViewAction}>
