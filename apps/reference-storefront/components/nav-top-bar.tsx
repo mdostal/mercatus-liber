@@ -58,7 +58,16 @@ export function NavTopBar({
 
   return (
     <>
-      <header style={{ marginBottom: 24, borderBottom: "1px solid var(--color-accent)", paddingBottom: 12 }}>
+      {/* a11y-audit: /admin pages nest a second <header> (admin/layout.tsx's own
+          "Signed in as..." bar) alongside this one -- neither is inside
+          main/article/aside/section, so both get the implicit ARIA "banner" role.
+          Confirmed live via axe-core: "more than one banner landmark" +
+          "landmarks must be distinguishable". aria-label names this one so both
+          banners (this + admin/layout.tsx's own "Admin session") are unique. */}
+      <header
+        aria-label="Store navigation"
+        style={{ marginBottom: 24, borderBottom: "1px solid var(--color-accent)", paddingBottom: 12 }}
+      >
         <a href={`/demo/${demoSlug}`} style={{ fontWeight: 700, textDecoration: "none", color: "var(--color-primary)" }}>
           {displayName}
         </a>
@@ -134,7 +143,9 @@ function EditorialNavTopBar({
         .ed-nav-actions a { color: var(--color-muted, #55493A); text-decoration: none; }
         .ed-nav-actions a:hover { color: var(--color-primary); }
       `}</style>
-      <header className="ed-nav">
+      {/* a11y-audit: same duplicate-banner reasoning as the plain header above --
+          see that comment for the full writeup. */}
+      <header className="ed-nav" aria-label="Store navigation">
         <div className="ed-nav-inner">
           <a className="ed-mark" href={`/demo/${demoSlug}`}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">

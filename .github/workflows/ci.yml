@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-test-build:
+    name: typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Must run before actions/setup-node, whose pnpm cache step shells out
+      # to `pnpm` to resolve the cache directory.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Cache turbo
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Mirrors this repo's own standing full-check command (see
+      # CONTRIBUTING.md's "The standing full-check command"), minus --force:
+      # CI wants Turbo's cache to speed up unaffected packages, whereas
+      # --force is only used for local from-scratch verification passes.
+      - name: typecheck, test, build
+        run: pnpm turbo run typecheck test build

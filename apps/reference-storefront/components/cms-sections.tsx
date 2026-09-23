@@ -26,7 +26,23 @@ async function HeroBanner({ config }: { config: Record<string, unknown> }) {
     <section style={{ padding: "var(--space-md, 32px)", background: "#222", color: "#fff", marginBottom: "var(--space-sm, 16px)" }}>
       <h1 style={{ margin: 0, fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{String(config.headline ?? "")}</h1>
       {config.subheadline ? (
-        <p style={{ margin: "var(--space-xs, 8px) 0 0", fontSize: "var(--font-size-body, 1rem)" }}>{String(config.subheadline)}</p>
+        // a11y-audit: when this section renders as the "feature" slot of the
+        // editorial home template (home-magazine-grid.tsx's ".ed-hero-feature"),
+        // that template's own ".ed-home .ed-hero-feature p" rule (an external
+        // stylesheet class selector) overrides this <section>'s inherited white
+        // text with var(--color-muted) -- a color meant for the page's light
+        // background, not this section's own hardcoded dark #222 one. Confirmed
+        // live via axe-core: 2.26:1, a severe WCAG AA fail (needs 4.5:1) --
+        // pre-existing, not introduced by this audit's token-value fixes (the old
+        // muted values would have failed just as badly against #222). An inline
+        // `color: "inherit"` on this <p> always wins over any external/embedded
+        // stylesheet rule (inline style beats any class selector regardless of
+        // specificity), so it reliably re-inherits this section's own #fff --
+        // fixes this without touching the editorial template's rule, which is
+        // still correct for every other section type that can render in that slot.
+        <p style={{ margin: "var(--space-xs, 8px) 0 0", fontSize: "var(--font-size-body, 1rem)", color: "inherit" }}>
+          {String(config.subheadline)}
+        </p>
       ) : null}
     </section>
   );

@@ -49,7 +49,26 @@ export default async function AdminLayout({
 
   return (
     <div>
-      <header
+      {/*
+        a11y-audit: this used to be a second <header>, rendering as a
+        sibling of the outer demo layout's own NavChrome (which itself
+        renders a <header>, e.g. nav-top-bar.tsx's "ed-nav" for editorial/8
+        other bundles) -- neither was nested inside main/article/aside/
+        section, so both got the HTML spec's implicit ARIA "banner" role.
+        Confirmed live via axe-core on /admin/catalog: "Document has more
+        than one banner landmark" -- a rule that requires AT MOST ONE
+        banner landmark per page, full stop (unlike landmark-unique, a
+        distinguishing aria-label does NOT satisfy this one; tried that
+        first, axe still flagged it). This small "signed in as X" bar was
+        never really the page's primary banner anyway. A bare <div> dropped
+        the implicit role but then axe's "region" rule flagged it as page
+        content outside any landmark (this bar sits outside every admin
+        page's own <main>) -- <section aria-label="..."> is the fix that
+        satisfies both: it's a real, named "region" landmark (not "banner"),
+        so it's contained AND doesn't reintroduce the duplicate-banner issue.
+      */}
+      <section
+        aria-label="Admin session"
         style={{
           display: "flex",
           alignItems: "center",
@@ -67,7 +86,7 @@ export default async function AdminLayout({
           Signed in as <strong>{session.email}</strong> ({session.role})
         </span>
         {clerkConfigured ? <UserButton /> : null}
-      </header>
+      </section>
       {children}
     </div>
   );

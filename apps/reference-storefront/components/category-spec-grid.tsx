@@ -69,18 +69,18 @@ export function CategorySpecGrid({
           font-size: 11px;
           letter-spacing: 0.06em;
           text-transform: uppercase;
-          color: var(--color-muted, #8891A0);
+          color: var(--color-muted, #626B78);
           text-align: center;
         }
         .ds-p-card .ds-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
-        .ds-p-card h3 {
+        .ds-p-card h2 {
           font-size: 14.5px;
           font-weight: 700;
           line-height: 1.3;
           margin: 0;
           font-family: var(--font-family, sans-serif);
         }
-        .ds-p-card h3 a { color: inherit; text-decoration: none; }
+        .ds-p-card h2 a { color: inherit; text-decoration: none; }
         .ds-specsheet {
           font-family: ${DS_FONT_MONO};
           font-size: 11px;
@@ -92,7 +92,7 @@ export function CategorySpecGrid({
           margin-top: auto;
         }
         .ds-specsheet .ds-row { display: flex; justify-content: space-between; gap: 8px; }
-        .ds-specsheet .ds-row .ds-k { color: var(--color-muted, #8891A0); text-transform: uppercase; letter-spacing: 0.04em; }
+        .ds-specsheet .ds-row .ds-k { color: var(--color-muted, #626B78); text-transform: uppercase; letter-spacing: 0.04em; }
         .ds-specsheet .ds-row .ds-v { color: var(--color-text, #12151B); text-align: right; }
         .ds-specsheet .ds-row.price .ds-v { color: var(--color-primary, #C8460A); font-weight: 600; font-size: 13px; }
         .ds-p-card-foot { display: flex; border-top: 1px solid var(--color-border, #D2D7E0); }
@@ -138,9 +138,13 @@ export function CategorySpecGrid({
               </div>
               <div className="ds-body">
                 <span className="ds-chip">{product.status}</span>
-                <h3>
+                {/* a11y-audit: this page's own page.tsx renders the category's <h1> and
+                    nothing between it and this grid -- an <h3> here skipped a level,
+                    confirmed live via axe-core's heading-order rule. <h2> is correct
+                    (every card is a same-level sibling section under the page <h1>). */}
+                <h2>
                   <a href={`/demo/${demoSlug}/products/${product.slug}`}>{product.title}</a>
-                </h3>
+                </h2>
                 <div className="ds-specsheet">
                   <div className="ds-row">
                     <span className="ds-k">SKUs</span>

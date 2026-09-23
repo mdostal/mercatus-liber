@@ -96,7 +96,15 @@ export function PdpSpecSheet({
   }
 
   return (
-    <div className="ds-scope ds-pdp">
+    // a11y-audit: pdp-tabbed-detail.tsx and pdp-long-scroll.tsx (the other 2
+    // registered PDP templates) both wrap their content in <main> -- this
+    // one didn't, confirmed live via axe-core on the real
+    // embroidered-performance-polo PDP under the datasheet theme:
+    // "landmark-one-main" (document has no main landmark) plus 27
+    // "region" (content outside any landmark) violations, all on this one
+    // template. <main> replaces the outer <div> 1:1, same className, zero
+    // other markup/behavior change.
+    <main className="ds-scope ds-pdp">
       <style>{DS_ATOMS_CSS}</style>
       <style>{`
         .ds-pdp-grid {
@@ -118,7 +126,7 @@ export function PdpSpecSheet({
             linear-gradient(90deg, rgba(18, 21, 27, 0.07) 1px, transparent 1px);
           background-size: 16px 16px;
           font-family: ${DS_FONT_MONO};
-          color: var(--color-muted, #8891A0);
+          color: var(--color-muted, #626B78);
           text-align: center;
           font-size: 13px;
           letter-spacing: 0.06em;
@@ -144,7 +152,7 @@ export function PdpSpecSheet({
           font-size: 10.5px;
           letter-spacing: 0.1em;
           text-transform: uppercase;
-          color: var(--color-muted, #8891A0);
+          color: var(--color-muted, #626B78);
           padding: 9px 14px;
           background: var(--color-background, #E7EAF0);
           border-bottom: 1px solid var(--color-border, #D2D7E0);
@@ -373,6 +381,6 @@ export function PdpSpecSheet({
           </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

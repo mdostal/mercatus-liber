@@ -135,7 +135,20 @@ export function CartStandard({
             >
               <input type="hidden" name="demoSlug" value={demoSlug} />
               <input type="hidden" name="skuId" value={line.skuId} />
-              <input type="number" name="quantity" defaultValue={line.quantity} min={1} style={{ width: 48 }} />
+              {/* a11y-audit: confirmed live via axe-core (northline PDP's own add-to-cart
+                  quantity input surfaced the same pattern, "critical" impact -- no
+                  implicit/explicit label, no aria-label, no title/placeholder). A per-line
+                  aria-label (not a bare "Quantity") also disambiguates multiple cart lines
+                  for screen-reader users, who otherwise hear identical "Quantity" fields
+                  with no way to tell them apart. */}
+              <input
+                type="number"
+                name="quantity"
+                defaultValue={line.quantity}
+                min={1}
+                aria-label={`Quantity for ${line.title}`}
+                style={{ width: 48 }}
+              />
               <button type="submit">Update</button>
             </form>
             <form action={removeCartItemAction}>
