@@ -1,0 +1,49 @@
+id: bs-03-docs-site-and-favicon
+epic: framework-brand-system
+title: Apply the brand system to the docs site + ship a real favicon
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [bs-01-brand-system-tokens]
+
+description: |
+  Apply .pHive/brand/brand-system.yaml's real tokens to apps/docs (the Nextra docs site's own
+  layout/styling). Ship a real favicon for apps/reference-storefront using whichever real
+  convention this Next.js version uses (check for an existing app/icon.tsx or favicon.ico
+  file first -- don't assume). This story can run in parallel with bs-02 (disjoint files:
+  apps/docs/** vs apps/reference-storefront/app/(landing)/**).
+
+acceptance_criteria:
+  - "Given the docs site, when rendered, then it uses the real new brand tokens, live-verified against a real dev server"
+  - "Given the favicon, when checked in a real browser tab, then it's real and renders (not a default Next.js icon)"
+
+steps:
+  - id: implement
+    description: Apply the brand system to apps/docs; ship the real favicon.
+    agent: developer
+  - id: test
+    description: Live-verify both against real dev servers.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm nothing outside apps/docs and the favicon file(s) changed.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/framework-brand-system.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/docs/app/layout.tsx
+      purpose: "The Nextra docs site's own layout to restyle"
+
+parallel_allowed: true
+parallel_rationale: bounded-slice
+files_to_modify:
+  - file: apps/docs
+    change: apply brand tokens to the docs site's layout/styling
+  - file: apps/reference-storefront/app/icon.tsx
+    change: real favicon using the new brand mark

@@ -1,0 +1,48 @@
+id: bs-01-brand-system-tokens
+epic: framework-brand-system
+title: Real brand-system.yaml + visual HTML brand guide
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+
+description: |
+  Invoke the plugin-hive:brand-system skill for real to establish Mercatus Liber's own
+  framework-level color/typography/spacing system, grounded in the project's real identity
+  (see .pHive/epics/framework-brand-system/docs/design-discussion.md §2a -- a free/MIT-licensed
+  open-source headless commerce framework, developer audience, restrained/code-adjacent
+  palette). Then attempt plugin-hive:logo-exploration for a real icon mark; if the openai-image
+  MCP tool is still disconnected (confirmed unavailable as of this epic's planning -- re-check
+  live, don't assume), produce a real, well-reasoned typographic wordmark treatment instead
+  using the brand system's own type choices, and disclose the substitution plainly in the
+  brand-system.yaml/brand-guide.html output rather than silently omitting a mark.
+
+  CRITICAL scope boundary: do not touch, override, or reference packages/theming's 10 existing
+  demo-facing ThemeBundles (classic/dark/minimal/vibrant/retro/high-contrast/northline/
+  editorial/maximalist/datasheet) -- this is the framework's OWN identity, deliberately separate.
+
+acceptance_criteria:
+  - "Given the brand-system skill runs, when it completes, then .pHive/brand/brand-system.yaml and .pHive/brand/brand-guide.html both exist with real, project-specific color/type/spacing tokens (not generic defaults)"
+  - "Given openai-image's real live status, when checked, then the logo/wordmark decision (icon mark vs. typographic wordmark) is grounded in that real check, not assumed from memory"
+  - "Given the output, when reviewed, then zero references to or edits of packages/theming exist"
+
+steps:
+  - id: implement
+    description: Invoke plugin-hive:brand-system (and plugin-hive:logo-exploration if openai-image is live) to produce the real brand system artifacts.
+    agent: developer
+  - id: review
+    description: Confirm the brand guide is genuinely visual/reviewable and grounded in the project's real identity, not generic.
+    agent: reviewer
+    depends_on: [implement]
+  - id: integrate
+    description: Commit to feat/framework-brand-system.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: README.md
+      purpose: "The project's own real voice/identity to ground the brand in"
+    - path: packages/theming/src/theme-bundles.ts
+      purpose: "The 10 demo-facing bundles this epic must NOT touch or collide with"

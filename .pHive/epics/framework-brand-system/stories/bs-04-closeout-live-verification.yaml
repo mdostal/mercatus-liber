@@ -1,0 +1,38 @@
+id: bs-04-closeout-live-verification
+epic: framework-brand-system
+title: Live-verify both surfaces, deploy, close out the epic
+status: pending
+complexity: low
+methodology: classic
+depends_on: [bs-02-landing-page-brand, bs-03-docs-site-and-favicon]
+
+description: |
+  Run the full monorepo check, merge feat/framework-brand-system to master, push to origin
+  (this repo is genuinely public on GitHub -- pushing every merge is a hard, standing rule),
+  deploy both apps/reference-storefront (npx vercel@latest deploy --prod --yes) and apps/docs
+  (check its own separate Vercel project per epic-backlog.md row 33), live-verify on real
+  production URLs (commerce.mdostal.com's landing page + favicon, the docs site), confirm all
+  3 demo stores are completely unaffected. Update .pHive/planning/epic-backlog.md row 55 with
+  the real, final, live-verified outcome, citing real commit hashes and the honest
+  openai-image-unavailable disclosure from bs-01.
+
+acceptance_criteria:
+  - "Given the full monorepo check, when run, then it's clean"
+  - "Given commerce.mdostal.com and the docs site, when visited live post-deploy, then both show the real new brand system"
+  - "Given all 3 demo stores, when visited live post-deploy, then each is byte-identical to before this epic"
+  - "Given epic-backlog.md row 55, when read after this story, then it reflects the real, complete, live-verified outcome"
+
+steps:
+  - id: implement
+    description: Merge, push, deploy, live-verify, update the backlog.
+    agent: developer
+  - id: integrate
+    description: Final commit + push.
+    agent: developer
+    depends_on: [implement]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Row 55 -- the closeout target"

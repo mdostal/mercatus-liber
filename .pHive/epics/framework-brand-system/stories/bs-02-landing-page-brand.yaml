@@ -1,0 +1,41 @@
+id: bs-02-landing-page-brand
+epic: framework-brand-system
+title: Apply the brand system to the framework landing page
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [bs-01-brand-system-tokens]
+
+description: |
+  Apply .pHive/brand/brand-system.yaml's real tokens to apps/reference-storefront/app/(landing)/**
+  (the framework's own landing page, distinct from any demo store -- confirmed via
+  commerce-landing-and-demo-routing epic, .pHive/planning/epic-backlog.md row 31). Real
+  wordmark/logo treatment applied to the header. Do not touch app/demo/[demoSlug]/** or
+  packages/theming.
+
+acceptance_criteria:
+  - "Given the landing page, when rendered, then it uses the real new brand tokens (not the old ad-hoc styling), verified live against a real dev server"
+  - "Given any of the 3 demo stores, when visited after this change, then they render byte-identical to before (zero bleed into packages/theming or app/demo/**)"
+
+steps:
+  - id: implement
+    description: Apply the brand system to app/(landing)/** only.
+    agent: developer
+  - id: test
+    description: Live-verify the landing page renders correctly and all 3 demos are unaffected.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm scope boundary held (no packages/theming or app/demo/** changes).
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/framework-brand-system.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/app/(landing)/layout.tsx
+      purpose: "The framework landing page's own layout to restyle"

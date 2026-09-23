@@ -1,0 +1,213 @@
+# Mercatus Liber -- framework-level brand system
+# Produced by plugin-hive:brand-system (bs-01-brand-system-tokens, framework-brand-system epic)
+# Scope: the FRAMEWORK's own identity only (landing page, docs site, this brand guide).
+# Explicitly NOT packages/theming's 10 demo-facing ThemeBundles (classic/dark/minimal/
+# vibrant/retro/high-contrast/northline/editorial/maximalist/datasheet) -- those are each
+# demo store's own identity and are untouched by this file. See "grounding" below for how
+# every choice here was checked against those 10 bundles' actual token values to avoid
+# collision, not just against generic "AI design tell" advice.
+#
+# .pHive/brand/brand-system.yaml
+
+grounding:
+  project: >
+    Mercatus Liber ("free market", Latin) -- a free, MIT-licensed, headless commerce
+    framework. Not a SaaS product; no paid tier baked into core. Primary audience:
+    developers evaluating whether to adopt it. Real differentiators this brand had to
+    signal honestly: schema-first catalog, marketing-catalog genuinely separate from
+    sales catalog, adapter-swappable everything (payments/persistence/CMS/analytics/
+    admin-auth), AI-agent-accessible via the same interfaces humans use.
+  avoided_generic_ai_tells:
+    - "warm cream + serif + terracotta (already artifact-design's own named cliche, and
+       literally what packages/theming's 'classic' bundle already does -- #fdfbf7 +
+       Iowan Old Style/Palatino serif. This system uses a neutral, non-warm paper
+       surface and a single sans/mono type pairing instead, deliberately outside that
+       territory.)"
+    - "near-black background + one neon accent pop (the other named cliche -- this
+       system stays light-surface-first with a single mid-saturation indigo accent,
+       not a dark-mode-by-default neon treatment.)"
+    - "Inter / Space Grotesk chosen as an unexamined 'safe default' -- this system uses
+       Public Sans (USWDS's plain-legibility civic typeface) and JetBrains Mono (a
+       typeface literally built for reading code), each with an explicit reason tied
+       to this project's own character, not a default reached for out of habit."
+  checked_against_theme_bundles: >
+    Every hue and font family below was diffed against packages/theming/src/theme-
+    bundles.ts's actual --color-primary/--color-accent/--color-background/--font-family
+    values for all 10 bundles (read-only comparison; that file was never edited).
+    Findings: warm cream/ivory backgrounds are already claimed 4x over (classic
+    #fdfbf7, retro #fdf6e3, editorial #F2E9D8, maximalist #EEF0E6); burnt-orange/rust
+    primaries are already claimed 4x over (retro #cb4b16, editorial #B14B2A,
+    maximalist #FF4515, datasheet #C8460A); cool light-slate backgrounds are claimed
+    2x (northline #f8fafc, datasheet #F1F3F6); blue primaries claimed 3x (classic
+    #1d4ed8, dark #60a5fa, northline #1e40af); IBM Plex Sans is claimed by datasheet;
+    Archivo is claimed by maximalist. Violet/indigo, brick-red/garnet, and a true
+    neutral (non-warm, non-cool) gray-white are unclaimed by any of the 10 bundles --
+    this system deliberately occupies that open territory so the framework brand reads
+    as distinct from, not competing with, any demo store sitting beneath it.
+
+colors:
+  primary:
+    name: "Ledger Indigo"
+    hex: "#4338A0"
+    rgb: "rgb(67, 56, 160)"
+    cmyk: "cmyk(58, 65, 0, 37)"
+    pms: "PMS 2685 C (approx. -- indicative nearest match, not a certified swatch-book match; no Pantone matching tool was available)"
+    usage: >
+      The system's one confident accent -- primary CTAs, links, focus states, active
+      nav state. Deliberately singular: everywhere else stays neutral so this color
+      keeps its weight. Desaturated relative to a typical "SaaS blurple" so it reads
+      as considered ink rather than a gradient-button trend color.
+    contrast:
+      vs_white: "9.08:1 (AAA, normal text)"
+      vs_black: "2.31:1 (fails as text-on-black; use as a fill with white text instead)"
+  secondary:
+    name: "Garnet"
+    hex: "#A13A3A"
+    rgb: "rgb(161, 58, 58)"
+    cmyk: "cmyk(0, 64, 64, 37)"
+    pms: "PMS 7621 C (approx. -- indicative nearest match, not a certified swatch-book match)"
+    usage: >
+      Alerts, destructive actions (delete adapter config, cancel order), rare emphasis.
+      A muted brick/garnet rather than a bright alert-red or the rust/terracotta
+      oranges already claimed by 4 of the 10 demo bundles -- same "serious, not loud"
+      register as the primary, different hue family so the two never get confused at
+      a glance.
+    contrast:
+      vs_white: "6.60:1 (AA normal text, AAA large text)"
+      vs_black: "3.18:1 (fails as text-on-black; use as a fill with white text, or as large/bold text only)"
+  neutral:
+    name: "Carbon Ink"
+    hex: "#1A1A1D"
+    rgb: "rgb(26, 26, 29)"
+    cmyk: "cmyk(10, 10, 0, 89)"
+    pms: "PMS Black 6 C (approx.)"
+    usage: >
+      Body text and headings. A true neutral near-black (imperceptible warmth or
+      coolness) -- distinct from the warm near-blacks in classic (#1c1917), editorial
+      (#17130F) and maximalist (#241C14), and from the cool near-blacks in northline
+      (#0f172a) and datasheet (#12151B). Reads as plain ink on paper, not a stylistic
+      pick either direction.
+    contrast:
+      vs_white: "17.36:1 (AAA)"
+      vs_black: "1.21:1 (n/a -- this is the near-black itself)"
+  surface:
+    name: "Paper Neutral"
+    hex: "#F3F3F1"
+    rgb: "rgb(243, 243, 241)"
+    cmyk: "cmyk(0, 0, 1, 5)"
+    pms: "PMS Cool Gray 1 C (approx.)"
+    usage: >
+      Page background, cards, containers. A true neutral gray-white (not the warm
+      ivories 4 bundles already use, not the cool slates 2 bundles already use) --
+      picked specifically to be the unclaimed middle ground so the framework's own
+      surface doesn't echo any one demo store's temperature.
+    contrast:
+      vs_white: "1.11:1 (n/a -- this is the near-white itself)"
+      vs_black: "18.90:1 (AAA for near-black text on this surface)"
+
+typography:
+  heading_font: "Public Sans"
+  body_font: "Public Sans"
+  # Additive field beyond the base schema (parallel precedent: concept_directions
+  # below is also additive). Design-discussion §2a explicitly calls for "a
+  # monospace or semi-monospace accent face for code-adjacent UI chrome (nav, labels)
+  # paired with a plain, highly legible body/heading face" -- this is that third role.
+  accent_font: "JetBrains Mono"
+  accent_font_usage: >
+    Nav labels, badges/pills (e.g. "MIT", "pre-alpha", adapter names), version
+    numbers, inline code, the wordmark's tagline lockup. Never body copy at length --
+    it's UI chrome, not a reading face.
+  font_rationale: >
+    One plain text face (Public Sans, USWDS's civic-infrastructure typeface -- built
+    for maximum neutral legibility, not a "SaaS default") does double duty for both
+    headings and body: restraint in typography mirrors restraint in color (one
+    confident accent, not several). Public Sans was chosen over Inter/Space Grotesk
+    specifically because those are the two "safe default" faces the project's own
+    artifact-design guidance already names as generic-AI-design tells -- and over IBM
+    Plex Sans / Archivo because those are already claimed by the datasheet and
+    maximalist demo bundles respectively. JetBrains Mono is a genuine, load-bearing
+    choice, not decoration: it's a typeface literally designed for reading code
+    day-to-day, which is exactly this framework's own stated differentiator (schema-
+    first, adapter-swappable, AI-and-human-equal interfaces) -- using it for UI chrome
+    signals "built by and for people who read code" rather than just claiming it in
+    prose.
+  scale: [12, 14, 16, 18, 24, 32, 48, 64]
+  weights:
+    - weight: 400
+      name: "Regular"
+      usage: "Body text, captions, long-form docs copy"
+    - weight: 500
+      name: "Medium"
+      usage: "Labels, nav items, table headers"
+    - weight: 600
+      name: "SemiBold"
+      usage: "Subheadings, emphasis, card titles"
+    - weight: 700
+      name: "Bold"
+      usage: "Page headings, hero copy, primary CTAs"
+  usage_guidance: >
+    Public Sans for every reading and heading context, at the weight table above.
+    JetBrains Mono only for the accent_font_usage contexts listed -- if in doubt,
+    default to Public Sans; the mono face should stay rare enough to keep its signal.
+
+spacing:
+  base: 4 # px, 4-point grid -- the same widely-used convention packages/theming's
+          # own "classic" bundle applies at demo-store level; a shared grid convention
+          # isn't a collision (it's not visually distinctive on its own), only the
+          # specific scale/ratio below is this system's own.
+  scale: [4, 8, 12, 16, 24, 32, 48, 64, 96]
+
+radius:
+  small: 2
+  medium: 4
+  large: 8
+  full: 9999
+  rationale: >
+    Tighter corners than every demo bundle except "minimal" (which uses 0px) --
+    classic uses 6px, vibrant 12px. Sharp-but-not-stark corners read as precise and
+    structured (schema-first, adapter-typed) rather than soft/friendly-retail, which
+    is the right register for framework-level chrome sitting above loud, varied demo
+    storefronts, without going all the way to minimal's completely square edges.
+
+personality:
+  statement: >
+    Mercatus Liber is real, free infrastructure -- not a demo, not a funnel. It reads
+    like the code it ships: direct, exact, and built to be taken apart.
+  tone: "direct, precise, unembellished, confident"
+  voice_principles:
+    - "Say what's actually true, including the pre-alpha parts and the parts that
+       don't work yet -- credibility comes from precision, not polish (see README.md's
+       own 'Status: pre-alpha' framing, which this brand should never paper over)."
+    - "One accent color, one text face, one mono face: restraint is a design decision,
+       not an omission. Every additional color or face has to earn its place."
+    - "Every visual choice should read as legible and un-gimmicky to someone who reads
+       schemas and diffs for a living -- that's the actual audience, not a generic
+       'developer persona.'"
+    - "Never visually borrow from or collide with any of the 10 demo-store theme
+       bundles this brand sits above -- the framework is the frame, not one more
+       theme in the list."
+
+# Additive field, sanctioned by the brand-system skill's own prompt spec (parallel to
+# how logo-exploration reads this same array downstream when openai-image is live).
+# Recorded here as real, honest follow-on scope -- NOT executed in this pass, since
+# openai-image is confirmed unavailable (see logo_decision below).
+concept_directions:
+  - "monospace wordmark, no icon -- the name set in the accent mono face, doing all the work"
+  - "bracket/slash lockup using literal type-system glyphs ( / < > ) referencing adapter interfaces, if a mark is ever explored"
+  - "ruled-line or ledger-row motif referencing an open market ledger, for a future icon-mark pass"
+
+logo_decision:
+  status: "typographic wordmark (disclosed substitution -- see brand-guide.html Logo Concepts section)"
+  reason: >
+    plugin-hive:logo-exploration's image-generation path requires the openai-image
+    MCP tool. Checked live in this session (not assumed from the epic's earlier
+    planning note): the tool is connected but reports CONNECTION_CLOSED, and
+    separately the repo's own .mcp.json does not list an openai-image server entry
+    at all -- so logo-exploration is unavailable by both the live-connectivity check
+    and the config-presence check the brand-system skill itself uses to decide
+    primary vs. fallback path. Per the epic's design discussion §2b, this ships a
+    real, well-reasoned typographic wordmark instead of a fake, placeholder, or
+    silently-omitted mark. Wordmark-only identities are a legitimate, common choice
+    for real open-source infrastructure projects. When openai-image reconnects,
+    icon-mark exploration (concept_directions above) is genuine, disclosed follow-on
+    work -- not something this pass claims to have already done.
