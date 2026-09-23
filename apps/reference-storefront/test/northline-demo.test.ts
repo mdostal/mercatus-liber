@@ -360,6 +360,9 @@ describe("Northline demo seed (epic 15b public demo)", () => {
     // (14 new single-SKU + 4 new tiered products across the original 4
     // categories plus a new 5th "Stickers & Patches" category) -- see
     // lib/seed.ts's DEMO_PRODUCTS/DEMO_VARIANT_PRODUCTS doc comments.
+    // product-configurator (pc-02) added a 27th: "embroidered-performance-polo",
+    // a real 2-axis (color AND size) variant product -- see
+    // lib/seed.ts's DEMO_MULTI_AXIS_VARIANT_PRODUCTS doc comment.
     expect(products.map((p) => p.slug).sort()).toEqual(
       [
         // Original 8 (print-shop-02) -- unchanged.
@@ -392,6 +395,9 @@ describe("Northline demo seed (epic 15b public demo)", () => {
         "embroidered-baby-onesie",
         "embroidered-quarter-zip-pullover",
         "screen-printed-crewneck-sweatshirt",
+        // product-configurator (pc-02) addition -- real 2-axis variant
+        // product (DEMO_MULTI_AXIS_VARIANT_PRODUCTS).
+        "embroidered-performance-polo",
       ].sort(),
     );
   });
