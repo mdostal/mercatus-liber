@@ -307,7 +307,25 @@ export default async function ProductPage({
       <JsonLd data={productJsonLd} />
       <JsonLd data={breadcrumbList(breadcrumbItems)} />
       <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug }} />
-      {bundle ? <BundleTierSelector demoSlug={demoSlug} bundle={bundle} pricingByTierId={pricingByTierId} /> : null}
+      {bundle ? (
+        <BundleTierSelector
+          demoSlug={demoSlug}
+          bundle={bundle}
+          pricingByTierId={pricingByTierId}
+          // commerce-gap-audit-3 finding #13: the same activeSku this route
+          // already resolved above (via pdp.resolveSelection) for the
+          // per-SKU add-to-cart forms -- threaded through so a bundle tier's
+          // add-to-cart can resolve against the shopper's live variant pick
+          // too. See bundle-tier-selector.tsx's own doc comment.
+          activeProductId={viewModel.product.id}
+          // activeSku is only possibly undefined for the theoretical
+          // zero-SKU-product edge case (viewModel.skus[0] before any
+          // resolution) -- falls back to "" (addBundleTierToCartAction
+          // treats an empty activeSkuId as "no active selection," same as
+          // omitting the field entirely) rather than crashing the PDP.
+          activeSkuId={activeSku?.id ?? ""}
+        />
+      ) : null}
       <Component
         demoSlug={demoSlug}
         viewModel={viewModel}

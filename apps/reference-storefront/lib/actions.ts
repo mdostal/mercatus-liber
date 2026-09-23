@@ -12,7 +12,7 @@ import {
   type AdminAction,
   type AdminRole,
 } from "@mercatus-liber/admin-auth";
-import type { BundleTier, CreateBundleInput } from "@mercatus-liber/bundles";
+import { resolveTierCartSkuIds, type BundleTier, type CreateBundleInput } from "@mercatus-liber/bundles";
 import type { AttributeValue, Money } from "@mercatus-liber/core";
 import { InvalidIdentifyingAttributesError } from "@mercatus-liber/catalog";
 import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising";
@@ -126,19 +126,40 @@ export async function addToCartAction(formData: FormData): Promise<void> {
  * quantity control -- see bundle-02's design_decisions). Submitting the same
  * tier twice naturally yields quantity 2 per SKU via addItem's existing
  * same-skuId-merges-quantity behavior -- no special dedup logic needed here.
+ *
+ * commerce-gap-audit-3 finding #13 (see
+ * .pHive/epics/commerce-gap-audit-3/docs/bundle-variant-resolution-design.md):
+ * before adding, each of the tier's skuIds is passed through
+ * `resolveTierCartSkuIds` against the PDP's own `activeProductId`/
+ * `activeSkuId` hidden fields (bundle-tier-selector.tsx) -- a skuId is only
+ * ever swapped for the shopper's live variant pick when it belongs to the
+ * exact product being viewed AND that product genuinely has 2+ real SKUs.
+ * Every other skuId in the tier (a different, non-selectable product) is
+ * added exactly as authored. `catalog` structurally satisfies
+ * resolveTierCartSkuIds' narrow TierSkuVariantLookup shape (getSku +
+ * listSkusByProduct) already -- no adapter object needed, same pattern as
+ * `skuLookup: catalog` in services.ts.
  */
 export async function addBundleTierToCartAction(formData: FormData): Promise<void> {
   const demoSlug = requireDemoSlug(formData);
   const bundleId = String(formData.get("bundleId"));
   const tierId = String(formData.get("tierId"));
+  const activeProductId = formData.get("activeProductId");
+  const activeSkuId = formData.get("activeSkuId");
   const cartId = await getOrCreateCartId(demoSlug);
-  const { bundles, cart } = await getServicesForDemo(demoSlug);
+  const { bundles, cart, catalog } = await getServicesForDemo(demoSlug);
 
   const bundle = await bundles.getBundle(bundleId);
   const tier = bundle?.tiers.find((t) => t.id === tierId);
   if (!tier) throw new Error(`No such bundle tier: ${bundleId}/${tierId}`);
 
-  for (const skuId of tier.skuIds) {
+  const activeSelection =
+    typeof activeProductId === "string" && activeProductId && typeof activeSkuId === "string" && activeSkuId
+      ? { productId: activeProductId, skuId: activeSkuId }
+      : undefined;
+  const skuIds = await resolveTierCartSkuIds(tier, activeSelection, catalog);
+
+  for (const skuId of skuIds) {
     await cart.addItem(cartId, skuId, 1);
   }
   revalidatePath(`/demo/${demoSlug}/cart`);
