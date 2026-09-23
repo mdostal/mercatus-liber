@@ -1,0 +1,23 @@
+name: product-configurator
+title: A real interactive attribute-matrix variant picker on the PDP, plus admin SKU-matrix management
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: none
+
+stories:
+  - id: pc-01-variant-picker-component
+    title: Real interactive variant picker wired to pdp.resolveSelection, across all 3 PDP templates
+    complexity: medium
+    depends_on: []
+  - id: pc-02-multi-axis-seed-product
+    title: A real 2+-axis seeded variant product to demo the picker against
+    complexity: low
+    depends_on: []
+  - id: pc-03-admin-sku-matrix
+    title: Admin SKU-matrix view + add-combination surface
+    complexity: medium
+    depends_on: [pc-01-variant-picker-component]
+  - id: pc-04-closeout-live-verification
+    title: Live-verify, deploy, close out the epic
+    complexity: low
+    depends_on: [pc-02-multi-axis-seed-product, pc-03-admin-sku-matrix]

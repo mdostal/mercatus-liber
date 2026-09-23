@@ -1,0 +1,50 @@
+id: pc-03-admin-sku-matrix
+epic: product-configurator
+title: Admin SKU-matrix view + add-combination surface
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [pc-01-variant-picker-component]
+
+description: |
+  The "admin combination rules" half of the original ask (epic-backlog row 59's own
+  phrasing: "attribute-matrix -> SKU picker + admin combination rules"). A minimal real
+  admin surface, mirroring this repo's existing plain-HTML admin-CRUD convention (bundles/
+  advertising/promotions all already do this -- no new UI framework, no new client-side
+  state library) showing a product's existing SKU matrix (every identifying-attribute
+  key/value combination that has a real SKU today, with its price/stock) and letting an
+  admin add new combinations via catalog.generateSkus. Reuse generateSkus's own existing
+  validation (throws InvalidIdentifyingAttributesError on a key mismatch) -- do not invent
+  new validation logic. Gate the mutation the same way every other admin mutation in this
+  repo already is (requireAdminPermission("mutate")).
+
+acceptance_criteria:
+  - "Given a product's admin detail view, when opened, then it shows the product's real current SKU matrix (every existing combination, its price, its stock)"
+  - "Given a new valid combination submitted by an admin, when generateSkus runs, then the new SKU is created and appears in the matrix, live-verified against a real dev server"
+  - "Given an invalid combination (wrong/missing key), when submitted, then the existing InvalidIdentifyingAttributesError surfaces as a real, legible admin-facing error -- not a 500"
+  - "Given a viewer-role session, when it attempts this mutation, then it is rejected, matching every other admin mutation's own gating"
+
+steps:
+  - id: implement
+    description: Build the admin SKU-matrix view + add-combination action.
+    agent: developer
+  - id: test
+    description: Live-verify against a real dev server -- view an existing matrix, add a real combination, confirm viewer-role rejection.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the admin-CRUD convention (plain HTML, requireAdminPermission gating) was followed, not a new pattern invented.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/product-configurator.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/app/demo/[demoSlug]/admin
+      purpose: "Existing admin surface + its plain-HTML CRUD convention to mirror (bundles/advertising/promotions)"
+    - path: packages/catalog/src/service.ts
+      purpose: "generateSkus -- the existing, already-validated SKU creation this story must call, never reimplement"

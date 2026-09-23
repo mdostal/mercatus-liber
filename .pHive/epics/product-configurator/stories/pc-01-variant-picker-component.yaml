@@ -1,0 +1,66 @@
+id: pc-01-variant-picker-component
+epic: product-configurator
+title: Real interactive variant picker wired to pdp.resolveSelection, across all 3 PDP templates
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Build a real interactive variant-picker: one real form control (native <select> or a
+  radio/swatch group -- accessible, keyboard-operable, works without client JS for the
+  base case) per identifying-attribute key (viewModel.optionValues), that resolves the
+  current selection to exactly one SKU and updates the shown price/stock/Add-to-cart
+  target to match. Exercise pdp.resolveSelection/catalog.resolveVariant for real (currently
+  dead code with zero call sites outside their own package's tests) -- either via a real
+  server action per selection change, or a client-side match over the already-fetched
+  viewModel.skus list (an implementation choice, but resolveSelection/resolveVariant must
+  end this story with a real, live call site somewhere in the app, not remain unused).
+
+  Apply this across all 3 real PDP templates: pdp-tabbed-detail.tsx, pdp-long-scroll.tsx
+  (both the default and EditorialPdpLongScroll branches), and pdp-spec-sheet.tsx.
+
+  CRITICAL regression boundary: a single-SKU product (the common case -- most seeded
+  products today) must render byte-identical to its current behavior. No picker chrome for
+  a product with nothing to pick. This replaces the current "list every SKU as its own
+  separate <form>/buy-box" pattern ONLY for products with 2+ SKUs.
+
+acceptance_criteria:
+  - "Given a product with 2+ SKUs across 1+ identifying-attribute keys, when a shopper changes a selector, then the displayed price/stock/Add-to-cart target updates to the exactly-matching SKU, verified live against a real dev server"
+  - "Given a single-SKU product, when its PDP renders, then it is byte-identical to its pre-this-story rendering (no picker UI added)"
+  - "Given pdp.resolveSelection/catalog.resolveVariant, when this story ends, then at least one real, live call site exists (not test-only)"
+  - "Given all 3 PDP templates including the editorial long-scroll variant, when each is rendered for a multi-SKU product, then each shows the real interactive picker (not just one template)"
+  - "Given an invalid/incomplete selection (e.g. only one of two axes chosen), when it occurs, then the UI handles it gracefully (e.g. disables Add to cart, or defaults sensibly) -- never a broken/blank state"
+
+steps:
+  - id: implement
+    description: Build the variant-picker component and wire it into all 3 PDP templates.
+    agent: developer
+  - id: test
+    description: Live-verify against a real dev server -- multi-SKU selection updates correctly; single-SKU products unchanged.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm accessibility (real form controls, keyboard operable) and the single-SKU zero-regression boundary held.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/product-configurator.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/components/pdp-long-scroll.tsx
+      purpose: "Current 'list every SKU as its own buy-box' pattern to replace for multi-SKU products"
+    - path: apps/reference-storefront/components/pdp-tabbed-detail.tsx
+      purpose: "Second template needing the picker"
+    - path: apps/reference-storefront/components/pdp-spec-sheet.tsx
+      purpose: "Third template needing the picker"
+    - path: packages/pdp/src/service.ts
+      purpose: "resolveSelection -- the currently-dead delegate to catalog.resolveVariant this story must give a real call site"
+    - path: packages/pdp/src/option-values.ts
+      purpose: "computeOptionValues -- already-correct source of per-key available values"
+    - path: apps/reference-storefront/app/demo/[demoSlug]/products/[slug]/page.tsx
+      purpose: "The PDP route composing viewModel + stockBySkuId + templates"
