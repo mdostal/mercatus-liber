@@ -19,3 +19,13 @@ overrides:
   # nextra/nextra-theme-docs (apps/docs) -- no other package in this repo depends on zod.
   nextra>zod: 4.3.6
   nextra-theme-docs>zod: 4.3.6
+  # Pins @xmldom/xmldom to the latest patched release (0.9.12), closing 13 advisories
+  # (11 high, 2 moderate; GHSA entries for double-free / prototype-pollution-class XML
+  # parsing bugs) that all trace to one deeply-transitive chain: apps/docs's
+  # nextra/nextra-theme-docs -> better-react-mathjax -> mathjax-full -> speech-rule-engine
+  # -> @xmldom/xmldom@0.9.10. Every advisory's patched_versions is >=0.9.11 or >=0.9.12;
+  # 0.9.12 is npm's current "latest" dist-tag for the package, so this pin satisfies all
+  # of them. No app in this repo depends on @xmldom/xmldom directly or uses MathJax/math
+  # notation -- speech-rule-engine pulls it in solely for MathJax's (unused here)
+  # text-to-speech accessibility feature.
+  "@xmldom/xmldom": 0.9.12
