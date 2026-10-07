@@ -1,4 +1,4 @@
-<img src="docs/assets/logo.png" alt="Mercatus Liber" width="320">
+<img src="docs/assets/logo.png" alt="Mercatus Liber -- free market, free software" width="320">
 
 [![CI](https://img.shields.io/github/actions/workflow/status/mdostal/mercatus-liber/ci.yml?branch=master&label=CI)](https://github.com/mdostal/mercatus-liber/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/mdostal/mercatus-liber)](LICENSE)
