@@ -406,23 +406,26 @@
   <section class="logos">
     <h2>Logo Concepts</h2>
     <div class="disclosure">
+      <p style="margin:0 0 12px 0; font-weight:700;">Inline SVG fallback — install the <code>openai-image</code> MCP and re-run <code>/brand-system</code> for image-backed exploration via <code>/logo-exploration</code>.</p>
       <strong>Disclosed substitution, not a fake or a skip:</strong> <code>plugin-hive:logo-exploration</code>'s
       image-generation path requires the <code>openai-image</code> MCP tool. Checked live in this
       session — not assumed from the epic's earlier planning note — it reports
       <code>CONNECTION_CLOSED</code>, and separately this repo's own <code>.mcp.json</code> doesn't
       list an <code>openai-image</code> server entry at all, so logo-exploration is unavailable by
       both the live-connectivity check and the config-presence check the brand-system skill itself
-      uses to decide its primary vs. fallback path. Per the epic's design discussion §2b, what
-      follows is a real, well-reasoned <strong>typographic wordmark</strong> — not an icon mark, and
-      not a placeholder. Wordmark-only identities are a legitimate, common choice for real
-      open-source infrastructure projects. When <code>openai-image</code> reconnects, icon-mark
-      exploration (see <code>concept_directions</code> in <code>brand-system.yaml</code>) is genuine,
-      disclosed follow-on work — not something already claimed done here.
+      uses to decide its primary vs. fallback path. What follows are five real, hand-authored
+      inline-SVG concept <strong>categories</strong> — pure wordmark, wordmark + symbol, monogram,
+      abstract mark, and badge — not image-generated marks, and not placeholders. The three wordmark
+      treatments below predate this pass; the monogram, abstract mark, wordmark + symbol, and badge
+      are new. When <code>openai-image</code> reconnects, a real image-backed exploration pass along
+      these same directions (see <code>concept_directions</code> in <code>brand-system.yaml</code>) is
+      genuine, disclosed follow-on work — and choosing a final mark among what's here is a decision
+      for a human to make, not something this pass claims to have resolved.
     </div>
 
     <div class="logo-grid">
       <article class="logo-card">
-        <h3>Primary lockup</h3>
+        <h3>Pure wordmark — primary lockup</h3>
         <div class="logo-display" style="background:#fff;">
           <svg viewBox="0 0 320 90" width="300" height="84">
             <text x="10" y="48" font-family="'Public Sans'" font-weight="700" font-size="40" fill="#4338A0">Mercatus Liber</text>
@@ -433,7 +436,7 @@
       </article>
 
       <article class="logo-card">
-        <h3>Compact / nav &amp; footer chrome</h3>
+        <h3>Pure wordmark — compact / nav &amp; footer chrome</h3>
         <div class="logo-display" style="background:#fff;">
           <svg viewBox="0 0 320 60" width="300" height="56">
             <text x="10" y="36" font-family="'JetBrains Mono'" font-weight="500" font-size="22" fill="#1A1A1D">mercatus liber</text>
@@ -443,7 +446,7 @@
       </article>
 
       <article class="logo-card">
-        <h3>Package-identifier lockup</h3>
+        <h3>Pure wordmark — package-identifier lockup</h3>
         <div class="logo-display" style="background:#fff;">
           <svg viewBox="0 0 320 60" width="300" height="56">
             <text x="10" y="36" font-family="'JetBrains Mono'" font-weight="700" font-size="21" fill="#4338A0">@mercatus-liber</text>
@@ -451,6 +454,59 @@
           </svg>
         </div>
         <p class="concept-description">Styled like the real pnpm package scope this repo already ships (<code>@mercatus-liber/core</code>, <code>@mercatus-liber/adapter-sqlite</code>, …) — a wordmark treatment that's specific to how this project is actually built, not a generic lettermark.</p>
+      </article>
+
+      <article class="logo-card">
+        <h3>Monogram — ledger ML</h3>
+        <div class="logo-display" style="background:#fff;">
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <path d="M14,100 L14,20 L38,65 L62,20 L62,100 L100,100" fill="none" stroke="#4338A0" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter"/>
+            <line x1="8" y1="108" x2="112" y2="108" stroke="#A13A3A" stroke-width="2" opacity="0.55"/>
+            <line x1="8" y1="113" x2="106" y2="113" stroke="#A13A3A" stroke-width="2" opacity="0.35"/>
+            <line x1="8" y1="118" x2="94" y2="118" stroke="#A13A3A" stroke-width="2" opacity="0.2"/>
+          </svg>
+        </div>
+        <p class="concept-description">"M" and "L" built as a single interlocked stroke (the M's last leg doubles as the L's upright) in Ledger Indigo, set over three receding ledger-rule lines in Garnet — a literal nod to the "open market ledger" reading of the name, for a favicon-scale mark where the full wordmark won't fit.</p>
+      </article>
+
+      <article class="logo-card">
+        <h3>Abstract mark — adapter slot</h3>
+        <div class="logo-display" style="background:#fff;">
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <path d="M48,22 L20,60 L48,98" fill="none" stroke="#4338A0" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+            <path d="M72,22 L100,60 L72,98" fill="none" stroke="#4338A0" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+            <rect x="52" y="52" width="16" height="16" fill="#4338A0" transform="rotate(45 60 60)"/>
+          </svg>
+        </div>
+        <p class="concept-description">Two interface brackets (the literal <code>&lt;T&gt;</code> generic-type glyphs this project's adapters are typed through) holding a single rotated tile between them — the module that slots in and can be swapped without touching the brackets. The actual "adapter-swappable everything" differentiator, drawn rather than described.</p>
+      </article>
+
+      <article class="logo-card">
+        <h3>Wordmark + symbol — adapter slot paired with the primary lockup</h3>
+        <div class="logo-display" style="background:#fff;">
+          <svg viewBox="0 0 320 90" width="300" height="84">
+            <g transform="translate(6,17) scale(0.467)">
+              <path d="M48,22 L20,60 L48,98" fill="none" stroke="#4338A0" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+              <path d="M72,22 L100,60 L72,98" fill="none" stroke="#4338A0" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+              <rect x="52" y="52" width="16" height="16" fill="#4338A0" transform="rotate(45 60 60)"/>
+            </g>
+            <text x="80" y="52" font-family="'Public Sans'" font-weight="700" font-size="32" fill="#1A1A1D">Mercatus Liber</text>
+          </svg>
+        </div>
+        <p class="concept-description">The adapter-slot mark at reading size next to the name in Carbon Ink — the mark carries the one accent color, the wordmark stays neutral, so the pairing doesn't double up on emphasis. This is the lockup to test first for small-size contexts (browser tab, PR status checks, npm badge).</p>
+      </article>
+
+      <article class="logo-card">
+        <h3>Badge — contained mark for favicon / social preview</h3>
+        <div class="logo-display" style="background:#fff;">
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <rect x="4" y="4" width="112" height="112" rx="20" fill="#4338A0"/>
+            <path d="M48,30 L26,60 L48,90" fill="none" stroke="#F3F3F1" stroke-width="8" stroke-linecap="square" stroke-linejoin="miter"/>
+            <path d="M72,30 L94,60 L72,90" fill="none" stroke="#F3F3F1" stroke-width="8" stroke-linecap="square" stroke-linejoin="miter"/>
+            <rect x="52" y="52" width="16" height="16" fill="#F3F3F1" transform="rotate(45 60 60)"/>
+          </svg>
+        </div>
+        <p class="concept-description">The adapter-slot mark inverted onto a Ledger Indigo rounded square — the one treatment in this set actually meant to be cropped down to 16×16 or dropped into a GitHub social-preview card, where the full wordmark can't survive the scale.</p>
       </article>
     </div>
 
@@ -467,6 +523,38 @@
       </div>
       <div class="logo-bg-cell" style="background:#FFFFFF; border:1px solid #ddd;">
         <svg viewBox="0 0 220 40" width="200" height="36"><text x="0" y="28" font-family="'Public Sans'" font-weight="700" font-size="24" fill="#1A1A1D">Mercatus Liber</text></svg>
+      </div>
+    </div>
+
+    <h3 style="font-size:15px; margin: 28px 0 16px 0;">Background variants — abstract mark (adapter slot) on each system color</h3>
+    <div class="logo-bg-grid">
+      <div class="logo-bg-cell" style="background:#F3F3F1;">
+        <svg viewBox="0 0 120 120" width="60" height="60">
+          <path d="M48,22 L20,60 L48,98" fill="none" stroke="#4338A0" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+          <path d="M72,22 L100,60 L72,98" fill="none" stroke="#4338A0" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+          <rect x="52" y="52" width="16" height="16" fill="#4338A0" transform="rotate(45 60 60)"/>
+        </svg>
+      </div>
+      <div class="logo-bg-cell" style="background:#1A1A1D;">
+        <svg viewBox="0 0 120 120" width="60" height="60">
+          <path d="M48,22 L20,60 L48,98" fill="none" stroke="#F3F3F1" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+          <path d="M72,22 L100,60 L72,98" fill="none" stroke="#F3F3F1" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+          <rect x="52" y="52" width="16" height="16" fill="#F3F3F1" transform="rotate(45 60 60)"/>
+        </svg>
+      </div>
+      <div class="logo-bg-cell" style="background:#4338A0;">
+        <svg viewBox="0 0 120 120" width="60" height="60">
+          <path d="M48,22 L20,60 L48,98" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+          <path d="M72,22 L100,60 L72,98" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+          <rect x="52" y="52" width="16" height="16" fill="#FFFFFF" transform="rotate(45 60 60)"/>
+        </svg>
+      </div>
+      <div class="logo-bg-cell" style="background:#FFFFFF; border:1px solid #ddd;">
+        <svg viewBox="0 0 120 120" width="60" height="60">
+          <path d="M48,22 L20,60 L48,98" fill="none" stroke="#4338A0" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+          <path d="M72,22 L100,60 L72,98" fill="none" stroke="#4338A0" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
+          <rect x="52" y="52" width="16" height="16" fill="#4338A0" transform="rotate(45 60 60)"/>
+        </svg>
       </div>
     </div>
   </section>
