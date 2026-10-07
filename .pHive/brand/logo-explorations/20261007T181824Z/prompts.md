@@ -301,3 +301,13 @@ through:
 
 No `selected.yaml` written — still the user's call, now narrowed to these 4 (or the
 original `direction-4/1.png`, unedited).
+
+## Sizing follow-up — icon-to-text ratio
+
+User feedback after seeing the applied lockup: "increase icon size overall to
+match the text a bit better but aside from that pretty good." Bumped the mark
+from 180-182px to 260px in both `.pHive/brand/social-preview.png` (1280x640) and
+`docs/assets/logo.png` (README header), wordmark/tagline sizes unchanged. Same
+real screenshot-based render method as the original apply pass (Playwright,
+real `mark.png` crop, real Google Fonts). Favicon sizes (32x32/180x180) were not
+touched -- those are fixed platform conventions, not part of the lockup ratio.
