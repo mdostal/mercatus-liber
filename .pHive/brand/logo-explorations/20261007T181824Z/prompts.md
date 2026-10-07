@@ -265,3 +265,39 @@ Open `contact-sheet.html` in this directory and pick a winner (from this round,
 round 1, or the inline-SVG fallback set in `brand-guide.html`) by writing
 `selected.yaml` per the schema in `hive/references/logo-exploration-artifacts.md`
 — a human reviewer's decision, not something this generation pass makes.
+
+## Refinement round — direction-4, candidate 1 (Brass Amber agora)
+
+User feedback after reviewing both exploration rounds: **direction 4 (open market /
+agora) is the winner**, specifically the Brass Amber colorway (candidate 1). Explicit
+refinement ask, verbatim: "take the brass amber one and turn that middle section into
+a solid M and then do a tent flap / middle pole of an L with it or something that
+really makes it sell the M L shape.. OR it can do the M and L with it having a bit of
+a market stall with a food area and make it nicer."
+
+Produced 4 real refinement edits via Gemini's image-input (`inlineData`) edit path,
+using `direction-4/1.png` as the base image (same approach as round 2's recolor
+pass) — not fresh from-scratch generation, so the market-tent silhouette carries
+through:
+
+- **`edits/direction-4-candidate-1-edit-0.png`** — central roofline redrawn as a
+  solid, bold, filled capital M; the right tent-leg/pole redesigned as a capital L
+  (vertical post + horizontal ground-flap foot). The left leg stays a simpler angled
+  pole for balance. **Strongest result** — reads unmistakably as "ML" while the tent
+  silhouette is still clearly present as the secondary read. This is the direct
+  realization of the user's first stated idea.
+- **`edits/direction-4-candidate-1-edit-1.png`** — same solid-M roofline, but both
+  tent legs reshaped together into a single L instead of one leg. The M reads more
+  as a small crown/peak sitting atop the L than a confident "ML" lockup — less
+  legible than edit-0.
+- **`edits/direction-4-candidate-1-edit-2.png`** — the user's second stated idea: a
+  market-stall scene with a counter and simple geometric "goods" shapes (circle,
+  square, triangle, circle) beneath the canopy. The roofline keeps a triangular/M-ish
+  read but letterform legibility is weaker than edit-0/1; reads first as "market
+  stall," second as a monogram.
+- **`edits/direction-4-candidate-1-edit-3.png`** — market-stall variant with a
+  scalloped awning fringe and round "goods" on a counter. Most literally a food
+  stall of the four; the M/L letterform read is the weakest of the set here.
+
+No `selected.yaml` written — still the user's call, now narrowed to these 4 (or the
+original `direction-4/1.png`, unedited).
