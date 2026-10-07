@@ -405,8 +405,27 @@
   <!-- ============ LOGO CONCEPTS ============ -->
   <section class="logos">
     <h2>Logo Concepts</h2>
+    <div class="disclosure" style="background:#eaf0fb; border-color:#b8cce3; color:#223a5e;">
+      <p style="margin:0 0 12px 0; font-weight:700;">Image-backed exploration now exists — generated via Gemini (<code>gemini-3-pro-image</code>), not <code>openai-image</code>.</p>
+      <strong>Disclosed substitution, not a fake or a skip:</strong> <code>plugin-hive:logo-exploration</code>'s
+      primary image-generation path calls for the <code>openai-image</code> MCP tool specifically. That
+      server remains disconnected in this repo (re-checked live: <code>CONNECTION_CLOSED</code>, and this
+      repo's own <code>.mcp.json</code> still lists no <code>openai-image</code> entry at all) — so rather than
+      leave the image-backed path unattempted indefinitely, this pass used Google Gemini's
+      <code>gemini-3-pro-image</code> model (the stable "Nano Banana Pro") instead, with the substitution
+      disclosed here honestly, the same way the inline-SVG fallback below discloses its own gap. Twelve
+      real candidate images were generated — four per <code>concept_directions</code> entry in
+      <code>brand-system.yaml</code> — and written to
+      <code>.pHive/brand/logo-explorations/20261007T171307Z/</code>. Open
+      <code>.pHive/brand/logo-explorations/20261007T171307Z/contact-sheet.html</code> in a browser to review
+      them; exact prompts and model parameters are logged in that directory's <code>prompts.md</code>.
+      <strong>No winner has been picked</strong> — selecting a final mark among these candidates (or the
+      inline-SVG concepts below) is a human decision, not something this pass makes. The inline-SVG
+      concepts below predate this image-backed pass and remain in place as real, usable fallback options,
+      not superseded by it.
+    </div>
     <div class="disclosure">
-      <p style="margin:0 0 12px 0; font-weight:700;">Inline SVG fallback — install the <code>openai-image</code> MCP and re-run <code>/brand-system</code> for image-backed exploration via <code>/logo-exploration</code>.</p>
+      <p style="margin:0 0 12px 0; font-weight:700;">Inline SVG fallback — install the <code>openai-image</code> MCP and re-run <code>/brand-system</code> for a further image-backed exploration via <code>/logo-exploration</code> (or see the Gemini-based exploration linked above, generated in the meantime).</p>
       <strong>Disclosed substitution, not a fake or a skip:</strong> <code>plugin-hive:logo-exploration</code>'s
       image-generation path requires the <code>openai-image</code> MCP tool. Checked live in this
       session — not assumed from the epic's earlier planning note — it reports

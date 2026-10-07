@@ -200,13 +200,50 @@ concept_directions:
 
 logo_decision:
   status: >
-    inline-SVG fallback, five concept categories (disclosed substitution -- see
-    brand-guide.html Logo Concepts section): pure wordmark (3 variants, carried over
-    from the earlier pass), monogram (ledger ML), abstract mark (adapter slot --
-    interlocking brackets holding a swappable tile), wordmark + symbol (adapter slot
-    paired with the primary lockup), and badge (adapter slot contained in a rounded
-    square, sized for a favicon or GitHub social-preview card). No selection has been
-    made among them -- that is a human decision, not this pass's to make.
+    Two parallel option sets now exist, neither selected: (1) inline-SVG fallback,
+    five concept categories in brand-guide.html (pure wordmark x3, monogram "ledger
+    ML", abstract mark "adapter slot", wordmark + symbol, badge); (2) a genuine
+    image-backed exploration, 12 real candidate PNGs (4 per concept_directions entry
+    below) generated via Google Gemini (gemini-3-pro-image, disclosed substitution
+    for the still-disconnected openai-image -- see image_exploration block below and
+    brand-guide.html's Logo Concepts section for the full disclosure). No selection
+    has been made among either set -- that is a human decision, not this pass's to
+    make. selected.yaml is deliberately NOT written by any automated pass; it is
+    written by the human reviewer per hive/references/logo-exploration-artifacts.md.
+  image_exploration:
+    path: ".pHive/brand/logo-explorations/20261007T171307Z/"
+    contact_sheet: ".pHive/brand/logo-explorations/20261007T171307Z/contact-sheet.html"
+    prompts_log: ".pHive/brand/logo-explorations/20261007T171307Z/prompts.md"
+    model: "gemini-3-pro-image (\"Nano Banana Pro\", stable, not a preview model)"
+    candidates_generated: "12 of 12 (4 per concept_directions entry, 3 directions) -- all succeeded, no failures"
+    provider_substitution: >
+      plugin-hive:logo-exploration's own primary image-generation path requires the
+      openai-image MCP tool. Re-checked live immediately before this run: the
+      openai-image MCP server still reports CONNECTION_CLOSED, and this repo's own
+      root .mcp.json still lists no openai-image entry at all (only
+      reference-storefront-commerce and sanity) -- unchanged from the prior pass's
+      finding. Rather than leave the image-backed path unattempted indefinitely, this
+      pass substituted Google Gemini's gemini-3-pro-image model, using a real,
+      already-verified-working API key (Portunus reference
+      personalsites-487021-google_generative_ai_api_key, already used for image
+      generation on the operator's other sites). This is a disclosed substitution,
+      not a silent one -- same disclosure spirit as the existing inline-SVG
+      fallback's own notice.
+    transparency_check: >
+      Verified live before the full run: gemini-3-pro-image's generateContent
+      response always has mimeType image/jpeg (confirmed via decoded-byte inspection,
+      PIL mode == RGB, no alpha channel), even when the prompt explicitly asked for a
+      transparent PNG background -- that request instead produced a literal
+      checkerboard pattern baked into the pixels as drawn content, not real
+      transparency. All 12 candidates therefore use a clean solid white background
+      instead; a true-alpha version of any selected candidate would need standard
+      background-removal post-processing as a separate follow-on step.
+    selection_status: >
+      Open. contact-sheet.html is the human review surface. Picking a winner (from
+      either the image-backed set or the inline-SVG set) and writing selected.yaml is
+      explicitly left to a human reviewer, per
+      hive/references/logo-exploration-artifacts.md's own ownership split --
+      not decided or assumed by this pass.
   reason: >
     plugin-hive:logo-exploration's image-generation path requires the openai-image
     MCP tool. Re-checked live in this session (not assumed from the earlier pass's
@@ -215,18 +252,21 @@ logo_decision:
     commerce and sanity -- no openai-image entry at all. So logo-exploration remains
     unavailable by both the live-connectivity check and the config-presence check the
     brand-system skill itself uses to decide primary vs. fallback path; that part of
-    the story is unchanged from the prior pass. What changed: the fallback path's own
-    spec (hive/references/ui-prompts/brand-system.md, "Fallback path for the Logo
-    Concepts section") asks for 3-5 concepts spanning pure wordmark, wordmark +
-    symbol, monogram, abstract mark, and badge -- the prior pass only produced three
-    wordmark variants (one category). This pass adds the four missing categories as
-    genuinely hand-authored inline SVG (simple stroke/fill geometry grounded in the
-    project's own adapter-swappable-everything metaphor and the existing Ledger
-    Indigo / Garnet / Carbon Ink / Paper Neutral palette), not image-generated and not
-    placeholder shapes. Real open follow-up, honestly: (1) a genuine image-backed icon
-    exploration once openai-image reconnects, which may surface marks better than any
-    inline-SVG geometry can produce by hand; (2) selecting a final mark among the
-    options now in brand-guide.html, which is deliberately left to the human, not
-    decided here; (3) if the badge concept is the eventual pick, regenerating the
-    repo's actual favicon and GitHub social-preview image from it is a real follow-on
-    task, not done as part of this brand-artifact pass.
+    the story is unchanged from the prior pass. What changed across the prior two
+    passes: pass 2 added four inline-SVG concept categories (wordmark + symbol,
+    monogram, abstract mark, badge) alongside the original three wordmark variants,
+    all hand-authored SVG grounded in the project's own adapter-swappable-everything
+    metaphor and the existing palette, not image-generated and not placeholder
+    shapes. Pass 3 (this one) finally delivers the genuine image-backed icon
+    exploration flagged as real open follow-up in pass 2 -- not by waiting for
+    openai-image to reconnect, but via a disclosed Gemini substitution, since the
+    operator explicitly asked for that substitution and a working, already-verified
+    Gemini API key exists in Portunus. See image_exploration above for the full
+    provenance. Remaining real open follow-up, honestly: (1) selecting a final mark
+    among all the options now available (image-backed or inline-SVG), which is
+    deliberately left to the human, not decided here; (2) if a badge-style image
+    candidate is the eventual pick, regenerating the repo's actual favicon and GitHub
+    social-preview image from it is a real follow-on task, not done as part of this
+    brand-artifact pass; (3) if openai-image ever does reconnect, a further
+    openai-image-backed pass would be a genuine additional data point, not required
+    to unblock selection since a real image-backed set already exists now.

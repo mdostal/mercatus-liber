@@ -9,3 +9,9 @@ dist/
 *.tsbuildinfo
 .vercel
 .env*
+
+# Logo exploration artifacts (.pHive/brand/logo-explorations/<timestamp>/):
+# track the human-review surface (.html, .md, .yaml, .gitkeep) but ignore the
+# generated PNG candidates themselves -- large binaries, fully reproducible
+# from prompts.md. See hive/references/logo-exploration-artifacts.md.
+.pHive/brand/logo-explorations/**/*.png
