@@ -34,7 +34,9 @@ via `npx`.
 - **Store name** — used as the directory name and the generated `package.json`'s `name`.
 - **Adapter** — one of `sqlite`, `postgres`, or `shopify`.
 - **Theme key** — one of `classic`, `dark`, `minimal`, `vibrant`, `retro`, `high-contrast`,
-  `northline`.
+  `northline`, `editorial`, `maximalist`, `datasheet` (all 10 real bundles in
+  `packages/theming/src/theme-bundles.ts` — the CLI itself doesn't validate this list, it
+  accepts any string, but these are the ones with a real, shipped `ThemeBundle`).
 - **Plugins** (optional) — a comma-separated list; the CLI records these but doesn't otherwise
   validate or act on them today.
 - **Target directory** — scaffold into a fresh, empty directory *outside* this repo's own
