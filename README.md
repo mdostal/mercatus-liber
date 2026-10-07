@@ -1,3 +1,8 @@
+<img src="docs/assets/logo.png" alt="Mercatus Liber" width="320">
+
+[![CI](https://img.shields.io/github/actions/workflow/status/mdostal/mercatus-liber/ci.yml?branch=master&label=CI)](https://github.com/mdostal/mercatus-liber/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/mdostal/mercatus-liber)](LICENSE)
+
 # Mercatus Liber
 
 _"Free market" (Latin). A legitimate, 100% free/open-source alternative to Shopify/Medusa/
@@ -24,7 +29,7 @@ adapter), admin auth/promotions/bundles/recommendations/advertising/reviews/inte
 fulfillment/shipping/SEO are all real and shipped, and three genuinely distinct, live demo
 stores (`print-shop`, `northline`, `broadleaf`) run in production at `commerce.mdostal.com`
 today, two of them on different real database backends (Postgres and Convex). See
-`.pHive/planning/epic-backlog.md` for the full, currently 63-epic build-out backlog and
+`.pHive/planning/epic-backlog.md` for the full, currently 75-epic build-out backlog and
 `VISION.md` for a narrative "where things stand today."
 
 ## Why
