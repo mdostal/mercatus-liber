@@ -1,0 +1,16 @@
+# Human selection, round 2 + refinement pass
+# Base exploration: direction 4 (open market / agora)
+# Refined via image-edit (see edits/ and prompts.md's "Refinement round" section)
+direction: 4
+candidate: 1
+edit: 2
+edit_path: "edits/direction-4-candidate-1-edit-2.png"
+color: "Brass Amber (#96620B)"
+notes: |
+  Picked over edit-0 (solid-M/tent-pole-L, the stronger pure-letterform read) in
+  favor of the warmer, more literal market-stall-with-goods treatment, despite its
+  weaker M/L legibility. Explicit reasoning from the user: this is "a beginning for
+  doing the creative I want" -- not the final polished mark, a direction to keep
+  iterating on. Plan: pair the mark with the real "Mercatus Liber" wordmark in a
+  lockup rather than rely on the icon alone to spell out the name, since the icon's
+  letterform read is intentionally secondary to the market-stall scene here.
