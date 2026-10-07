@@ -200,14 +200,21 @@ concept_directions:
 
 logo_decision:
   status: >
-    Two parallel option sets now exist, neither selected: (1) inline-SVG fallback,
+    Three parallel option sets now exist, neither selected: (1) inline-SVG fallback,
     five concept categories in brand-guide.html (pure wordmark x3, monogram "ledger
     ML", abstract mark "adapter slot", wordmark + symbol, badge); (2) a genuine
-    image-backed exploration, 12 real candidate PNGs (4 per concept_directions entry
-    below) generated via Google Gemini (gemini-3-pro-image, disclosed substitution
-    for the still-disconnected openai-image -- see image_exploration block below and
-    brand-guide.html's Logo Concepts section for the full disclosure). No selection
-    has been made among either set -- that is a human decision, not this pass's to
+    image-backed exploration round 1, 12 real candidate PNGs (4 per
+    concept_directions entry below) generated via Google Gemini (gemini-3-pro-image,
+    disclosed substitution for the still-disconnected openai-image -- see
+    image_exploration block below and brand-guide.html's Logo Concepts section for
+    the full disclosure); (3) a second image-backed exploration round, 21 more real
+    candidate PNGs -- the human reviewer of round (2) wasn't sold on any of those 12
+    (all single-color Ledger Indigo) and asked to see color, so round 2 both
+    recolors the cleanest candidate from each of round 1's three directions into
+    three new colorways apiece (9 images) and explores three genuinely new concept
+    directions, each in four different colors (12 images) -- see
+    image_exploration_round_2 below for the full provenance. No selection has been
+    made among any of the three sets -- that is a human decision, not this pass's to
     make. selected.yaml is deliberately NOT written by any automated pass; it is
     written by the human reviewer per hive/references/logo-exploration-artifacts.md.
   image_exploration:
@@ -244,6 +251,48 @@ logo_decision:
       explicitly left to a human reviewer, per
       hive/references/logo-exploration-artifacts.md's own ownership split --
       not decided or assumed by this pass.
+  image_exploration_round_2:
+    path: ".pHive/brand/logo-explorations/20261007T181824Z/"
+    contact_sheet: ".pHive/brand/logo-explorations/20261007T181824Z/contact-sheet.html"
+    prompts_log: ".pHive/brand/logo-explorations/20261007T181824Z/prompts.md"
+    model: "gemini-3-pro-image (\"Nano Banana Pro\", stable, not a preview model) -- same as round 1"
+    rationale: >
+      The human reviewer of round 1's 12 Ledger-Indigo-only candidates said: "not
+      certain I like any of them... maybe we need to try with some colors so i can
+      see something there." Asked to confirm scope, they explicitly said to go wide
+      on color (no constraint to the established Ledger Indigo palette -- even a
+      color that might eventually beat Ledger Indigo as the mark's own color is fair
+      game here, though changing the sitewide accent is a separate, later, human
+      decision) and to do both: recolor the existing 3 directions for easier
+      evaluation, and generate genuinely fresh concept directions too.
+    candidates_generated: >
+      21 of 21 -- all succeeded, no failures. Part A (recolor): 9 images, 3 bases (one
+      hand-picked cleanest candidate per round-1 direction) x 3 colorways each,
+      generated via Gemini's real image-input (inlineData) edit capability -- not
+      fresh from-scratch generation -- to hold mark geometry fixed while changing
+      only ink color; the image-input request shape was verified with one real test
+      call before committing to all 9. Part B (fresh directions): 12 images, 3 new
+      concept directions (direction-4 open-market/agora, direction-5 node-graph/
+      decoupled-subsystems, direction-6 open-unlocked-form/"Liber") x 4 different
+      colors each.
+    colors_used: >
+      Ledger Indigo #4338A0 (established baseline, included for direct comparison),
+      Brass Amber #96620B, Deep Jade Teal #0F6B5C, and Carbon Ink #1A1A1D (same
+      near-black already used for neutral/body tone elsewhere in this file). Amber
+      and teal were chosen as dark, desaturated, ink-weight hues deliberately
+      avoiding generic AI-palette cliches (no pastel cream/terracotta pairing, no
+      neon-on-black pop) -- see prompts.md for the full one-line reasoning per hex.
+    directory_naming_adaptation: >
+      Because this round mixes a recolor pass against round 1's existing 3
+      directions with 3 brand-new directions, the artifact contract's plain
+      direction-<N>/ layout was adapted: direction-1-recolor/, direction-2-recolor/,
+      direction-3-recolor/ (3 images each, reusing round 1's direction numbers so a
+      human can match recolors back to their round-1 originals) and direction-4/,
+      direction-5/, direction-6/ (4 images each, numbered to continue past round 1's
+      1/2/3 so there is no collision). Documented in full in prompts.md.
+    selection_status: >
+      Open, same ownership split as round 1 -- contact-sheet.html is the review
+      surface, selected.yaml is written by a human, not assumed by this pass.
   reason: >
     plugin-hive:logo-exploration's image-generation path requires the openai-image
     MCP tool. Re-checked live in this session (not assumed from the earlier pass's

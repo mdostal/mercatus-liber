@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mercatus Liber — Logo Exploration Contact Sheet, Round 2 (20261007T181824Z)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #4338A0;
+    --amber: #96620B;
+    --teal: #0F6B5C;
+    --carbon: #1A1A1D;
+    --surface: #F3F3F1;
+    --heading-font: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --body-font: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --accent-font: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #e9e9e6;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 40px 24px 96px;
+  }
+  .page { max-width: 1200px; margin: 0 auto; }
+  header.top {
+    background: var(--surface);
+    padding: 48px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  header.top .eyebrow {
+    font-family: var(--accent-font);
+    font-size: 12px;
+    color: var(--primary);
+    margin: 0 0 14px 0;
+  }
+  header.top h1 {
+    font-family: var(--heading-font);
+    font-weight: 700;
+    font-size: 36px;
+    color: var(--carbon);
+    margin: 0 0 14px 0;
+  }
+  header.top p {
+    font-family: var(--body-font);
+    color: #333;
+    font-size: 15px;
+    line-height: 1.6;
+    max-width: 800px;
+    margin: 0 0 10px 0;
+  }
+  .meta-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+  .meta-pill {
+    font-family: var(--accent-font);
+    font-size: 12px;
+    background: var(--carbon);
+    color: var(--surface);
+    padding: 5px 12px;
+    border-radius: 9999px;
+  }
+  .swatch-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--accent-font);
+    font-size: 12px;
+    color: #333;
+  }
+  .swatch .chip {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    display: inline-block;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  .context-note {
+    background: #eef0fb;
+    border: 1px solid #cfd4ef;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 13px;
+    color: #2a2a55;
+    line-height: 1.6;
+    margin-top: 20px;
+  }
+  .context-note code { background: #dfe3f7; font-family: var(--accent-font); padding: 2px 6px; border-radius: 3px; }
+  .disclosure {
+    background: #fbeaea;
+    border: 1px solid #e3b8b8;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 13px;
+    color: #6b2222;
+    line-height: 1.6;
+    margin-top: 14px;
+  }
+  .disclosure code { background: #f6d9d9; font-family: var(--accent-font); padding: 2px 6px; border-radius: 3px; }
+
+  section.direction {
+    background: white;
+    padding: 32px 36px;
+    margin-bottom: 24px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  section.direction h2 {
+    font-family: var(--heading-font);
+    font-size: 20px;
+    color: var(--carbon);
+    margin: 0 0 6px 0;
+  }
+  section.direction .direction-desc {
+    font-family: var(--body-font);
+    font-size: 14px;
+    color: #555;
+    line-height: 1.55;
+    max-width: 820px;
+    margin: 0 0 22px 0;
+  }
+  section.direction .direction-desc code { font-family: var(--accent-font); font-size: 12px; background: #f0f0ee; padding: 2px 6px; border-radius: 3px; }
+
+  .candidate-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+  }
+  .candidate-card {
+    border: 1px solid #eee;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .candidate-display {
+    background: #fff;
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid #eee;
+  }
+  .candidate-display img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+  }
+  .candidate-label {
+    padding: 10px 14px;
+    font-family: var(--accent-font);
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .candidate-label .color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    border: 1px solid rgba(0,0,0,0.15);
+    vertical-align: middle;
+  }
+  .candidate-label .path {
+    color: #888;
+    font-size: 11px;
+  }
+
+  footer.howto {
+    background: var(--carbon);
+    color: var(--surface);
+    padding: 28px 36px;
+    border-radius: 12px;
+    font-family: var(--body-font);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  footer.howto h3 {
+    font-family: var(--heading-font);
+    margin: 0 0 10px 0;
+    font-size: 16px;
+  }
+  footer.howto code {
+    font-family: var(--accent-font);
+    background: rgba(255,255,255,0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #cfcfd6;
+  }
+  footer.howto pre {
+    background: rgba(255,255,255,0.08);
+    padding: 14px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: var(--accent-font);
+    font-size: 12.5px;
+    color: #e3e3ea;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <p class="eyebrow">.pHive/brand/logo-explorations/20261007T181824Z/contact-sheet.html</p>
+    <h1>Mercatus Liber — Logo Exploration, Round 2 (color + fresh directions)</h1>
+    <p>After reviewing round 1 (<code>.pHive/brand/logo-explorations/20261007T171307Z/</code>, 12 candidates, all single-color Ledger Indigo on white), the human reviewer said: <em>"not certain I like any of them... maybe we need to try with some colors so i can see something there."</em> This round does two things in response: <strong>(A)</strong> recolors the single cleanest candidate from each of round 1's three directions into three new colorways apiece, so the existing concepts can actually be evaluated in color, and <strong>(B)</strong> explores three genuinely new concept directions, each rendered in four different colors so the color range itself is visible across the set. Per the operator's explicit instruction, this round goes wide on color — no constraint to the established Ledger Indigo palette.</p>
+    <div class="meta-row">
+      <span class="meta-pill">model: gemini-3-pro-image</span>
+      <span class="meta-pill">21/21 candidates generated</span>
+      <span class="meta-pill">generated 2026-10-07T18:18–18:30Z</span>
+    </div>
+    <div class="swatch-row">
+      <span class="swatch"><span class="chip" style="background:#4338A0"></span>Ledger Indigo #4338A0 (baseline)</span>
+      <span class="swatch"><span class="chip" style="background:#96620B"></span>Brass Amber #96620B</span>
+      <span class="swatch"><span class="chip" style="background:#0F6B5C"></span>Deep Jade Teal #0F6B5C</span>
+      <span class="swatch"><span class="chip" style="background:#1A1A1D"></span>Carbon Ink #1A1A1D</span>
+    </div>
+    <div class="context-note">
+      <strong>Naming note:</strong> this round reuses round 1's direction numbering for the recolor pass (<code>direction-1-recolor/</code>, <code>direction-2-recolor/</code>, <code>direction-3-recolor/</code> — 3 images each, one per new colorway) and continues the sequence for the three brand-new concepts (<code>direction-4/</code>, <code>direction-5/</code>, <code>direction-6/</code> — 4 images each), so a human cross-referencing both rounds never sees a colliding <code>direction-N</code> label. See <code>prompts.md</code> for the full rationale and exact prompts.
+    </div>
+    <div class="disclosure">
+      <strong>Disclosed provider substitution (unchanged from round 1):</strong> generated via Google Gemini (<code>gemini-3-pro-image</code>, "Nano Banana Pro"), not <code>openai-image</code> — the latter remains disconnected in this repo. The recolor pass (Part A) uses Gemini's real image-input (<code>inlineData</code>) capability, passing each round-1 base PNG back in alongside a text recolor instruction — not a fresh from-scratch generation — to keep the exact mark geometry while only changing ink color. See <code>prompts.md</code> for the verified request shape and the pre-flight test call.
+    </div>
+  </header>
+
+  <section class="direction">
+    <h2>Direction 1 — Recolor: monospace "ML" monogram</h2>
+    <p class="direction-desc">Base: round 1's <code>direction-1/1.png</code> — the cleanest, most legible candidate of the four (balanced "ML" reading, consistent stroke weight, no ambiguous negative space). Recolored via image-input edit into three colorways, geometry held fixed.</p>
+    <div class="candidate-grid">
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-1-recolor/0.png" alt="Direction 1 recolor, Brass Amber"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#96620B"></span>Brass Amber</span><span class="path">direction-1-recolor/0.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-1-recolor/1.png" alt="Direction 1 recolor, Deep Jade Teal"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#0F6B5C"></span>Deep Jade Teal</span><span class="path">direction-1-recolor/1.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-1-recolor/2.png" alt="Direction 1 recolor, Carbon Ink"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#1A1A1D"></span>Carbon Ink</span><span class="path">direction-1-recolor/2.png</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="direction">
+    <h2>Direction 2 — Recolor: bracket/slash adapter lockup</h2>
+    <p class="direction-desc">Base: round 1's <code>direction-2/1.png</code> — the only one of the four where the "&lt; [/] &gt;" module-between-brackets reading is unambiguous (the other three candidates were skewed, cluttered with repeated glyphs, or illegibly interlocked). Recolored via image-input edit into three colorways, geometry held fixed.</p>
+    <div class="candidate-grid">
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-2-recolor/0.png" alt="Direction 2 recolor, Brass Amber"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#96620B"></span>Brass Amber</span><span class="path">direction-2-recolor/0.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-2-recolor/1.png" alt="Direction 2 recolor, Deep Jade Teal"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#0F6B5C"></span>Deep Jade Teal</span><span class="path">direction-2-recolor/1.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-2-recolor/2.png" alt="Direction 2 recolor, Carbon Ink"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#1A1A1D"></span>Carbon Ink</span><span class="path">direction-2-recolor/2.png</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="direction">
+    <h2>Direction 3 — Recolor: ruled-row ledger "ML" monogram</h2>
+    <p class="direction-desc">Base: round 1's <code>direction-3/1.png</code> — the most balanced, fully-square candidate; it reads clearly as "ML" built from ledger rows, filling the format evenly (candidate 2 read as a literal open book rather than a monogram, and candidates 0/3 were less evenly composed). Recolored via image-input edit into three colorways, geometry held fixed.</p>
+    <div class="candidate-grid">
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-3-recolor/0.png" alt="Direction 3 recolor, Brass Amber"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#96620B"></span>Brass Amber</span><span class="path">direction-3-recolor/0.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-3-recolor/1.png" alt="Direction 3 recolor, Deep Jade Teal"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#0F6B5C"></span>Deep Jade Teal</span><span class="path">direction-3-recolor/1.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-3-recolor/2.png" alt="Direction 3 recolor, Carbon Ink"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#1A1A1D"></span>Carbon Ink</span><span class="path">direction-3-recolor/2.png</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="direction">
+    <h2>Direction 4 — Open market / agora (new)</h2>
+    <p class="direction-desc">Brief: a simple geometric market-stall or canopy roofline, abstracted to 2-3 clean strokes — the literal "mercatus" (market) half of the project's name, a facet round 1 only approached obliquely through ledger/accounting imagery, never the physical marketplace itself. Four candidates, four different colors.</p>
+    <div class="candidate-grid">
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-4/0.png" alt="Direction 4, candidate 0, Ledger Indigo"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#4338A0"></span>Ledger Indigo</span><span class="path">direction-4/0.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-4/1.png" alt="Direction 4, candidate 1, Brass Amber"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#96620B"></span>Brass Amber</span><span class="path">direction-4/1.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-4/2.png" alt="Direction 4, candidate 2, Deep Jade Teal"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#0F6B5C"></span>Deep Jade Teal</span><span class="path">direction-4/2.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-4/3.png" alt="Direction 4, candidate 3, Carbon Ink"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#1A1A1D"></span>Carbon Ink</span><span class="path">direction-4/3.png</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="direction">
+    <h2>Direction 5 — Node graph / decoupled subsystems (new)</h2>
+    <p class="direction-desc">Brief: minimal connected nodes/dots forming a small network shape — references the real architecture (independent subsystems that never import each other's internals, talking only through shared core types, adapter interfaces, or a typed event bus; README.md's own "Prime directive: no tight coupling"), from a genuinely different visual angle than round 1's bracket/slash direction. Four candidates, four different colors.</p>
+    <div class="candidate-grid">
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-5/0.png" alt="Direction 5, candidate 0, Ledger Indigo"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#4338A0"></span>Ledger Indigo</span><span class="path">direction-5/0.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-5/1.png" alt="Direction 5, candidate 1, Brass Amber"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#96620B"></span>Brass Amber</span><span class="path">direction-5/1.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-5/2.png" alt="Direction 5, candidate 2, Deep Jade Teal"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#0F6B5C"></span>Deep Jade Teal</span><span class="path">direction-5/2.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-5/3.png" alt="Direction 5, candidate 3, Carbon Ink"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#1A1A1D"></span>Carbon Ink</span><span class="path">direction-5/3.png</span></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="direction">
+    <h2>Direction 6 — Open/unlocked asymmetric form (new)</h2>
+    <p class="direction-desc">Brief: a single bracket, ring, or enclosure shape deliberately left open or incomplete on one side, suggesting "free," "unlocked," "liber" — the "Liber" (free) half of the project's own name, which round 1's three directions never addressed at all. Four candidates, four different colors.</p>
+    <div class="candidate-grid">
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-6/0.png" alt="Direction 6, candidate 0, Ledger Indigo"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#4338A0"></span>Ledger Indigo</span><span class="path">direction-6/0.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-6/1.png" alt="Direction 6, candidate 1, Brass Amber"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#96620B"></span>Brass Amber</span><span class="path">direction-6/1.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-6/2.png" alt="Direction 6, candidate 2, Deep Jade Teal"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#0F6B5C"></span>Deep Jade Teal</span><span class="path">direction-6/2.png</span></div>
+      </article>
+      <article class="candidate-card">
+        <div class="candidate-display"><img src="direction-6/3.png" alt="Direction 6, candidate 3, Carbon Ink"></div>
+        <div class="candidate-label"><span><span class="color-dot" style="background:#1A1A1D"></span>Carbon Ink</span><span class="path">direction-6/3.png</span></div>
+      </article>
+    </div>
+  </section>
+
+  <footer class="howto">
+    <h3>Picking a winner (human decision)</h3>
+    <p>This contact sheet and the 21 candidate PNGs are the review surface — selecting a final mark (from this round, round 1, or the inline-SVG fallback set in <code>brand-guide.html</code>) is deliberately left to a human, not decided by this generation pass. To record a selection, add <code>selected.yaml</code> to this same directory. For the recolor directions, use the original <code>direction-&lt;N&gt;</code> number (1, 2, or 3) since the mark geometry is unchanged from round 1 — note the colorway in <code>notes</code>. For the new directions, use 4, 5, or 6:</p>
+    <pre>direction: 5      # integer; 1-3 = recolor of round-1 geometry, 4-6 = new concept
+candidate: 2      # integer, matches &lt;i&gt;.png inside that direction (or recolor dir)
+notes: |          # optional free text -- note the colorway chosen, e.g. "Deep Jade Teal"
+  Rationale for the pick goes here.</pre>
+    <p>See <code>hive/references/logo-exploration-artifacts.md</code> for the full schema. Exact prompts, hex rationale, and model parameters used to generate every candidate above are logged in <code>prompts.md</code> in this same directory.</p>
+  </footer>
+
+</div>
+</body>
+</html>
