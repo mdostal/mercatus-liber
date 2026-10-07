@@ -319,3 +319,18 @@ logo_decision:
     brand-artifact pass; (3) if openai-image ever does reconnect, a further
     openai-image-backed pass would be a genuine additional data point, not required
     to unblock selection since a real image-backed set already exists now.
+
+image_exploration_refinement:
+  base: "logo-explorations/20261007T181824Z/direction-4/1.png (open market/agora, Brass Amber)"
+  reason: >
+    User reviewed both exploration rounds and picked direction 4 (open market/agora),
+    Brass Amber colorway, as the winner -- with an explicit refinement ask: make the
+    roofline a solid M and one tent-leg an L to "really sell the M L shape," or
+    alternatively lean into a fuller market-stall-with-food-area scene.
+  edits_dir: "logo-explorations/20261007T181824Z/edits/"
+  candidates:
+    - direction-4-candidate-1-edit-0.png  # solid M + tent-pole L -- strongest, reads unmistakably as "ML"
+    - direction-4-candidate-1-edit-1.png  # solid M + both-legs-as-L -- M reads more as a crown than a letter
+    - direction-4-candidate-1-edit-2.png  # market-stall-with-goods -- weaker letterform legibility
+    - direction-4-candidate-1-edit-3.png  # market-stall-with-awning-fringe -- weakest letterform legibility
+  status: "awaiting final human selection"
