@@ -6,20 +6,21 @@ storefronts** already seeded in this repository, or **provision your own store**
 
 ## See it running: the demo storefronts
 
-The `reference-storefront` app (`apps/reference-storefront` in this monorepo) seeds two full
-demo storefronts, each a real, browsable route under `/demo/<slug>` — catalog, cart, checkout,
-theming, CMS pages, and admin views all included:
+The `reference-storefront` app (`apps/reference-storefront` in this monorepo) seeds three full
+demo storefronts (`DEMO_SLUGS` in `apps/reference-storefront/lib/demos.ts`), each a real,
+browsable route under `/demo/<slug>` — catalog, cart, checkout, theming, CMS pages, and admin
+views all included:
 
 - **The Print Shop** (slug `print-shop`) — the default seed, a 3D-print-shop-style catalog.
 - **Northline Home Tech** (slug `northline`) — a second, differently themed catalog proving the
-  framework isn't hardwired to one look or one kind of product.
+  framework isn't hardwired to one look or one kind of product, on its own Postgres backend.
+- **Broadleaf & Co.** (slug `broadleaf`) — a third, distinct catalog on its own Convex backend,
+  proving the persistence-adapter layer is genuinely swappable per store, not just in theory.
 
 Run the reference storefront locally (`pnpm --filter @mercatus-liber/reference-storefront dev`
 from the repo root, or `pnpm dev` from inside `apps/reference-storefront`) and visit
-`/demo/print-shop` or `/demo/northline`. A real, public deployment domain for these demos is
-an operational decision outside this documentation site's scope — the same disclosed-gap
-posture used for `NEXT_PUBLIC_DOCS_URL` (see the root `README.md`'s Configuration section) — so
-no live domain is asserted here.
+`/demo/print-shop`, `/demo/northline`, or `/demo/broadleaf`. All three also run live today in
+production at `commerce.mdostal.com` (see the root `README.md`'s "Status" section).
 
 ## Provision your own store: `create-store`
 
