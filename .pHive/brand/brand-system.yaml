@@ -199,6 +199,27 @@ concept_directions:
   - "ruled-line or ledger-row motif referencing an open market ledger (built: the ledger-ML monogram)"
 
 logo_decision:
+  final_selection:
+    status: "FINAL -- selected 2026-10-07 by the real human reviewer. This is now the live, canonical mark."
+    direction: 4
+    candidate: 1
+    edit: 2
+    concept: "open market / agora -- a market-stall canopy with a counter and simple geometric goods"
+    color: "Brass Amber (#96620B)"
+    source_file: ".pHive/brand/logo-explorations/20261007T181824Z/edits/direction-4-candidate-1-edit-2.png"
+    selection_record: ".pHive/brand/logo-explorations/20261007T181824Z/selected.yaml"
+    lockup:
+      shape: stacked
+      description: "Mark centered above the 'Mercatus Liber' wordmark (Public Sans Bold), small JetBrains Mono tagline 'free market · free software' beneath."
+    live_applications:
+      - path: "apps/reference-storefront/app/icon.png"
+        note: "Static icon.png convention (Next.js 16.3.5 supports .ico/.jpg/.jpeg/.png/.svg for `icon` at app/**/*, confirmed in node_modules/next/dist/docs) -- replaced the earlier app/icon.tsx dynamic ImageResponse 'M' monogram placeholder, since bs-03 was built before a real mark existed. Cropped/alpha-matted from the 1024x1024 source to 32x32."
+      - path: "apps/reference-storefront/app/apple-icon.png"
+        note: "180x180 static apple-icon.png, same crop/matte, per the apple-icon file convention."
+      - path: "docs/assets/logo.png"
+        note: "README header image, replaced the earlier logo.png built from a now-superseded SVG concept. Real Playwright screenshot of the stacked lockup, Paper Neutral background, 639x452 (2x of the 320px README display width)."
+      - path: ".pHive/brand/social-preview.png"
+        note: "GitHub social-preview card, replaced the earlier render built from the older abstract-SVG mark. Real Playwright screenshot, 1280x640 (GitHub's documented best-display size), Paper Neutral background. Still requires manual upload via GitHub Settings -> Social Preview -- no API upload endpoint exists for this."
   status: >
     Three parallel option sets now exist, neither selected: (1) inline-SVG fallback,
     five concept categories in brand-guide.html (pure wordmark x3, monogram "ledger
