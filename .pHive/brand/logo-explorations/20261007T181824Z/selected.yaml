@@ -14,3 +14,10 @@ notes: |
   iterating on. Plan: pair the mark with the real "Mercatus Liber" wordmark in a
   lockup rather than rely on the icon alone to spell out the name, since the icon's
   letterform read is intentionally secondary to the market-stall scene here.
+
+# Lockup shape, selected after reviewing 3 real icon+wordmark pairings
+lockup:
+  shape: stacked
+  description: "Mark centered above the wordmark, with a small mono tagline beneath"
+  wordmark_text: "Mercatus Liber"
+  tagline: "free market · free software"
