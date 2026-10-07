@@ -155,8 +155,10 @@ see "Still open, blocked on something real" below):
   `LayoutTemplate`/CMS-content dashboard, `/admin/content-layout`) and Path One (this repo's
   first LLM/MCP-client integration — a real Anthropic-SDK tool-calling admin copilot at
   `/admin/copilot`, gated by the same `requireAdminPermission("mutate")` discipline every other
-  admin mutation uses) are both built, merged, deployed, and live-verified. DEV.to publishing
-  itself remains blocked — no DEV.to API key exists in this environment (see "Still open").
+  admin mutation uses) are both built, merged, deployed, and live-verified. Both DEV.to
+  submissions are published (2026-10-07, a few days past the real October 4 deadline — the
+  work itself was done and live on time; only the posting step slipped, and that delay is
+  disclosed plainly in both posts rather than quietly backdated).
 - **Three real, live, user-reported production bugs found and fixed** (epics 60–62,
   2026-09-22) — a shared-Postgres-backend cross-demo content bleed in CMS pages (a "Fall Sale"
   campaign duplicated ~16x and leaking into every demo's nav), the same bleed class in
@@ -186,6 +188,51 @@ see "Still open, blocked on something real" below):
   `.pHive/epics/commerce-gap-audit-3/docs/audit-findings.md` for the full report, including
   what was fixed directly vs. written up as new backlog-epic candidates (not yet added to
   `epic-backlog.md` — that's this audit's own explicit convention, matching audits 1 and 2).
+- **The gap audit's own follow-ups, closed out** (epics 65–70, 2026-09-23) — the same
+  demo-scoping fix applied to `packages/bundles`/`packages/recommendations`'s admin list
+  pages (epic 65); a full retroactive `CHANGELOG.md` + `package.json` version reconstruction
+  across epics 26–65, since both had been frozen at epic 25 while 40 more epics of real work
+  shipped undocumented (epic 66); real test coverage added for the variant-picker, the admin
+  SKU-matrix page, and the brand-system landing page — all three had shipped with zero
+  dedicated tests (epic 67); a genuine edit UI for `StorefrontViewsService.updateView`, which
+  existed as real code with zero call site since the subsystem was first built (epic 68); 13
+  real dependency vulnerabilities (`@xmldom/xmldom`, pulled in transitively by the docs site's
+  unused MathJax support) found via `pnpm audit` and fixed with a workspace override (epic 69);
+  and the bundle-tier-selector/multi-SKU design question epic 63 deliberately left open,
+  resolved by having a tier's SKUs re-resolve against the shopper's live variant selection at
+  add-to-cart time rather than staying pinned to whatever SKU was hardcoded at
+  bundle-authoring time (epic 70).
+- **Real OSS community-health scaffolding** (epic 71, 2026-09-23) — `CONTRIBUTING.md`,
+  `SECURITY.md`, the real Contributor Covenant as `CODE_OF_CONDUCT.md`, and GitHub issue/PR
+  templates, closing a real gap for a project explicitly pitched as a full open-source
+  community effort but which, until this epic, had none of the standard scaffolding for one.
+- **Routine dependency maintenance** (epic 72) — 13 genuine minor/patch bumps (Next.js, Clerk,
+  Stripe, React, Convex, PostHog, etc.) across the workspace, live-verified post-deploy; 3 real
+  major-version bumps found and deliberately left alone pending their own dedicated pass.
+- **A first formal accessibility audit** (epic 73, 2026-09-23) — axe-core run against real
+  rendered production pages (not a rubber-stamp pass): 17 real findings, 16 fixed live
+  (unlabeled cart/PDP quantity inputs on 7 of 10 theme bundles, failing color contrast in
+  several bundles' muted/nav tokens, missing landmarks, heading-order skips), 1 correctly
+  deferred as needing a real design decision rather than an audit-time patch — see epic 75.
+- **This repo's first real CI** (epic 74, 2026-09-23) — added, found genuinely broken on real
+  GitHub Actions infrastructure (not assumed working), root-caused to `pnpm@11.22.0` requiring
+  Node ≥22.13 while the workflow was pinned to Node 20, fixed, and confirmed passing by polling
+  a real run to completion.
+- **The brand-contrast finding epic 73 deferred, resolved for real** (epic 75) — `--color-primary`
+  failing WCAG AA when reused as small foreground text across several theme bundles, fixed with
+  an additive derived `--color-primary-text` token per affected bundle (5 of 10 needed it; each
+  bundle's own actual signature accent color was left untouched, per design), live-reverified
+  with axe-core at 0 violations.
+- **A real, more complete brand system + public-facing presentation pass** (2026-10-07) — the
+  framework brand guide now has 7 real logo concepts (3 wordmark variants, a monogram, an
+  abstract mark literalizing the project's own adapter-swap metaphor, a wordmark+symbol
+  pairing, and a badge treatment), real GitHub repo metadata (topics, homepage, a rendered
+  social-preview image awaiting manual upload — no API endpoint exists for that step, verified
+  rather than guessed), README badges (license, live CI status) and an embedded brand mark, and
+  two more corrected stale-count drifts in the docs site (the demo-store count, and the
+  `create-store` theme-key list, which was missing 3 of 10 real bundles). A genuine image-backed
+  icon-mark exploration via `/logo-exploration` remains open, blocked on the `openai-image` MCP
+  tool, which has stayed disconnected the entire session.
 
 **Still open, blocked on something real (not forgotten, not silently dropped):**
 
@@ -197,9 +244,6 @@ see "Still open, blocked on something real" below):
   on the user opening the real MongoDB Atlas cluster's Network Access list (an IP-allowlist
   restriction, diagnosed via a real production `MongoServerSelectionError`/TLS handshake
   failure connecting from Vercel's serverless egress ranges), not a code fix.
-- **DEV.to publishing** (epic 59's own remaining piece) — both submission drafts are ready and
-  accurate; blocked on either the user pasting them in directly, or a real DEV.to API key
-  landing in the `mercatus-liber-commerce` Portunus vault.
 - **Clerk in production, fully verified** (epic 56) — real per-person login and a genuine
   read-only viewer account are live and working; a handful of lower-priority items on the same
   provider-setup checklist (the "CADEX Legacy" PAT reference, notably) remain unconfirmed.
