@@ -189,25 +189,44 @@ personality:
 
 # Additive field, sanctioned by the brand-system skill's own prompt spec (parallel to
 # how logo-exploration reads this same array downstream when openai-image is live).
-# Recorded here as real, honest follow-on scope -- NOT executed in this pass, since
-# openai-image is confirmed unavailable (see logo_decision below).
+# The two bracket/ledger directions below are no longer purely speculative -- they were
+# actually built as inline-SVG marks in this pass (see logo_decision below) -- but they
+# remain real, honest follow-on scope for a future *image-backed* exploration once
+# openai-image reconnects, since nothing here has been rendered through that path yet.
 concept_directions:
-  - "monospace wordmark, no icon -- the name set in the accent mono face, doing all the work"
-  - "bracket/slash lockup using literal type-system glyphs ( / < > ) referencing adapter interfaces, if a mark is ever explored"
-  - "ruled-line or ledger-row motif referencing an open market ledger, for a future icon-mark pass"
+  - "monospace wordmark, no icon -- the name set in the accent mono face, doing all the work (built: three pure-wordmark cards in brand-guide.html)"
+  - "bracket/slash lockup using literal type-system glyphs ( / < > ) referencing adapter interfaces (built: the 'adapter slot' abstract mark, its wordmark+symbol pairing, and its badge treatment)"
+  - "ruled-line or ledger-row motif referencing an open market ledger (built: the ledger-ML monogram)"
 
 logo_decision:
-  status: "typographic wordmark (disclosed substitution -- see brand-guide.html Logo Concepts section)"
+  status: >
+    inline-SVG fallback, five concept categories (disclosed substitution -- see
+    brand-guide.html Logo Concepts section): pure wordmark (3 variants, carried over
+    from the earlier pass), monogram (ledger ML), abstract mark (adapter slot --
+    interlocking brackets holding a swappable tile), wordmark + symbol (adapter slot
+    paired with the primary lockup), and badge (adapter slot contained in a rounded
+    square, sized for a favicon or GitHub social-preview card). No selection has been
+    made among them -- that is a human decision, not this pass's to make.
   reason: >
     plugin-hive:logo-exploration's image-generation path requires the openai-image
-    MCP tool. Checked live in this session (not assumed from the epic's earlier
-    planning note): the tool is connected but reports CONNECTION_CLOSED, and
-    separately the repo's own .mcp.json does not list an openai-image server entry
-    at all -- so logo-exploration is unavailable by both the live-connectivity check
-    and the config-presence check the brand-system skill itself uses to decide
-    primary vs. fallback path. Per the epic's design discussion §2b, this ships a
-    real, well-reasoned typographic wordmark instead of a fake, placeholder, or
-    silently-omitted mark. Wordmark-only identities are a legitimate, common choice
-    for real open-source infrastructure projects. When openai-image reconnects,
-    icon-mark exploration (concept_directions above) is genuine, disclosed follow-on
-    work -- not something this pass claims to have already done.
+    MCP tool. Re-checked live in this session (not assumed from the earlier pass's
+    note): the openai-image MCP server reports CONNECTION_CLOSED, and separately this
+    repo's own root .mcp.json lists only two server entries -- reference-storefront-
+    commerce and sanity -- no openai-image entry at all. So logo-exploration remains
+    unavailable by both the live-connectivity check and the config-presence check the
+    brand-system skill itself uses to decide primary vs. fallback path; that part of
+    the story is unchanged from the prior pass. What changed: the fallback path's own
+    spec (hive/references/ui-prompts/brand-system.md, "Fallback path for the Logo
+    Concepts section") asks for 3-5 concepts spanning pure wordmark, wordmark +
+    symbol, monogram, abstract mark, and badge -- the prior pass only produced three
+    wordmark variants (one category). This pass adds the four missing categories as
+    genuinely hand-authored inline SVG (simple stroke/fill geometry grounded in the
+    project's own adapter-swappable-everything metaphor and the existing Ledger
+    Indigo / Garnet / Carbon Ink / Paper Neutral palette), not image-generated and not
+    placeholder shapes. Real open follow-up, honestly: (1) a genuine image-backed icon
+    exploration once openai-image reconnects, which may surface marks better than any
+    inline-SVG geometry can produce by hand; (2) selecting a final mark among the
+    options now in brand-guide.html, which is deliberately left to the human, not
+    decided here; (3) if the badge concept is the eventual pick, regenerating the
+    repo's actual favicon and GitHub social-preview image from it is a real follow-on
+    task, not done as part of this brand-artifact pass.
