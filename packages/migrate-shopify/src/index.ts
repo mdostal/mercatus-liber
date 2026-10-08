@@ -29,6 +29,7 @@ export { summarizeInventory } from "./inventory.js";
 export { drainConnection, drainRemainingPages, type ShopifyConnection, type ShopifyPageInfo } from "./pagination.js";
 export { readAllProducts, type ReadProductsOptions } from "./products.js";
 export { readShopifyCatalog, type ReadShopifyCatalogOptions } from "./read-catalog.js";
+export { createTargetPersistence, type MigrationTarget, type TargetPersistence } from "./targets.js";
 export {
   importShopifyCatalog,
   type AttentionItem,

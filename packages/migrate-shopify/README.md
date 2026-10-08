@@ -119,35 +119,150 @@ never constructs its own persistence; the caller is responsible for
 pointing it at whichever native backend (SQLite, Postgres, etc.) the
 merchant has chosen.
 
-## Usage (CLI preview)
+## Credentials: what you need from your real Shopify store
+
+This tool only ever **reads** from Shopify (it never writes back to
+Shopify -- see "Out of scope for this first pass" above), so it only needs
+a **read-only** Admin API access token. Verified directly against Shopify's
+own current live documentation on 2026-10-07 (`shopify.dev/docs/api/usage/
+access-scopes`), not assumed from training data:
+
+1. In your Shopify admin, create a **custom app** (Settings -> Apps and
+   sales channels -> Develop apps) and configure its **Admin API access
+   scopes**. The exact scopes this tool needs:
+   - `read_products` -- grants read access to `Product`, `ProductVariant`,
+     and `Collection` objects (everything `readAllProducts`/
+     `readAllCollections` fetch).
+   - `read_inventory` -- grants read access to `InventoryItem` and
+     `InventoryLevel` objects (everything `readAllProducts`'s per-variant
+     inventory read uses).
+   - No write scopes (`write_products`, `write_inventory`, etc.) are
+     needed -- this tool writes only into your chosen **native** target
+     (SQLite/Postgres), never back into Shopify.
+2. Install the custom app on your store and copy its **Admin API access
+   token** (starts with `shpat_`) -- this is the `--access-token` /
+   `SHOPIFY_ACCESS_TOKEN` value below. Treat it like any other secret:
+   don't commit it, don't paste it into a shared chat.
+3. Your store's domain (`<your-shop>.myshopify.com`) is the `--shop` /
+   `SHOPIFY_SHOP` value.
+
+This tool targets Shopify Admin GraphQL API version `2026-10` explicitly
+(see "Shopify API version" above) -- a custom app's access token works
+against any API version this tool requests; you don't need to separately
+configure an API version on the Shopify side.
+
+## Usage (CLI)
+
+Two bins ship from this package:
+
+### `migrate-shopify` -- the real tool (read -> dry-run report -> confirm -> write)
+
+```sh
+# Dry run (the default -- ALWAYS safe, performs zero writes to the target):
+migrate-shopify \
+  --shop my-shop.myshopify.com \
+  --access-token shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
+  --target sqlite --sqlite-file ./my-shop.sqlite
+
+# Once the dry-run report above looks right, perform the real import
+# (idempotent -- safe to re-run; already-imported records are skipped):
+migrate-shopify \
+  --shop my-shop.myshopify.com \
+  --access-token shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
+  --target sqlite --sqlite-file ./my-shop.sqlite \
+  --confirm
+
+# Postgres target instead of SQLite:
+migrate-shopify \
+  --shop my-shop.myshopify.com \
+  --access-token shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
+  --target postgres --database-url postgres://user:pass@host:5432/db \
+  --confirm
+```
+
+Every flag has an equivalent env var (`SHOPIFY_SHOP`,
+`SHOPIFY_ACCESS_TOKEN`, `SHOPIFY_CURRENCY`, `SQLITE_FILE_PATH`,
+`DATABASE_URL`) matching `apps/reference-storefront/lib/services.ts`'s own
+env-var names, so a store that already has `SQLITE_FILE_PATH`/
+`DATABASE_URL` set for its real deployment can run this tool against the
+exact same target without repeating the connection string on the command
+line. Dry-run is the **default** -- there is no flag that makes a run
+write by accident; only an explicit `--confirm` does. Run `migrate-shopify`
+with no arguments to see full usage.
+
+`--target` currently wires two of this repo's native backends: `sqlite`
+and `postgres` (the same two `packages/create-store`'s own `AdapterChoice`
+offers a merchant at store-creation time) -- see `src/targets.ts`. This
+repo also has real, already-tested MongoDB and Convex catalog adapters
+(wired into `apps/reference-storefront/lib/services.ts`), but they are
+**not yet plumbed into this CLI's `--target` flag** -- a disclosed gap,
+not a silent one. `importShopifyCatalog` itself only depends on the
+`CatalogService`/`MarketingCatalogService`/`InventoryAdapter` interfaces,
+so adding Mongo/Convex as CLI targets later is a pure CLI-side addition.
+
+One more disclosed limitation: for the `sqlite` target, this tool wires
+the same `InventoryAdapter` choice `services.ts` does for SQLite --
+**in-memory**. This repo has no SQLite-backed `InventoryAdapter`
+implementation anywhere today, so a SQLite-targeted import's stock levels
+do not survive a process restart (products/SKUs/categories do -- only
+stock quantities are in-memory). The `postgres` target uses the real
+`@mercatus-liber/adapter-postgres-inventory`-backed adapter, which is
+durable.
+
+### `migrate-shopify-read` -- read-only preview (unchanged, kept for back-compat)
 
 ```sh
 SHOPIFY_SHOP=my-shop.myshopify.com SHOPIFY_ACCESS_TOKEN=shpat_... migrate-shopify-read
 ```
 
-Prints a JSON summary (counts plus the full read snapshot) to stdout. This
-CLI is still read-only -- it does not call `importShopifyCatalog`. A real
-CLI entry point that drives the full read -> dry-run-report -> confirm ->
-write flow end to end is separate, later work for this epic (the
-CLI/docs pass); until that lands, use `importShopifyCatalog` the way
-"Usage (programmatic)" above shows.
+Prints a JSON summary (counts plus the full read snapshot) to stdout.
+Read-only -- never calls `importShopifyCatalog`, never writes anywhere.
+Useful for inspecting the raw snapshot shape before running a real
+import. `migrate-shopify` above is the command an actual merchant should
+run.
 
 ## Honest disclosure: no live Shopify store in this environment
 
-No real Shopify store credentials exist in this development environment.
-The **read** side is built for real and tested for real against
-**injected fakes** implementing the same `GraphQLClient` interface
-`@mercatus-liber/adapter-shopify` already uses for its own tests (see
-`test/fake-graphql-client.ts`). The **write** side
-(`importShopifyCatalog`) is tested for real against a real, in-process
-SQLite database via `@mercatus-liber/adapter-sqlite` (see
-`test/test-persistence.ts`/`test/write-catalog.test.ts`), through the real
-`CatalogService`/`MarketingCatalogService`/`InventoryAdapter` -- genuinely
-real persistence, genuinely real validation, just not a real Shopify
-*source* and not Postgres/Mongo/Convex as the *target* (those adapters all
-implement the same `CatalogPersistenceAdapter`/category-repository
-contracts this test exercises against SQLite, so there's no reason to
-expect different write-path behavior against them, but it hasn't been
-separately verified here). **Live end-to-end verification against a real
-Shopify store is blocked** and has not been done. Do not read test coverage
-here as a substitute for that.
+No real Shopify store credentials exist in this development environment
+(checked directly against the `mercatus-liber-commerce` Portunus vault
+before this epic was planned -- confirmed absent). This tool has been
+built for real and verified for real, but **never against an actual
+Shopify store**:
+
+- The **read** side (`readShopifyCatalog`) is tested for real against
+  **injected fakes** implementing the same `GraphQLClient` interface
+  `@mercatus-liber/adapter-shopify` already uses for its own tests (see
+  `test/fake-graphql-client.ts`).
+- The **write** side (`importShopifyCatalog`) is tested for real against
+  a real, in-process SQLite database via `@mercatus-liber/adapter-sqlite`
+  (see `test/test-persistence.ts`/`test/write-catalog.test.ts`), through
+  the real `CatalogService`/`MarketingCatalogService`/`InventoryAdapter`
+  -- genuinely real persistence, genuinely real validation, just not a
+  real Shopify *source* and not Postgres/Mongo/Convex as the *target*
+  (those adapters all implement the same `CatalogPersistenceAdapter`/
+  category-repository contracts this test exercises against SQLite, so
+  there's no reason to expect different write-path behavior against
+  them, but it hasn't been separately verified here).
+- The **full `migrate-shopify` CLI binary itself** (the actual compiled
+  `dist/cli-migrate.js`, invoked from a real shell exactly as a merchant
+  would) was run end to end against a real local HTTP server standing in
+  for Shopify's Admin GraphQL endpoint (same fixture shapes as
+  `test/fake-graphql-client.ts`, served over a real socket, with the
+  CLI's own `fetch` call transparently redirected to it -- there being no
+  real Shopify DNS entry to safely point at instead) and a real,
+  file-backed SQLite target. Observed directly: a dry run that reads 2
+  real fixture products / 1 collection, prints an accurate report, and
+  writes zero rows; a `--confirm` run that writes the real rows; and a
+  second `--confirm` run against the same target and the same snapshot
+  that reports `created=0`/`skipped=<N>` across every entity kind with
+  the on-disk row count unchanged -- idempotency verified through the
+  real binary, not just through `vitest`.
+
+**Live end-to-end verification against a real Shopify store is still
+blocked and has not been done.** The gap above (injected fakes, not a
+real Shopify store) is exactly the same honest-disclosure shape already
+applied elsewhere in this repo for Printful, Printify, Shippo, GA4, a real
+Stripe key, and MongoDB Atlas. Do not read any of the above -- real tests,
+or a real CLI run against a real local fixture server -- as a substitute
+for live verification against an actual Shopify store, which has never
+happened.

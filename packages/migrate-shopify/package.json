@@ -10,7 +10,8 @@
     "dist"
   ],
   "bin": {
-    "migrate-shopify-read": "./dist/cli.js"
+    "migrate-shopify-read": "./dist/cli.js",
+    "migrate-shopify": "./dist/cli-migrate.js"
   },
   "exports": {
     ".": {
@@ -25,15 +26,21 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@mercatus-liber/adapter-postgres": "workspace:*",
+    "@mercatus-liber/adapter-postgres-inventory": "workspace:*",
     "@mercatus-liber/adapter-shopify": "workspace:*",
+    "@mercatus-liber/adapter-sqlite": "workspace:*",
     "@mercatus-liber/catalog": "workspace:*",
     "@mercatus-liber/core": "workspace:*",
     "@mercatus-liber/inventory": "workspace:*",
-    "@mercatus-liber/marketing-catalog": "workspace:*"
+    "@mercatus-liber/marketing-catalog": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
-    "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.7.5",
+    "@types/pg": "^8.23.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   }
