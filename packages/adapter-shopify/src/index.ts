@@ -26,6 +26,20 @@ import {
 export type { ShopifyAdapterConfig } from "./graphql-client.js";
 export { ShopifyGraphQLError } from "./graphql-client.js";
 
+/**
+ * Re-exported so other first-party tools that need to talk to Shopify's
+ * Admin GraphQL API (e.g. @mercatus-liber/migrate-shopify's one-time
+ * read-side migration tool) reuse this package's real, already-tested
+ * auth/transport and field-mapping code instead of duplicating it. Purely
+ * additive -- the CatalogPersistenceAdapter surface this package exists for
+ * is unchanged.
+ */
+export { createGraphQLClient };
+export type { GraphQLClient };
+export { EXTERNAL_ID_KEY, EXTERNAL_ID_NAMESPACE, productNodeToProduct, variantNodeToSku };
+export type { ShopifyProductNode, ShopifyVariantNode };
+export type { ShopifyMetafieldValue } from "./mapping.js";
+
 export class ProductNotFoundInShopifyError extends Error {
   constructor(externalId: string) {
     super(`No Shopify product found for id "${externalId}" -- SKUs/attributes require an already-saved parent product`);
