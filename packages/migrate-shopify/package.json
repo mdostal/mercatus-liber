@@ -1,0 +1,47 @@
+{
+  "name": "@mercatus-liber/migrate-shopify",
+  "version": "0.1.0",
+  "description": "One-time Shopify-to-native migration tool (epic shopify-migration-import-tool). This is NOT @mercatus-liber/adapter-shopify, which is a live wrapper that proxies catalog reads/writes through Shopify's API forever -- this package reads a merchant's existing Shopify store exactly once and writes the result into Mercatus Liber's own native persistence through the real CatalogService/MarketingCatalogService/InventoryAdapter, so a merchant can actually leave Shopify. Dry-run by default; idempotent (safe to re-run) by construction. Orders/customers and images/media migration are explicitly out of scope for this first pass -- see this package's README.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "migrate-shopify-read": "./dist/cli.js",
+    "migrate-shopify": "./dist/cli-migrate.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/adapter-postgres": "workspace:*",
+    "@mercatus-liber/adapter-postgres-inventory": "workspace:*",
+    "@mercatus-liber/adapter-shopify": "workspace:*",
+    "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@mercatus-liber/catalog": "workspace:*",
+    "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/inventory": "workspace:*",
+    "@mercatus-liber/marketing-catalog": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.7.5",
+    "@types/pg": "^8.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}

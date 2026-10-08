@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../adapter-shopify" },
+    { "path": "../adapter-sqlite" },
+    { "path": "../adapter-postgres" },
+    { "path": "../adapter-postgres-inventory" },
+    { "path": "../catalog" },
+    { "path": "../marketing-catalog" },
+    { "path": "../inventory" }
+  ]
+}
