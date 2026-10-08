@@ -19,16 +19,19 @@ Mercatus Liber," but "how Mercatus Liber actually works, and how to run one."
 - **[Planning corpus](/planning-index)** — the real design-discussion behind every epic this
   project has shipped: the actual reasoning, rejected alternatives, and evidence, not just
   conclusions. Browse the sidebar's "planning" section for the full list.
+- **[Integrations](/integrations)** — every real third-party system this framework talks to
+  today (persistence, CMS, auth, payments, fulfillment & shipping, image/media, analytics &
+  insights), with each one's real current status and the exact env var(s) to turn it on.
 
 ## What's covered here vs. elsewhere
 
 This site is generated from the same real, hand-written docs that live in this monorepo's
 `docs/` tree and root `README.md` — a build-time sync script copies them in so this site never
-drifts into a second, hand-maintained source of truth. Two pages here are genuinely new,
-written for this site specifically: this landing page and [Getting started](/getting-started).
-Everything else — [Architecture](/architecture), the [subsystem reference](/subsystems/00-core-schema),
-and the [full project README](/readme) (status, license, why this project exists at all) — is
-synced straight from the repository.
+drifts into a second, hand-maintained source of truth. Three pages here are genuinely new,
+written for this site specifically: this landing page, [Getting started](/getting-started), and
+[Integrations](/integrations). Everything else — [Architecture](/architecture), the
+[subsystem reference](/subsystems/00-core-schema), and the [full project README](/readme)
+(status, license, why this project exists at all) — is synced straight from the repository.
 
 ## Status
 
