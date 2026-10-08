@@ -270,7 +270,7 @@ start.
 | Referral / affiliate programs | Track and reward referred purchases | A fully separate tracking/attribution primitive | New subsystem |
 | Customer segmentation | Group customers for targeted campaigns/pricing | Needs a real customer-data layer beyond today's account subsystem | Extension of `customer-account` + `analytics` |
 | Subscriptions & recurring billing | Recurring orders/charges | A genuinely different payment/checkout shape than one-time orders | New subsystem, likely its own `SubscriptionAdapter` alongside `payments` |
-| Loyalty / rewards programs | Points, tiers, redeemable rewards | Independent of the core purchase loop | New subsystem |
+| Loyalty / rewards programs | Points, tiers, redeemable rewards | Independent of the core purchase loop | New subsystem, likely provider-adapter-shaped (e.g. Smile.io, LoyaltyLion) rather than built in-house, same pattern as the email/SMS row above — see `.pHive/epics/integrations-catalog-and-ecosystem-audit/docs/ecosystem-gap-findings.md` finding 7 |
 | Multi-currency / i18n | Localized pricing, currency conversion, translated storefronts | Cross-cuts catalog, cart, checkout, and CMS all at once — a real, non-trivial undertaking | Best tackled as its own dedicated epic once there's real multi-region demand |
 | Returns / RMA | Structured return/exchange workflow | An extension of the order lifecycle beyond today's linear status model | New subsystem alongside `checkout-orders` |
 | Marketplace / social channel sync | List and sync inventory to Amazon, Instagram/TikTok Shop, Google Shopping | Each is its own real third-party integration with its own auth/data model | One adapter per channel |
