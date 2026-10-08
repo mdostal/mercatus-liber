@@ -4,15 +4,23 @@
  * @mercatus-liber/adapter-shopify, which is a LIVE WRAPPER that proxies
  * every catalog read/write through Shopify's API forever: a merchant using
  * that package is still fully hosted on Shopify. This package instead reads
- * a merchant's existing Shopify store exactly once and is meant to feed the
- * result into Mercatus Liber's own native persistence, so the merchant can
+ * a merchant's existing Shopify store exactly once (read-catalog.ts) and
+ * writes the result into Mercatus Liber's own native persistence
+ * (write-catalog.ts), through the real CatalogService/
+ * MarketingCatalogService/InventoryAdapter only, so the merchant can
  * actually leave Shopify.
  *
- * This slice is the read side only: everything exported here reads from
- * Shopify and returns structured data. Nothing here writes to Shopify or to
- * Mercatus Liber's native persistence -- the write/import path is separate,
- * later work (see .pHive/epics/shopify-migration-import-tool/docs/
- * design-discussion.md).
+ * `importShopifyCatalog` defaults to dry-run (reports what would happen,
+ * writes nothing) and is safe to re-run (check-by-slug/check-by-
+ * identifying-attributes before every create, mirroring apps/reference-
+ * storefront/lib/idempotent-seed.ts's upsert pattern).
+ *
+ * Out of scope for this first pass, disclosed plainly rather than silently
+ * dropped -- see this package's README:
+ *   - Orders, customers, and historical sales data.
+ *   - Images/media (Shopify product photos are read nowhere in
+ *     read-catalog.ts and written nowhere in write-catalog.ts).
+ *   - Shopify theme/storefront content.
  */
 
 export { SHOPIFY_API_VERSION } from "./api-version.js";
@@ -21,6 +29,15 @@ export { summarizeInventory } from "./inventory.js";
 export { drainConnection, drainRemainingPages, type ShopifyConnection, type ShopifyPageInfo } from "./pagination.js";
 export { readAllProducts, type ReadProductsOptions } from "./products.js";
 export { readShopifyCatalog, type ReadShopifyCatalogOptions } from "./read-catalog.js";
+export {
+  importShopifyCatalog,
+  type AttentionItem,
+  type AttentionKind,
+  type ImportCounts,
+  type ImportReport,
+  type ImportShopifyCatalogDeps,
+  type ImportShopifyCatalogOptions,
+} from "./write-catalog.js";
 export type {
   ImportedCollection,
   ImportedProduct,

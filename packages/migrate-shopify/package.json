@@ -1,7 +1,7 @@
 {
   "name": "@mercatus-liber/migrate-shopify",
   "version": "0.1.0",
-  "description": "One-time Shopify-to-native migration tool (epic shopify-migration-import-tool). This is NOT @mercatus-liber/adapter-shopify, which is a live wrapper that proxies catalog reads/writes through Shopify's API forever -- this package reads a merchant's existing Shopify store exactly once and is meant to feed that data into Mercatus Liber's own native persistence, so a merchant can actually leave Shopify. This first slice is the read side only: it returns structured data and writes nothing.",
+  "description": "One-time Shopify-to-native migration tool (epic shopify-migration-import-tool). This is NOT @mercatus-liber/adapter-shopify, which is a live wrapper that proxies catalog reads/writes through Shopify's API forever -- this package reads a merchant's existing Shopify store exactly once and writes the result into Mercatus Liber's own native persistence through the real CatalogService/MarketingCatalogService/InventoryAdapter, so a merchant can actually leave Shopify. Dry-run by default; idempotent (safe to re-run) by construction. Orders/customers and images/media migration are explicitly out of scope for this first pass -- see this package's README.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,9 +26,13 @@
   },
   "dependencies": {
     "@mercatus-liber/adapter-shopify": "workspace:*",
-    "@mercatus-liber/core": "workspace:*"
+    "@mercatus-liber/catalog": "workspace:*",
+    "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/inventory": "workspace:*",
+    "@mercatus-liber/marketing-catalog": "workspace:*"
   },
   "devDependencies": {
+    "@mercatus-liber/adapter-sqlite": "workspace:*",
     "@types/node": "^22.7.5",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"

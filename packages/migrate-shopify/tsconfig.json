@@ -5,5 +5,11 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [{ "path": "../core" }, { "path": "../adapter-shopify" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../adapter-shopify" },
+    { "path": "../catalog" },
+    { "path": "../marketing-catalog" },
+    { "path": "../inventory" }
+  ]
 }

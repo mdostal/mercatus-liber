@@ -833,10 +833,22 @@ importers:
       '@mercatus-liber/adapter-shopify':
         specifier: workspace:*
         version: link:../adapter-shopify
+      '@mercatus-liber/catalog':
+        specifier: workspace:*
+        version: link:../catalog
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../core
+      '@mercatus-liber/inventory':
+        specifier: workspace:*
+        version: link:../inventory
+      '@mercatus-liber/marketing-catalog':
+        specifier: workspace:*
+        version: link:../marketing-catalog
     devDependencies:
+      '@mercatus-liber/adapter-sqlite':
+        specifier: workspace:*
+        version: link:../adapter-sqlite
       '@types/node':
         specifier: ^22.7.5
         version: 22.20.1
