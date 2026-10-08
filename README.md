@@ -54,6 +54,17 @@ No subsystem imports another subsystem's internals. Everything talks through sha
 types, adapter interfaces, or a typed event bus. See `docs/ARCHITECTURE.md` → "Prime directive:
 no tight coupling" for the test used to catch violations.
 
+## Integrations
+
+Mercatus Liber integrates with 12 real third-party adapter packages (`packages/adapter-*`) plus
+two built-in provider integrations (Stripe, PostHog/GA4) — covering persistence, CMS, admin
+auth, payments, fulfillment & shipping, image/media, and analytics & insights. Several are
+already live in production today (Postgres, Convex, Sanity, Clerk, PostHog); others are real,
+built, and unit-tested but currently credential-gated, honestly disclosed rather than claimed
+working end to end. See [the full Integrations catalog](https://mercatus-liber-docs.vercel.app/integrations)
+on the docs site for every package's real current status and the exact environment variable(s)
+that would turn it on.
+
 ## Configuration
 Environment variables `apps/reference-storefront` actually reads (confirmed by grepping
 `process.env` across the app, not from memory). None are required to run the app locally —
