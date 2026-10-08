@@ -1,0 +1,19 @@
+name: shopify-migration-import-tool
+title: A real one-time Shopify-to-native migration/import tool (distinct from the live adapter-shopify wrapper)
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+
+stories:
+  - id: smi-01-shopify-read-path
+    title: Real Shopify GraphQL read path (products, variants, collections, inventory)
+    complexity: medium
+    depends_on: []
+  - id: smi-02-native-write-path-and-dry-run
+    title: Native import write path, dry-run mode, idempotency
+    complexity: medium
+    depends_on: [smi-01-shopify-read-path]
+  - id: smi-03-cli-docs-and-closeout
+    title: Real CLI entry point, user-facing docs, closeout
+    complexity: low
+    depends_on: [smi-02-native-write-path-and-dry-run]

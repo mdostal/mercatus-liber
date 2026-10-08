@@ -1,0 +1,67 @@
+id: smi-02-native-write-path-and-dry-run
+epic: shopify-migration-import-tool
+title: Native import write path, dry-run mode, idempotency
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [smi-01-shopify-read-path]
+
+description: |
+  Build the write side: take story smi-01's real Shopify read output and import it into
+  Mercatus Liber's own native persistence, through the exact same service-layer calls every
+  other part of this app uses -- `CatalogService.createProduct`/`generateSkus`,
+  `MarketingCatalogService.createCategory`/`assignProductToCategory`, the real inventory
+  adapter's stock-setting call. No bespoke bulk-insert path that bypasses the real service
+  layer's own validation (e.g. `assertIdentifyingKeysMatch`).
+
+  Implement a real **dry-run mode** as the default/first-class path, not an afterthought: given
+  a real (or fake, for testing) Shopify read result, report exactly what WOULD be
+  created/skipped -- product count, category count, SKU count, a sample of real product titles,
+  and any records that would need manual attention (e.g. a variant combination that doesn't
+  cleanly map to this repo's identifying-attribute model) -- without writing anything. This is
+  the first thing any real user should run before a real import.
+
+  Implement real idempotency: mirror `apps/reference-storefront/lib/idempotent-seed.ts`'s
+  `upsertProduct`/`upsertCategory` check-by-slug-before-create pattern (read it first, reuse
+  the same shape) so re-running the import after a partial failure never duplicates data.
+  Write a real test proving this explicitly: run the import twice against the same fake
+  Shopify data and the same target persistence, confirm the second run creates zero
+  duplicates.
+
+  Document plainly, in this story's own code/README (not silently): orders/customers and
+  images/media are explicitly out of scope for this import tool (see the epic's own design
+  discussion for why) -- a real user running this must see that disclosure, not discover the
+  gap by surprise.
+
+acceptance_criteria:
+  - "Given a dry run, when executed, then it reports accurate counts/samples and writes nothing to the target persistence -- verified by checking the persistence layer's own state is unchanged before and after"
+  - "Given a real import run, when executed twice against the same source data, then the second run creates zero duplicate products/categories/SKUs -- verified by a real test, not assumed"
+  - "Given the real native write path, when it runs, then it goes through CatalogService/MarketingCatalogService/the inventory adapter's own public methods, never a bespoke direct-persistence bypass"
+  - "Given orders/customers/images being out of scope, when a real user runs this tool, then that disclosure is visible in the tool's own output or README, not buried"
+
+steps:
+  - id: implement
+    description: Build the real native write path and dry-run mode.
+    agent: developer
+  - id: test
+    description: Real tests proving dry-run writes nothing, and a real re-run produces zero duplicates.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the write path uses only the real public service-layer methods, confirm the idempotency pattern matches idempotent-seed.ts's own convention.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/shopify-migration-import-tool.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/idempotent-seed.ts
+      purpose: "The real, established idempotent-upsert convention this story's writes must follow"
+    - path: packages/catalog/src/service.ts
+      purpose: "The real CatalogService write methods this story writes through"
+    - path: packages/marketing-catalog/src/service.ts
+      purpose: "The real MarketingCatalogService write methods this story writes through"

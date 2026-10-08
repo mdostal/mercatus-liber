@@ -1,0 +1,21 @@
+name: integrations-catalog-and-ecosystem-audit
+title: A real integrations catalog + a fresh gap audit for missing integration categories
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: patch
+
+stories:
+  - id: ica-01-integrations-catalog
+    title: Build the real, comprehensive integrations catalog page
+    complexity: medium
+    depends_on: []
+  - id: ica-02-ecosystem-gap-audit
+    title: Research-grounded audit of missing integration categories
+    complexity: medium
+    depends_on: []
+    parallel_allowed: true
+    parallel_rationale: bounded-slice
+  - id: ica-03-closeout-live-verification
+    title: Merge, deploy, live-verify, close out the epic
+    complexity: low
+    depends_on: [ica-01-integrations-catalog, ica-02-ecosystem-gap-audit]

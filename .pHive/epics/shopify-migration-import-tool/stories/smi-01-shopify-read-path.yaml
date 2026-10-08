@@ -1,0 +1,68 @@
+id: smi-01-shopify-read-path
+epic: shopify-migration-import-tool
+title: Real Shopify GraphQL read path (products, variants, collections, inventory)
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Build the real read side of the Shopify migration tool, in a new package
+  `@mercatus-liber/migrate-shopify`. Reuse `packages/adapter-shopify/src/graphql-client.ts`'s
+  real auth/transport (read it first, don't reimplement) rather than building a second Shopify
+  GraphQL client from scratch. Re-verify the real current Shopify Admin GraphQL API shape for
+  products/variants/collections/inventory (check Shopify's own current API version and field
+  names directly -- do not assume from training data, the API has versioned releases).
+
+  Implement real, correctly cursor-paginated reads for:
+  - Products (title, description, status, handle/slug)
+  - Variants per product (→ future `IdentifyingAttribute`/`Sku` shape -- map Shopify's real
+    `selectedOptions` structure, which is genuinely similar to this repo's own
+    `identifyingAttributes` concept; read `packages/core/src/schema.ts`'s real `Sku`/
+    `IdentifyingAttribute` types first to know the real target shape)
+  - Collections (→ future `Category` shape)
+  - Current inventory levels per variant (Shopify's real `InventoryLevel`/location model --
+    note Shopify supports multi-location inventory; decide and document how this tool handles
+    that against this repo's own single-location inventory model, don't silently drop data)
+
+  This story is read-only -- it fetches and returns structured data in Shopify's own shape
+  (or a thin intermediate shape), it does NOT write to Mercatus Liber's native persistence yet
+  (that's story smi-02). Write real unit tests against an injected fake GraphQL client
+  implementing the same interface `adapter-shopify`'s own tests already use (grep its test
+  suite for the real pattern) -- proving correct pagination (including a fake multi-page
+  response), correct field mapping, and correct handling of a product with multiple variants
+  across multiple option dimensions (e.g. color x size, mirroring this repo's own real
+  `embroidered-performance-polo` 2-axis product as a mental model for what "correct" means).
+
+acceptance_criteria:
+  - "Given Shopify's real current GraphQL API shape, when the read path is built, then it's verified against Shopify's own current documentation, not assumed"
+  - "Given a multi-page Shopify response (fake, injected), when read, then pagination correctly fetches all pages, not just the first"
+  - "Given a product with multiple variants across multiple option dimensions, when read, then each variant's real attribute values are correctly captured"
+  - "Given Shopify's multi-location inventory model, when inventory is read, then this story's own docs/code comments state plainly how multi-location data is handled (aggregated, or location-specific with a documented default), not silently dropped"
+
+steps:
+  - id: implement
+    description: Build the real Shopify read path in the new migrate-shopify package.
+    agent: developer
+  - id: test
+    description: Real unit tests against injected fakes proving pagination, mapping, and multi-axis-variant correctness.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the real Shopify API shape was actually verified, not assumed; confirm reuse of adapter-shopify's existing GraphQL client rather than duplication.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/shopify-migration-import-tool.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/adapter-shopify/src/graphql-client.ts
+      purpose: "Existing real Shopify GraphQL auth/transport to reuse, not duplicate"
+    - path: packages/adapter-shopify/src/mapping.ts
+      purpose: "Existing Shopify-shape mapping logic, partially reusable"
+    - path: packages/core/src/schema.ts
+      purpose: "The real target Sku/IdentifyingAttribute/Product shapes this read path must map toward"
