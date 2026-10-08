@@ -1,0 +1,36 @@
+id: ica-03-closeout-live-verification
+epic: integrations-catalog-and-ecosystem-audit
+title: Merge, deploy, live-verify, close out the epic
+status: pending
+complexity: low
+methodology: classic
+depends_on: [ica-01-integrations-catalog, ica-02-ecosystem-gap-audit]
+
+description: |
+  Run the full monorepo check, merge feat/integrations-catalog-and-ecosystem-audit to master,
+  push to origin (hard standing rule on this public repo), deploy apps/docs (the integrations
+  catalog page lives there) and apps/reference-storefront only if ica-02 made any app-code
+  fixes, live-verify the real docs-site page renders correctly, and add a new row to
+  .pHive/planning/epic-backlog.md (check the real current highest row number at commit time)
+  citing real commit hashes and the live-verified outcome, plus listing ica-02's real
+  new-epic-candidates (if any) for future pickup.
+
+acceptance_criteria:
+  - "Given the full monorepo check, when run, then it's clean"
+  - "Given the live docs site, when the integrations catalog page is visited, then it renders correctly with real content"
+  - "Given epic-backlog.md, when read after this story, then a new row reflects the real, complete, live-verified outcome including any new-epic-candidates ica-02 surfaced"
+
+steps:
+  - id: implement
+    description: Merge, push, deploy, live-verify, update the backlog.
+    agent: developer
+  - id: integrate
+    description: Final commit + push.
+    agent: developer
+    depends_on: [implement]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "New row -- the closeout target"

@@ -1,0 +1,57 @@
+id: ica-01-integrations-catalog
+epic: integrations-catalog-and-ecosystem-audit
+title: Build the real, comprehensive integrations catalog page
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  No single page in this repo catalogs what it actually integrates with today -- confirmed by
+  a repo-wide search for "integration" turning up only test filenames and unrelated story IDs.
+  Build one: a real, canonical "Integrations" page on the docs site (`apps/docs`), covering
+  every real adapter package (re-verify the full list via `ls packages/ | grep adapter-`, plus
+  the built-in provider integrations inside `payments`/`analytics` -- do not copy the design
+  discussion's own starting-point table blindly, it could have drifted since planning).
+
+  For each integration, state plainly: what it wraps, what real capability it adds (persistence/
+  CMS/auth/payments/fulfillment/shipping/image-CDN/analytics), its real current status (live in
+  production today, on which demo(s); or built+tested but blocked on a real credential the user
+  hasn't provided; or built+tested with no live-verification attempted yet), and -- for anything
+  not live -- exactly which env var(s) a self-hoster would set to turn it on. Cross-reference
+  `.pHive/planning/epic-backlog.md`'s real disclosed status for each (grep the relevant rows)
+  rather than inventing a status. Group logically (persistence, CMS, auth, payments,
+  fulfillment & shipping, image/media, analytics & insights) rather than as one flat list.
+
+  Add a short "Integrations" section to the root `README.md` (3-5 sentences + a link to the
+  full docs-site page) -- the README itself should not try to be the full catalog, just point
+  at it.
+
+acceptance_criteria:
+  - "Given the real current package list, when the catalog is built, then every real adapter package and built-in provider integration is covered, re-verified at execution time, not copied from planning"
+  - "Given each integration's real status, when stated, then it's cross-referenced against epic-backlog.md's own disclosed state, not invented"
+  - "Given a not-yet-live integration, when covered, then the exact env var(s) to enable it are stated correctly (verify against the real code, e.g. lib/services.ts's own env-var branches)"
+  - "Given README.md, when read after this story, then it has a short Integrations section pointing at the full docs-site page"
+
+steps:
+  - id: implement
+    description: Build the real integrations catalog page and the README summary section.
+    agent: developer
+  - id: review
+    description: Spot-check every status claim against real code and epic-backlog.md -- no overstated or understated status.
+    agent: reviewer
+    depends_on: [implement]
+  - id: integrate
+    description: Commit to feat/integrations-catalog-and-ecosystem-audit.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Source of truth for each integration's real, disclosed status"
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: "The real env-var-branch wiring for every adapter -- source of truth for exact env var names"
+    - path: apps/reference-storefront/lib/adapter-info.ts
+      purpose: "Existing /admin/settings adapter-status logic -- a real precedent for how this repo already reports adapter state, mirror its rigor"

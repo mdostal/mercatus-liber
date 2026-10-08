@@ -1,0 +1,59 @@
+id: smi-03-cli-docs-and-closeout
+epic: shopify-migration-import-tool
+title: Real CLI entry point, user-facing docs, closeout
+status: pending
+complexity: low
+methodology: classic
+depends_on: [smi-02-native-write-path-and-dry-run]
+
+description: |
+  Build a real CLI entry point for `@mercatus-liber/migrate-shopify` -- a real user with a real
+  Shopify store and a real Mercatus Liber checkout should be able to run one real command
+  (decide the exact shape once stories smi-01/smi-02 are built: a bin script in the new
+  package, or an addition to `create-store`'s own CLI convention -- check what's actually
+  cleaner, don't pre-commit) with their real Shopify Admin API credentials and target backend
+  choice, see a real dry-run report, then confirm a real import.
+
+  Write a real `packages/migrate-shopify/README.md`: what this tool does and explicitly does
+  NOT do (orders/customers/images -- cite the epic's own disclosed scope boundary), the exact
+  real Shopify Admin API scopes/credential type needed (verify against Shopify's own current
+  docs, don't guess), the exact CLI invocation, and the honest, disclosed state of this epic's
+  own live-verification: no real Shopify store credentials exist in this environment, so this
+  was built and tested against real injected fakes, never live-verified against an actual
+  Shopify store -- state this as plainly as every other credential-gated feature in this repo
+  already does (Printful/Printify/Shippo/etc.), not softened or hidden.
+
+  Run the full monorepo check, merge `feat/shopify-migration-import-tool` to `master`
+  (`--no-ff`), push to origin immediately (hard standing rule on this public repo). No
+  production deploy needed -- this is a standalone CLI tool, not a live app-facing change,
+  unless this story's own implementation ends up touching `apps/reference-storefront` (it
+  shouldn't; flag plainly if it does and why). Add a new row to
+  `.pHive/planning/epic-backlog.md` (check the real current highest row number at commit time)
+  with the real, honest outcome including the live-Shopify-credential gap.
+
+acceptance_criteria:
+  - "Given a real user with their own Shopify store, when they read this tool's README, then they have everything needed to run it for real -- credentials, scopes, exact command"
+  - "Given the live-verification gap, when documented, then it's stated as plainly and honestly as every other credential-gated feature in this repo, not softened"
+  - "Given the full monorepo check, when run, then it's clean"
+  - "Given epic-backlog.md, when read after this story, then a new row reflects the real, complete, honestly-disclosed outcome"
+
+steps:
+  - id: implement
+    description: Build the real CLI entry point and write the real README.
+    agent: developer
+  - id: test
+    description: Live-verify the CLI's dry-run output against real injected-fake Shopify data end to end.
+    agent: tester
+    depends_on: [implement]
+  - id: integrate
+    description: Full monorepo check, merge, push, update the backlog.
+    agent: developer
+    depends_on: [test]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/create-store/README.md
+      purpose: "Precedent for how this repo documents a real CLI tool"
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "New row -- the closeout target"

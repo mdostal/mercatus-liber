@@ -1,0 +1,71 @@
+id: ica-02-ecosystem-gap-audit
+epic: integrations-catalog-and-ecosystem-audit
+title: Research-grounded audit of missing integration categories
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+parallel_allowed: true
+parallel_rationale: bounded-slice
+
+description: |
+  User's explicit ask: "dig into what else should exist and what is necessary as part of the
+  ecosystem to help that build out more." Run a real, web-verified audit (same discipline as
+  epic 40's own research pass -- cite real current documentation, don't guess) of integration
+  *categories* (third-party systems/providers) this framework has no adapter for at all today,
+  distinct from VISION.md's existing "community plugin frontier" table (which covers missing
+  *features*, not missing *integrations* -- cross-reference it, don't duplicate it).
+
+  Real candidates to verify (confirm each is a genuine gap, not already covered by an existing
+  adapter under a name that doesn't obviously match):
+  - Tax calculation (TaxJar/Avalara-class real-time sales-tax computation)
+  - Accounting/ERP sync (QuickBooks/Xero-class)
+  - Email/SMS marketing automation beyond the existing analytics-only PostHog/GA4 pair
+    (Klaviyo/Postmark-class -- note VISION.md's community-plugin table already flags
+    "abandoned-cart recovery"/"lifecycle email" as deliberately-deferred features; this audit's
+    job is the distinct question of whether a real *provider adapter* for this category should
+    exist as infrastructure even if the feature built on top of it stays community territory)
+  - Marketplace/channel sync (Amazon/eBay-class)
+  - A webhook/automation layer (Zapier-class, generic outbound event delivery beyond the
+    existing internal event bus)
+  - A second payment processor beyond Stripe (PayPal/Braintree-class)
+  - Loyalty/rewards provider integration
+
+  For each real finding: dispose of it the same way prior gap audits in this repo have --
+  (a) small enough to fix directly in this story (e.g. a one-line doc clarification, not a new
+  adapter package -- building a real new adapter is NOT in scope for this story, that's its own
+  future epic), (b) a real, well-justified new-epic-candidate (write it up with the same rigor
+  as `commerce-gap-audit-3`'s own candidates), or (c) explicitly belongs on VISION.md's existing
+  community-plugin-frontier table instead (cross-reference, don't re-litigate). Be honest if a
+  candidate turns out NOT to be a real gap (e.g. already covered) -- say so plainly, same as
+  prior audits' "not a gap" findings.
+
+  Write `.pHive/epics/integrations-catalog-and-ecosystem-audit/docs/ecosystem-gap-findings.md`
+  with every finding, its real evidence (what you checked, what documentation you verified
+  against), and its disposition.
+
+acceptance_criteria:
+  - "Given each candidate integration category, when researched, then the finding cites real, current documentation checked directly, not assumed from training data"
+  - "Given a real finding, when disposed of, then it's categorized as fix-now / new-epic-candidate / already-on-VISION.md-table, with reasoning, matching this repo's established gap-audit rigor"
+  - "Given VISION.md's existing community-plugin-frontier table, when this audit's findings are written up, then they're cross-referenced against it, not duplicated"
+
+steps:
+  - id: research
+    description: Web-verified research against real current provider/competitor documentation for each candidate category.
+    agent: researcher
+  - id: implement
+    description: Write up ecosystem-gap-findings.md with every finding and its disposition; apply any small, genuinely in-scope fixes directly.
+    agent: developer
+    depends_on: [research]
+  - id: integrate
+    description: Commit to feat/integrations-catalog-and-ecosystem-audit.
+    agent: developer
+    depends_on: [implement]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: VISION.md
+      purpose: "Existing community-plugin-frontier table (epic 47) -- cross-reference, don't duplicate"
+    - path: .pHive/epics/commerce-gap-audit-3/docs/audit-findings.md
+      purpose: "Precedent for this repo's own real gap-audit rigor and disposition categories"
