@@ -3,9 +3,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ClerkProvider } from "@clerk/nextjs";
 import { THEME_BUNDLES } from "@mercatus-liber/theming";
+import BackendAsleepPage from "../../../components/backend-asleep-page";
 import { NavBlueprintBar } from "../../../components/nav-blueprint-bar";
 import { NavRail } from "../../../components/nav-rail";
 import { NavTopBar } from "../../../components/nav-top-bar";
+import { readOrBackendUnreachable } from "../../../lib/backend-unreachable";
 import { DEMO_REGISTRY, DEMO_SLUGS, isDemoSlug, type DemoSlug } from "../../../lib/demos";
 import { resolvePageTemplateOverride } from "../../../lib/resolve-page-template";
 import { getServicesForDemo } from "../../../lib/services";
@@ -199,24 +201,49 @@ export default async function DemoLayout({
     displayName: DEMO_REGISTRY[slug].displayName,
   }));
 
-  // design-system-v2-02 / scc-04: resolve the "nav" page type's template via
-  // resolvePageTemplateOverride's shared precedence (lib/resolve-page-template.ts)
-  // -- an admin's own per-page-type override (content-layout dashboard) wins,
-  // else the active theme bundle's own defaultTemplatesByPageType.nav
-  // (undefined for the 7 pre-existing bundles, which don't define one), else
-  // resolveTemplate's own first-registered-template default, "nav.top-bar".
-  const { theming, storefrontViews } = await getServicesForDemo(demoSlug);
-  // storefront-views-and-multi-catalog epic: a real, live-data-driven
-  // discoverability fix -- a permanent second storefront (isDefaultOverride:
-  // false) has no other real entry point anywhere in the app besides
-  // knowing its exact /site/<slug> URL. Only ever lists PUBLISHED,
-  // non-default-override views (a takeover view IS the home page while
-  // live, so it needs no separate link; a draft view isn't real yet) --
-  // empty for every demo with none seeded, so this is a no-op today for
-  // any store that hasn't adopted the feature.
-  const discoverableViews = (await storefrontViews.listViews(demoSlug)).filter(
-    (view) => view.status === "active" && !view.isDefaultOverride,
-  );
+  // free-tier-resilience-and-keepalive epic (fr-01): every /demo/[demoSlug]/*
+  // route resolves this demo's services THROUGH this layout -- it's the one
+  // call site every such page shares, so it's the real "catalog persistence
+  // read path" choke point for the narrow backend-unreachable detector (see
+  // lib/backend-unreachable.ts's own doc comment for exactly which two
+  // error shapes it matches). This file's own sibling, error.tsx, can't help
+  // here: Next.js never routes a layout's own render errors to the
+  // error.tsx living in that SAME route segment (only a descendant
+  // segment's) -- confirmed by design-discussion.md's live finding that
+  // today's real outage (print-shop/northline's paused Supabase project)
+  // surfaced as Next's raw, unstyled crash page, not even the existing
+  // "Something went wrong" state. readOrBackendUnreachable only swallows the
+  // specific, verified error shapes isBackendUnreachableError matches --
+  // anything else (a real application bug) rethrows unchanged and still
+  // crashes exactly as it did before this change.
+  const demoDataResult = await readOrBackendUnreachable(async () => {
+    // design-system-v2-02 / scc-04: resolve the "nav" page type's template
+    // via resolvePageTemplateOverride's shared precedence
+    // (lib/resolve-page-template.ts) -- an admin's own per-page-type
+    // override (content-layout dashboard) wins, else the active theme
+    // bundle's own defaultTemplatesByPageType.nav (undefined for the 7
+    // pre-existing bundles, which don't define one), else
+    // resolveTemplate's own first-registered-template default,
+    // "nav.top-bar".
+    const { theming, storefrontViews } = await getServicesForDemo(demoSlug);
+    // storefront-views-and-multi-catalog epic: a real, live-data-driven
+    // discoverability fix -- a permanent second storefront
+    // (isDefaultOverride: false) has no other real entry point anywhere in
+    // the app besides knowing its exact /site/<slug> URL. Only ever lists
+    // PUBLISHED, non-default-override views (a takeover view IS the home
+    // page while live, so it needs no separate link; a draft view isn't
+    // real yet) -- empty for every demo with none seeded, so this is a
+    // no-op today for any store that hasn't adopted the feature.
+    const discoverableViews = (await storefrontViews.listViews(demoSlug)).filter(
+      (view) => view.status === "active" && !view.isDefaultOverride,
+    );
+    const navLinks = await buildNavLinks(demoSlug);
+    return { theming, discoverableViews, navLinks };
+  });
+  if (!demoDataResult.ok) {
+    return <BackendAsleepPage demoSlug={demoSlug} />;
+  }
+  const { theming, discoverableViews, navLinks } = demoDataResult.value;
   const navTemplateKey = theming.resolveTemplate("nav", resolvePageTemplateOverride(theming, "nav", activeTheme));
   const NavChrome: ComponentType<NavChromeProps> =
     (navTemplateKey && NAV_TEMPLATES[navTemplateKey as keyof typeof NAV_TEMPLATES]) || NavTopBar;
@@ -236,7 +263,6 @@ export default async function DemoLayout({
   // product grid needs real room for more than a single column, same
   // reasoning as isEditorial's magazine-grid).
   const isDatasheet = activeTheme.key === "datasheet";
-  const navLinks = await buildNavLinks(demoSlug);
 
   const page = (
     <html lang="en">
