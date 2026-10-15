@@ -1,0 +1,53 @@
+id: fr-02-today-outage-recovery
+epic: free-tier-resilience-and-keepalive
+title: Recover print-shop/northline's actual Supabase outage, live-verify
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+parallel_allowed: true
+
+description: |
+  Right now, for real, in production: `commerce.mdostal.com/demo/print-shop` and
+  `/demo/northline` both return 500, confirmed via live Vercel function logs showing
+  `error: (ENOTFOUND) tenant/user postgres.dhjnancsmuteowfgfebx not found` -- the Supabase
+  Supavisor pooler's error for a project that's paused or deleted. Fix this for real, live.
+
+  First, determine which it actually is -- paused (recoverable by logging into the real
+  Supabase dashboard/Management API and resuming it) or fully deleted (not recoverable;
+  requires creating a brand-new free Supabase project and re-running whatever seed script
+  originally populated print-shop/northline's catalog data, then updating the real
+  `DATABASE_URL`/`mercatus-liber-database-url` Portunus reference and the live Vercel env var
+  to match). Do not guess which -- check directly (Supabase's dashboard or Management API
+  will say plainly whether a project is paused-and-resumable or gone).
+
+  Whichever is true, do the real recovery: resume the project, or create a new one and
+  re-seed it (reuse whatever this repo's own existing seed script/convention already is --
+  check for one before writing a new one). Update credentials in Portunus
+  (`mercatus-liber-commerce` project) and in the live Vercel production env if they changed.
+  Live-verify both routes return 200 again with real catalog content, not just that the
+  connection succeeds.
+
+acceptance_criteria:
+  - "Given the real Supabase project's actual state (paused vs. deleted), when checked directly, then the finding is based on real evidence, not assumed"
+  - "Given the real recovery action taken, when commerce.mdostal.com/demo/print-shop and /demo/northline are fetched live afterward, then both return 200 with real catalog content, not a 500"
+  - "Given any credential that changed (a new Supabase project's connection string), when updated, then both Portunus and the live Vercel production env reflect the same real value"
+
+steps:
+  - id: diagnose
+    description: Determine the real Supabase project state (paused vs. deleted) directly.
+    agent: developer
+  - id: recover
+    description: Resume or recreate+reseed, update credentials, redeploy if needed.
+    agent: developer
+    depends_on: [diagnose]
+  - id: verify
+    description: Live-verify both demo routes return 200 with real content.
+    agent: tester
+    depends_on: [recover]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/idempotent-seed.ts
+      purpose: "The repo's own existing idempotent seed convention, to reuse if a brand-new project needs re-seeding"

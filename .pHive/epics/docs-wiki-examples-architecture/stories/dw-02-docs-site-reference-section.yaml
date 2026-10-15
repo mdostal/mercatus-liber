@@ -1,0 +1,55 @@
+id: dw-02-docs-site-reference-section
+epic: docs-wiki-examples-architecture
+title: New structured reference section in apps/docs (architecture + integrations + sample stores index)
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+parallel_allowed: true
+
+description: |
+  Per this epic's design-discussion.md: durable, structured reference belongs next to the
+  existing live docs site (`apps/docs`, Nextra, already live at
+  `mercatus-liber-docs.vercel.app`), not duplicated into a second tool. Read the real existing
+  `apps/docs/content-src/index.md` and `integrations.md` (epic 77) before adding anything, to
+  match the real existing structure/voice/nav convention rather than inventing a new one.
+
+  Add a new `apps/docs/content-src/sample-stores.md` reference page. Since epic 81
+  (`separate-deployed-sample-stores`) may not have landed yet when this story runs, write it
+  to be real either way: if epic 81's real deployed URLs already exist, list them with their
+  real URL, their real backend (per-demo-diversity story), and what each demonstrates; if they
+  don't exist yet, write the page honestly describing the CURRENT real state (the 3 demos as
+  `/demo/<slug>` paths under one deployment) and note plainly that dedicated separate
+  deployments are planned/in progress -- check the real current state live before writing
+  either version, don't assume.
+
+  Add real navigation linking: this new page, the existing `architecture.md`-equivalent
+  content, and `integrations.md` should all be reachable from the docs site's own nav/sidebar
+  in one click, and from each other where it's relevant (sample-stores page links to
+  integrations, which links to architecture).
+
+acceptance_criteria:
+  - "Given the real current state of epic 81's work (checked live, not assumed), when sample-stores.md is written, then it accurately reflects whichever state is real at the time this runs"
+  - "Given the docs site's real nav, when this page is added, then it's reachable from the site's main navigation, not an orphan page"
+  - "Given a live deploy of apps/docs, when sample-stores.md is visited, then it renders correctly with real content (live-verified, not just a local build check)"
+
+steps:
+  - id: implement
+    description: Write the new reference page and wire it into the real docs-site nav.
+    agent: developer
+  - id: verify
+    description: Deploy and live-verify the new page renders correctly.
+    agent: tester
+    depends_on: [implement]
+  - id: integrate
+    description: Commit to feat/docs-wiki-examples-architecture.
+    agent: developer
+    depends_on: [verify]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/docs/content-src/integrations.md
+      purpose: "Precedent for this new reference page's real structure and voice"
+    - path: apps/docs/content-src/index.md
+      purpose: "The real nav/index to extend"

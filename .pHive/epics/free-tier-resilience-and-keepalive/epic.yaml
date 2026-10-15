@@ -1,0 +1,14 @@
+name: free-tier-resilience-and-keepalive
+title: Graceful degradation + daily keep-alive/revival for free-tier demo backends
+methodology: classic
+stories:
+  - id: fr-01-graceful-backend-unreachable-state
+    title: Detect backend-unreachable errors and render an honest "may be asleep" state
+    depends_on: []
+  - id: fr-02-today-outage-recovery
+    title: Recover print-shop/northline's actual Supabase outage, live-verify
+    depends_on: []
+    parallel_allowed: true
+  - id: fr-03-keepalive-cron-and-closeout
+    title: Daily GitHub Actions keep-alive/revival job, docs, backlog closeout
+    depends_on: [fr-01-graceful-backend-unreachable-state, fr-02-today-outage-recovery]

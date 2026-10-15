@@ -1,0 +1,68 @@
+id: fr-03-keepalive-cron-and-closeout
+epic: free-tier-resilience-and-keepalive
+title: Daily GitHub Actions keep-alive/revival job, docs, backlog closeout
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [fr-01-graceful-backend-unreachable-state, fr-02-today-outage-recovery]
+
+description: |
+  Build the real, recurring "check on and try to revive the free accounts" job the user
+  explicitly asked for: "we... should do a script to do so every so often." A GitHub Actions
+  scheduled workflow (`.github/workflows/keepalive.yml`, daily cron) -- free, versioned in the
+  repo, independent of this session or any paid scheduler.
+
+  For each free backend currently wired to a live demo (verify current wiring via the real
+  `/architecture` page or `lib/services.ts` before assuming -- as of this epic's planning,
+  that's Supabase Postgres for print-shop/northline; include MongoDB Atlas only if it is
+  actually live-wired by the time this runs, otherwise note it's dormant and skip pinging a
+  backend nothing currently depends on):
+
+  1. Attempt a real, lightweight read against the backend (a trivial query) -- this alone
+     resets most providers' inactivity clocks and prevents a future auto-pause.
+  2. If that fails, check whether the provider has a real, documented Management-API call to
+     resume a paused resource. Verify this directly against each provider's current docs
+     before writing any code against it -- do not assume MongoDB Atlas's free M0 tier has the
+     same pause/resume semantics as a paid cluster (Supabase and Atlas may differ here; find
+     out for real). Attempt the resume call if one genuinely exists for this account's tier.
+  3. Record the real outcome every run -- woke it up / already healthy / needs manual
+     recreation (unrecoverable) -- in a durable, visible place: a GitHub Actions step summary
+     at minimum, and consider a small committed status file
+     (`.pHive/ops/keepalive-status.json` or similar) the main site or docs could later read
+     and display, if that's a clean addition -- don't force it if it adds real complexity for
+     little benefit.
+
+  Secrets this job needs (Supabase Management API token, etc.) must come from GitHub Actions'
+  own encrypted repository secrets, set by the human (you cannot set these yourself from this
+  session) -- write the workflow to read them by name and clearly document, in the PR/README,
+  exactly which secret names need to be added in the real GitHub repo settings and what
+  real-world credential each one is.
+
+  Closeout: full monorepo check, merge `feat/free-tier-resilience-and-keepalive` to `master`
+  (`--no-ff`), push immediately (standing public-repo rule). Add a new epic-backlog row citing
+  real findings from fr-02's actual recovery (paused vs. recreated) and this job's real design.
+
+acceptance_criteria:
+  - "Given each free backend currently live-wired, when the daily job runs, then it performs a real ping and, where a real resume API exists for that tier, a real resume attempt -- verified against each provider's actual current docs, not assumed"
+  - "Given a run's outcome, when it completes, then the real result (woke/healthy/unrecoverable) is recorded somewhere durable and visible, not silently discarded"
+  - "Given credentials the workflow needs, when documented, then the README/PR states exactly which GitHub Actions secret names must be added and what each one is, since this session cannot add them itself"
+  - "Given the full monorepo check, when run, then it's clean; given the merge, when pushed, then origin/master reflects it"
+
+steps:
+  - id: implement
+    description: Build the GitHub Actions keepalive workflow and its ping/resume logic.
+    agent: developer
+  - id: test
+    description: Dry-run the workflow logic against fake/injected provider responses (ping succeeds, ping fails + resume succeeds, both fail -> unrecoverable).
+    agent: tester
+    depends_on: [implement]
+  - id: integrate
+    description: Full monorepo check, merge, push, backlog row.
+    agent: developer
+    depends_on: [test]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "New row -- the closeout target, citing fr-02's real recovery finding"

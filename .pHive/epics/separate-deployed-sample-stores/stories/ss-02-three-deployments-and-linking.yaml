@@ -1,0 +1,62 @@
+id: ss-02-three-deployments-and-linking
+epic: separate-deployed-sample-stores
+title: Deploy three new Vercel projects, live-verify, link from every surface, closeout
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [ss-01-single-tenant-mode]
+
+description: |
+  With ss-01's single-tenant mode real and tested, create three new real Vercel projects
+  under the `mathew-dostals-projects` scope (confirmed Hobby plan, no project-count limit, no
+  cost implication -- re-verify this is still true at execution time, don't assume it's
+  unchanged): `mercatus-liber-print-shop`, `mercatus-liber-northline`,
+  `mercatus-liber-broadleaf` (or whatever real names `vercel project ls` shows aren't already
+  taken). Each: Root Directory `apps/reference-storefront` (same as the existing
+  `mercatus-liber-demo` project -- check its real current settings via `vercel project
+  inspect` or the dashboard before replicating them), `SINGLE_TENANT_DEMO_SLUG` set to its own
+  real slug, and its own real backend env vars (reuse the existing per-demo values already
+  configured on `mercatus-liber-demo` for that slug -- read them from Portunus/Vercel, don't
+  invent new ones unless a real reason requires it).
+
+  Deploy all three for real. Live-verify each one: fetch its real root URL, confirm it serves
+  that store's real content (not a 404, not a redirect back to `commerce.mdostal.com`, not the
+  framework's own landing page). Confirm admin auth still works on each (Clerk needs its
+  allowed-origins/redirect-URLs updated for the new domains -- check Clerk's real dashboard
+  settings for this, don't assume it works without configuration).
+
+  Link all three real URLs from every relevant surface: `commerce.mdostal.com`'s own existing
+  demo-links section (replace or supplement the `/demo/<slug>` links with the new separate
+  URLs -- decide which during implementation and say why), the docs site's new sample-stores
+  reference page (epic 80, dw-02 -- update it with the real URLs once they exist, coordinating
+  with whichever epic lands second), and the wiki's Home page (epic 80, dw-01) if it's already
+  live.
+
+  Closeout: full monorepo check, merge `feat/separate-deployed-sample-stores` to `master`
+  (`--no-ff`), push. Add a new epic-backlog row with the three real URLs and confirmation that
+  the existing shared deployment's behavior was verified unaffected.
+
+acceptance_criteria:
+  - "Given each of the three new Vercel projects, when deployed, then its real root URL serves that one store's real content, live-verified by fetching it, not assumed from a successful build"
+  - "Given admin auth on each new deployment, when tested, then Clerk sign-in works correctly on the new domain"
+  - "Given commerce.mdostal.com, the docs site, and the wiki, when checked after this story, then all three link to the three real new store URLs"
+  - "Given the full monorepo check, when run, then it's clean; given the merge, when pushed, then origin/master reflects it"
+
+steps:
+  - id: implement
+    description: Create and configure the three new Vercel projects, deploy, wire Clerk for the new domains.
+    agent: developer
+  - id: verify
+    description: Live-verify all three real URLs and their admin auth.
+    agent: tester
+    depends_on: [implement]
+  - id: integrate
+    description: Cross-link, full monorepo check, merge, push, backlog row.
+    agent: developer
+    depends_on: [verify]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "New row -- the closeout target, citing the three real live URLs"

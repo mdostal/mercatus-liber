@@ -1,0 +1,64 @@
+id: dw-01-github-wiki-standup
+epic: docs-wiki-examples-architecture
+title: Stand up the real GitHub Wiki (FAQ, troubleshooting, decisions log)
+status: pending
+complexity: low
+methodology: classic
+depends_on: []
+parallel_allowed: true
+
+description: |
+  Per this epic's own design-discussion.md's real CBA: the GitHub Wiki is the right surface
+  for low-friction, frequently-changing content (FAQ, troubleshooting, a short decisions log),
+  NOT for durable structured reference (that's dw-02's job, in the docs site proper).
+
+  Check out the real wiki repo (`git clone https://github.com/mdostal/mercatus-liber.wiki.git`
+  -- GitHub wikis are their own git repo; if the wiki hasn't been enabled yet on the real repo
+  settings, say so plainly, since enabling it is a one-click repo-settings action this session
+  may not have access to do and may need the human to flip on first). Write real pages:
+
+  - `Home.md` -- short orientation, links to the docs site, the wiki's other pages, and (once
+    epic 81 lands) the separately-deployed sample stores.
+  - `FAQ.md` -- real, honest answers grounded in this repo's own actual disclosed state:
+    "why is a demo store asleep/500ing sometimes" (cite epic 79's real finding -- free-tier
+    backends pause from inactivity, link to the keep-alive job), "is this production-ready"
+    (cite the real README "Status: pre-alpha" framing, don't soften it), "how do I pick a
+    persistence backend," "how do I migrate off Shopify" (cite the real
+    `@mercatus-liber/migrate-shopify` package and its own honest live-credential-gap
+    disclosure).
+  - `Troubleshooting.md` -- real, specific: the exact Supabase pooler error signature from
+    epic 79 and what it means, common `pnpm install`/build issues if any are known from this
+    repo's own CI history, how to tell which adapter a given deployment is actually running
+    (cite the real `/architecture` page).
+  - `Decisions-Log.md` -- a short, real index pointing at the actual
+    `.pHive/epics/*/docs/design-discussion.md` files for anyone who wants full reasoning
+    behind a real past decision (the brand color/logo choice, the per-demo-backend-diversity
+    choice, etc.) -- don't duplicate their content, link to them.
+
+  If the wiki clone fails because the wiki feature isn't enabled on the real GitHub repo yet,
+  stop and report that plainly as a real blocker needing a human to enable
+  Settings -> Features -> Wikis first, rather than inventing a workaround.
+
+acceptance_criteria:
+  - "Given the real GitHub wiki, when these pages are pushed, then they are live and readable at github.com/mdostal/mercatus-liber/wiki"
+  - "Given the FAQ and Troubleshooting pages, when read, then every claim in them is grounded in this repo's own real, verified state -- not generic advice"
+  - "Given the Decisions-Log page, when read, then it links to real design-discussion.md files that actually exist, not invented ones"
+
+steps:
+  - id: implement
+    description: Clone/enable the wiki repo and write the four real pages.
+    agent: developer
+  - id: review
+    description: Confirm every factual claim traces to something real and verifiable in this repo.
+    agent: reviewer
+    depends_on: [implement]
+  - id: integrate
+    description: Push to the real wiki repo.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: README.md
+      purpose: "The real 'Status: pre-alpha' framing and other facts the wiki must not contradict"

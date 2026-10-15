@@ -1,0 +1,73 @@
+id: dp-01-structured-address-and-order-lookup
+epic: dropship-merch-address-wiring
+title: Structured address on ShippingInfo, threaded through OrderLookup and SubmitFulfillmentOrderInput
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read `packages/checkout-orders/src/types.ts`'s real `ShippingInfo` (`{ name, email, address
+  }`, address a single free-text string) and `packages/fulfillment/src/types.ts`'s real
+  `OrderLookup.getOrder()` (returns only `{ id, items }`) and `SubmitFulfillmentOrderInput`
+  (only `orderId` + `items`) before changing anything -- confirm these are still exactly this
+  shape (another story may have touched them since this was written).
+
+  Add real structured address fields a shipping label actually needs: street line 1, street
+  line 2 (optional), city, state/region code, postal code, ISO country code, phone (optional).
+  Decide, and document the decision plainly in a code comment: extend `ShippingInfo` with
+  these as new additive fields alongside the existing `address` string (following this
+  codebase's own established additive-nullable-field precedent -- see `Order.discountTotal`/
+  `appliedPromotionCode`'s own doc comments for the exact shape of that precedent), rather than
+  replacing `address` and breaking every existing caller that constructs a `ShippingInfo`
+  today. Grep every real place `ShippingInfo` is constructed (`startCheckout` and any seed/test
+  fixture) and confirm they still compile -- new fields should be addable without forcing every
+  existing construction site to change, unless the real checkout form itself needs to start
+  collecting structured fields instead of one text blob, which is explicitly PART of this
+  story's scope if that's what's needed for the new fields to ever be populated for real (check
+  the real checkout UI before deciding whether this needs a form change or just a type
+  change).
+
+  Extend `OrderLookup.getOrder()`'s return shape to include the real shipping address (whatever
+  shape `ShippingInfo` ends up being), and extend `SubmitFulfillmentOrderInput` to carry a
+  `recipient` field through to `FulfillmentAdapter.submitOrder()`. Update
+  `FulfillmentService.submitOrder`'s real call site in `packages/fulfillment/src/service.ts`
+  to actually read and pass this through. Update `assertCheckoutOrdersServiceSatisfiesOrderLookup`
+  (`packages/fulfillment/src/order-lookup-compat.ts`) and check for every other real
+  implementer of `OrderLookup` in this repo (grep before assuming there's only one) so none of
+  them silently break.
+
+acceptance_criteria:
+  - "Given a real checkout order with a real customer address, when OrderLookup.getOrder() is called, then the returned shape includes the real structured address, not just id+items"
+  - "Given FulfillmentService.submitOrder is called for that order, when it calls an adapter's submitOrder(), then SubmitFulfillmentOrderInput carries the real structured recipient address through, verified by a real test inspecting what the adapter actually received"
+  - "Given every existing real construction site of ShippingInfo in this repo, when this change lands, then all of them still compile and pass their existing tests unchanged, proving the new fields are additive, not breaking"
+  - "Given the full monorepo check, when run, then it's clean"
+
+steps:
+  - id: implement
+    description: Add structured address fields, thread through OrderLookup and SubmitFulfillmentOrderInput.
+    agent: developer
+  - id: test
+    description: Real tests proving the address arrives intact at the adapter boundary, and existing ShippingInfo construction sites are unaffected.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm every real OrderLookup implementer was checked, not just the one obvious call site.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/dropship-merch-address-wiring.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/checkout-orders/src/types.ts
+      purpose: "ShippingInfo -- the real address shape to extend"
+    - path: packages/fulfillment/src/types.ts
+      purpose: "OrderLookup and SubmitFulfillmentOrderInput -- the real interfaces to widen"
+    - path: packages/fulfillment/src/service.ts
+      purpose: "The real call site that needs to actually pass the address through"
+    - path: packages/adapter-printful/src/mapping.ts
+      purpose: "PrintfulRecipientAddress -- the real target shape this data needs to be mappable to"

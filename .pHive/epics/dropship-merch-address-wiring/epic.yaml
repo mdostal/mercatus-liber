@@ -1,0 +1,10 @@
+name: dropship-merch-address-wiring
+title: Thread a real structured shipping address into the fulfillment subsystem
+methodology: classic
+stories:
+  - id: dp-01-structured-address-and-order-lookup
+    title: Structured address on ShippingInfo, threaded through OrderLookup and SubmitFulfillmentOrderInput
+    depends_on: []
+  - id: dp-02-printful-webhook-reverify-and-closeout
+    title: Re-verify Printful webhook signature format live, real address-arrival tests, closeout
+    depends_on: [dp-01-structured-address-and-order-lookup]

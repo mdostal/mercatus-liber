@@ -1,0 +1,60 @@
+id: fr-01-graceful-backend-unreachable-state
+epic: free-tier-resilience-and-keepalive
+title: Detect backend-unreachable errors and render an honest "may be asleep" state
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Right now a dead/paused free-tier backend (confirmed live: Supabase's pooler returning
+  `(ENOTFOUND) tenant/user ... not found` for the paused print-shop/northline project)
+  surfaces as Next.js's raw, unstyled generic error page -- a real production 500 with no
+  explanation, indistinguishable from an actual application bug. Read the real error shape
+  first: `packages/adapter-postgres`'s connection/pool error handling, and whatever Mongo
+  driver error class a `serverSelectionTimeoutMS` timeout throws, to know exactly what to
+  match on. Add a narrow, specific detector for connection-refused / pooler-tenant-not-found /
+  server-selection-timeout error shapes in the catalog persistence read path (wherever
+  `apps/reference-storefront/lib/services.ts` or its callers currently let a persistence error
+  propagate uncaught to Next.js's default error boundary) -- catch ONLY these specific error
+  shapes, not every error, so a real application bug still surfaces as a real error.
+
+  On a caught backend-unreachable error, render a real, designed page (not a bare text string)
+  explaining plainly: this demo's free-tier backend may be asleep from inactivity, an attempt
+  to wake it is in progress, and a manual "try again" action. This should be honest brand
+  voice (see `.pHive/brand/brand-system.yaml` -- "say what's actually true... credibility
+  comes from precision, not polish"), not a vague "something went wrong."
+
+  Write a real test: inject a fake persistence adapter that throws the exact real Postgres
+  pooler-error shape (and the exact real Mongo timeout error shape) and assert the app
+  renders the graceful state, not a crash; separately assert an unrelated real error (e.g. a
+  thrown `TypeError` from somewhere else) still propagates as a real error and is NOT
+  swallowed into the "may be asleep" state -- this is the acceptance bar, not just "errors are
+  caught."
+
+acceptance_criteria:
+  - "Given the exact real Supabase pooler-tenant-not-found error shape, when it's thrown from the persistence read path, then the user sees a designed, honest 'may be asleep' state with a retry action, not Next.js's raw error page"
+  - "Given the exact real Mongo server-selection-timeout error shape, when thrown, then the same graceful state renders"
+  - "Given an unrelated real application error, when thrown, then it is NOT caught by this detector and still surfaces as a real error -- proven by a real test, not assumed"
+  - "Given the full monorepo check, when run, then it's clean"
+
+steps:
+  - id: implement
+    description: Build the narrow backend-unreachable detector and the graceful UI state.
+    agent: developer
+  - id: test
+    description: Real tests proving both the graceful catch and the non-swallowing of unrelated errors.
+    agent: tester
+    depends_on: [implement]
+  - id: integrate
+    description: Commit to feat/free-tier-resilience-and-keepalive.
+    agent: developer
+    depends_on: [test]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: "Where the per-demo persistence adapter is constructed and called -- the real call site to wrap"
+    - path: packages/adapter-postgres/src/index.ts
+      purpose: "The real Postgres adapter whose connection errors need to be matched precisely"

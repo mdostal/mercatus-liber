@@ -1,0 +1,56 @@
+id: dp-02-printful-webhook-reverify-and-closeout
+epic: dropship-merch-address-wiring
+title: Re-verify Printful webhook signature format live, real address-arrival tests, closeout
+status: pending
+complexity: low
+methodology: classic
+depends_on: [dp-01-structured-address-and-order-lookup]
+
+description: |
+  Re-check, live against Printful's current developer docs (not the 2026-09-09 research
+  finding, which may now be stale), whether Printful v2's webhook signature/HMAC verification
+  format is documented and implementable today. If it is, note what it actually is for a
+  future story to implement (do not implement webhook handling in this story unless it's
+  trivial once confirmed -- the real scope here is the finding, not necessarily new code). If
+  it's still unclear/undocumented, confirm `createPrintfulFulfillmentAdapter`'s
+  `getOrderStatus` polling path is a real, sufficient fallback for now and say so plainly.
+
+  Write a real end-to-end test proving the full address path from dp-01 actually reaches a
+  real (fake-HTTP-backed) Printful order submission in Printful's own expected request shape --
+  given a real structured address, assert the exact fields `PrintfulRecipientAddress`
+  construction produces match what `PrintfulCreateOrderRequest`'s real recipient shape expects
+  (street1/street2/city/state_code/country_code/zip/phone, confirm the exact real field names
+  against `packages/adapter-printful/src/printful-types.ts` rather than guessing). Do the same
+  for Printify's `PrintifyRecipientAddress` if time allows, since dp-01's change benefits both
+  adapters identically.
+
+  Closeout: full monorepo check, merge `feat/dropship-merch-address-wiring` to `master`
+  (`--no-ff`), push immediately. Add a new epic-backlog row with the real finding on Printful's
+  webhook format and an honest note that shop.mdostal.com's own vendoring/wiring/credential
+  work is real, separate, follow-on work in that repo, not done here.
+
+acceptance_criteria:
+  - "Given Printful's current live docs, when checked, then the webhook-signature finding is based on what's actually documented today, not the September pass's possibly-stale note"
+  - "Given a real structured address from dp-01, when mapped toward PrintfulRecipientAddress, then a real test confirms every field lands in the exact shape Printful's own order-submission API expects"
+  - "Given the full monorepo check, when run, then it's clean; given the merge, when pushed, then origin/master reflects it"
+
+steps:
+  - id: research
+    description: Re-verify Printful's current webhook signature documentation live.
+    agent: developer
+  - id: test
+    description: Real end-to-end address-mapping test against Printful's (and ideally Printify's) real recipient shape.
+    agent: tester
+    depends_on: [research]
+  - id: integrate
+    description: Full monorepo check, merge, push, backlog row.
+    agent: developer
+    depends_on: [test]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/adapter-printful/src/printful-types.ts
+      purpose: "The real PrintfulCreateOrderRequest/recipient shape to verify the mapping against"
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "New row -- the closeout target"

@@ -1,0 +1,64 @@
+id: ss-01-single-tenant-mode
+epic: separate-deployed-sample-stores
+title: Env-gated single-tenant rewrite mode, byte-identical when unset
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read `apps/reference-storefront/middleware.ts` and `app/demo/[demoSlug]/**`'s real page
+  tree in full before writing anything -- this story adds a rewrite rule alongside the
+  existing real Clerk admin-route matcher, it must not replace or weaken it.
+
+  Add a new env var, `SINGLE_TENANT_DEMO_SLUG` (unset by default). When set to a real, valid
+  demo slug (validate against whatever this repo's real demo-slug registry/list already is --
+  find it, don't hardcode a second list), the middleware rewrites every incoming request path
+  that is NOT already under `/demo/` to be prefixed with `/demo/<that slug>` before Next's
+  router sees it -- so a request to `/` behaves exactly like today's `/demo/<slug>`, `/cart`
+  behaves like `/demo/<slug>/cart`, `/demo/<slug>/admin/...` keeps working unchanged (already
+  has its own prefix, don't double-rewrite it), etc. When the env var is unset (the existing
+  `commerce.mdostal.com` deployment's real current state), behavior must be byte-identical to
+  today -- this is the most important acceptance bar, since the existing live multi-tenant
+  deployment must never regress.
+
+  Write real tests: with the env var set to a real slug, assert `/` and a few other real
+  shopper-facing paths resolve to the same content/response as the existing `/demo/<slug>`
+  equivalent; with it unset, assert nothing changes from today's existing middleware test
+  coverage (run the existing middleware tests first to know the real current baseline before
+  adding new ones). Also test the admin-route path specifically under single-tenant mode,
+  since Clerk's matcher is real and already gates `/demo/:demoSlug/admin(.*)` -- confirm it
+  still gates correctly when reached via the rewritten root-relative path a real admin user
+  would actually type (e.g. `/admin/...` under single-tenant mode), not just the already-
+  prefixed form.
+
+acceptance_criteria:
+  - "Given SINGLE_TENANT_DEMO_SLUG unset, when any existing route is requested, then behavior is byte-identical to today -- proven by the existing middleware/route tests passing unchanged plus any new regression test added"
+  - "Given SINGLE_TENANT_DEMO_SLUG set to a real valid slug, when / is requested, then the response matches today's /demo/<that slug> content"
+  - "Given SINGLE_TENANT_DEMO_SLUG set, when an admin route is requested at its single-tenant-relative path, then Clerk's real admin gate still applies correctly"
+  - "Given the full monorepo check, when run, then it's clean"
+
+steps:
+  - id: implement
+    description: Add the env-gated single-tenant rewrite to middleware.ts.
+    agent: developer
+  - id: test
+    description: Real tests proving byte-identical unset behavior and correct single-tenant rewriting, including the admin path.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the existing multi-tenant deployment's behavior is provably unaffected when the env var is unset.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/separate-deployed-sample-stores.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: apps/reference-storefront/middleware.ts
+      purpose: "The real middleware to extend -- read it fully first, the existing Clerk admin matcher must keep working"
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: "resolveDemoPersistenceEnv/demoEnvPrefix -- the existing per-demo-backend convention this mode should not disturb"

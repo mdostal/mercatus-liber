@@ -1,0 +1,48 @@
+id: dw-03-cross-link-and-repo-polish
+epic: docs-wiki-examples-architecture
+title: Cross-link every surface, polish the GitHub repo presentation, closeout
+status: pending
+complexity: low
+methodology: classic
+depends_on: [dw-01-github-wiki-standup, dw-02-docs-site-reference-section]
+
+description: |
+  With the real wiki (dw-01) and the real new docs-site reference section (dw-02) both live,
+  make every surface reachable from every other surface in at most one click, per this epic's
+  "SOLID mercatus liber page... across the board" goal:
+
+  - Root `README.md`: a clear links section (docs site, wiki, GitHub repo topics) near the top,
+    not buried.
+  - Docs site nav: link out to the real wiki URL.
+  - Wiki `Home.md`: link back to the docs site and the main repo.
+  - Once epic 81's separate store deployments exist (check live, don't assume): each one's own
+    footer links back to the docs site and the main repo.
+
+  Real GitHub repo presentation polish: check and set the repo's "About" description and
+  topics (via `gh repo edit` or the GitHub UI) so a first-time visitor sees a clear one-line
+  description and relevant topic tags (e.g. `headless-commerce`, `nextjs`, `typescript`,
+  `open-source`) -- verify the real current state of the About section before changing it,
+  don't assume it's empty.
+
+  Closeout: merge `feat/docs-wiki-examples-architecture` to `master` (`--no-ff`), push. Add a
+  new epic-backlog row with real links to the wiki and the new docs page.
+
+acceptance_criteria:
+  - "Given any one of README / docs site / wiki, when read, then it links to the other two within one click"
+  - "Given the GitHub repo's About section, when checked, then it has a real, accurate one-line description and relevant topics"
+  - "Given the full monorepo check, when run, then it's clean; given the merge, when pushed, then origin/master reflects it"
+
+steps:
+  - id: implement
+    description: Add the real cross-links and repo About/topics polish.
+    agent: developer
+  - id: integrate
+    description: Full monorepo check, merge, push, backlog row.
+    agent: developer
+    depends_on: [implement]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: README.md
+      purpose: "Top-level links section to add"

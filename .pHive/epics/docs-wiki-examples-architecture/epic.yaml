@@ -1,0 +1,15 @@
+name: docs-wiki-examples-architecture
+title: GitHub Wiki + docs-site reference section + cross-linking across every surface
+methodology: classic
+stories:
+  - id: dw-01-github-wiki-standup
+    title: Stand up the real GitHub Wiki (FAQ, troubleshooting, decisions log)
+    depends_on: []
+    parallel_allowed: true
+  - id: dw-02-docs-site-reference-section
+    title: New structured reference section in apps/docs (architecture + integrations + sample stores index)
+    depends_on: []
+    parallel_allowed: true
+  - id: dw-03-cross-link-and-repo-polish
+    title: Cross-link every surface, polish the GitHub repo presentation, closeout
+    depends_on: [dw-01-github-wiki-standup, dw-02-docs-site-reference-section]

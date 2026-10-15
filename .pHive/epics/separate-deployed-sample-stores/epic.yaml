@@ -1,0 +1,10 @@
+name: separate-deployed-sample-stores
+title: Single-tenant mode + three new independently-deployed sample store URLs
+methodology: classic
+stories:
+  - id: ss-01-single-tenant-mode
+    title: Env-gated single-tenant rewrite mode, byte-identical when unset
+    depends_on: []
+  - id: ss-02-three-deployments-and-linking
+    title: Deploy three new Vercel projects, live-verify, link from every surface, closeout
+    depends_on: [ss-01-single-tenant-mode]
