@@ -22,16 +22,23 @@ Mercatus Liber," but "how Mercatus Liber actually works, and how to run one."
 - **[Integrations](/integrations)** — every real third-party system this framework talks to
   today (persistence, CMS, auth, payments, fulfillment & shipping, image/media, analytics &
   insights), with each one's real current status and the exact env var(s) to turn it on.
+- **[Sample stores](/sample-stores)** — the three real demo storefronts, their real URLs,
+  their real per-store backends, and the honest current state of the in-progress move to give
+  each one its own independent deployment.
 
 ## What's covered here vs. elsewhere
 
 This site is generated from the same real, hand-written docs that live in this monorepo's
 `docs/` tree and root `README.md` — a build-time sync script copies them in so this site never
-drifts into a second, hand-maintained source of truth. Three pages here are genuinely new,
-written for this site specifically: this landing page, [Getting started](/getting-started), and
-[Integrations](/integrations). Everything else — [Architecture](/architecture), the
+drifts into a second, hand-maintained source of truth. Four pages here are genuinely new,
+written for this site specifically: this landing page, [Getting started](/getting-started),
+[Integrations](/integrations), and [Sample stores](/sample-stores). Everything else —
+[Architecture](/architecture), the
 [subsystem reference](/subsystems/00-core-schema), and the [full project README](/readme)
 (status, license, why this project exists at all) — is synced straight from the repository.
+Loosely-structured, frequently-changing content — FAQ, troubleshooting, a decisions log — lives
+instead on the [GitHub Wiki](https://github.com/mdostal/mercatus-liber/wiki), linked from this
+site's nav and footer, not duplicated here.
 
 ## Status
 

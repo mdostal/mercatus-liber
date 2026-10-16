@@ -3,6 +3,11 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/mdostal/mercatus-liber/ci.yml?branch=master&label=CI)](https://github.com/mdostal/mercatus-liber/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/mdostal/mercatus-liber)](LICENSE)
 
+**[Docs site](https://mercatus-liber-docs.vercel.app)** — architecture, subsystem reference, integrations catalog, sample-stores reference &nbsp;|&nbsp;
+**[Wiki](https://github.com/mdostal/mercatus-liber/wiki)** — FAQ, troubleshooting, decisions log &nbsp;|&nbsp;
+**[Live demo](https://commerce.mdostal.com)** — three running reference stores &nbsp;|&nbsp;
+**[Repo topics](https://github.com/mdostal/mercatus-liber)** — `headless-commerce`, `nextjs`, `typescript`, `open-source`, and more, in the About panel
+
 # Mercatus Liber
 
 _"Free market" (Latin). A legitimate, 100% free/open-source alternative to Shopify/Medusa/

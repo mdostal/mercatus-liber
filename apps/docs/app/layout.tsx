@@ -33,13 +33,30 @@ const navbar = (
         Mercatus Liber <span style={{ opacity: 0.6, fontWeight: 400 }}>Docs</span>
       </b>
     }
-    projectLink="https://github.com/mercatus-liber/mercatus-liber"
-  />
+    // dw-03 (epic 80): was pointed at a nonexistent org ("mercatus-liber/mercatus-liber",
+    // 404) -- the real repo is mdostal/mercatus-liber.
+    projectLink="https://github.com/mdostal/mercatus-liber"
+  >
+    {/* dw-03 (epic 80): cross-link out to the real, live GitHub Wiki (FAQ, troubleshooting,
+        decisions log) so every surface reaches every other surface in one click. */}
+    <a
+      href="https://github.com/mdostal/mercatus-liber/wiki"
+      target="_blank"
+      rel="noreferrer"
+      style={{ fontSize: '0.875rem', fontWeight: 500 }}
+    >
+      Wiki
+    </a>
+  </Navbar>
 )
 
 const footer = (
   <Footer>
-    MIT {new Date().getFullYear()} © Mercatus Liber.
+    <span>
+      MIT {new Date().getFullYear()} © Mercatus Liber. {' '}
+      <a href="https://github.com/mdostal/mercatus-liber">Repo</a> {' · '}
+      <a href="https://github.com/mdostal/mercatus-liber/wiki">Wiki</a>
+    </span>
   </Footer>
 )
 
@@ -72,7 +89,9 @@ export default async function RootLayout({
         <Layout
           navbar={navbar}
           pageMap={await getPageMap()}
-          docsRepositoryBase="https://github.com/mercatus-liber/mercatus-liber/tree/main/apps/docs"
+          // dw-03 (epic 80): same nonexistent-org/wrong-branch bug as projectLink above --
+          // real repo is mdostal/mercatus-liber, default branch is master, not main.
+          docsRepositoryBase="https://github.com/mdostal/mercatus-liber/tree/master/apps/docs"
           footer={footer}
         >
           {children}
