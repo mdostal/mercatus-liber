@@ -166,6 +166,21 @@ describe("SINGLE_TENANT_DEMO_SLUG set to a real slug: shopper-facing paths resol
     const response = (await middleware(get("/api/demo/print-shop/copilot"), {} as never)) as Response;
     expect(rewriteTargetPathname(response)).toBeNull();
   });
+
+  // Real, live-verified regression: a real deployed single-tenant project
+  // (mercatus-liber-print-shop.vercel.app) 404'd on every path below because
+  // this exclusion list omitted them -- they live under app/(landing)/** or
+  // directly under app/ (route group / top-level file routes), never under
+  // app/demo/[demoSlug]/**, so rewriting them to /demo/<slug>/... 404s. This
+  // in turn broke Clerk's own unauthenticated-admin redirect, since it
+  // redirects to /sign-in, which then 404'd too.
+  it.each(["/sign-in", "/architecture", "/themes", "/robots.txt", "/sitemap.xml", "/icon.png", "/apple-icon.png"])(
+    "does NOT rewrite the framework-level/static route %s",
+    async (path) => {
+      const response = (await middleware(get(path), {} as never)) as Response;
+      expect(rewriteTargetPathname(response)).toBeNull();
+    },
+  );
 });
 
 describe("SINGLE_TENANT_DEMO_SLUG set to a real slug: the real Clerk admin gate on the single-tenant-relative admin path", () => {

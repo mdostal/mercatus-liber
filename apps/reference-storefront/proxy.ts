@@ -77,8 +77,34 @@ import { isDemoSlug } from "./lib/demos";
  *    own history). Both are excluded here for the same reason `/api` is:
  *    they're not shopper-facing demo content, and prefixing either would
  *    only ever break something, never fix anything.
+ *  - `/sign-in`, `/architecture`, `/themes` and the static file routes
+ *    `/robots.txt`, `/sitemap.xml`, `/icon.png`, `/apple-icon.png`: real,
+ *    live-verified bug found post-deploy (not caught by the above list) --
+ *    these all live under `app/(landing)/**` or directly under `app/` (a
+ *    route group and top-level file routes, confirmed via `find app
+ *    -maxdepth 2`), never under `app/demo/[demoSlug]/**`, so rewriting them
+ *    to `/demo/<slug>/sign-in` etc. 404s every one of them. Confirmed live
+ *    against a real deployed single-tenant project: `curl .../sign-in` and
+ *    `curl .../robots.txt` both 404'd, which in turn broke Clerk's
+ *    unauthenticated-admin redirect (it redirects to `/sign-in`, which then
+ *    404'd) -- admin auth was never actually reachable on a single-tenant
+ *    deployment despite this file's own matcher logic being otherwise
+ *    correct. These are framework-level/static routes, not demo content,
+ *    so they belong in this exclusion list for the same reason `/api` does.
  */
-const SINGLE_TENANT_EXCLUDED_PREFIXES = ["/demo", "/api", "/trpc", "/__clerk"];
+const SINGLE_TENANT_EXCLUDED_PREFIXES = [
+  "/demo",
+  "/api",
+  "/trpc",
+  "/__clerk",
+  "/sign-in",
+  "/architecture",
+  "/themes",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/icon.png",
+  "/apple-icon.png",
+];
 
 function resolveSingleTenantRewritePath(pathname: string): string | null {
   const slug = process.env.SINGLE_TENANT_DEMO_SLUG;
