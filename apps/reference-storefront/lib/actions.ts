@@ -227,7 +227,24 @@ export async function startCheckoutAction(formData: FormData): Promise<void> {
     idempotencyKey: cartId,
     customerId,
     couponCode,
-    shippingInfo: { name: "Demo Shopper", email: "demo@example.com", address: "1 Main St" },
+    // Structured fields added for dp-01 (epic 82). Judgment call, documented
+    // here rather than building a real address form: this demo checkout has
+    // no shipping form at all today -- startCheckoutAction already hardcoded
+    // a stub shopper (no name/email/address inputs exist in cart-standard.tsx
+    // either) -- so this is a type-only change for this story, not a UI one.
+    // The stub is populated with structured values anyway (zero cost, same
+    // hardcode shape as before) so this call site exercises the real fields
+    // end to end rather than leaving them perpetually unpopulated here.
+    shippingInfo: {
+      name: "Demo Shopper",
+      email: "demo@example.com",
+      address: "1 Main St, Springfield, IL 62704, US",
+      street1: "1 Main St",
+      city: "Springfield",
+      stateCode: "IL",
+      postalCode: "62704",
+      countryCode: "US",
+    },
     // Minimal demo simplification: a static confirmation page rather than a
     // dynamic /order/[id] redirect (which would need the order id embedded
     // before Stripe returns control -- a real deployment resolves this via

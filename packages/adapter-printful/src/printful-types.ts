@@ -45,27 +45,38 @@
  * abbreviated it -- confirmed directly in `OrdersV2Service.confirmOrder`).
  *
  * Research finding 3 -- v2 webhook signature format (design-discussion.md §1c):
- * genuinely UNCONFIRMABLE from public docs, disclosed honestly per the story's own
- * explicit fallback instruction. Every source checked in this research pass came up
- * empty on the actual mechanism:
- *   - the real OpenAPI-generated webhook models (`Webhook`, `WebhookInfoRequest`,
- *     `WebhookInfoResponse`, `WebhookOrderData`, `WebhookShipmentData` in the same
- *     generated client) are all empty `{}` stubs in Printful's own spec -- Printful
- *     has not published a formal schema for the webhook payload or any
- *     signature/header field at all;
- *   - developers.printful.com/docs/v2-preview/ states only that v2 webhooks add
- *     "more secure Webhooks by enforcing HTTPS, added expiration date, and request
- *     signing" -- naming the *feature*, never the header, algorithm, or
- *     secret-retrieval mechanism;
- *   - three independent third-party Printful API clients checked
- *     (spencerlepine/printful-sdk-js-v2, artT14/printful-sdk-js, and the Craft CMS
- *     plugin found via search) implement webhook *configuration* endpoints but
- *     NONE implements signature verification -- consistent with there being nothing
- *     public to implement it against.
- * `handleWebhookEvent` below therefore refuses (fails closed) to process a webhook
- * unless the caller supplies its own `verifyWebhookSignature`, rather than trusting
- * an unverified payload or guessing at a scheme -- see index.ts's doc comment on
- * `PrintfulWebhookSignatureUnconfirmedError`.
+ * the September 2026 research pass called this genuinely UNCONFIRMABLE from
+ * public docs -- **re-checked live 2026-10-15 (story dp-02, epic 82, per that
+ * story's own explicit "don't trust the stale note, re-verify" instruction) and
+ * found to now be documented.** The September pass's automated fetch of
+ * developers.printful.com/docs/v2-preview/'s JS-rendered reference truncated
+ * before reaching the real "Webhook v2" -> "Event signing" section -- the scheme
+ * was apparently already real and public, just missed, not something Printful
+ * newly published in the intervening five weeks (no changelog entry found
+ * confirming either way, so this is disclosed as "missed," not asserted as
+ * "newly added"). The real, confirmed mechanism (quoted close to verbatim from
+ * developers.printful.com/docs/v2-beta/'s own "Webhook v2" tag):
+ *   - the incoming webhook POST carries the signature as "the hexadecimal
+ *     representation of the signature" in a real `x-pf-webhook-signature`
+ *     header, alongside an `x-pf-webhook-public-key` header (base64, identifies
+ *     which webhook configuration signed it);
+ *   - "We're using HMAC-SHA256 hash to create the signature";
+ *   - the webhook configuration's own `secret_key` -- returned ONCE, in the
+ *     `POST /v2/webhooks` (Set up webhook configuration) response at setup time;
+ *     confirmed directly that `GET /v2/webhooks` echoes back `public_key` but
+ *     NOT `secret_key` again -- is itself hex-encoded, and "you need to decode
+ *     it before passing it to the tool or method that calculates the signature"
+ *     (i.e. the real HMAC key is the DECODED raw bytes, not the hex string).
+ * One genuine residual gap, disclosed rather than guessed at: the docs never
+ * explicitly spell out which exact bytes are signed (raw body vs. some
+ * canonicalized form) -- see `verifyPrintfulSignature`'s own doc comment
+ * (webhook.ts) for how this implementation resolves that ambiguity and why.
+ * `handleWebhookEvent` below verifies by default once a caller supplies
+ * `webhookSecretKeyHex` (mirroring adapter-printify's own `webhookSecret`
+ * config field), still fails closed with
+ * `PrintfulWebhookSignatureUnconfirmedError` when neither that nor a custom
+ * `verifyWebhookSignature` is configured, and still never guesses at a
+ * caller-unconfigured scheme -- see index.ts's doc comment on that error.
  *
  * The real, documented v2 webhook event-type strings (confirmed via the same
  * v2-preview fetch) this adapter parses: `order_created`, `order_updated`,

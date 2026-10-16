@@ -1,4 +1,4 @@
-import type { FulfillmentLineStatus } from "@mercatus-liber/fulfillment";
+import type { FulfillmentLineStatus, FulfillmentRecipient } from "@mercatus-liber/fulfillment";
 import type { PrintifyOrderLineItemResponse, PrintifyOrderShipment } from "./printify-types.js";
 
 /**
@@ -50,6 +50,49 @@ export interface PrintifyRecipientAddress {
   city?: string;
   zip?: string;
   company?: string;
+}
+
+/**
+ * Real address-mapping function, added for dp-02 (epic 82) now that
+ * `SubmitFulfillmentOrderInput.recipient` (fulfillment's own contract,
+ * `@mercatus-liber/fulfillment`'s `FulfillmentRecipient`) actually carries a
+ * structured address -- mirrors adapter-printful's own
+ * `mapRecipientToPrintfulAddress` (mapping.ts there), same priority-over-
+ * resolveRecipient wiring in this file's index.ts. Field-for-field confirmed
+ * against `PrintifyRecipientAddress` above: `street1`->`address1`,
+ * `street2`->`address2`, `stateCode`->`region` (Printify's real, confirmed
+ * field name -- genuinely NOT `state`/`state_code`), `countryCode`->`country`,
+ * `postalCode`->`zip`, `phone`->`phone` unchanged.
+ *
+ * One real, disclosed gap this split cannot avoid: `FulfillmentRecipient`
+ * (like checkout-orders' `ShippingInfo` it mirrors) carries a single free-text
+ * `name`, never separate first/last fields, but Printify's real, confirmed
+ * schema requires `first_name`/`last_name` as two fields (this file's own top
+ * doc comment). This function makes the same best-effort split any
+ * single-name-field source has to: the first whitespace-separated token
+ * becomes `first_name`, everything after it (if anything) becomes
+ * `last_name`, omitted entirely for a single-token name rather than sent as
+ * an empty string. A genuinely single-name shopper (not uncommon) therefore
+ * submits with no `last_name` at all -- Printify itself rejects an
+ * insufficiently populated address; this function does not re-validate ahead
+ * of that, same posture as `PrintifyRecipientAddress`'s own doc comment.
+ */
+export function mapRecipientToPrintifyAddress(recipient: FulfillmentRecipient): PrintifyRecipientAddress {
+  const [firstName, ...rest] = recipient.name.trim().split(/\s+/);
+  const lastName = rest.join(" ");
+
+  return {
+    first_name: firstName || recipient.name,
+    ...(lastName ? { last_name: lastName } : {}),
+    email: recipient.email,
+    ...(recipient.phone !== undefined ? { phone: recipient.phone } : {}),
+    ...(recipient.countryCode !== undefined ? { country: recipient.countryCode } : {}),
+    ...(recipient.stateCode !== undefined ? { region: recipient.stateCode } : {}),
+    ...(recipient.street1 !== undefined ? { address1: recipient.street1 } : {}),
+    ...(recipient.street2 !== undefined ? { address2: recipient.street2 } : {}),
+    ...(recipient.city !== undefined ? { city: recipient.city } : {}),
+    ...(recipient.postalCode !== undefined ? { zip: recipient.postalCode } : {}),
+  };
 }
 
 /**

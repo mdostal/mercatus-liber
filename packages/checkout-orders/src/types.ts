@@ -20,6 +20,38 @@ export interface ShippingInfo {
   name: string;
   email: string;
   address: string;
+  /**
+   * Structured address fields, additive alongside the free-text `address`
+   * above. Added for the dropship-merch-address-wiring subsystem (epic 82,
+   * story dp-01): real third-party dropship/print-on-demand order APIs
+   * (Printful, Printify -- epics 42/43) need structured fields (street
+   * lines, city, state/region code, postal code, ISO country code) for
+   * reliable label generation, not a free-text blob to parse.
+   *
+   * Follows the same additive-field discipline this interface's sibling
+   * `Order.discountTotal`/`appliedPromotionCode` fields established, adapted
+   * to this shape's own constraints: those two are system-COMPUTED fields
+   * with a sensible zero/null default any pre-existing order can be
+   * backfilled with, so they're declared required-but-nullable. These
+   * fields have no such default -- nobody can compute a shopper's street
+   * address -- so they're declared OPTIONAL (`?:`) instead of
+   * required-nullable: every existing real `ShippingInfo` construction site
+   * in this repo (startCheckout call sites, seed/test fixtures) keeps
+   * compiling and passing with zero changes, exactly as it did before these
+   * fields existed, until a caller actually starts collecting structured
+   * address data. `address` itself is untouched and not deprecated -- both
+   * shapes co-exist; nothing here requires removing the free-text blob.
+   */
+  street1?: string;
+  /** Apartment/suite/unit line. Optional -- many real addresses don't need one. */
+  street2?: string;
+  city?: string;
+  /** State/province/region code, e.g. "CA". */
+  stateCode?: string;
+  postalCode?: string;
+  /** ISO 3166-1 alpha-2 country code, e.g. "US". */
+  countryCode?: string;
+  phone?: string;
 }
 
 export interface Order {

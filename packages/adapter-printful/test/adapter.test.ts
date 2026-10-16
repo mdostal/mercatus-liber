@@ -1,10 +1,11 @@
-import type { FulfillmentLineRecord } from "@mercatus-liber/fulfillment";
+import type { FulfillmentLineRecord, FulfillmentRecipient } from "@mercatus-liber/fulfillment";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assertPrintfulAdapterSatisfiesFulfillmentAdapter } from "../src/fulfillment-adapter-compat.js";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, type PrintfulFulfillmentAdapterConfig } from "../src/index.js";
 import type { PrintfulHttpClient } from "../src/http-client.js";
 import type { PrintfulCatalogTarget, PrintfulRecipientAddress } from "../src/mapping.js";
-import { PrintfulWebhookSignatureInvalidError, PrintfulWebhookSignatureUnconfirmedError } from "../src/webhook.js";
+import { createHmac } from "node:crypto";
+import { PrintfulWebhookSignatureInvalidError, PrintfulWebhookSignatureUnconfirmedError, verifyPrintfulSignature } from "../src/webhook.js";
 
 /**
  * Every response fixture below is shaped exactly like Printful's real,
@@ -154,6 +155,62 @@ describe("createPrintfulFulfillmentAdapter", () => {
       expect(item).not.toHaveProperty("retail_price");
       expect(item).not.toHaveProperty("name");
     });
+
+    it("dp-02 end-to-end: a real structured FulfillmentRecipient on SubmitFulfillmentOrderInput.recipient reaches the real v2 createOrder request body's `recipient`, in Printful's own exact field shape, taking priority over resolveRecipient", async () => {
+      const client = fakeClient();
+      const adapter = createPrintfulFulfillmentAdapter(baseConfig(client));
+
+      const realRecipient: FulfillmentRecipient = {
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        address: "1 Analytical Engine Way, Flat 2, London, SW1A 1AA, GB",
+        street1: "1 Analytical Engine Way",
+        street2: "Flat 2",
+        city: "London",
+        stateCode: "LDN",
+        postalCode: "SW1A 1AA",
+        countryCode: "GB",
+        phone: "+44 20 7946 0958",
+      };
+
+      await adapter.submitOrder({
+        orderId: "order-recipient-1",
+        items: [{ skuId: "sku-mug", quantity: 1 }],
+        recipient: realRecipient,
+      });
+
+      const request = client.calls.createOrder![0] as { recipient: Record<string, unknown> };
+      // Printful's real v2 PrintfulAddress/PrintfulRecipientAddress field names
+      // (printful-types.ts), confirmed exact: address1/address2/city/
+      // state_code/country_code/zip/phone/name/email -- NOT street1/street2/
+      // stateCode/postalCode/countryCode (FulfillmentRecipient's own field
+      // names), proving the mapping function actually renames every field,
+      // not just passes the object through unchanged.
+      expect(request.recipient).toEqual({
+        name: "Ada Lovelace",
+        email: "ada@example.com",
+        address1: "1 Analytical Engine Way",
+        address2: "Flat 2",
+        city: "London",
+        state_code: "LDN",
+        country_code: "GB",
+        zip: "SW1A 1AA",
+        phone: "+44 20 7946 0958",
+      });
+      // resolveRecipient (configured in baseConfig) is NOT consulted when a
+      // real recipient was already supplied on the input.
+      expect(request.recipient).not.toEqual(recipient);
+    });
+
+    it("dp-02: falls back to resolveRecipient when SubmitFulfillmentOrderInput carries no recipient (an OrderLookup with nothing to report)", async () => {
+      const client = fakeClient();
+      const adapter = createPrintfulFulfillmentAdapter(baseConfig(client));
+
+      await adapter.submitOrder({ orderId: "order-no-recipient", items: [{ skuId: "sku-mug", quantity: 1 }] });
+
+      const request = client.calls.createOrder![0] as { recipient: Record<string, unknown> };
+      expect(request.recipient).toEqual(recipient); // the fixed `recipient` baseConfig's resolveRecipient always returns
+    });
   });
 
   describe("getOrderStatus", () => {
@@ -262,6 +319,46 @@ describe("createPrintfulFulfillmentAdapter", () => {
       await expect(adapter.handleWebhookEvent!(JSON.stringify({ type: "order_created", data: {} }), "sig")).rejects.toThrow(
         PrintfulWebhookSignatureUnconfirmedError,
       );
+    });
+
+    it("dp-02 re-verification: verifies using the real, confirmed HMAC-SHA256 x-pf-webhook-signature scheme when webhookSecretKeyHex is configured, throwing PrintfulWebhookSignatureInvalidError on a mismatch", async () => {
+      const client = fakeClient();
+      const secretKeyHex = Buffer.from("real-printful-webhook-secret").toString("hex");
+      const adapter = createPrintfulFulfillmentAdapter({ ...baseConfig(client), webhookSecretKeyHex: secretKeyHex });
+
+      const rawBody = JSON.stringify({ type: "order_created", data: { order: { id: 555 } } });
+      const realSignature = createHmac("sha256", Buffer.from(secretKeyHex, "hex")).update(rawBody).digest("hex");
+
+      // The real, decoded-key HMAC-SHA256 digest verifies.
+      await expect(adapter.handleWebhookEvent!(rawBody, realSignature)).resolves.toBeUndefined();
+
+      // A wrong signature is rejected, not silently accepted.
+      await expect(adapter.handleWebhookEvent!(rawBody, "0".repeat(realSignature.length))).rejects.toThrow(
+        PrintfulWebhookSignatureInvalidError,
+      );
+    });
+
+    it("verifyPrintfulSignature standalone: hex-decodes the secret key before computing the HMAC, matching Node's own crypto output exactly", () => {
+      const secretKeyHex = "deadbeef00112233";
+      const rawBody = "exact raw body bytes";
+      const expected = createHmac("sha256", Buffer.from(secretKeyHex, "hex")).update(rawBody).digest("hex");
+
+      expect(verifyPrintfulSignature(secretKeyHex, rawBody, expected)).toBe(true);
+      expect(verifyPrintfulSignature(secretKeyHex, rawBody, "f".repeat(expected.length))).toBe(false);
+    });
+
+    it("honors a custom verifyWebhookSignature override instead of the default webhookSecretKeyHex-based verifier", async () => {
+      const client = fakeClient();
+      const verifyWebhookSignature = vi.fn(async () => true);
+      const adapter = createPrintfulFulfillmentAdapter({
+        ...baseConfig(client),
+        webhookSecretKeyHex: Buffer.from("unused-because-override-wins").toString("hex"),
+        verifyWebhookSignature,
+      });
+
+      await adapter.handleWebhookEvent!(JSON.stringify({ type: "order_created", data: {} }), "whatever-sig");
+
+      expect(verifyWebhookSignature).toHaveBeenCalledWith(JSON.stringify({ type: "order_created", data: {} }), "whatever-sig");
     });
 
     it("throws PrintfulWebhookSignatureInvalidError when a configured verifier rejects the signature", async () => {

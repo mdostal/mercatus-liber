@@ -113,10 +113,19 @@ export function createFulfillmentService(deps: {
         itemsByProvider.set(provider, bucket);
       }
 
+      // Real recipient, read straight off OrderLookup.getOrder()'s own
+      // shippingInfo field (dp-01, epic 82) -- previously there was no
+      // address anywhere on this path at all, so every adapter's
+      // resolveRecipient-style bridge was the only way one could ever
+      // arrive. Omitted entirely (not just undefined) when the order has
+      // none, so an adapter's own `recipient?:` handling sees a real
+      // absence rather than a present-but-empty object.
+      const recipient = order.shippingInfo;
+
       const records: FulfillmentLineRecord[] = [];
       for (const [provider, items] of itemsByProvider) {
         const adapter = resolveAdapter(provider);
-        records.push(...(await adapter.submitOrder({ orderId, items })));
+        records.push(...(await adapter.submitOrder({ orderId, items, ...(recipient ? { recipient } : {}) })));
       }
       return records;
     },
