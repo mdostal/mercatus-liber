@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DEMO_REGISTRY, DEMO_SLUGS } from "../../lib/demos";
+import { DEMO_REGISTRY, DEMO_SLUGS, STANDALONE_DEMO_URLS } from "../../lib/demos";
 import { JsonLd } from "../../lib/json-ld";
 import { canonicalUrl } from "../../lib/site-url";
 
@@ -234,11 +234,27 @@ export default function LandingPage() {
             {DEMO_SLUGS.map((slug) => {
               const demo = DEMO_REGISTRY[slug];
               return (
-                <a key={slug} href={`/demo/${slug}`} className="ml-card mlp-demo-card">
-                  <span className="mlp-demo-name">{demo.displayName}</span>
-                  <p className="mlp-demo-desc">{demo.description}</p>
-                  <span className="mlp-demo-cta">Visit store &rarr;</span>
-                </a>
+                <div key={slug} className="ml-card mlp-demo-card">
+                  <a href={`/demo/${slug}`} className="mlp-demo-card-link">
+                    <span className="mlp-demo-name">{demo.displayName}</span>
+                    <p className="mlp-demo-desc">{demo.description}</p>
+                    <span className="mlp-demo-cta">Visit store &rarr;</span>
+                  </a>
+                  {/* ss-02 (epic 81 closeout): additive, not a replacement -- the
+                      /demo/<slug> link above (this same content, on the shared
+                      commerce.mdostal.com deployment) is unchanged. This second
+                      link points at that same store's own independently
+                      deployed, real Vercel project (design-discussion.md §2/§3),
+                      live-verified before this link was added. */}
+                  <a
+                    href={STANDALONE_DEMO_URLS[slug]}
+                    className="mlp-demo-standalone-link"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open as its own standalone site &rarr;
+                  </a>
+                </div>
               );
             })}
           </div>
@@ -369,11 +385,14 @@ const PAGE_CSS = `
   .mlp-status-line { margin-top: 20px; font-size: 0.92rem; color: var(--ml-ink-soft); }
   .mlp-status-line strong { color: var(--ml-ink); }
 
-  .mlp-demo-card { text-decoration: none; display: flex; flex-direction: column; gap: 10px; transition: transform 140ms ease, box-shadow 140ms ease; }
+  .mlp-demo-card { display: flex; flex-direction: column; gap: 10px; transition: transform 140ms ease, box-shadow 140ms ease; }
   .mlp-demo-card:hover { transform: translateY(-3px); box-shadow: 0 16px 34px rgba(26,26,29,0.12); }
+  .mlp-demo-card-link { text-decoration: none; display: flex; flex-direction: column; gap: 10px; flex: 1; }
   .mlp-demo-name { font-family: var(--ml-font-display); font-weight: 600; font-size: 1.15rem; }
   .mlp-demo-desc { font-size: 0.92rem; margin: 0; flex: 1; }
   .mlp-demo-cta { font-size: 0.86rem; font-weight: 600; color: var(--ml-primary); }
+  .mlp-demo-standalone-link { font-size: 0.82rem; font-weight: 600; color: var(--ml-ink-soft); text-decoration: none; border-top: 1px solid var(--ml-border, #e3e3e0); padding-top: 8px; }
+  .mlp-demo-standalone-link:hover { color: var(--ml-primary); }
 
   .mlp-themes-card {
     display: flex; align-items: center; justify-content: space-between; gap: 32px;
