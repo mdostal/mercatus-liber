@@ -189,5 +189,39 @@ and payment keys to get real behavior instead of a local stand-in.
   `NEXT_PUBLIC_DOCS_URL`'s decorative placeholder, canonical tags need to actually resolve in
   local dev too, so unset falls back to `http://localhost:3000` rather than a placeholder.
 
+## Keep-alive job (GitHub Actions)
+free-tier-resilience-and-keepalive epic (fr-03): `.github/workflows/keepalive.yml` runs daily
+(06:00 UTC cron, plus manual `workflow_dispatch`) to ping — and, if needed, attempt a real
+Management API resume against — the one free backend actually live-wired to a public demo today:
+Supabase Postgres (print-shop and northline both share `DATABASE_URL`; Broadleaf & Co. runs on
+Convex, which has no comparable pause/resume concept; MongoDB Atlas isn't wired into any live
+demo right now, so it's deliberately not pinged — see the workflow file's own header comment for
+the researched Atlas-specific pause/resume semantics if that ever changes). This is a **separate**
+set of credentials from the app's own `DATABASE_URL` above — GitHub Actions cannot read Vercel's
+environment variables, so these must be added by hand as their own repository secrets (GitHub repo
+→ Settings → Secrets and variables → Actions → New repository secret):
+
+- `SUPABASE_DATABASE_URL` — the same Supavisor pooler connection string as production's
+  `DATABASE_URL` (Supabase dashboard → Project Settings → Database → Connection string → URI,
+  transaction-pooler/`:6543` form). Required for the job to do anything at all — without it the
+  job can't even ping.
+- `SUPABASE_ACCESS_TOKEN` — a Supabase account Personal Access Token
+  ([supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens)) with
+  the `projects:write` scope (`project_admin_write` fine-grained permission), used only to call the
+  real Management API restore endpoint (`POST /v1/projects/{ref}/restore`) if a ping ever fails.
+  Optional in the sense that the job still runs and still pings without it, but can't attempt a
+  real resume.
+- `SUPABASE_PROJECT_REF` — the Supabase project's ref/ID, visible in the dashboard URL and as the
+  `postgres.<ref>` pooler username inside `DATABASE_URL` itself. Only meaningful alongside
+  `SUPABASE_ACCESS_TOKEN`.
+
+Every run's real outcome (already healthy / woke it up / unrecoverable — needs manual check) is
+recorded in that run's own GitHub Actions step summary, and the job fails loudly (visible in the
+repo's Actions tab) on an unrecoverable outcome rather than failing silently. See
+`.github/scripts/keepalive-supabase.sh`'s own header comment for the full Supabase
+pause/auto-resume research this logic is built from, and
+`.github/scripts/keepalive-supabase.test.sh` (also run on every CI push/PR) for its dry-run test
+harness against fake/injected provider responses.
+
 ## License
 MIT — see [`LICENSE`](LICENSE). Give it away.

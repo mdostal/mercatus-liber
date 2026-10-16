@@ -11,6 +11,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # free-tier-resilience-and-keepalive epic (fr-03): dry-runs
+  # keepalive-supabase.sh's ping/resume/record logic against
+  # fake/injected provider responses on every push/PR, independent of the
+  # pnpm/turbo pipeline below (pure bash, no real credentials, nothing
+  # real called) -- see .github/scripts/keepalive-supabase.test.sh.
+  keepalive-script-dry-run:
+    name: keepalive script dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Dry-run keepalive-supabase.sh against fake provider responses
+        run: bash .github/scripts/keepalive-supabase.test.sh
+
   typecheck-test-build:
     name: typecheck, test, build
     runs-on: ubuntu-latest

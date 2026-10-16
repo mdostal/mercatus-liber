@@ -1,0 +1,98 @@
+name: Keep-alive (free-tier backends)
+
+# free-tier-resilience-and-keepalive epic (fr-03): the recurring "check on
+# and try to revive the free accounts" job the user explicitly asked for
+# ("we... should do a script to do so every so often"), run on GitHub
+# Actions -- free, versioned in this repo, independent of any paid
+# scheduler or any one session. See
+# .pHive/epics/free-tier-resilience-and-keepalive/docs/design-discussion.md
+# for the full incident record this was built from.
+#
+# What this pings/resumes, and what it deliberately does NOT (verified live
+# against https://commerce.mdostal.com/architecture's per-demo persistence
+# table on 2026-10-15, not assumed):
+#   - Supabase Postgres: print-shop and northline both genuinely resolve to
+#     it (shared `DATABASE_URL`). This is the one real paid-free-tier-pause
+#     risk live today -- see .github/scripts/keepalive-supabase.sh for the
+#     real ping/resume logic and the Supabase docs research backing it.
+#   - Broadleaf & Co. runs on Convex, which has no comparable free-tier
+#     auto-pause/resume concept to verify or wire -- out of scope, nothing
+#     to do here.
+#   - MongoDB Atlas (`MONGODB_URL`) is NOT wired into any live demo today
+#     (confirmed via the same /architecture table -- it's absent from the
+#     per-demo persistence rows entirely). Per this story's own scope note,
+#     a backend nothing currently depends on is deliberately not pinged.
+#     Research done anyway, since the story also asked to get this right
+#     the moment it's ever needed: MongoDB Atlas's free M0 tier has
+#     *different* pause/resume semantics than paid tiers, confirmed via
+#     MongoDB's own community/docs -- M0 clusters cannot be paused manually,
+#     auto-pause after inactivity, and **the Atlas Admin/Management API
+#     cannot resume an M0 cluster at all** ("You cannot resume the M0
+#     cluster using the MongoDB Atlas APIs"); the only way to resume one is
+#     a real driver/mongosh/Data-Explorer connection, i.e. for Atlas free
+#     tier the ping and the resume are the same action, unlike Supabase's
+#     separate pause-then-call-/restore flow. If/when Mongo is ever wired
+#     into a live demo again (per-demo-backend-diversity epic already makes
+#     this possible per-demo), add a step here that just pings it (no
+#     resume-call branch needed, by the finding above) -- do not copy
+#     Supabase's /restore-call shape onto it, that would be calling an API
+#     that doesn't exist for this tier.
+on:
+  schedule:
+    # 06:00 UTC daily -- comfortably inside Supabase's documented 7-day
+    # inactivity window with huge margin, and far enough from midnight UTC
+    # to avoid the thundering-herd scheduling delays GitHub's own docs warn
+    # busy cron minutes can have.
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: keepalive-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  supabase-keepalive:
+    name: ping/revive Supabase Postgres (print-shop, northline)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure psql is available
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y --no-install-recommends postgresql-client
+          fi
+
+      # Required repository secrets (Settings -> Secrets and variables ->
+      # Actions -> New repository secret on github.com -- this session
+      # cannot add them itself). See root README.md's "Keep-alive job"
+      # section for the long-form explanation of each.
+      #
+      #   SUPABASE_DATABASE_URL  -- the same Supavisor pooler connection
+      #     string as production's own DATABASE_URL (Supabase dashboard ->
+      #     Project Settings -> Database -> Connection string -> URI,
+      #     transaction-pooler/6543 form). A separate copy of the secret is
+      #     required because GitHub Actions cannot read Vercel's env vars --
+      #     it needs its own.
+      #   SUPABASE_ACCESS_TOKEN -- a Supabase account Personal Access Token
+      #     (https://supabase.com/dashboard/account/tokens) with enough
+      #     scope to call the Management API's restore endpoint
+      #     (`projects:write` / `project_admin_write`).
+      #   SUPABASE_PROJECT_REF -- the project's ref/ID (visible in the
+      #     Supabase dashboard URL, and the same string that appears as the
+      #     `postgres.<ref>` pooler username inside DATABASE_URL itself --
+      #     e.g. this incident's own real ref, dhjnancsmuteowfgfebx).
+      #
+      # Only SUPABASE_DATABASE_URL is required for the daily ping (the
+      # preventive half of this job) to work at all; without the other two
+      # the job still pings every day but can only report "unrecoverable:
+      # no resume credentials configured" instead of actually calling the
+      # Management API if a pause is ever detected.
+      - name: Ping, and resume if needed
+        env:
+          SUPABASE_DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: bash .github/scripts/keepalive-supabase.sh
