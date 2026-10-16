@@ -69,6 +69,26 @@ export const DEMO_CATALOG_SLUG: Record<DemoSlug, string> = {
 };
 
 /**
+ * ss-02 (epic 81 closeout): each demo's own, separately-deployed, real
+ * Vercel project URL -- `mercatus-liber-print-shop`/`-northline`/
+ * `-broadleaf`, each running this exact same app in single-tenant mode
+ * (`SINGLE_TENANT_DEMO_SLUG` set to this slug, see `proxy.ts`), live-
+ * verified against its own root URL before this map was added. Additive,
+ * not a replacement -- the existing `/demo/<slug>` paths on the shared
+ * `commerce.mdostal.com` deployment (this same DEMO_REGISTRY, same
+ * content) are completely unaffected and keep working exactly as before;
+ * this is only used by the landing page's own demo cards to also link out
+ * to each store's independent, standalone deployment per
+ * `.pHive/epics/separate-deployed-sample-stores/docs/design-discussion.md`
+ * §2/§3.
+ */
+export const STANDALONE_DEMO_URLS: Record<DemoSlug, string> = {
+  "print-shop": "https://mercatus-liber-print-shop.vercel.app",
+  northline: "https://mercatus-liber-northline.vercel.app",
+  broadleaf: "https://mercatus-liber-broadleaf.vercel.app",
+};
+
+/**
  * commerce-gap-audit-3: a real, live gap -- `CatalogService.listProducts()`
  * has no demo-scoping concept (unlike `marketingCatalog.listCategories()`/
  * `cms.listPages()`, both scoped by `demoSlug` per epics 60/61), so under
