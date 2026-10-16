@@ -1,6 +1,6 @@
 import type { FulfillmentAdapter, FulfillmentLineRecord, FulfillmentProviderKey, SubmitFulfillmentOrderInput } from "@mercatus-liber/fulfillment";
 import { createPrintifyHttpClient, type PrintifyHttpClient } from "./http-client.js";
-import { findTrackingForLineItem, mapPrintifyLineItemStatus, resolveSkuId, type PrintifyCatalogTarget, type PrintifyRecipientAddress } from "./mapping.js";
+import { findTrackingForLineItem, mapPrintifyLineItemStatus, mapRecipientToPrintifyAddress, resolveSkuId, type PrintifyCatalogTarget, type PrintifyRecipientAddress } from "./mapping.js";
 import type { PrintifyOrderResponse, PrintifyProductLineItemInput } from "./printify-types.js";
 import {
   parsePrintifyWebhookPayload,
@@ -37,10 +37,17 @@ export interface PrintifyFulfillmentAdapterConfig {
   httpClient?: PrintifyHttpClient;
 
   /**
-   * Resolves `orderId` to a real shipping address. Required because
-   * `SubmitFulfillmentOrderInput` (epic 41's contract) carries no address at
-   * all -- see mapping.ts's `PrintifyRecipientAddress` doc comment for why
-   * this bridge has to live here rather than in `OrderLookup`.
+   * Resolves `orderId` to a real shipping address -- the fallback bridge used
+   * only when `SubmitFulfillmentOrderInput.recipient` (dp-01/dp-02, epic 82)
+   * is absent. Originally required because `SubmitFulfillmentOrderInput`
+   * carried no address at all; now that `FulfillmentService.submitOrder`
+   * (service.ts, `@mercatus-liber/fulfillment`) actually populates
+   * `input.recipient` from `OrderLookup.getOrder()`'s own `shippingInfo`,
+   * `submitOrder` below prefers that real data (mapped via
+   * `mapRecipientToPrintifyAddress`, mapping.ts) and only falls back to
+   * calling this when a caller's `OrderLookup` implementation has no address
+   * to report. Still required (not optional) so every existing caller of
+   * this config keeps compiling unchanged.
    */
   resolveRecipient(orderId: string): Promise<PrintifyRecipientAddress>;
 
@@ -170,7 +177,11 @@ export function createPrintifyFulfillmentAdapter(config: PrintifyFulfillmentAdap
 
   return {
     async submitOrder(input: SubmitFulfillmentOrderInput): Promise<FulfillmentLineRecord[]> {
-      const recipient = await config.resolveRecipient(input.orderId);
+      // Real recipient data (dp-01/dp-02, epic 82) is now preferred over the
+      // resolveRecipient bridge whenever the caller's OrderLookup actually
+      // supplied one -- see mapRecipientToPrintifyAddress's doc comment
+      // (mapping.ts) and this config's resolveRecipient doc comment above.
+      const recipient = input.recipient ? mapRecipientToPrintifyAddress(input.recipient) : await config.resolveRecipient(input.orderId);
 
       const targets = new Map<string, PrintifyCatalogTarget>();
       for (const item of input.items) {

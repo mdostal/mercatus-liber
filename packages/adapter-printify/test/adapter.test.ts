@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import type { FulfillmentLineRecord } from "@mercatus-liber/fulfillment";
+import type { FulfillmentLineRecord, FulfillmentRecipient } from "@mercatus-liber/fulfillment";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assertPrintifyAdapterSatisfiesFulfillmentAdapter } from "../src/fulfillment-adapter-compat.js";
 import type { PrintifyHttpClient } from "../src/http-client.js";
@@ -110,6 +110,72 @@ describe("createPrintifyFulfillmentAdapter", () => {
         ],
         address_to: recipient,
       });
+    });
+
+    it("dp-02 end-to-end: a real structured FulfillmentRecipient on SubmitFulfillmentOrderInput.recipient reaches the real v1 createOrder request body's `address_to`, in Printify's own exact field shape (first_name/last_name split from the single `name` field), taking priority over resolveRecipient", async () => {
+      const client = fakeClient();
+      const adapter = createPrintifyFulfillmentAdapter(baseConfig(client));
+
+      const realRecipient: FulfillmentRecipient = {
+        name: "Grace Hopper",
+        email: "grace@example.com",
+        address: "1 Compiler Way, Arlington, VA 22201, US",
+        street1: "1 Compiler Way",
+        city: "Arlington",
+        stateCode: "VA",
+        postalCode: "22201",
+        countryCode: "US",
+        phone: "555-0199",
+      };
+
+      await adapter.submitOrder({
+        orderId: "order-recipient-1",
+        items: [{ skuId: "sku-mug", quantity: 1 }],
+        recipient: realRecipient,
+      });
+
+      const request = client.calls.createOrder![0] as { address_to: Record<string, unknown> };
+      // Printify's real PrintifyRecipientAddress field names (mapping.ts),
+      // confirmed exact: first_name/last_name/address1/city/region/zip/
+      // country/phone/email -- NOT street1/stateCode/postalCode/countryCode
+      // (FulfillmentRecipient's own field names), and name split into
+      // first_name/last_name since Printify has no single-name field.
+      expect(request.address_to).toEqual({
+        first_name: "Grace",
+        last_name: "Hopper",
+        email: "grace@example.com",
+        phone: "555-0199",
+        country: "US",
+        region: "VA",
+        address1: "1 Compiler Way",
+        city: "Arlington",
+        zip: "22201",
+      });
+      // resolveRecipient (configured in baseConfig) is NOT consulted when a
+      // real recipient was already supplied on the input.
+      expect(request.address_to).not.toEqual(recipient);
+    });
+
+    it("dp-02: a single-token name omits last_name entirely rather than sending an empty string", async () => {
+      const client = fakeClient();
+      const adapter = createPrintifyFulfillmentAdapter(baseConfig(client));
+
+      const singleName: FulfillmentRecipient = { name: "Prince", email: "prince@example.com", address: "1 Main St" };
+      await adapter.submitOrder({ orderId: "order-recipient-2", items: [{ skuId: "sku-mug", quantity: 1 }], recipient: singleName });
+
+      const request = client.calls.createOrder![0] as { address_to: Record<string, unknown> };
+      expect(request.address_to["first_name"]).toBe("Prince");
+      expect(request.address_to).not.toHaveProperty("last_name");
+    });
+
+    it("dp-02: falls back to resolveRecipient when SubmitFulfillmentOrderInput carries no recipient", async () => {
+      const client = fakeClient();
+      const adapter = createPrintifyFulfillmentAdapter(baseConfig(client));
+
+      await adapter.submitOrder({ orderId: "order-no-recipient", items: [{ skuId: "sku-mug", quantity: 1 }] });
+
+      const request = client.calls.createOrder![0] as { address_to: Record<string, unknown> };
+      expect(request.address_to).toEqual(recipient); // the fixed `recipient` baseConfig's resolveRecipient always returns
     });
   });
 

@@ -1,4 +1,4 @@
-import type { FulfillmentLineStatus } from "@mercatus-liber/fulfillment";
+import type { FulfillmentLineStatus, FulfillmentRecipient } from "@mercatus-liber/fulfillment";
 import type { PrintfulOrderStatus, PrintfulShipmentResponse } from "./printful-types.js";
 
 /**
@@ -46,6 +46,37 @@ export interface PrintfulRecipientAddress {
   zip?: string;
   phone?: string;
   email?: string;
+}
+
+/**
+ * Real address-mapping function, added for dp-01/dp-02 (epic 82) now that
+ * `SubmitFulfillmentOrderInput.recipient` (fulfillment's own contract,
+ * `@mercatus-liber/fulfillment`'s `FulfillmentRecipient`) actually carries a
+ * structured address -- see index.ts's `submitOrder`, which calls this
+ * instead of the caller-supplied `resolveRecipient` bridge whenever
+ * `input.recipient` is present. Field-for-field confirmed against
+ * `PrintfulRecipientAddress`/`PrintfulAddress` above (printful-types.ts):
+ * `street1`->`address1`, `street2`->`address2`, `stateCode`->`state_code`,
+ * `countryCode`->`country_code`, `postalCode`->`zip` (Printful's real,
+ * confirmed field name -- genuinely NOT `postal_code`), `phone`->`phone`
+ * unchanged. Every field stays omitted (not set to `undefined` or `""`)
+ * when the corresponding `FulfillmentRecipient` field is absent, matching
+ * `PrintfulAddress`'s own "every field is genuinely optional" doc comment --
+ * this function never invents a placeholder value Printful didn't receive
+ * from the real order.
+ */
+export function mapRecipientToPrintfulAddress(recipient: FulfillmentRecipient): PrintfulRecipientAddress {
+  return {
+    name: recipient.name,
+    email: recipient.email,
+    ...(recipient.street1 !== undefined ? { address1: recipient.street1 } : {}),
+    ...(recipient.street2 !== undefined ? { address2: recipient.street2 } : {}),
+    ...(recipient.city !== undefined ? { city: recipient.city } : {}),
+    ...(recipient.stateCode !== undefined ? { state_code: recipient.stateCode } : {}),
+    ...(recipient.countryCode !== undefined ? { country_code: recipient.countryCode } : {}),
+    ...(recipient.postalCode !== undefined ? { zip: recipient.postalCode } : {}),
+    ...(recipient.phone !== undefined ? { phone: recipient.phone } : {}),
+  };
 }
 
 /**
