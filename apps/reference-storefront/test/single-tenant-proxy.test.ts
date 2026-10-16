@@ -99,7 +99,7 @@ beforeEach(() => {
   authProtectMock.mockReset();
 });
 
-const { default: middleware } = await import("../middleware.js");
+const { default: middleware } = await import("../proxy.js");
 
 function get(path: string): NextRequest {
   return new NextRequest(new URL(path, "http://localhost"));

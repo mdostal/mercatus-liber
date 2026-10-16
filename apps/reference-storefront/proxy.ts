@@ -5,6 +5,29 @@ import { clerkMisconfigurationError } from "./lib/clerk-env-check";
 import { isDemoSlug } from "./lib/demos";
 
 /**
+ * ss-02 (epic 81 closeout): renamed from `middleware.ts` to `proxy.ts` --
+ * real, live-verified bug found while deploying this exact file to a fresh
+ * `mercatus-liber-print-shop` Vercel project: `node_modules/next/dist/docs/
+ * .../file-conventions/middleware.md` (this repo's actual installed
+ * `next@16.3.5`, confirmed via its own AGENTS.md "read the docs here before
+ * writing code" instruction) says the `middleware.ts` file convention is
+ * deprecated in Next.js 16 and renamed to `proxy.ts`, and a genuinely fresh
+ * (cache-busted, `vercel deploy --force`) build of the OLD `middleware.ts`
+ * name failed outright with a real Vercel error: `The Edge Function
+ * "_middleware" is referencing unsupported modules: node:crypto` --
+ * confirmed live, not assumed, by re-running the exact same deploy command
+ * with `--force` after the first (cache-hit) deploy had silently reused a
+ * stale/cached build artifact that never actually re-validated Edge
+ * bundling for this file. Per `proxy.md`'s own "Version history" table,
+ * `v16.0.0`: "Proxy defaults to the Node.js runtime" -- the new `proxy.ts`
+ * convention gets that default (full Node.js module support, including
+ * `node:crypto`), while the deprecated `middleware.ts` name keeps the
+ * OLD, pre-16 Edge-runtime-by-default behavior for backward compatibility,
+ * which is exactly what broke here. Renaming to `proxy.ts` (export renamed
+ * `middleware` -> `proxy`, per the documented `npx @next/codemod@canary
+ * middleware-to-proxy .` migration's own diff) fixes this for real --
+ * every other symbol/behavior below is unchanged.
+ *
  * separate-deployed-sample-stores (epic 81, design-discussion.md §2): the
  * new single-tenant mode. `SINGLE_TENANT_DEMO_SLUG` is unset everywhere
  * that matters by default -- in particular, the existing shared Vercel
@@ -177,7 +200,7 @@ const clerkAdminGate: NextMiddleware = clerkMiddleware(async (auth, req) => {
  * adminAuth.getCurrentSession() check (the dev default, in that case) is the
  * sole /demo/<demoSlug>/admin gate for local development.
  */
-const middleware: NextMiddleware = (request: NextRequest, event: NextFetchEvent) => {
+const proxy: NextMiddleware = (request: NextRequest, event: NextFetchEvent) => {
   if (!process.env.CLERK_SECRET_KEY) {
     // clerkAdminGate (and the single-tenant rewrite it carries, see its own
     // doc comment above) never runs in this branch, so single-tenant mode
@@ -206,7 +229,7 @@ const middleware: NextMiddleware = (request: NextRequest, event: NextFetchEvent)
   return clerkAdminGate(request, event);
 };
 
-export default middleware;
+export default proxy;
 
 /**
  * Clerk's own currently-documented recommended matcher (fetched fresh from
