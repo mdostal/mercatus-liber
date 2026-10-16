@@ -36,6 +36,9 @@ written for this site specifically: this landing page, [Getting started](/gettin
 [Architecture](/architecture), the
 [subsystem reference](/subsystems/00-core-schema), and the [full project README](/readme)
 (status, license, why this project exists at all) — is synced straight from the repository.
+Loosely-structured, frequently-changing content — FAQ, troubleshooting, a decisions log — lives
+instead on the [GitHub Wiki](https://github.com/mdostal/mercatus-liber/wiki), linked from this
+site's nav and footer, not duplicated here.
 
 ## Status
 
