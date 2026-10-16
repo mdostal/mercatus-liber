@@ -29,14 +29,15 @@ disclosed with the exact env vars and test evidence behind it on
 Postgres database; the third runs on a completely independent Convex deployment, in
 production, right now.
 
-**Live status as of this verification pass:** The Print Shop and Northline currently return a
-real `500` — their shared Supabase Postgres project has gone to sleep (free-tier auto-pause
-from inactivity), not an application bug. This is a known, named issue:
-[`free-tier-resilience-and-keepalive`](/planning/free-tier-resilience-and-keepalive) (epic 79)
-is the real, in-progress fix — a graceful "may be asleep" state plus a daily keep-alive/revival
-job, rather than a raw error page. Broadleaf & Co. is unaffected (Convex doesn't share that
-Postgres project) and returns `200` normally. If you land on this page after that epic closes
-out, re-check live rather than trusting this paragraph.
+**Live status, re-checked 2026-10-15 (later same day):** all three return `200` right now.
+Print Shop and Northline did go down earlier today with a real `500` — their shared Supabase
+Postgres project had gone to sleep (free-tier auto-pause from inactivity), not an application
+bug — and have since been recovered. The underlying graceful-degradation handling (an honest
+"may be asleep" state instead of a raw error page) and the daily keep-alive/revival job that
+prevents recurrence are built in
+[`free-tier-resilience-and-keepalive`](/planning/free-tier-resilience-and-keepalive) (epic 79).
+Given free-tier backends can still pause again later, re-check live rather than trusting this
+paragraph if you're reading it well after this date.
 
 ## In progress, not yet live: independent deployments per store
 
