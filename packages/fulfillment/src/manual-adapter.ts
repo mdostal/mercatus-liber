@@ -47,6 +47,11 @@ export function createManualFulfillmentAdapter(): ManualFulfillmentAdapter {
   const recordsByOrder = new Map<string, FulfillmentLineRecord[]>();
 
   return {
+    // `input.recipient` (dp-01, epic 82) is deliberately still ignored here,
+    // same as today: an operator fulfilling by hand reads the real address
+    // from the order itself (checkout-orders' own admin view), not from
+    // this adapter's in-memory record -- there is nothing external for this
+    // zero-infra default to ship a structured address to.
     async submitOrder(input: SubmitFulfillmentOrderInput): Promise<FulfillmentLineRecord[]> {
       const created: FulfillmentLineRecord[] = input.items.map((item) => ({
         orderId: input.orderId,

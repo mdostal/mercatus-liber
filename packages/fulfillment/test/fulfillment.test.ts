@@ -27,7 +27,9 @@ import {
   MANUAL_FULFILLMENT_PROVIDER,
   type FulfillmentAdapter,
   type FulfillmentLineRecord,
+  type FulfillmentRecipient,
   type OrderLookup,
+  type SubmitFulfillmentOrderInput,
 } from "../src/types.js";
 
 const USD = (amount: number): Money => ({ amount, currency: "USD" });
@@ -208,7 +210,10 @@ describe("createFulfillmentService", () => {
   let routing: FulfillmentRoutingRepository;
   let manual: ManualFulfillmentAdapter;
   let service: FulfillmentService;
-  const knownOrders = new Map<string, { id: string; items: { skuId: string; quantity: number }[] }>();
+  const knownOrders = new Map<
+    string,
+    { id: string; items: { skuId: string; quantity: number }[]; shippingInfo?: FulfillmentRecipient }
+  >();
 
   beforeEach(() => {
     knownOrders.clear();
@@ -238,6 +243,75 @@ describe("createFulfillmentService", () => {
 
   it("submitOrder throws OrderNotFoundForFulfillmentError for an unknown order", async () => {
     await expect(service.submitOrder("does-not-exist")).rejects.toThrow(OrderNotFoundForFulfillmentError);
+  });
+
+  it("submitOrder passes the order's real structured shippingInfo through to the adapter as `recipient` -- the real dp-01 acceptance criterion: inspecting what the adapter actually received, not just that the type compiles", async () => {
+    const realRecipient: FulfillmentRecipient = {
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      address: "1 Analytical Engine Way, London, SW1A 1AA, GB",
+      street1: "1 Analytical Engine Way",
+      street2: "Flat 2",
+      city: "London",
+      stateCode: "LDN",
+      postalCode: "SW1A 1AA",
+      countryCode: "GB",
+      phone: "+44 20 7946 0958",
+    };
+    knownOrders.set("order-recipient-1", {
+      id: "order-recipient-1",
+      items: [{ skuId: "sku-mug", quantity: 1 }],
+      shippingInfo: realRecipient,
+    });
+
+    const receivedInputs: SubmitFulfillmentOrderInput[] = [];
+    const recordingAdapter: FulfillmentAdapter = {
+      async submitOrder(input) {
+        receivedInputs.push(input);
+        return input.items.map((item) => ({
+          orderId: input.orderId,
+          skuId: item.skuId,
+          provider: "printful",
+          externalOrderId: "pf-1",
+          status: "submitted",
+          trackingNumber: null,
+          trackingUrl: null,
+        }));
+      },
+      async getOrderStatus() {
+        return [];
+      },
+    };
+    service = createFulfillmentService({ orders, routing, adapters: { manual, printful: recordingAdapter } });
+    await routing.setProviderForSku("sku-mug", "printful");
+
+    await service.submitOrder("order-recipient-1");
+
+    expect(receivedInputs).toHaveLength(1);
+    expect(receivedInputs[0]!.recipient).toEqual(realRecipient);
+  });
+
+  it("submitOrder omits `recipient` entirely (not a present-but-empty object) when the order has no shippingInfo", async () => {
+    knownOrders.set("order-no-recipient", { id: "order-no-recipient", items: [{ skuId: "sku-mug", quantity: 1 }] });
+
+    const receivedInputs: SubmitFulfillmentOrderInput[] = [];
+    const recordingAdapter: FulfillmentAdapter = {
+      async submitOrder(input) {
+        receivedInputs.push(input);
+        return [];
+      },
+      async getOrderStatus() {
+        return [];
+      },
+    };
+    service = createFulfillmentService({ orders, routing, adapters: { manual, printful: recordingAdapter } });
+    await routing.setProviderForSku("sku-mug", "printful");
+
+    await service.submitOrder("order-no-recipient");
+
+    expect(receivedInputs).toHaveLength(1);
+    expect(receivedInputs[0]!.recipient).toBeUndefined();
+    expect("recipient" in receivedInputs[0]!).toBe(false);
   });
 
   it("submitOrder throws NoAdapterForProviderError when a line is routed to a provider with no configured adapter", async () => {
@@ -406,6 +480,92 @@ describe("OrderLookup structural compatibility with checkout-orders' real servic
         trackingUrl: null,
       },
     ]);
+  });
+
+  it("dp-01 acceptance criterion 1: a real checkout order with a real structured customer address -- OrderLookup.getOrder() returns the real structured address, not just id+items", async () => {
+    await orderRepository.save(
+      makeOrder({
+        id: "order-real-4",
+        items: [{ skuId: "sku-mug", quantity: 1, priceAtPurchase: USD(1500) }],
+        shippingInfo: {
+          name: "Ada Lovelace",
+          email: "ada@example.com",
+          address: "1 Analytical Engine Way, London, SW1A 1AA, GB",
+          street1: "1 Analytical Engine Way",
+          city: "London",
+          stateCode: "LDN",
+          postalCode: "SW1A 1AA",
+          countryCode: "GB",
+          phone: "+44 20 7946 0958",
+        },
+      }),
+    );
+
+    const orders: OrderLookup = checkout;
+    const order = await orders.getOrder("order-real-4");
+
+    expect(order!.shippingInfo).toEqual({
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      address: "1 Analytical Engine Way, London, SW1A 1AA, GB",
+      street1: "1 Analytical Engine Way",
+      city: "London",
+      stateCode: "LDN",
+      postalCode: "SW1A 1AA",
+      countryCode: "GB",
+      phone: "+44 20 7946 0958",
+    });
+  });
+
+  it("dp-01 end-to-end: a real structured address on a real CheckoutOrdersService order reaches a fake adapter's submitOrder as `recipient`, via FulfillmentService with zero glue code", async () => {
+    await orderRepository.save(
+      makeOrder({
+        id: "order-real-5",
+        items: [{ skuId: "sku-mug", quantity: 1, priceAtPurchase: USD(1500) }],
+        shippingInfo: {
+          name: "Grace Hopper",
+          email: "grace@example.com",
+          address: "1 Compiler Way, Arlington, VA 22201, US",
+          street1: "1 Compiler Way",
+          city: "Arlington",
+          stateCode: "VA",
+          postalCode: "22201",
+          countryCode: "US",
+        },
+      }),
+    );
+
+    const receivedInputs: SubmitFulfillmentOrderInput[] = [];
+    const recordingAdapter: FulfillmentAdapter = {
+      async submitOrder(input) {
+        receivedInputs.push(input);
+        return [];
+      },
+      async getOrderStatus() {
+        return [];
+      },
+    };
+    const routing = createInMemoryFulfillmentRoutingRepository();
+    await routing.setProviderForSku("sku-mug", "printful");
+    const service = createFulfillmentService({
+      orders: checkout,
+      routing,
+      adapters: { manual: createManualFulfillmentAdapter(), printful: recordingAdapter },
+    });
+
+    await service.submitOrder("order-real-5");
+
+    expect(receivedInputs).toHaveLength(1);
+    expect(receivedInputs[0]!.recipient).toEqual({
+      name: "Grace Hopper",
+      email: "grace@example.com",
+      address: "1 Compiler Way, Arlington, VA 22201, US",
+      street1: "1 Compiler Way",
+      city: "Arlington",
+      stateCode: "VA",
+      postalCode: "22201",
+      countryCode: "US",
+    });
   });
 
   it("getOrder returns null for an order the real repository doesn't have -- same contract OrderLookup declares", async () => {

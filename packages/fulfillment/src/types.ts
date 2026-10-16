@@ -30,10 +30,49 @@ export interface FulfillmentLineRecord {
   trackingUrl: string | null;
 }
 
+/**
+ * The real shipping recipient for an order, structurally mirroring
+ * checkout-orders' `ShippingInfo` (not an import of it -- same narrow
+ * dependency discipline `OrderLookup` below already follows). Added for the
+ * dropship-merch-address-wiring subsystem (epic 82, story dp-01): a real
+ * dropship/print-on-demand adapter (Printful, Printify -- epics 42/43)
+ * genuinely cannot ship anything without an address, and until this existed
+ * neither `OrderLookup.getOrder()` nor `SubmitFulfillmentOrderInput` carried
+ * one at all -- see those two call sites below. The structured fields are
+ * all optional for the same reason they're optional on `ShippingInfo`
+ * itself: no sensible default exists for a street address, so widening this
+ * never forces an existing caller to change.
+ */
+export interface FulfillmentRecipient {
+  name: string;
+  email: string;
+  /** Free-text fallback, carried straight through from ShippingInfo.address. */
+  address: string;
+  street1?: string;
+  street2?: string;
+  city?: string;
+  stateCode?: string;
+  postalCode?: string;
+  countryCode?: string;
+  phone?: string;
+}
+
 export interface SubmitFulfillmentOrderInput {
   orderId: string;
   /** Only the lines this call's target provider is responsible for -- FulfillmentService fans an order's lines out to the right adapter per line, see service.ts. */
   items: { skuId: string; quantity: number }[];
+  /**
+   * The real shipping recipient for this order, when known. Added for
+   * dp-01 -- optional for backward compatibility: every existing real
+   * construction site of `SubmitFulfillmentOrderInput` (this package's own
+   * test suite's fake adapters, `createManualFulfillmentAdapter`, which
+   * still ignores it exactly as before) keeps compiling unchanged.
+   * `FulfillmentService.submitOrder`'s real call site (service.ts) is what
+   * actually populates this now, read straight off `OrderLookup.getOrder()`'s
+   * own `shippingInfo` field below -- previously dead/unreachable data (no
+   * address ever reached this contract at all), now real.
+   */
+  recipient?: FulfillmentRecipient;
 }
 
 /**
@@ -69,11 +108,34 @@ export interface FulfillmentAdapter {
  * test/order-lookup-compat.test.ts and the compile-time proof in
  * order-lookup-compat.ts). Mirrors internal-bi's own OrderMetricsSource
  * pattern exactly (packages/internal-bi/src/types.ts).
+ *
+ * `shippingInfo` added for dp-01 (epic 82): structurally matches
+ * checkout-orders' real `Order.shippingInfo` field name and shape exactly
+ * (field-for-field, including its own additive optional structured-address
+ * fields) so `CheckoutOrdersService` keeps satisfying this interface with
+ * zero adapter/glue code -- the same "bare `return service;` fails to
+ * compile if the shapes ever diverge" proof order-lookup-compat.ts already
+ * relies on. Declared optional here (on top of its sub-fields also being
+ * optional) so an `OrderLookup` implementer with no shipping-address concept
+ * at all -- e.g. this package's own test fakes, which construct `{ id,
+ * items }` literals with nothing else -- keeps compiling unchanged.
  */
 export interface OrderLookup {
   getOrder(id: string): Promise<{
     id: string;
     items: { skuId: string; quantity: number }[];
+    shippingInfo?: {
+      name: string;
+      email: string;
+      address: string;
+      street1?: string;
+      street2?: string;
+      city?: string;
+      stateCode?: string;
+      postalCode?: string;
+      countryCode?: string;
+      phone?: string;
+    };
   } | null>;
 }
 
