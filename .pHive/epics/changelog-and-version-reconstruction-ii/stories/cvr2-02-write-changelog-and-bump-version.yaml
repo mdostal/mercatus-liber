@@ -1,0 +1,57 @@
+id: cvr2-02-write-changelog-and-bump-version
+epic: changelog-and-version-reconstruction-ii
+title: Write the real CHANGELOG.md entries and bump package.json's version through the correct sequence
+status: done
+complexity: medium
+methodology: classic
+depends_on: [cvr2-01-research-and-reconstruction]
+
+description: |
+  Transcribe story 1's working doc (`docs/reconstruction-working-doc.md`) into real
+  `CHANGELOG.md` entries, appended after the existing `[0.28.6]` entry, oldest-first, exactly
+  matching the existing file's format: `## [x.y.z] - YYYY-MM-DD` headers, `### Added` /
+  `### Changed` / `### Fixed` / `### Security` subsections as the working doc resolved per
+  epic, bold feature name + package/subsystem citation + real descriptive sentences per
+  bullet. Use each epic's own real "Added YYYY-MM-DD" date from epic-backlog.md.
+
+  Bump `package.json`'s `"version"` field through the full resolved sequence, ending at
+  `0.34.0` (epic 85's own closeout header).
+
+  Update `CHANGELOG.md`'s existing preamble sentence so it no longer describes only epics
+  20-65/66 once entries past it exist -- state plainly what range is now covered (20-85) and
+  that epics 1-19 remain the one disclosed, still-out-of-scope gap.
+
+acceptance_criteria:
+  - "Given the working doc's per-epic entries, when CHANGELOG.md is written, then every epic that resolved to a real version_bump (minor or patch) gets exactly one version header, in strict epic-number order, oldest first"
+  - "Given epic 67 (version_bump: none), when CHANGELOG.md is written, then it has a real entry folded under its resolved header per the working doc -- not silently missing"
+  - "Given the full new version sequence, when computed, then it is a valid, gapless semver progression starting immediately after 0.28.6 with no skipped or duplicated version numbers"
+  - "Given package.json's version field, when this story ends, then it exactly equals CHANGELOG.md's final (latest) version header"
+  - "Given CHANGELOG.md's preamble, when read after this story, then it accurately describes the newly-extended coverage range"
+  - "Given this story's diff, when reviewed, then it touches exactly two files in the whole repo: CHANGELOG.md and package.json (plus this epic's own working doc/story files already committed in story 1)"
+
+steps:
+  - id: implement
+    description: Write the new CHANGELOG.md entries and bump package.json's version through the full resolved sequence, ending at 0.34.0.
+    agent: developer
+  - id: test
+    description: "Programmatically verify: every ## [x.y.z] header parses as valid semver, the sequence is strictly increasing with no gaps, and package.json's version matches the last header exactly."
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Spot-check a sample of entries against the working doc and against the real epic-backlog.md rows they summarize, for accuracy and correct categorization.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/changelog-and-version-reconstruction-ii.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: CHANGELOG.md
+      purpose: "The file this story appends to -- existing entries through [0.28.6] must stay byte-unchanged except the preamble update, only new content appended"
+    - path: package.json
+      purpose: "The version field this story bumps -- root-level only, this is a private monorepo root package, not a published one"
+    - path: .pHive/epics/changelog-and-version-reconstruction-ii/docs/reconstruction-working-doc.md
+      purpose: "Story 1's output -- this story's entire input, should require no new research"

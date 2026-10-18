@@ -1,0 +1,66 @@
+id: cvr2-01-research-and-reconstruction
+epic: changelog-and-version-reconstruction-ii
+title: Read every epic-backlog.md row 67-85 + linked epic.yaml, produce a structured epic -> category -> changelog-entry -> version-bump working doc
+status: done
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read `.pHive/planning/epic-backlog.md` rows 67-85 in full (not summarized -- each row is one
+  very long line, read via Read's own offset/limit per row), and every `.pHive/epics/<name>/
+  epic.yaml` that exists for those 19 epics (only 3 of the 19 carry a real `version_bump`
+  field -- see this epic's own design-discussion.md §3a). For the 16 epics with no recorded
+  `version_bump` (9 with no epic directory at all, 1 with a directory but no epic.yaml, 6 with
+  an epic.yaml that has no version_bump field -- design-discussion.md §3b), determine the
+  correct `version_bump` from real evidence (the epic's own epic-backlog.md row text), using
+  the same categorization convention the original `changelog-and-version-reconstruction` epic's
+  own working doc establishes (new subsystem/package = minor; a small settings/admin surface, a
+  live bug fix, a security-only fix, or a fix-only audit epic = patch; a pure-docs/research/
+  verification epic with zero shipped code, or a test-only epic with zero shipped application
+  behavior change = none).
+
+  Apply design-discussion.md §3c's fold-forward resolution for the one epic in this range whose
+  resolved `version_bump` is `none` (67 `gap-audit-3-test-coverage`): it still gets a real
+  changelog entry, folded under the next epic in sequence that does carry a real bump.
+
+  Produce a single structured working doc, `docs/reconstruction-working-doc.md` in this epic's
+  own folder, continuing the original epic's own working-doc convention exactly: one row per
+  epic 67-85 (epic number, id, resolved `version_bump` with its source, the resolved semver
+  version header it lands on, which category(ies) its entry belongs under, and the actual
+  drafted changelog bullet text). This working doc is story 2's entire input.
+
+acceptance_criteria:
+  - "Given all 19 epic-backlog.md rows 67-85, when the working doc is produced, then every one has exactly one row (no epic skipped, none duplicated)"
+  - "Given the 3 epics with a real epic.yaml version_bump field, when the working doc cites their bump, then it matches the field exactly (verified by re-grepping .pHive/epics/*/epic.yaml, not trusted from memory)"
+  - "Given the 16 epics with no recorded version_bump, when the working doc resolves one for each, then it cites real evidence (epic-backlog.md row text), never an unstated guess"
+  - "Given epic 67 (version_bump: none), when the working doc handles it, then it still produces a real changelog entry text, explicitly stating which later version header it folds under"
+  - "Given the full 67-85 sequence, when versions are computed epic-by-epic in order starting from 0.28.6, then the resulting semver sequence is gapless and internally consistent"
+  - "Given the live-surface version-leak check, when re-run against the current codebase (not copied from the original epic's own earlier finding), then its result is explicitly recorded in the working doc"
+
+steps:
+  - id: implement
+    description: Read every epic-backlog.md row 67-85 and every available epic.yaml; resolve version_bump for the 16 epics lacking one; draft every changelog entry; compute the full version sequence; re-check live for a version leak; write the working doc.
+    agent: developer
+  - id: review
+    description: Independently re-check the working doc against epic-backlog.md and the epic.yaml files for completeness (no skipped/duplicated epic) and that every inferred version_bump cites real evidence.
+    agent: reviewer
+    depends_on: [implement]
+  - id: integrate
+    description: Commit the working doc to feat/changelog-and-version-reconstruction-ii.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: .pHive/planning/epic-backlog.md
+      purpose: "Source of truth for what each epic 67-85 actually did -- rows must be read in full, not summarized"
+    - path: CHANGELOG.md
+      purpose: "Existing precedent through [0.28.6] -- format, voice, and category conventions this story's drafted entries must match"
+    - path: .pHive/epics/changelog-and-version-reconstruction/docs/design-discussion.md
+      purpose: "The original epic's own design discussion -- template for method and voice"
+    - path: .pHive/epics/changelog-and-version-reconstruction/docs/reconstruction-working-doc.md
+      purpose: "The original epic's own working doc -- exact structural template this epic's own working doc continues"
+    - path: .pHive/epics/changelog-and-version-reconstruction-ii/docs/design-discussion.md
+      purpose: "This epic's own scope, the pre-gathered 3-epic version_bump table (§3a), the 16-epic no-recorded-bump gap (§3b), and the version_bump:none fold-forward resolution (§3c)"
