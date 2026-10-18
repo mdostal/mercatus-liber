@@ -1,0 +1,56 @@
+id: cvr2-03-closeout-verify-and-merge
+epic: changelog-and-version-reconstruction-ii
+title: Verify the full monorepo build, re-check whether a deploy is needed, push the branch, close out the epic
+status: done
+complexity: low
+methodology: classic
+depends_on: [cvr2-02-write-changelog-and-bump-version]
+
+description: |
+  Run the full monorepo check (`pnpm turbo run typecheck test build --force`, fresh, not
+  cached) and confirm it is clean -- this epic changes zero application code, so this is a
+  real regression guard, not busywork.
+
+  Re-verify live (don't trust the original epic's own earlier conclusion, and don't trust this
+  epic's own design-discussion.md §3d uncritically either) that `package.json`'s version isn't
+  surfaced anywhere a shopper/admin/developer would actually see it: grep
+  `apps/reference-storefront` and `apps/docs` for any reference to `package.json`'s version
+  field (`packageJson`, `pkg.version`, `process.env.npm_package_version`, or a hardcoded
+  version-shaped literal), and specifically re-check `/architecture`, `/admin/settings`
+  (`lib/adapter-info.ts`), and `app/icon.tsx` since those were the three surfaces the original
+  epic checked -- note that `app/icon.tsx` no longer exists as of epic 76 (`apply-final-logo`),
+  replaced by static `app/icon.png`/`app/apple-icon.png` files, so that specific check must be
+  re-pointed at the current reality, not assumed unchanged. If this re-check finds the version
+  genuinely surfaced live somewhere, flag plainly that a deploy may be needed. If (as expected)
+  nothing live references it, explicitly document that finding and skip the deploy.
+
+  Per this run's own explicit orchestrator instruction: do NOT edit
+  `.pHive/planning/epic-backlog.md` (the orchestrator adds the backlog row centrally
+  afterward) and do NOT merge to master or push to master. Commit on this epic's own branch
+  (`feat/changelog-and-version-reconstruction-ii`) and push only that branch to origin.
+
+acceptance_criteria:
+  - "Given the full monorepo check, when run fresh (not cached) after this epic's changes, then it is clean (typecheck/test/build all green)"
+  - "Given a live-surface grep for package.json's version field, when re-run by this story against the current codebase (not assumed from the original epic's or this epic's own earlier finding), then its result (found or not found) is explicitly recorded"
+  - "Given feat/changelog-and-version-reconstruction-ii, when this story ends, then it is pushed to origin as its own branch -- NOT merged to master, NOT pushed to master"
+  - "Given .pHive/planning/epic-backlog.md, when read after this story, then it is byte-unchanged -- this epic does not add its own row, the orchestrator does"
+  - "Given the entire epic's diff (all 3 stories combined), when reviewed, then it touches only CHANGELOG.md, package.json, and this epic's own .pHive/epics/changelog-and-version-reconstruction-ii/ files -- zero files under apps/ or packages/, zero changes to epic-backlog.md"
+
+steps:
+  - id: implement
+    description: Run the full monorepo check fresh, re-verify no live surface references the version against the current codebase, push the feature branch to origin (no merge, no epic-backlog.md edit).
+    agent: developer
+  - id: integrate
+    description: Final commit + push of the feature branch only.
+    agent: developer
+    depends_on: [implement]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: package.json
+      purpose: "Final version value this story confirms matches CHANGELOG.md's last header (0.34.0)"
+    - path: "apps/reference-storefront/app/(landing)/architecture/page.tsx"
+      purpose: "One of the live surfaces re-checked for a version reference"
+    - path: apps/reference-storefront/lib/adapter-info.ts
+      purpose: "Backs /admin/settings -- the other live surface re-checked for a version reference"
