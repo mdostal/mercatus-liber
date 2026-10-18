@@ -21,6 +21,7 @@ import {
   createPostgresBiEventLogRepository,
   createPostgresFulfillmentRoutingRepository,
 } from "@mercatus-liber/adapter-postgres";
+import { createPaypalPaymentAdapter } from "@mercatus-liber/adapter-paypal";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
@@ -571,25 +572,56 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     events,
   });
 
-  // Real Stripe when a real key is configured; a real, fully-working
-  // no-external-provider sandbox adapter otherwise (sandbox-checkout epic)
-  // -- unlike every other env-var-truthy branch in this function, the
-  // "else" here is not a harmless-but-inert fallback: it's a second genuine
-  // PaymentAdapter implementation that actually completes checkout, so
-  // "practice card" orders always work in this deployment (no Stripe
-  // account exists for it) without needing a credential. See
+  // Real Stripe when a real key is configured; else real PayPal when its own
+  // real client credentials are configured (second-payment-processor-adapter
+  // epic -- PaymentAdapter's second real implementation, proving the
+  // interface genuinely is provider-agnostic the same way
+  // @mercatus-liber/adapter-postgres proved persistence is); else a real,
+  // fully-working no-external-provider sandbox adapter (sandbox-checkout
+  // epic). Same priority-chain shape as the persistence branch above
+  // (Postgres > Mongo > Convex > SQLite) -- a deployment picks ONE real
+  // payment provider, not a race between two; Stripe keeps priority over
+  // PayPal only because it was this app's original real provider before
+  // this epic (first configured wins, not an endorsement). Unlike every
+  // other env-var-truthy branch in this function, the final "else" here is
+  // not a harmless-but-inert fallback: it's a third genuine PaymentAdapter
+  // implementation that actually completes checkout, so "practice card"
+  // orders always work in this deployment (no real Stripe or PayPal account
+  // exists for it) without needing any credential. See
   // packages/payments/src/sandbox-adapter.ts's own doc comment for why this
   // is possible with zero changes to checkout-orders.
-  const sandboxPayments = process.env.STRIPE_SECRET_KEY
-    ? null
-    : createSandboxPaymentAdapter({ events, checkoutPagePath: `/demo/${demoSlug}/checkout/sandbox` });
+  //
+  // No real PayPal developer account/app exists in this environment -- see
+  // this story's final report and @mercatus-liber/adapter-paypal's own unit
+  // test suite for the real correctness proof against PayPal's actual,
+  // current, live-researched Orders v2 API shape; this branch is
+  // unexercised against a live PayPal API here. PAYPAL_WEBHOOK_ID is
+  // optional -- handleWebhookEvent fails closed
+  // (PaypalWebhookSignatureNotConfiguredError) without it rather than
+  // trusting an unverified payload, the same fail-closed-by-default posture
+  // as adapter-printify's own webhook verifier. PAYPAL_BASE_URL defaults to
+  // PayPal's real sandbox base (adapter-paypal's http-client.ts) -- set it
+  // to PayPal's real live base (https://api-m.paypal.com) to go live.
+  const paypalConfigured = Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+  const sandboxPayments =
+    process.env.STRIPE_SECRET_KEY || paypalConfigured
+      ? null
+      : createSandboxPaymentAdapter({ events, checkoutPagePath: `/demo/${demoSlug}/checkout/sandbox` });
   const payments: PaymentAdapter =
     sandboxPayments ??
-    createLazyStripeAdapter({
-      secretKey: process.env.STRIPE_SECRET_KEY ?? "",
-      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
-      events,
-    });
+    (process.env.STRIPE_SECRET_KEY
+      ? createLazyStripeAdapter({
+          secretKey: process.env.STRIPE_SECRET_KEY,
+          webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+          events,
+        })
+      : createPaypalPaymentAdapter({
+          clientId: process.env.PAYPAL_CLIENT_ID!,
+          clientSecret: process.env.PAYPAL_CLIENT_SECRET!,
+          ...(process.env.PAYPAL_BASE_URL ? { baseUrl: process.env.PAYPAL_BASE_URL } : {}),
+          ...(process.env.PAYPAL_WEBHOOK_ID ? { webhookId: process.env.PAYPAL_WEBHOOK_ID } : {}),
+          events,
+        }));
 
   const promotions = createPromotionsService({
     repository: pgPool ? createPostgresPromotionRepository(pgPool) : createInMemoryPromotionRepository(),

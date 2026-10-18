@@ -22,6 +22,7 @@
     "@mercatus-liber/adapter-cloudinary": "workspace:*",
     "@mercatus-liber/adapter-convex": "workspace:*",
     "@mercatus-liber/adapter-mongodb": "workspace:*",
+    "@mercatus-liber/adapter-paypal": "workspace:*",
     "@mercatus-liber/adapter-postgres": "workspace:*",
     "@mercatus-liber/adapter-postgres-inventory": "workspace:*",
     "@mercatus-liber/adapter-printful": "workspace:*",

@@ -1,0 +1,91 @@
+id: paypal-02-wiring-verification-closeout
+epic: second-payment-processor-adapter
+title: "Env-var wiring, honest credential-gap disclosure, docs, closeout"
+status: pending
+complexity: low
+methodology: classic
+depends_on: [paypal-01-research-and-adapter]
+
+description: |
+  Read the prior story's committed changes in full first.
+
+  1. Wire the adapter into apps/reference-storefront/lib/services.ts via a real priority-chain
+     env-var branch: real Stripe (STRIPE_SECRET_KEY) > real PayPal (PAYPAL_CLIENT_ID +
+     PAYPAL_CLIENT_SECRET both set) > the existing sandbox adapter -- zero behavior change when
+     PayPal is unconfigured (byte-identical to the pre-epic Stripe-or-sandbox branch). Optional
+     PAYPAL_WEBHOOK_ID (webhook verification) and PAYPAL_BASE_URL (live vs. sandbox base).
+     Extend lib/adapter-info.ts's paymentsInfo() to report PayPal as the active provider when
+     configured, mirroring every other credential-gated adapter's own adapter-info row.
+  2. Verify what's genuinely testable without a live credential: the env-var branch itself (all
+     three states: Stripe wins, PayPal wins, sandbox default), the adapter's own unit test suite
+     from the prior story, admin visibility of which provider is active. Check honestly whether
+     a real PayPal developer account/app is available anywhere in this environment (env vars,
+     .env.local) -- if not, state that plainly; do not fabricate a live call.
+  3. Run the full monorepo test/typecheck/build via root turbo commands, confirm green.
+  4. Update docs/subsystems/08-payments.md with a real section on the PayPal adapter, including
+     the honest credential-gap disclosure and the handleWebhookEvent signature-parameter bridge.
+  5. Write packages/adapter-paypal/README.md disclosing what's tested vs. credential-gated,
+     matching this repo's established adapter-README conventions.
+  6. Do NOT edit .pHive/planning/epic-backlog.md -- the orchestrator adds the backlog row
+     centrally. Do NOT merge to master or push master directly -- commit to
+     feat/second-payment-processor-adapter and push only that branch.
+
+acceptance_criteria:
+  - "Given PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET set (even to fake/test values for wiring-verification purposes only, not a live call) and STRIPE_SECRET_KEY unset, then services.ts constructs the real PayPal adapter instance; given both unset, the sandbox adapter is used, byte-identical to before this epic"
+  - "Given STRIPE_SECRET_KEY set alongside PayPal's vars, then Stripe wins -- a deployment picks one real provider, not a race"
+  - "Given wherever the payments adapter-info row surfaces, then it accurately reports PayPal as active when configured"
+  - "Given the credential-availability check, then the final report and docs/subsystems/08-payments.md both honestly state whether a real PayPal credential exists in this environment and what was/wasn't live-verified"
+  - "Given the full monorepo test/typecheck/build via turbo, then all are green"
+  - "Given docs/subsystems/08-payments.md, then it has a real PayPal section including the honest disclosure and the handleWebhookEvent bridge"
+  - "Given packages/adapter-paypal/README.md, then it discloses what's tested vs. credential-gated"
+
+steps:
+  - id: implement
+    description: Make the wiring/docs changes and run all verification steps per the description above.
+    agent: developer
+  - id: test
+    description: Confirm every acceptance criterion with real, observed evidence and honest disclosure.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Double-check the docs are accurate and honestly scoped.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/second-payment-processor-adapter, push the branch (not master).
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript, monorepo: pnpm workspaces + turbo }
+  key_files:
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: Central composition root -- where the adapter gets wired via env var.
+    - path: apps/reference-storefront/lib/adapter-info.ts
+      purpose: Payments adapter-visibility row.
+    - path: docs/subsystems/08-payments.md
+      purpose: Needs a real PayPal section with honest disclosure.
+
+files_to_modify:
+  - file: apps/reference-storefront/lib/services.ts
+    change: "Wire adapter-paypal via a Stripe > PayPal > sandbox priority chain"
+  - file: apps/reference-storefront/lib/adapter-info.ts
+    change: "Extend paymentsInfo() to report PayPal when active"
+  - file: docs/subsystems/08-payments.md
+    change: "Add a real PayPal adapter section with honest disclosure"
+  - file: packages/adapter-paypal/README.md
+    change: New file -- disclosure of tested vs. credential-gated.
+
+design_decisions: []
+risks: []
+
+references:
+  - path: .pHive/epics/second-payment-processor-adapter/docs/design-discussion.md
+    relevant_excerpt: "Full design rationale this story's verification demonstrates end-to-end."
+
+cross_cutting: []
+
+metric:
+  applies: false
+  justification: "Closeout story verified via the acceptance criteria's manual golden-path check; consistent with every other adapter epic's closeout story in this repo."

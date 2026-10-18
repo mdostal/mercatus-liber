@@ -16,6 +16,8 @@ afterEach(() => {
 describe("getAdapterInfo", () => {
   it("with no env vars set: persistence and CMS are active, payments is a real sandbox adapter (also active), analytics is a no-op and active, fulfillment is manual-only and active", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
+    vi.stubEnv("PAYPAL_CLIENT_ID", "");
+    vi.stubEnv("PAYPAL_CLIENT_SECRET", "");
     vi.stubEnv("POSTHOG_API_KEY", "");
     vi.stubEnv("SANITY_PROJECT_ID", "");
     vi.stubEnv("DATABASE_URL", "");
@@ -207,6 +209,38 @@ describe("getAdapterInfo", () => {
     const payments = getAdapterInfo().find((e) => e.subsystem === "Payments")!;
     expect(payments.status).toBe("active");
     expect(payments.detail).not.toMatch(/test-mode|live-mode/i);
+  });
+
+  // second-payment-processor-adapter epic: PaymentAdapter's second real
+  // implementation (PayPal Orders v2) -- same priority-chain shape as the
+  // persistence/CMS branches above, Stripe kept ahead of PayPal.
+  it("reports PayPal as active when both PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET are truthy and STRIPE_SECRET_KEY is unset", () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "");
+    vi.stubEnv("PAYPAL_CLIENT_ID", "fake-test-client-id-for-wiring-verification-only");
+    vi.stubEnv("PAYPAL_CLIENT_SECRET", "fake-test-client-secret-for-wiring-verification-only");
+
+    const payments = getAdapterInfo().find((e) => e.subsystem === "Payments")!;
+    expect(payments.status).toBe("active");
+    expect(payments.adapter).toBe("PayPal");
+    expect(payments.detail).toMatch(/paypal/i);
+  });
+
+  it("does not report PayPal when only one of PAYPAL_CLIENT_ID/PAYPAL_CLIENT_SECRET is set -- both are required", () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "");
+    vi.stubEnv("PAYPAL_CLIENT_ID", "fake-test-client-id-for-wiring-verification-only");
+    vi.stubEnv("PAYPAL_CLIENT_SECRET", "");
+
+    const payments = getAdapterInfo().find((e) => e.subsystem === "Payments")!;
+    expect(payments.adapter).toBe("Sandbox (demo mode)");
+  });
+
+  it("Stripe wins over PayPal when both are configured -- a deployment picks one real provider, not a race", () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_abc123");
+    vi.stubEnv("PAYPAL_CLIENT_ID", "fake-test-client-id-for-wiring-verification-only");
+    vi.stubEnv("PAYPAL_CLIENT_SECRET", "fake-test-client-secret-for-wiring-verification-only");
+
+    const payments = getAdapterInfo().find((e) => e.subsystem === "Payments")!;
+    expect(payments.adapter).toBe("Stripe");
   });
 
   it("reports PostHog as active when POSTHOG_API_KEY is truthy", () => {
