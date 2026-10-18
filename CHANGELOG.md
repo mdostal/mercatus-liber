@@ -3,15 +3,17 @@
 All notable changes to this project are documented in this file. Entries are grouped by
 release, oldest first.
 
-This changelog covers epics 20-65 plus this reconstruction epic's own closeout
-(`changelog-and-version-reconstruction`). Epics 20-25 were documented live as they merged; epics
-26-65 were reconstructed retroactively by the `changelog-and-version-reconstruction` epic from
-each epic's own `epic.yaml` `version_bump` where one existed, and a best-evidenced inferred
-bump from `.pHive/planning/epic-backlog.md`'s row text where it didn't -- see
-`.pHive/epics/changelog-and-version-reconstruction/docs/reconstruction-working-doc.md` for the
-full research trail. Earlier epics (1-19) have no retroactive changelog or version history --
-that is disclosed, pre-existing debt tracked in
-`.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out of scope.
+This changelog covers epics 20-85 plus both reconstruction epics' own closeouts
+(`changelog-and-version-reconstruction`, `changelog-and-version-reconstruction-ii`). Epics
+20-25 were documented live as they merged; epics 26-65 were reconstructed retroactively by the
+`changelog-and-version-reconstruction` epic (see
+`.pHive/epics/changelog-and-version-reconstruction/docs/reconstruction-working-doc.md`) and
+epics 67-85 by the follow-on `changelog-and-version-reconstruction-ii` epic (see
+`.pHive/epics/changelog-and-version-reconstruction-ii/docs/reconstruction-working-doc.md`),
+each from the epic's own `epic.yaml` `version_bump` where one existed, and a best-evidenced
+inferred bump from `.pHive/planning/epic-backlog.md`'s row text where it didn't. Earlier epics
+(1-19) have no retroactive changelog or version history -- that is disclosed, pre-existing debt
+tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out of scope.
 
 ## [0.2.0] - 2026-09-08
 
@@ -465,3 +467,224 @@ that is disclosed, pre-existing debt tracked in
   best-evidenced bump from `.pHive/planning/epic-backlog.md`'s own row text where it didn't,
   citing real commits and file paths throughout. Epics 1-19 remain the one disclosed,
   still-out-of-scope gap -- see the preamble above.
+
+## [0.28.7] - 2026-09-23
+
+### Added
+
+- **Storefront-view edit UI** (`@mercatus-liber/storefront-views`): closed a real CRUD gap
+  where `StorefrontViewsService.updateView` existed but had no admin UI or call site -- an
+  operator could create, publish, or archive a view but never edit one afterward. Added a new
+  `/admin/storefront-views/[id]` edit route (a shared `StorefrontViewFormFields` component
+  extracted from the existing create form) and a new `updateStorefrontViewAction` server
+  action, gated by the same `requireAdminPermission` guard every other admin mutation uses,
+  with 6 new tests covering viewer/no-session rejection and real persistence.
+- **Gap-audit-3 test-coverage follow-up** (epic 67 -- `version_bump: none`, folded here, zero
+  application behavior changed): added 21 real tests closing three disclosed coverage gaps
+  from `commerce-gap-audit-3` -- the multi-attribute variant picker (epic 63), the admin
+  SKU-matrix page's data-display logic, and the brand-system landing page, none of which had
+  any test coverage before this epic.
+
+## [0.28.8] - 2026-09-23
+
+### Security
+
+- **Dependency vulnerability remediation** (`@xmldom/xmldom`): closed 13 real advisories (11
+  high, 2 moderate) reported by `pnpm audit`, all tracing to one deeply-transitive dependency
+  pulled in via `apps/docs`'s `nextra` -> `mathjax-full` -> `speech-rule-engine` chain. Pinned
+  `@xmldom/xmldom` to `0.9.12` (npm's current `latest`) via `pnpm-workspace.yaml`'s existing
+  `overrides:` convention; `pnpm audit` now reports zero vulnerabilities at every severity.
+
+## [0.28.9] - 2026-09-23
+
+### Fixed
+
+- **Bundle-tier variant resolution** (`@mercatus-liber/bundles`): fixed a real, not-yet-reached
+  correctness bug where a `BundleTier`'s pinned `skuIds` were completely independent of the
+  shopper's live variant-picker selection. Added `resolveTierCartSkuIds`, resolving each tier
+  SKU against the shopper's active selection only when it belongs to the product currently
+  being viewed, wired into `addBundleTierToCartAction` -- `BundleTier`'s stored shape is
+  unchanged, and 9 new regression tests prove both backward compatibility and the new
+  resolution.
+
+## [0.28.10] - 2026-09-23
+
+### Added
+
+- **OSS community-health scaffolding**: added `CONTRIBUTING.md`, `SECURITY.md`,
+  `CODE_OF_CONDUCT.md` (Contributor Covenant v2.1), and GitHub-native
+  `.github/ISSUE_TEMPLATE`/`PULL_REQUEST_TEMPLATE.md` files, grounded in this repo's real dev
+  setup, adapter-contribution pattern, and an honestly-scoped pre-1.0 security-support policy
+  -- closing a real gap where a project explicitly pitched for "full open source community and
+  free plugins" had no GitHub-native contribution scaffolding at all.
+
+## [0.28.11] - 2026-09-23
+
+### Changed
+
+- **Routine dependency maintenance**: applied 13 genuine minor/patch version bumps
+  workspace-wide (`next`, `@clerk/nextjs`, `stripe`, `react`/`react-dom`, `convex`,
+  `posthog-js`/`posthog-node`, `turbo`, and others), deliberately leaving 3 real
+  major-version jumps (`typescript`, `@types/node`, `@types/better-sqlite3`) untouched for
+  their own isolated pass. `pnpm audit` confirmed 0 vulnerabilities at every severity after the
+  bump; live-verified post-deploy across all 3 demo stores, Clerk admin auth, and
+  Stripe-backed sandbox checkout.
+
+## [0.28.12] - 2026-09-23
+
+### Fixed
+
+- **First formal accessibility (a11y) audit**: ran axe-core 4.10.2 against the landing page,
+  all 3 demo stores, PDPs, category/cart pages, and the required admin surfaces. Fixed 16 of
+  17 real, live-confirmed findings -- undercomputed contrast tokens across several theme
+  bundles, 2 critical unlabeled add-to-cart/quantity inputs, 4 missing/unlabeled landmark gaps,
+  2 heading-hierarchy skips, and an empty admin table header -- live-reverified at 0 axe-core
+  violations on 3 production pages post-deploy. One systemic finding (`--color-primary` reused
+  as small foreground text) was deliberately documented rather than patched blind, since fixing
+  it well needs a real design decision -- see `[0.28.14]`.
+
+## [0.28.13] - 2026-09-23
+
+### Fixed
+
+- **CI Node-version mismatch**: found this repo's GitHub Actions CI workflow had failed on
+  both of its real runs since being added -- `pnpm@11.22.0` requires Node >=22.13, but the
+  workflow was pinned to Node 20, crashing before `pnpm install` could even run. Bumped the
+  workflow's `node-version` to `24`, corrected `package.json`'s `engines.node` and
+  `CONTRIBUTING.md`'s matching claim, then watched a real GitHub Actions run through to a
+  genuine `success` conclusion.
+
+## [0.28.14] - 2026-09-23
+
+### Fixed
+
+- **`--color-primary` foreground-contrast fix** (`@mercatus-liber/theming`): closed the a11y
+  audit's deliberately-deferred finding -- `--color-primary` reused directly as small/
+  body-sized foreground text failed WCAG AA on 5 of 10 theme bundles. Added an additive,
+  per-bundle derived `--color-primary-text` token (darkened until it clears real AA contrast)
+  and swapped it in at every real foreground call site, including a fill-swap fallback for the
+  two bundles dark enough that no same-hue ink reaches AA; the other 5 passing bundles are
+  completely untouched. Live-reverified with axe-core across every affected bundle and
+  component on production, 0 violations.
+
+## [0.28.15] - 2026-09-23
+
+### Added
+
+- **Final brand mark applied** (`.pHive/brand/`): applied the real, human-selected final logo
+  (Brass Amber stacked lockup) to all 3 surfaces it had never actually reached -- the reference
+  storefront's `icon.png`/`apple-icon.png` (replacing the original generic "M" monogram),
+  `.pHive/brand/social-preview.png`, and `docs/assets/logo.png` -- live-verified post-deploy
+  via byte-identical content-length/dimension/head-tag checks, not just a successful deploy.
+
+## [0.28.16] - 2026-10-07
+
+### Added
+
+- **Integrations catalog & ecosystem gap audit**: published a real, code-verified
+  `apps/docs/content-src/integrations.md` page (correcting 2 real drift findings along the way
+  -- `adapter-shopify` is built but not wired into any live demo, and `adapter-convex`'s own
+  epic row was stale), plus a 7-category research pass against real provider docs that
+  recorded 3 new-epic-candidates for future pickup: `accounting-erp-sync-adapter`,
+  `outbound-webhook-event-delivery`, and `second-payment-processor-adapter` (all three now
+  shipped -- see `[0.32.0]` onward below).
+
+## [0.29.0] - 2026-10-07
+
+### Added
+
+- **Shopify-to-native migration tool** (`@mercatus-liber/migrate-shopify`): a new package
+  providing a one-time, cursor-paginated read of a live Shopify store's catalog/variants/
+  collections/inventory and a dry-run-by-default, idempotent, resumable native-write path
+  through this repo's own `CatalogService`/`MarketingCatalogService`/`InventoryAdapter`, plus a
+  real CLI (`migrate-shopify --target sqlite|postgres --confirm`). Live-verified end-to-end
+  against a real local fixture HTTP server standing in for Shopify; disclosed as not yet
+  verified against a real Shopify account (no credentials available in this environment).
+
+## [0.29.1] - 2026-10-15
+
+### Added
+
+- **Free-tier backend resilience & keep-alive**: added a narrow, verified-shape
+  `backend-unreachable` detector rendering an honest "this demo may be asleep" state (with
+  manual retry) instead of a raw 500 for Supabase-paused and MongoDB-unreachable errors
+  specifically, recovered a real live Supabase outage affecting print-shop and northline, and
+  shipped a daily GitHub Actions keep-alive/revival job (`.github/workflows/keepalive.yml`)
+  that pings and, once 3 new repo secrets are added by a human, can call Supabase's real
+  project-restore API.
+
+## [0.29.2] - 2026-10-15
+
+### Added
+
+- **GitHub Wiki, docs-site reference section, and cross-linking**: stood up a real GitHub Wiki
+  (Home/FAQ/Troubleshooting/Decisions-Log) and a new `apps/docs/content-src/sample-stores.md`
+  reference page, then cross-linked every surface (README, docs-site navbar/footer, wiki) so
+  each reaches every other in at most one click.
+
+### Fixed
+
+- **Vercel deploy ignore + docs-site nav-link fixes**: fixed a real bug where the root
+  `.vercelignore` excluded the entire `.pHive/` tree, 404ing every `/planning/<epic>` route in
+  production, and fixed the docs site's `projectLink`/`docsRepositoryBase` pointing at a
+  nonexistent GitHub org and branch (`mercatus-liber/mercatus-liber` on `main`, corrected to
+  the real `mdostal/mercatus-liber` on `master`).
+
+## [0.30.0] - 2026-10-15
+
+### Added
+
+- **Single-tenant mode & three independently-deployed sample stores**: added an env-gated
+  (`SINGLE_TENANT_DEMO_SLUG`) single-tenant rewrite mode to `apps/reference-storefront`,
+  byte-identical to existing behavior when unset, then deployed it to three brand-new, real,
+  independently-addressable Vercel projects -- `mercatus-liber-print-shop`,
+  `mercatus-liber-northline`, `mercatus-liber-broadleaf` -- the first time these demo stores
+  have been reachable as genuinely separate sites rather than `/demo/<slug>` paths inside one
+  shared deployment. A real Next.js 16 `middleware.ts` -> `proxy.ts` rename bug (hit mid-
+  rollout) was found and fixed along the way.
+
+## [0.31.0] - 2026-10-15
+
+### Added
+
+- **Structured shipping address threaded through fulfillment** (`@mercatus-liber/checkout-orders`,
+  `@mercatus-liber/fulfillment`): added real, all-optional structured address fields to
+  `ShippingInfo` (street/city/state/postal/country/phone) and a new `FulfillmentRecipient` type
+  flowing through `OrderLookup`/`SubmitFulfillmentOrderInput` into
+  `FulfillmentService.submitOrder` -- previously dead data now actually reaches whichever
+  adapter an order routes to. Re-verified Printful's v2 webhook-signature format live
+  (correcting the September research record) and added real address-mapping functions for both
+  the Printful and Printify adapters.
+
+## [0.32.0] - 2026-10-18
+
+### Added
+
+- **Outbound webhook event delivery** (`@mercatus-liber/webhooks`): a new package giving the
+  previously purely in-process `EventBus` a real external-subscriber contract --
+  HMAC-SHA256-signed HTTP delivery with bounded exponential-backoff retry and a full
+  per-attempt delivery log, plus a Postgres-backed subscription/delivery-log store in
+  `adapter-postgres`. Not yet wired into any live app, so no deploy was needed.
+
+## [0.33.0] - 2026-10-18
+
+### Added
+
+- **Second payment processor: PayPal** (`@mercatus-liber/adapter-paypal`): a real
+  `PaymentAdapter` implementation against PayPal's Orders v2 API (OAuth2 client-credentials,
+  create/capture/get, remote webhook-signature verification), wired into
+  `apps/reference-storefront` as a second option behind Stripe in the existing adapter
+  priority chain. Dead code in production until PayPal credentials are configured -- no live
+  demo has them yet, so no behavior changed and no deploy was triggered.
+
+## [0.34.0] - 2026-10-18
+
+### Added
+
+- **Accounting/ERP order sync** (`@mercatus-liber/accounting-sync`,
+  `@mercatus-liber/adapter-quickbooks`): a new `AccountingSyncAdapter` contract, triggered
+  fire-and-forget off the real `checkout.order.paid` event, with a QuickBooks Online reference
+  implementation (OAuth2 refresh-token rotation, `SalesReceipt` creation, signed webhooks).
+  Registered only when `QUICKBOOKS_REALM_ID` is configured -- unregistered and behaviorally
+  inert for every live demo today, so no deploy was triggered. Closes the last of the three
+  new-epic-candidates `integrations-catalog-and-ecosystem-audit` recorded (`[0.28.16]`).
