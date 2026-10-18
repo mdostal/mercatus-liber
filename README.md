@@ -34,7 +34,7 @@ adapter), admin auth/promotions/bundles/recommendations/advertising/reviews/inte
 fulfillment/shipping/SEO are all real and shipped, and three genuinely distinct, live demo
 stores (`print-shop`, `northline`, `broadleaf`) run in production at `commerce.mdostal.com`
 today, two of them on different real database backends (Postgres and Convex). See
-`.pHive/planning/epic-backlog.md` for the full, currently 75-epic build-out backlog and
+`.pHive/planning/epic-backlog.md` for the full, currently 82-epic build-out backlog and
 `VISION.md` for a narrative "where things stand today."
 
 ## Why
