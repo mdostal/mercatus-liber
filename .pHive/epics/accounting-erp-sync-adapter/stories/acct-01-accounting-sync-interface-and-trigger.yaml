@@ -1,0 +1,74 @@
+id: acct-01-accounting-sync-interface-and-trigger
+epic: accounting-erp-sync-adapter
+title: AccountingSyncAdapter interface, @mercatus-liber/accounting-sync package, and the real checkout.order.paid trigger wiring
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read `packages/checkout-orders/src/types.ts`'s real `Order`/`OrderLookup`-shaped types
+  and `packages/checkout-orders/src/service.ts`'s real event publishes
+  (`checkout.order.placed`, `checkout.order.paid`) first. Then read
+  `packages/fulfillment` (types.ts, service.ts, manual-adapter.ts,
+  order-lookup-compat.ts) and `packages/adapter-printful`/`packages/adapter-printify`
+  (index.ts, http-client.ts, mapping.ts, webhook.ts) in full, and
+  `packages/plugins` (types.ts, registry.ts, order-notification-plugin.ts) -- these are
+  the two real candidate homes for the new interface this story must choose between and
+  document the choice for (see design-discussion.md §2).
+
+  Build a new `packages/accounting-sync` package owning a real `AccountingSyncAdapter`
+  interface (`syncOrder(order): Promise<SyncResult>`, optional `handleWebhookEvent`,
+  mirroring `FulfillmentAdapter`'s shape), a narrow structural `OrderLookup` (satisfied by
+  `CheckoutOrdersService` bare, no glue -- prove it with a compile-time compat function the
+  same way `packages/fulfillment/src/order-lookup-compat.ts` does), its own
+  `AccountingSyncRecord`/`AccountingSyncRepository` bookkeeping (+ an in-memory reference
+  implementation, structuredClone in/out), and `createAccountingSyncService` -- an
+  idempotent `syncOrder(orderId)` that NEVER throws for an adapter failure (records a
+  `"failed"` record with the real error message instead) and is idempotent for an
+  already-`"synced"` order.
+
+  Add `registerAccountingSync({ events, sync })`, subscribing to the real
+  `checkout.order.paid` event. This is the one real decision this story must get right and
+  document in code comments: unlike `registerInventorySync`/`registerBiEventLogSync`'s own
+  `checkout.order.paid` handlers (awaited inline), this handler must NOT await
+  `sync.syncOrder` inline -- see design-discussion.md §3 for why (a real external HTTP call
+  must never add latency to the in-process EventBus's synchronous publish chain, which for
+  this event is itself inside the real payments webhook handler's chain). Confirm this is
+  safe specifically because `syncOrder` never throws for an adapter failure.
+
+acceptance_criteria:
+  - "Given CheckoutOrdersService, when passed anywhere accounting-sync's own OrderLookup is expected, then it satisfies that interface structurally with zero adapter/glue code, proven at compile time (not just by inspection)"
+  - "Given a fake AccountingSyncAdapter that throws, when AccountingSyncService.syncOrder is called, then it never rethrows -- it returns a record with status 'failed' and the real error message"
+  - "Given an order that already has a 'synced' record, when syncOrder is called again for it, then the adapter is NOT called a second time and the existing record is returned unchanged"
+  - "Given registerAccountingSync is wired and checkout.order.paid fires, when the adapter's syncOrder call is still in flight (simulated with an artificial delay), then events.publish() for checkout.order.paid has already resolved -- proving the dispatch is genuinely fire-and-forget, not secretly awaited"
+  - "Given the full monorepo check, when run, then it's clean"
+
+steps:
+  - id: implement
+    description: Build packages/accounting-sync (types, in-memory repository, service, subscriber, index, order-lookup-compat).
+    agent: developer
+  - id: test
+    description: Real tests against fakes proving idempotency, never-throws, and genuine fire-and-forget dispatch timing.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the interface-home decision (packages/accounting-sync vs. a plugins extension point) is documented, not just implemented.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/accounting-erp-sync-adapter.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/checkout-orders/src/service.ts
+      purpose: "The real checkout.order.paid publish site this epic triggers off of"
+    - path: packages/fulfillment/src/types.ts
+      purpose: "FulfillmentAdapter/OrderLookup -- the shape this epic's own interfaces mirror"
+    - path: packages/inventory/src/subscriber.ts
+      purpose: "registerInventorySync -- the subscriber-wiring pattern this epic follows, with one deliberate documented departure (not awaited inline)"
+    - path: packages/plugins/src/registry.ts
+      purpose: "The rejected alternative home -- PluginRegistry.initAll's own disclosed error-swallowing trust model, and why it's wrong for this epic"

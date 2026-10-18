@@ -1,0 +1,33 @@
+{
+  "name": "@mercatus-liber/adapter-quickbooks",
+  "version": "0.1.0",
+  "description": "AccountingSyncAdapter (epic accounting-erp-sync-adapter) backed by QuickBooks Online's real v3 Accounting API (OAuth2, POST /v3/company/{realmId}/salesreceipt or /invoice) and real webhook signature verification (intuit-signature, HMAC-SHA256). Proves accounting/ERP sync is genuinely swappable to a real provider, same shape as adapter-printful/adapter-printify proved for fulfillment. Public surface is exactly AccountingSyncAdapter; depends on @mercatus-liber/accounting-sync only, for the types it implements, plus global fetch as the real HTTP client (no new HTTP dependency introduced -- mirrors adapter-printful/adapter-shopify's own convention).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/accounting-sync": "workspace:*",
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}
