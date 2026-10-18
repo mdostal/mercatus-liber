@@ -20,6 +20,7 @@
     { "path": "../recommendations" },
     { "path": "../reviews" },
     { "path": "../service-areas" },
-    { "path": "../storefront-views" }
+    { "path": "../storefront-views" },
+    { "path": "../webhooks" }
   ]
 }

@@ -37,6 +37,7 @@
     "@mercatus-liber/reviews": "workspace:*",
     "@mercatus-liber/service-areas": "workspace:*",
     "@mercatus-liber/storefront-views": "workspace:*",
+    "@mercatus-liber/webhooks": "workspace:*",
     "pg": "^8.23.0"
   },
   "devDependencies": {

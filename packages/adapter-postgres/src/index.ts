@@ -27,6 +27,7 @@ export { createPostgresCampaignRepository } from "./advertising.js";
 export { createPostgresServiceAreaRepository, createPostgresServiceAreaProductRepository } from "./service-areas.js";
 export { createPostgresBiEventLogRepository } from "./internal-bi.js";
 export { createPostgresFulfillmentRoutingRepository } from "./fulfillment-routing.js";
+export { createPostgresWebhookSubscriptionStore, createPostgresWebhookDeliveryLogStore } from "./webhooks.js";
 
 interface ProductRow {
   id: string;
