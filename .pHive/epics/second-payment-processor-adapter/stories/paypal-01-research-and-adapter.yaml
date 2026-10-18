@@ -1,0 +1,118 @@
+id: paypal-01-research-and-adapter
+epic: second-payment-processor-adapter
+title: "Live-research PayPal's real Orders v2 + webhook API, build the PaymentAdapter implementation"
+status: pending
+complexity: high
+methodology: classic
+depends_on: []
+
+description: |
+  Read .pHive/epics/second-payment-processor-adapter/docs/design-discussion.md in full first --
+  section 1 is the complete research record (exact URLs fetched, what each confirmed); don't
+  re-derive what's already confirmed there.
+
+  Research (against PayPal's real, current, live documentation -- not training-data recall):
+  1. Confirm the real Orders v2 create/capture/get request+response shapes (intent,
+     purchase_units, amount.currency_code/value, links with rel "approve"/"self", status
+     progression CREATED -> APPROVED -> COMPLETED/VOIDED).
+  2. Confirm the real merchant-reference field (purchase_units[].custom_id, NOT reference_id)
+     and the real redirect-URL field location (payment_source.paypal.experience_context, NOT the
+     older application_context).
+  3. Confirm PayPal's real, documented webhook-signature-verification scheme(s) -- both the
+     local CRC32+RSA self-verification and the remote POST
+     /v1/notifications/verify-webhook-signature call -- and the real webhook event_type strings
+     (CHECKOUT.ORDER.*, PAYMENT.CAPTURE.*).
+  4. Confirm PayPal's documented zero-decimal currencies (exactly HUF/JPY/TWD) for converting
+     this repo's minor-units Money.amount into PayPal's decimal-string amount.value.
+
+  Then read packages/payments/src/types.ts (the real PaymentAdapter contract this story
+  implements) and packages/payments/src/stripe-adapter.ts plus
+  packages/adapter-printify/src/index.ts (the real sibling-package shape/dependency-declaration
+  convention for a third-party adapter in this repo, including its fulfillment-adapter-compat.ts
+  type-proof pattern) as structural templates.
+
+  Build packages/adapter-paypal/ (@mercatus-liber/adapter-paypal), depending only on
+  @mercatus-liber/payments (for the types it implements) and @mercatus-liber/core (for Money/
+  EventBus), plus global fetch as the real HTTP client (no new HTTP dependency, matching every
+  other third-party adapter in this repo). Implement `createPaypalPaymentAdapter(config)`:
+  `createPaymentSession` (create order), `confirmPayment` (get order, capture if APPROVED),
+  `handleWebhookEvent` (verify via the real remote verify-webhook-signature call, publish
+  payments.payment.succeeded/failed on the real capture-outcome events).
+
+  Write real unit tests against a fake HTTP server (injectable fetchImpl / httpClient) shaped
+  like PayPal's actual, real, currently-documented API responses (not invented).
+
+acceptance_criteria:
+  - "Given the webhook-signature-scheme research, then the real finding (both documented schemes, which one this adapter implements and why) is documented in code comments and the final report"
+  - "Given PayPal's real Orders v2 create/capture/get shapes, then this adapter's createPaymentSession/confirmPayment build real requests matching those confirmed shapes, verified by unit tests"
+  - "Given createPaypalPaymentAdapter, then it implements every method of PaymentAdapter's real contract, verified by a real type-compatibility check (payment-adapter-compat.ts)"
+  - "Given `pnpm --filter @mercatus-liber/adapter-paypal build` and its test suite, then both succeed"
+
+steps:
+  - id: research
+    description: Research PayPal's real, current, live API docs for the open questions above before writing any adapter code.
+    agent: researcher
+  - id: implement
+    description: Build the adapter per the description above.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Write and run real unit tests against a realistically-shaped fake PayPal HTTP server, verify every acceptance criterion.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the adapter's request shapes genuinely match real, current PayPal API documentation, confirm the PaymentAdapter contract is fully and correctly implemented.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/second-payment-processor-adapter.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  tech_stack: { language: TypeScript }
+  key_files:
+    - path: packages/payments/src/types.ts
+      purpose: The real PaymentAdapter contract this story implements.
+    - path: packages/payments/src/stripe-adapter.ts
+      purpose: The first, real PaymentAdapter implementation -- structural precedent.
+    - path: packages/adapter-printify/src/index.ts
+      purpose: Real sibling-package shape/dependency convention for a credential-gated third-party adapter.
+
+files_to_modify:
+  - file: packages/adapter-paypal/package.json
+    change: New file.
+  - file: packages/adapter-paypal/src/index.ts
+    change: New file -- createPaypalPaymentAdapter implementing PaymentAdapter.
+
+design_decisions:
+  - decision: "Depends only on @mercatus-liber/payments (types) and @mercatus-liber/core (Money/EventBus), plus a real HTTP client."
+    rationale: "Same narrow-dependency discipline as every other adapter in this repo."
+  - decision: "Verifies webhooks via PayPal's own remote verify-webhook-signature call, not the local CRC32+RSA scheme."
+    rationale: "The only one of PayPal's two real documented schemes a fake-HTTP-server-tested adapter can genuinely exercise end-to-end -- see design-discussion.md section 2a."
+
+risks:
+  - severity: low
+    description: "PayPal's Orders v2 and webhook schemes needed live confirmation, not training-data recall."
+    mitigation: "Story explicitly requires live research against current docs; design-discussion.md section 1 records every citation."
+
+references:
+  - path: .pHive/epics/second-payment-processor-adapter/docs/design-discussion.md
+    relevant_excerpt: "Section 1: the full research record this story's implementation is grounded in."
+
+cross_cutting: []
+
+metric:
+  applies: true
+  name: paypal_adapter.payment_adapter_contract_implemented
+  direction: up
+  unit: percent
+  baseline: 0
+  target: 100
+  window: story-integrate
+  source:
+    kind: manual
+    ref: "PaymentAdapter contract method coverage, verified by type-compatibility check and test"
+  verify_at: integrate
+  owner: tester

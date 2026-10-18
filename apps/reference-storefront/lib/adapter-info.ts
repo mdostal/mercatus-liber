@@ -88,34 +88,58 @@ function persistenceInfo(demoSlug: DemoSlug): AdapterInfo {
   };
 }
 
+/**
+ * Mirrors services.ts's own `payments` priority chain exactly
+ * (second-payment-processor-adapter epic): Stripe when `STRIPE_SECRET_KEY`
+ * is set; else real PayPal when both `PAYPAL_CLIENT_ID` and
+ * `PAYPAL_CLIENT_SECRET` are set (@mercatus-liber/adapter-paypal); else the
+ * sandbox adapter. Like Printful/Printify/Shippo above, PayPal's "active"
+ * here does not imply live-verified -- no real PayPal developer account/app
+ * exists in this environment (see @mercatus-liber/adapter-paypal's own unit
+ * test suite for the real correctness proof against PayPal's actual,
+ * current, live-researched Orders v2 API shape).
+ */
 function paymentsInfo(): AdapterInfo {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) {
+  if (key) {
+    let mode: string;
+    if (key.startsWith("sk_test_")) {
+      mode = "a test-mode key (sk_test_ prefix)";
+    } else if (key.startsWith("sk_live_")) {
+      mode = "a live-mode key (sk_live_ prefix)";
+    } else {
+      mode = "set, but its prefix doesn't match the known sk_test_/sk_live_ conventions -- mode unknown";
+    }
+
     return {
       subsystem: "Payments",
-      adapter: "Sandbox (demo mode)",
-      detail:
-        "STRIPE_SECRET_KEY is not set -- createSandboxPaymentAdapter() (packages/payments) is used instead of " +
-        "Stripe: a real, fully-working PaymentAdapter that completes checkout with no external provider, so " +
-        "every order here is genuinely a demo/sandbox order, never a real charge. Set STRIPE_SECRET_KEY to " +
-        "switch this instance to real Stripe Checkout.",
+      adapter: "Stripe",
+      detail: `STRIPE_SECRET_KEY is ${mode} -- createLazyStripeAdapter() (packages/payments)`,
       status: "active",
     };
   }
 
-  let mode: string;
-  if (key.startsWith("sk_test_")) {
-    mode = "a test-mode key (sk_test_ prefix)";
-  } else if (key.startsWith("sk_live_")) {
-    mode = "a live-mode key (sk_live_ prefix)";
-  } else {
-    mode = "set, but its prefix doesn't match the known sk_test_/sk_live_ conventions -- mode unknown";
+  if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
+    return {
+      subsystem: "Payments",
+      adapter: "PayPal",
+      detail:
+        "STRIPE_SECRET_KEY is not set, but PAYPAL_CLIENT_ID/PAYPAL_CLIENT_SECRET are both set -- " +
+        "createPaypalPaymentAdapter() (packages/adapter-paypal), PaymentAdapter's second real " +
+        "implementation (PayPal Orders v2)",
+      status: "active",
+    };
   }
 
   return {
     subsystem: "Payments",
-    adapter: "Stripe",
-    detail: `STRIPE_SECRET_KEY is ${mode} -- createLazyStripeAdapter() (packages/payments)`,
+    adapter: "Sandbox (demo mode)",
+    detail:
+      "Neither STRIPE_SECRET_KEY nor PAYPAL_CLIENT_ID/PAYPAL_CLIENT_SECRET is set -- " +
+      "createSandboxPaymentAdapter() (packages/payments) is used instead: a real, fully-working " +
+      "PaymentAdapter that completes checkout with no external provider, so every order here is " +
+      "genuinely a demo/sandbox order, never a real charge. Set STRIPE_SECRET_KEY or " +
+      "PAYPAL_CLIENT_ID/PAYPAL_CLIENT_SECRET to switch this instance to a real payment provider.",
     status: "active",
   };
 }

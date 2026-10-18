@@ -36,6 +36,28 @@ up meaning) is a new package implementing `PaymentAdapter` — zero changes to c
 (09) or any other subsystem. This is the cleanest adapter boundary in the whole system because
 payments has the fewest other concerns bleeding into it.
 
+**This is no longer hypothetical.** `@mercatus-liber/adapter-paypal`
+(`second-payment-processor-adapter` epic) is a real, built, unit-tested second implementation —
+PayPal's Orders v2 API (`POST /v2/checkout/orders` to create, `POST .../capture` to capture,
+`GET /v2/checkout/orders/{id}` to read status), plus real webhook verification via PayPal's own
+`POST /v1/notifications/verify-webhook-signature` endpoint. Zero changes were needed to
+checkout-orders, cart, or `PaymentAdapter` itself — exactly the decoupling this section
+predicted. See `packages/adapter-paypal/README.md` for the full research citation record and the
+**honest credential-gap disclosure**: no real PayPal developer account/app exists in this
+environment, so this adapter is correctness-verified against a fake HTTP server shaped like
+PayPal's real, documented API, not live-verified against a real PayPal account — the identical
+disclosed posture as `@mercatus-liber/adapter-printful`/`adapter-printify`/`adapter-shippo`.
+
+Wired into `apps/reference-storefront/lib/services.ts` as a priority chain: real Stripe
+(`STRIPE_SECRET_KEY`) > real PayPal (`PAYPAL_CLIENT_ID` + `PAYPAL_CLIENT_SECRET`) > the sandbox
+adapter (unchanged default when neither is configured). One genuine, disclosed interface
+impedance mismatch surfaced building this: `PaymentAdapter.handleWebhookEvent`'s
+`signature: string` parameter is shaped for Stripe's single-header webhook model, but PayPal's
+real scheme needs five distinct transmission headers. Rather than changing the shared interface
+(out of scope for this epic), the host application bridges the gap by JSON-encoding the five real
+`PAYPAL-*` headers into that one `signature` string before calling `handleWebhookEvent` — see
+`packages/adapter-paypal/src/webhook.ts`'s doc comment for the full contract.
+
 ## Open questions
 1. Multi-provider checkout (let the shopper pick Stripe vs. something else at checkout time) —
    v1 scope or a documented future extension? Recommend: documented future extension; v1 is

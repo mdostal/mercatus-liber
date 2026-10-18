@@ -1,0 +1,42 @@
+name: second-payment-processor-adapter
+title: "@mercatus-liber/adapter-paypal: real second PaymentAdapter implementation (PayPal Orders v2)"
+description: >
+  New-epic candidate recorded at .pHive/planning/epic-backlog.md row 77
+  (integrations-catalog-and-ecosystem-audit): PaymentAdapter has exactly one real
+  implementation, Stripe -- every demo's checkout is 100% Stripe-or-sandbox. PayPal Orders v2 is
+  the natural second implementation of the existing interface; no new interface design needed.
+  Real credential gate, same disclosed pattern as epics adapter-printful/adapter-printify/
+  adapter-shippo -- built for real correctness against PayPal's actual, current, live-researched
+  Orders v2 API docs, unit-tested against a fake HTTP server standing in for PayPal's API, live
+  end-to-end call honestly disclosed as blocked on a real PayPal developer account/app. See
+  docs/design-discussion.md for the full research record (exact URLs fetched, what each
+  confirmed).
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [adapters, payments, third-party-integration]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    adapters: "Real second PaymentAdapter implementation, same pattern as every other adapter in this repo"
+    payments: "Implements subsystem 08's existing PaymentAdapter contract -- no interface change"
+    third-party-integration: "Grounded in real, live-researched PayPal Orders v2 + webhook API docs"
+  confidence: high
+  gate_decisions:
+    collaborative_review: skipped -- solo-orchestrated planning session, following this repo's established convention (adapter-printful/-printify/-shippo epics).
+
+stories:
+  - id: paypal-01-research-and-adapter
+    title: "Live-research PayPal's real Orders v2 + webhook API, build the PaymentAdapter implementation"
+    complexity: high
+    depends_on: []
+  - id: paypal-02-wiring-verification-closeout
+    title: "Env-var wiring, honest credential-gap disclosure, docs, closeout"
+    complexity: low
+    depends_on: [paypal-01-research-and-adapter]

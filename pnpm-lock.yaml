@@ -80,6 +80,9 @@ importers:
       '@mercatus-liber/adapter-mongodb':
         specifier: workspace:*
         version: link:../../packages/adapter-mongodb
+      '@mercatus-liber/adapter-paypal':
+        specifier: workspace:*
+        version: link:../../packages/adapter-paypal
       '@mercatus-liber/adapter-postgres':
         specifier: workspace:*
         version: link:../../packages/adapter-postgres
@@ -319,6 +322,25 @@ importers:
       mongodb:
         specifier: ^7.6.0
         version: 7.6.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.0))
+
+  packages/adapter-paypal:
+    dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
+      '@mercatus-liber/payments':
+        specifier: workspace:*
+        version: link:../payments
     devDependencies:
       '@types/node':
         specifier: ^22.7.5

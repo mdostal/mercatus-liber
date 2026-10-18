@@ -1,0 +1,33 @@
+{
+  "name": "@mercatus-liber/adapter-paypal",
+  "version": "0.1.0",
+  "description": "PaymentAdapter (subsystem 08, @mercatus-liber/payments) backed by PayPal's real, documented Orders v2 API -- POST /v2/checkout/orders to create, POST /v2/checkout/orders/{id}/capture to capture, GET /v2/checkout/orders/{id} to read status -- plus real OAuth2 client-credentials token exchange (POST /v1/oauth2/token) and real webhook-signature verification via PayPal's own POST /v1/notifications/verify-webhook-signature endpoint. Proves PaymentAdapter is genuinely a second, provider-agnostic implementation (Stripe being the first), same shape as @mercatus-liber/adapter-postgres proved for persistence. Public surface is exactly PaymentAdapter; depends on @mercatus-liber/payments only, for the types it implements, plus global fetch as the real HTTP client (no new HTTP dependency introduced -- mirrors adapter-printful/adapter-printify/adapter-shippo's own convention).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/payments": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}
