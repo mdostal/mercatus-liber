@@ -1,0 +1,10 @@
+name: accounting-erp-sync-adapter
+title: Push a paid order into a real accounting/ERP system of record (QuickBooks Online)
+methodology: classic
+stories:
+  - id: acct-01-accounting-sync-interface-and-trigger
+    title: AccountingSyncAdapter interface, @mercatus-liber/accounting-sync package, and the real checkout.order.paid trigger wiring
+    depends_on: []
+  - id: acct-02-quickbooks-adapter-and-wiring
+    title: Real @mercatus-liber/adapter-quickbooks reference implementation, services.ts wiring, READMEs, closeout
+    depends_on: [acct-01-accounting-sync-interface-and-trigger]

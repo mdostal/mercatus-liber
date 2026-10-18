@@ -23,6 +23,7 @@ import {
 } from "@mercatus-liber/adapter-postgres";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
+import { createQuickBooksAccountingSyncAdapter, QUICKBOOKS_PROVIDER } from "@mercatus-liber/adapter-quickbooks";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createCloudinaryFetchAdapter } from "@mercatus-liber/adapter-cloudinary";
 import { createShippoShippingAdapter } from "@mercatus-liber/adapter-shippo";
@@ -67,6 +68,12 @@ import {
   createInMemoryOrderRepository,
   type CheckoutOrdersService,
 } from "@mercatus-liber/checkout-orders";
+import {
+  createAccountingSyncService,
+  createInMemoryAccountingSyncRepository,
+  registerAccountingSync,
+  type AccountingSyncService,
+} from "@mercatus-liber/accounting-sync";
 import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
 import {
   createFulfillmentService,
@@ -234,6 +241,21 @@ export interface Services {
   shipping: Record<string, ShippingAdapter>;
   /** image-cdn epic -- resolves a product's raw image `url` into a real deliverable URL, see @mercatus-liber/media's own doc comment. */
   media: ImageAdapter;
+  /**
+   * @mercatus-liber/accounting-sync (epic accounting-erp-sync-adapter) --
+   * pushes a paid order into a real accounting/ERP system of record. Unlike
+   * `fulfillment`/`shipping` above, there is no zero-infra local default
+   * here (there is no meaningful "manual" accounting-sync provider) -- this
+   * is `null` whenever `QUICKBOOKS_REALM_ID` (plus either a direct access
+   * token or full OAuth2 refresh credentials) isn't configured, same
+   * null-when-unconfigured shape as `confirmSandboxPayment` above. Admin
+   * surfaces/callers must check for `null` before calling `syncOrder`
+   * directly (e.g. a "retry sync" button); the automatic
+   * `checkout.order.paid` -> sync dispatch itself is only ever registered
+   * (see buildServices's own accounting-sync section) when this is
+   * non-null.
+   */
+  accountingSync: AccountingSyncService | null;
 }
 
 /**
@@ -774,6 +796,85 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   });
   registerBiEventLogSync({ events, eventLog: biEventLog });
 
+  // @mercatus-liber/accounting-sync (epic accounting-erp-sync-adapter) --
+  // pushes a paid order into a real accounting/ERP system of record. Traces
+  // to .pHive/planning/epic-backlog.md row 77's ica-02 gap finding: no
+  // adapter anywhere in this codebase did this before. `QUICKBOOKS_REALM_ID`
+  // set and truthy, plus EITHER `QUICKBOOKS_ACCESS_TOKEN` (a short-lived
+  // token supplied directly) OR all three of `QUICKBOOKS_CLIENT_ID` /
+  // `QUICKBOOKS_CLIENT_SECRET` / `QUICKBOOKS_REFRESH_TOKEN` (full OAuth2
+  // refresh credentials), builds the real adapter and registers the
+  // fire-and-forget `checkout.order.paid` -> sync dispatch (see
+  // @mercatus-liber/accounting-sync's own registerAccountingSync doc
+  // comment for why this is deliberately NOT awaited inline). Unconfigured
+  // (the default -- no such env var set anywhere in this repo's own deploy
+  // configs), `accountingSync` is `null` and nothing is registered: zero
+  // behavior change for every demo/deployment that hasn't adopted this.
+  //
+  // createQuickBooksAccountingSyncAdapter's config requires two resolver
+  // callbacks bridging real gaps between this reference app's own data
+  // model and QuickBooks Online's real Customer/Item catalogs (see
+  // packages/adapter-quickbooks/src/index.ts's own doc comments and this
+  // epic's design-discussion.md for the full research record) -- same
+  // "resolveX bridge, honest error when no real mapping exists" shape as
+  // the Printful/Printify resolveCatalogTarget branches above:
+  //   - resolveCustomer: this reference app's own customerId/shippingInfo
+  //     has no built-in relationship to a real QuickBooks Customer.Id --
+  //     a real deployment would look this up (or create-on-first-order)
+  //     against QuickBooks' own Customer endpoint.
+  //   - resolveItem: this reference app's catalog has no notion of
+  //     QuickBooks' own Item catalog at all.
+  //
+  // No real QuickBooks Online account/credentials exist in this environment
+  // -- see this epic's design-discussion.md and @mercatus-liber/
+  // adapter-quickbooks's own README for the honest disclosure. This branch
+  // is therefore unexercised against a live QuickBooks account here; it's
+  // covered instead by @mercatus-liber/adapter-quickbooks's own unit test
+  // suite plus this file's env-var branch itself being independently
+  // verifiable with fake/test credentials for wiring purposes only.
+  const quickBooksConfigured =
+    Boolean(process.env.QUICKBOOKS_REALM_ID) &&
+    Boolean(
+      process.env.QUICKBOOKS_ACCESS_TOKEN ||
+        (process.env.QUICKBOOKS_CLIENT_ID && process.env.QUICKBOOKS_CLIENT_SECRET && process.env.QUICKBOOKS_REFRESH_TOKEN),
+    );
+  const accountingSync: AccountingSyncService | null = quickBooksConfigured
+    ? createAccountingSyncService({
+        orders: checkout,
+        adapter: createQuickBooksAccountingSyncAdapter({
+          realmId: process.env.QUICKBOOKS_REALM_ID!,
+          ...(process.env.QUICKBOOKS_ENVIRONMENT === "sandbox" ? { environment: "sandbox" as const } : {}),
+          ...(process.env.QUICKBOOKS_ACCESS_TOKEN
+            ? { accessToken: process.env.QUICKBOOKS_ACCESS_TOKEN }
+            : {
+                oauth: {
+                  clientId: process.env.QUICKBOOKS_CLIENT_ID!,
+                  clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET!,
+                  refreshToken: process.env.QUICKBOOKS_REFRESH_TOKEN!,
+                },
+              }),
+          async resolveCustomer() {
+            throw new Error(
+              "resolveCustomer: no QuickBooks Customer.Id mapping exists for this order's customer -- " +
+                "this reference app's customer data has no notion of QuickBooks' own Customer catalog; a real " +
+                "deployment needs an explicit customer -> QuickBooks Customer.Id mapping (or a create-on-first-order " +
+                "lookup against QuickBooks' own Customer endpoint) before syncing any order.",
+            );
+          },
+          async resolveItem(skuId: string) {
+            throw new Error(
+              `resolveItem: no QuickBooks Item.Id mapping exists for SKU "${skuId}" -- this reference app's catalog ` +
+                "has no notion of QuickBooks' own Item catalog; a real deployment needs an explicit SKU -> QuickBooks " +
+                "Item.Id mapping before syncing any order containing this SKU.",
+            );
+          },
+        }),
+        repository: createInMemoryAccountingSyncRepository(),
+        provider: QUICKBOOKS_PROVIDER,
+      })
+    : null;
+  if (accountingSync) registerAccountingSync({ events, sync: accountingSync });
+
   // @mercatus-liber/fulfillment (subsystem 41/42, fulfillment-02 +
   // adapter-printful-02) -- the manual adapter is always registered as the
   // permanent self-fulfillment fallback (see createManualFulfillmentAdapter's
@@ -1030,6 +1131,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     shipping,
     media,
     confirmSandboxPayment: sandboxPayments ? sandboxPayments.confirmSandboxPayment.bind(sandboxPayments) : null,
+    accountingSync,
   };
 }
 

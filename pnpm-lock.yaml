@@ -68,6 +68,9 @@ importers:
       '@mercatus-liber/account':
         specifier: workspace:*
         version: link:../../packages/account
+      '@mercatus-liber/accounting-sync':
+        specifier: workspace:*
+        version: link:../../packages/accounting-sync
       '@mercatus-liber/adapter-clerk':
         specifier: workspace:*
         version: link:../../packages/adapter-clerk
@@ -92,6 +95,9 @@ importers:
       '@mercatus-liber/adapter-printify':
         specifier: workspace:*
         version: link:../../packages/adapter-printify
+      '@mercatus-liber/adapter-quickbooks':
+        specifier: workspace:*
+        version: link:../../packages/adapter-quickbooks
       '@mercatus-liber/adapter-sanity':
         specifier: workspace:*
         version: link:../../packages/adapter-sanity
@@ -238,6 +244,25 @@ importers:
       '@mercatus-liber/catalog':
         specifier: workspace:*
         version: link:../catalog
+      '@mercatus-liber/checkout-orders':
+        specifier: workspace:*
+        version: link:../checkout-orders
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.0))
+
+  packages/accounting-sync:
+    dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
       '@mercatus-liber/checkout-orders':
         specifier: workspace:*
         version: link:../checkout-orders
@@ -437,6 +462,25 @@ importers:
       '@mercatus-liber/fulfillment':
         specifier: workspace:*
         version: link:../fulfillment
+    devDependencies:
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.0))
+
+  packages/adapter-quickbooks:
+    dependencies:
+      '@mercatus-liber/accounting-sync':
+        specifier: workspace:*
+        version: link:../accounting-sync
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@types/node':
         specifier: ^22.7.5

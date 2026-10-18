@@ -1,0 +1,81 @@
+id: acct-02-quickbooks-adapter-and-wiring
+epic: accounting-erp-sync-adapter
+title: Real @mercatus-liber/adapter-quickbooks reference implementation, services.ts wiring, READMEs, closeout
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [acct-01-accounting-sync-interface-and-trigger]
+
+description: |
+  Look up QuickBooks Online's REAL, documented Accounting API -- OAuth2 endpoints/scopes/
+  grant types, the real `/v3/company/{realmId}/<entity>` base path, and `SalesReceipt`/
+  `Invoice` resource creation -- rather than guessing from training data. Cross-reference
+  multiple independent sources (developer.intuit.com's own pages are JS-rendered and may
+  truncate under automated fetch, same documented limitation `adapter-printful`'s own
+  research hit); cite exactly what was found, with explicit "disclosed inference, not
+  source-confirmed verbatim" notes for anything not independently corroborated (same
+  honesty standard `adapter-printful`/`adapter-printify`'s own research doc comments set).
+
+  Build `packages/adapter-quickbooks`, a real `AccountingSyncAdapter` implementation:
+  `syncOrder` resolves the order's customer and every line item's QuickBooks `Item.Id` via
+  required caller-supplied resolver callbacks (same "resolveX bridge, honest error when no
+  real mapping exists" shape as `PrintfulFulfillmentAdapterConfig.resolveCatalogTarget`),
+  builds the real create-request body, and POSTs to the real `salesreceipt`/`invoice`
+  path. Implement the real OAuth2 `grant_type=refresh_token` exchange (every real refresh
+  call returns a NEW refresh token that must be used next time -- design this in, don't
+  assume a static token) and real webhook signature verification
+  (`intuit-signature`, HMAC-SHA256). Prove type-compatibility with `AccountingSyncAdapter`
+  via a compile-time compat function, same discipline as
+  `packages/adapter-printful/src/fulfillment-adapter-compat.ts`.
+
+  Real tests against a fake `fetch`/`QuickBooksHttpClient` double only -- never a live
+  network call (no real QuickBooks account/credentials exist in this environment; disclose
+  this plainly, same posture as `adapter-printful`/`adapter-printify` pre-live-verification).
+
+  Wire into `apps/reference-storefront/lib/services.ts`'s established env-var-branch
+  pattern -- grep that file for how Stripe/Printful/Printify are wired to copy the exact
+  shape. `QUICKBOOKS_REALM_ID` set and truthy, plus either `QUICKBOOKS_ACCESS_TOKEN` or the
+  full `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_REFRESH_TOKEN` triple,
+  builds the real adapter, the real `AccountingSyncService`, and registers
+  `registerAccountingSync`. Add a nullable `accountingSync` field to the `Services`
+  interface (no zero-infra local default makes sense for this one, unlike
+  `fulfillment`/`shipping`'s always-present manual provider) -- unconfigured must be a
+  true, zero-behavior-change no-op.
+
+  Write READMEs for both new packages (`accounting-sync`, `adapter-quickbooks`) disclosing
+  exactly what's real/unit-tested vs. credential-gated, matching
+  `adapter-clerk`/`adapter-printful`'s own disclosure voice (most packages in this repo have
+  no README at all; these two should, since this story explicitly asks for one).
+
+acceptance_criteria:
+  - "Given QuickBooks Online's real, documented v3 Accounting API, when this adapter builds a SalesReceipt/Invoice create request, then every field name/shape is cited to a real source (not training-data recall), with any genuinely uncorroborated inference explicitly disclosed as such in a code comment"
+  - "Given a fake QuickBooksHttpClient/fetch double, when createQuickBooksAccountingSyncAdapter.syncOrder is called with a real order, then it produces the real, documented request shape and maps the response's real Id into SyncResult.externalId, with zero live network calls anywhere in this package's test suite"
+  - "Given QUICKBOOKS_REALM_ID is unset, when apps/reference-storefront/lib/services.ts builds its service graph, then services.accountingSync is null and no checkout.order.paid subscriber for accounting sync is registered -- zero behavior change"
+  - "Given the full monorepo check (pnpm turbo run typecheck test build --force, run fresh), when run, then it's clean"
+
+steps:
+  - id: implement
+    description: Build packages/adapter-quickbooks (oauth, http-client, mapping, webhook, index, compat proof) and the services.ts wiring.
+    agent: developer
+  - id: test
+    description: Real tests against fakes for the HTTP client, OAuth refresh, mapping, webhook verification, and the full adapter.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm every real QBO field/endpoint claim is cited, and the services.ts branch is genuinely a no-op when unconfigured.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/accounting-erp-sync-adapter, push the branch (not master).
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/adapter-printful/src/printful-types.ts
+      purpose: "The citation-style this story's own quickbooks-types.ts doc comment follows"
+    - path: packages/adapter-printful/src/index.ts
+      purpose: "resolveRecipient/resolveCatalogTarget -- the resolver-bridge shape this story's resolveCustomer/resolveItem mirror"
+    - path: apps/reference-storefront/lib/services.ts
+      purpose: "The real env-var-branch wiring pattern (Stripe/Printful/Printify/Shippo) this story's QuickBooks branch must copy exactly"
