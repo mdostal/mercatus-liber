@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/webhooks",
+  "version": "0.1.0",
+  "description": "Outbound webhook delivery for the event bus (epic outbound-webhook-event-delivery). @mercatus-liber/core's EventBus (packages/core/src/event-bus.ts) is purely in-process -- there was zero mechanism for an external consumer (Zapier/Make/n8n, a merchant's own backend) to register a URL and receive a real HTTP POST when a subsystem publishes an event. This package extends the bus, it doesn't replace it: a WebhookDeliveryService subscribes to a known set of real event names on an injected EventBus and fans each matching publish out to every active WebhookSubscription registered for that event type, as a real HTTP POST with an HMAC-SHA256 signature (mirroring adapter-printify's verifyPrintifySignature's exact `sha256={hex}`-over-the-raw-body convention, applied outbound) in the `x-mercatus-liber-signature` header, real bounded retry/backoff on delivery failure, and a durable delivery log. Depends on @mercatus-liber/core only (EventBus, referenced structurally). A durable (Postgres) WebhookSubscriptionStore/WebhookDeliveryLogStore pair lives in @mercatus-liber/adapter-postgres (webhooks.ts), same split as every other subsystem's in-memory-default/Postgres-second-adapter pattern.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}

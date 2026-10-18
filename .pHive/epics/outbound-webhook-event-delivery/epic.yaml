@@ -1,0 +1,13 @@
+name: outbound-webhook-event-delivery
+title: Real outbound HTTP webhook delivery for the in-process event bus
+methodology: classic
+stories:
+  - id: whk-01-webhooks-package-core
+    title: New @mercatus-liber/webhooks package -- subscriptions, signed delivery, retry/backoff, delivery log, tests against a real local HTTP server
+    depends_on: []
+  - id: whk-02-postgres-persistence
+    title: Postgres-backed WebhookSubscriptionStore/WebhookDeliveryLogStore in @mercatus-liber/adapter-postgres
+    depends_on: [whk-01-webhooks-package-core]
+  - id: whk-03-closeout
+    title: README disclosure pass, full monorepo check, branch push (no merge -- orchestrator owns master/backlog)
+    depends_on: [whk-02-postgres-persistence]

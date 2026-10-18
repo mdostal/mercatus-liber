@@ -1,0 +1,59 @@
+id: whk-02-postgres-persistence
+epic: outbound-webhook-event-delivery
+title: Postgres-backed WebhookSubscriptionStore/WebhookDeliveryLogStore in @mercatus-liber/adapter-postgres
+status: done
+complexity: low
+methodology: classic
+depends_on: [whk-01-webhooks-package-core]
+
+description: |
+  Read `packages/adapter-postgres/src/advertising.ts` and `fulfillment-routing.ts` in full
+  first -- this package's established convention is one self-contained file per subsystem,
+  its own local DDL (never edited into the shared `schema.ts`), idempotent `CREATE TABLE IF NOT
+  EXISTS`, exported from `src/index.ts` alongside every other subsystem's factory.
+
+  Add `src/webhooks.ts`: `createPostgresWebhookSubscriptionStore`/
+  `createPostgresWebhookDeliveryLogStore`, implementing whk-01's
+  `WebhookSubscriptionStore`/`WebhookDeliveryLogStore` interfaces exactly, with the same
+  get/list/save/delete (subscriptions) and record/listForSubscription (delivery log) round-trip
+  behavior the in-memory reference implementations already have. `eventTypes` (a string array)
+  maps to a JSONB column per this package's existing JSONB-for-structured-fields convention.
+  Add `@mercatus-liber/webhooks` to this package's `package.json` dependencies and
+  `tsconfig.json` references, and export the two new factories from `src/index.ts`.
+
+  Real tests: this package's own established "local fake pg.Pool double recognizing the fixed
+  set of SQL statements this file issues" convention (read `test/advertising.test.ts` as the
+  structural precedent) -- not a live Postgres instance (none exists in this environment, same
+  disclosed gap every other subsystem in this package already carries). Cover: save/get
+  round-trip (including multiple eventTypes), list with/without the active and eventType
+  filters, delete, and the delivery log's record/listForSubscription round-trip including
+  ordering and isolation between subscriptions.
+
+acceptance_criteria:
+  - "Given a WebhookSubscription saved via createPostgresWebhookSubscriptionStore, when retrieved by id, then every field (including eventTypes, a JSONB array) round-trips exactly"
+  - "Given list({ active }) and list({ eventType }) filters, when called, then each filters correctly and independently against the fake pool's real stored rows"
+  - "Given several delivery-log entries recorded for different subscriptions, when listForSubscription is called for one of them, then only that subscription's entries are returned, in attempted-order"
+  - "Given the full monorepo check, when run fresh (not cached), then it's clean"
+
+steps:
+  - id: implement
+    description: Add src/webhooks.ts, wire package.json/tsconfig.json/index.ts.
+    agent: developer
+  - id: test
+    description: Fake-pg.Pool-backed tests mirroring advertising.test.ts's structure.
+    agent: tester
+    depends_on: [implement]
+  - id: integrate
+    description: Commit to feat/outbound-webhook-event-delivery.
+    agent: developer
+    depends_on: [test]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/adapter-postgres/src/advertising.ts
+      purpose: "The real structural precedent -- CampaignRepository's Postgres implementation, JSONB-array convention"
+    - path: packages/adapter-postgres/test/advertising.test.ts
+      purpose: "The real fake-pg.Pool test-double convention to mirror"
+    - path: packages/webhooks/src/types.ts
+      purpose: "The exact interfaces this file has to implement"

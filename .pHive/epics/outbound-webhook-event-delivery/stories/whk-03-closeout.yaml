@@ -1,0 +1,49 @@
+id: whk-03-closeout
+epic: outbound-webhook-event-delivery
+title: README disclosure pass, full monorepo check, branch push (no merge -- orchestrator owns master/backlog)
+status: done
+complexity: low
+methodology: classic
+depends_on: [whk-02-postgres-persistence]
+
+description: |
+  Write `packages/webhooks/README.md`: what the package does, the exact signature/header
+  convention a receiver needs to verify delivery, and an honest "what's tested vs. what isn't"
+  section -- real local-HTTP-server coverage vs. what would need a real external endpoint (and a
+  real Postgres instance) to prove end-to-end. Disclose the real design tradeoff named in
+  design-discussion.md §4 (no wildcard subscribe on EventBus; synchronous-per-publish meaning a
+  slow receiver's retries can delay the triggering request) plainly, not silently.
+
+  Run `pnpm turbo run typecheck test build --force` fresh (not cached) across the whole
+  monorepo and confirm it's clean.
+
+  This epic's own process is different from most prior epics in this backlog: do NOT merge to
+  `master` and do NOT push to `master`. Commit everything on `feat/outbound-webhook-event-delivery`
+  and push only that branch to origin. Do NOT edit `.pHive/planning/epic-backlog.md` -- the
+  orchestrator adds the backlog row centrally after reviewing this branch (other agents are
+  working other epics in parallel in their own isolated worktrees against the same backlog
+  file, which is exactly the real git-collision hazard this convention exists to avoid).
+
+acceptance_criteria:
+  - "Given packages/webhooks/README.md, when read, then it discloses exactly what's tested against a real local HTTP server vs. what would need a real external endpoint/real Postgres to prove end-to-end"
+  - "Given `pnpm turbo run typecheck test build --force`, when run fresh, then every task is clean with zero failures"
+  - "Given the finished work, when committed, then it's on feat/outbound-webhook-event-delivery, pushed to origin, with master and .pHive/planning/epic-backlog.md untouched"
+
+steps:
+  - id: docs
+    description: Write the package README's full disclosure section.
+    agent: developer
+  - id: verify
+    description: Full fresh monorepo check.
+    agent: tester
+    depends_on: [docs]
+  - id: integrate
+    description: Commit, push feat/outbound-webhook-event-delivery to origin only.
+    agent: developer
+    depends_on: [verify]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/webhooks/README.md
+      purpose: "The disclosure target"

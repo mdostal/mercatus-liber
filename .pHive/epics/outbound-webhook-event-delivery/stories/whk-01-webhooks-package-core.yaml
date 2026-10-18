@@ -1,0 +1,85 @@
+id: whk-01-webhooks-package-core
+epic: outbound-webhook-event-delivery
+title: New @mercatus-liber/webhooks package -- subscriptions, signed delivery, retry/backoff, delivery log, tests against a real local HTTP server
+status: done
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Read `packages/core/src/event-bus.ts` in full before writing anything -- confirm the real
+  EventBus contract (publish/subscribe, no wildcard, synchronous-per-publish/best-effort
+  handler semantics) is still exactly this shape. Grep every real `events.publish(...)` call
+  site across `packages/` to get the real, current list of event names this repo fires today
+  (do not copy a pre-existing list from a doc that could have drifted) -- this becomes
+  `KNOWN_EVENT_TYPES`.
+
+  Build the new package: `WebhookSubscription`/`WebhookDeliveryLogEntry` types,
+  `WebhookSubscriptionStore`/`WebhookDeliveryLogStore` persistence interfaces mirroring
+  `@mercatus-liber/advertising`'s `CampaignRepository` (get/list/save) and
+  `@mercatus-liber/inventory`'s `InventoryAdapter` shape -- read both of those packages' real
+  source first, don't invent a new shape. In-memory default implementations of both stores
+  (Map-backed, structuredClone in/out, same convention as `createInMemoryCampaignRepository`).
+  `createWebhookSubscription`/`deactivateWebhookSubscription` for registering/disabling a
+  subscription.
+
+  Signing: read `packages/adapter-printify/src/webhook.ts`'s `verifyPrintifySignature` AND
+  `packages/adapter-printful/src/webhook.ts`'s `verifyPrintfulSignature` in full before writing
+  the signer -- both are real, already-shipped INBOUND verification schemes. Implement
+  `signWebhookPayload`/`verifyWebhookSignature` applying one of those two conventions outbound
+  (document which one and why in a code comment -- see this epic's design-discussion.md §2 for
+  the recommendation). Deliver the signature in a clearly-named header
+  (`x-mercatus-liber-signature`).
+
+  `createWebhookDeliveryService`: subscribes to every event type in `KNOWN_EVENT_TYPES` (or a
+  caller-supplied override) on the injected EventBus; on a real publish, looks up active
+  subscriptions matching that exact event type and delivers a real HTTP POST to each, signed,
+  with the real event payload. Real bounded retry/backoff (NOT infinite) on a non-2xx response
+  or a network error, logging every individual attempt (not just the final outcome) to the
+  injected WebhookDeliveryLogStore.
+
+  Real tests: spin up an actual `node:http` `createServer` on a real socket in the test (never a
+  live external endpoint, never a mocked fetch client) and prove directly against it: the
+  delivered signature verifies against the subscription's own secret over the exact raw body
+  sent; the payload shape is correct and carries the exact published data; a receiver that fails
+  N times then recovers is retried the right number of times with the configured backoff
+  actually invoked; a receiver that always fails is attempted exactly `maxAttempts` times, never
+  more; a subscription that never asked for the event type that fired receives zero requests.
+
+acceptance_criteria:
+  - "Given a real HTTP POST delivered by the service, when the receiver checks the x-mercatus-liber-signature header against the subscription's own secret and the exact raw body received, then it verifies"
+  - "Given a receiver that returns non-2xx N times then 2xx, when a matching event is published, then the delivery is retried up to a real, finite maxAttempts with backoff actually applied between attempts, and every attempt (not just the last) is recorded in the delivery log"
+  - "Given a receiver that always fails, when a matching event is published, then exactly maxAttempts HTTP requests are made -- never more"
+  - "Given two subscriptions registered for different event types, when one of those event types is published, then only the matching subscription receives an HTTP request"
+  - "Given the full package test suite, when run (`pnpm --filter @mercatus-liber/webhooks test`), then it passes against a real local http.createServer, never a live external endpoint"
+
+steps:
+  - id: research
+    description: Read event-bus.ts, grep every real events.publish call site, read both adapter-printify/adapter-printful webhook.ts files, read advertising/inventory's persistence-interface shape.
+    agent: developer
+  - id: implement
+    description: Build types.ts, in-memory-store.ts, signer.ts, subscriptions.ts, delivery.ts, index.ts.
+    agent: developer
+    depends_on: [research]
+  - id: test
+    description: Real tests against a real local node:http server proving signature, payload shape, retry/backoff, bounded-retry-ceiling, and event-type/active-subscription filtering.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the signature convention matches a real, already-shipped inbound scheme exactly, and that retries are genuinely bounded, not infinite.
+    agent: reviewer
+    depends_on: [test]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/core/src/event-bus.ts
+      purpose: "The real EventBus contract this package subscribes against -- no wildcard subscribe"
+    - path: packages/adapter-printify/src/webhook.ts
+      purpose: "verifyPrintifySignature -- the real inbound HMAC convention mirrored outbound"
+    - path: packages/adapter-printful/src/webhook.ts
+      purpose: "verifyPrintfulSignature -- the alternate real inbound convention, considered and not chosen (see design-discussion.md §2)"
+    - path: packages/advertising/src/types.ts
+      purpose: "CampaignRepository -- the persistence-interface shape to mirror"
+    - path: packages/inventory/src/subscriber.ts
+      purpose: "registerInventorySync -- the real precedent for 'a subscriber reacts to events it doesn't own'"
