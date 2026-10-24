@@ -39,11 +39,17 @@ name: Keep-alive (free-tier backends)
 #     that doesn't exist for this tier.
 on:
   schedule:
-    # 06:00 UTC daily -- comfortably inside Supabase's documented 7-day
-    # inactivity window with huge margin, and far enough from midnight UTC
-    # to avoid the thundering-herd scheduling delays GitHub's own docs warn
-    # busy cron minutes can have.
-    - cron: "0 6 * * *"
+    # Every 8 hours (06:00/14:00/22:00 UTC) -- tightened from the original
+    # once-daily cadence on 2026-10-24 once the demo stores started getting
+    # genuine outside traffic, so a cold/paused backend gets caught and
+    # revived well within a visitor's session rather than once a day. Still
+    # comfortably inside Supabase's documented 7-day inactivity window (3
+    # pings/day is overkill for "don't auto-pause," this is about latency
+    # for real visitors, not the pause threshold itself); the minute offset
+    # (:00, same as the original) is fine at this cadence -- GitHub's
+    # thundering-herd warning is about every job piling on the SAME busy
+    # minute across the whole platform, not about picking a rarer one.
+    - cron: "0 */8 * * *"
   workflow_dispatch: {}
 
 concurrency:
