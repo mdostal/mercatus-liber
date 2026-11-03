@@ -1,0 +1,53 @@
+id: pma-01-core-schema-and-catalog-service
+epic: product-media-attribution
+title: Product.videos/viewerUrl/license fields + catalog service pass-through
+status: pending
+complexity: medium
+methodology: classic
+depends_on: []
+
+description: |
+  Adds videos?: ProductVideo[], viewerUrl?: string, license?: string to
+  Product (packages/core/src/schema.ts), new ProductVideo interface, and
+  the matching optional fields on catalog's NewProductInput/UpdateProductInput
+  (packages/catalog/src/service.ts), following images?'s own precedent
+  exactly (same "...(input.X ? {X: input.X} : {})" spread idiom in
+  createProduct; updateProduct needs no change, its existing spread merge
+  already covers any new optional field).
+
+acceptance_criteria:
+  - "Given a Product created with no videos/viewerUrl/license, when read back, then none of the three keys are present at all (not undefined-valued keys, not empty arrays/strings) -- zero regression for every existing caller"
+  - "Given createProduct is called with videos/viewerUrl/license set, when the resulting Product is read back, then all three round-trip exactly"
+  - "Given updateProduct is called with a patch containing only license, when read back, then license is set and any pre-existing videos/viewerUrl are untouched"
+  - "Given packages/catalog's existing test suite, when run, then it still passes unchanged (these are additive fields, not a behavior change to anything existing)"
+
+steps:
+  - id: implement
+    description: Add the three fields + ProductVideo to core/schema.ts and catalog/service.ts per design-discussion.md §2.
+    agent: developer
+  - id: test
+    description: New unit tests in packages/catalog proving the four acceptance criteria above against the in-memory adapter; run the full existing suite (pnpm -w test or package-local) to confirm zero regression.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm no seed/demo data anywhere invents a license/video value for a real product -- these fields ship unused until a real caller sets them.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/product-media-schema.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/core/src/schema.ts
+      purpose: "Product.images' own doc comment -- the exact style/discipline to mirror for the three new fields"
+    - path: packages/catalog/src/service.ts
+      purpose: "createProduct's '...(input.images ? {images: input.images} : {})' idiom -- copy verbatim for each new field"
+
+files_to_modify:
+  - file: packages/core/src/schema.ts
+    change: "New ProductVideo interface; Product gains videos?/viewerUrl?/license?"
+  - file: packages/catalog/src/service.ts
+    change: "NewProductInput/UpdateProductInput gain the same three fields; createProduct spreads them in"

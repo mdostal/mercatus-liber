@@ -32,6 +32,18 @@ export interface ProductImage {
   alt: string;
 }
 
+/**
+ * A single product video (e.g. a demo or teardown video). Same "raw source
+ * reference, no provider delivery shape baked in" discipline as
+ * ProductImage.url -- a direct file URL or a host's embeddable page URL
+ * (YouTube, Vimeo, ...), left for a consumer to resolve/embed.
+ */
+export interface ProductVideo {
+  url: string;
+  /** Required, not optional -- same reasoning as ProductImage.alt: no honest default exists. */
+  title: string;
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -53,6 +65,30 @@ export interface Product {
    * further entries are additional gallery photos in display order.
    */
   images?: ProductImage[];
+  /**
+   * product-media-attribution epic: optional and additive, same zero-
+   * regression discipline as images? above -- absent for every product
+   * that predates this field or has no video. One-or-more, same
+   * cardinality as images (a demo video, a teardown video, ... may all
+   * apply to one product).
+   */
+  videos?: ProductVideo[];
+  /**
+   * product-media-attribution epic: optional and additive. A single
+   * canonical 3D-model-viewer URL for this product -- a raw source
+   * reference (a .glb/.gltf file, or any iframe-embeddable viewer page),
+   * same "no provider delivery shape baked in" discipline as
+   * ProductImage.url. Singular, not an array like images/videos -- nothing
+   * has asked for more than one 3D model per product.
+   */
+  viewerUrl?: string;
+  /**
+   * product-media-attribution epic: optional and additive. A short,
+   * free-text license/attribution line (e.g. "Self-modeled, owned --
+   * OSS/CC-BY", "MakerWorld, personal use only"). Never defaulted/invented
+   * by any seed or adapter -- absent until a real caller sets it.
+   */
+  license?: string;
 }
 
 export interface Sku {

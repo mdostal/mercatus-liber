@@ -91,6 +91,52 @@ describe("catalog service", () => {
     expect(emitted).toContainEqual({ event: "catalog.product.archived", payload: { id: product.id } });
   });
 
+  it("omits videos/viewerUrl/license entirely when not set -- zero regression for every existing caller", async () => {
+    const product = await catalog.createProduct({
+      slug: "no-media",
+      title: "No Media",
+      description: "d",
+      identifyingAttributeKeys: [],
+    });
+    expect(product.videos).toBeUndefined();
+    expect(product.viewerUrl).toBeUndefined();
+    expect(product.license).toBeUndefined();
+    expect("videos" in product).toBe(false);
+    expect("viewerUrl" in product).toBe(false);
+    expect("license" in product).toBe(false);
+  });
+
+  it("round-trips videos/viewerUrl/license through createProduct", async () => {
+    const product = await catalog.createProduct({
+      slug: "school-caddy",
+      title: "School Supply Caddy",
+      description: "d",
+      identifyingAttributeKeys: [],
+      videos: [{ url: "https://example.com/teardown.mp4", title: "Teardown" }],
+      viewerUrl: "https://example.com/caddy.glb",
+      license: "Self-modeled, owned -- OSS/CC-BY",
+    });
+    const found = await catalog.getProduct(product.id);
+    expect(found?.videos).toEqual([{ url: "https://example.com/teardown.mp4", title: "Teardown" }]);
+    expect(found?.viewerUrl).toBe("https://example.com/caddy.glb");
+    expect(found?.license).toBe("Self-modeled, owned -- OSS/CC-BY");
+  });
+
+  it("updateProduct patches license without disturbing pre-existing videos/viewerUrl", async () => {
+    const product = await catalog.createProduct({
+      slug: "art-box",
+      title: "School Art Box",
+      description: "d",
+      identifyingAttributeKeys: [],
+      viewerUrl: "https://example.com/art-box.glb",
+      videos: [{ url: "https://example.com/art-box-demo.mp4", title: "Demo" }],
+    });
+    const updated = await catalog.updateProduct(product.id, { license: "MakerWorld, personal use only" });
+    expect(updated.license).toBe("MakerWorld, personal use only");
+    expect(updated.viewerUrl).toBe("https://example.com/art-box.glb");
+    expect(updated.videos).toEqual([{ url: "https://example.com/art-box-demo.mp4", title: "Demo" }]);
+  });
+
   it("publishes a draft product to active", async () => {
     const product = await catalog.createProduct({
       slug: "p3",
