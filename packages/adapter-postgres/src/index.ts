@@ -22,6 +22,7 @@ export { createPostgresPromotionRepository } from "./promotions.js";
 export { createPostgresReviewRepository } from "./reviews.js";
 export { createPostgresStorefrontViewRepository } from "./storefront-views.js";
 export { createPostgresBundleRepository } from "./bundles.js";
+export { createPostgresGoalRepository, createPostgresGoalVoteRepository } from "./community-goals.js";
 export { createPostgresRecommendationRepository } from "./recommendations.js";
 export { createPostgresCampaignRepository } from "./advertising.js";
 export { createPostgresServiceAreaRepository, createPostgresServiceAreaProductRepository } from "./service-areas.js";

@@ -397,6 +397,9 @@ importers:
       '@mercatus-liber/checkout-orders':
         specifier: workspace:*
         version: link:../checkout-orders
+      '@mercatus-liber/community-goals':
+        specifier: workspace:*
+        version: link:../community-goals
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../core
