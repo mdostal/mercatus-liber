@@ -10,6 +10,7 @@
     { "path": "../advertising" },
     { "path": "../bundles" },
     { "path": "../cart" },
+    { "path": "../community-goals" },
     { "path": "../catalog" },
     { "path": "../checkout-orders" },
     { "path": "../core" },

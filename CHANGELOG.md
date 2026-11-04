@@ -707,3 +707,17 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   overflow UI. Carries zero rendering/animation concern of its own by design. Ships in-memory
   only at v1 (same posture `@mercatus-liber/bundles` took initially); a durable adapter is a
   separable follow-up.
+
+## [0.36.0] - 2026-11-03
+
+### Added
+
+- **Community Goals: durable Postgres adapter** (`@mercatus-liber/adapter-postgres`):
+  `createPostgresGoalRepository`/`createPostgresGoalVoteRepository`, same "own schema-init,
+  no shared-file edits" pattern `bundles.ts`/`orders.ts` already established.
+  `GoalVoteRepository.recordIfNew` is backed by a real `PRIMARY KEY (goal_id, voter_key)`
+  constraint via `INSERT ... ON CONFLICT DO NOTHING RETURNING goal_id` -- genuinely atomic
+  under concurrency (Postgres enforces it, not application code), verified with a racing-
+  calls probe against the real built package export, not just sequential tests. Closes
+  `docs/subsystems/26-community-goals.md`'s open question 1. Not yet wired into any live
+  demo's `services.ts` -- no deploy triggered.

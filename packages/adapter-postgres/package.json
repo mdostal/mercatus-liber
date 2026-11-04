@@ -26,6 +26,7 @@
     "@mercatus-liber/advertising": "workspace:*",
     "@mercatus-liber/bundles": "workspace:*",
     "@mercatus-liber/cart": "workspace:*",
+    "@mercatus-liber/community-goals": "workspace:*",
     "@mercatus-liber/catalog": "workspace:*",
     "@mercatus-liber/checkout-orders": "workspace:*",
     "@mercatus-liber/core": "workspace:*",

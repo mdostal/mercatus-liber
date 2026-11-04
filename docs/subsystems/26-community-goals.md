@@ -65,9 +65,13 @@ every one of those must return zero hits; community-goals is consumed only by
 wires a UI on top of it.
 
 ## Open questions
-1. Durable persistence (sqlite/postgres `GoalVoteRepository`, with a real unique constraint
-   on `(goalId, voterKey)`) — v1 ships in-memory only; see "Explicitly NOT this subsystem's
-   job" above.
+1. ~~Durable persistence~~ — **resolved**: `@mercatus-liber/adapter-postgres` now ships
+   `createPostgresGoalRepository`/`createPostgresGoalVoteRepository`
+   (`packages/adapter-postgres/src/community-goals.ts`), with `recordIfNew` backed by a real
+   `PRIMARY KEY (goal_id, voter_key)` constraint via `INSERT ... ON CONFLICT DO NOTHING
+   RETURNING goal_id` — genuinely atomic under concurrency, verified with a racing-calls
+   probe, not just sequential tests. Not yet wired into `apps/reference-storefront/lib/
+   services.ts` (no live demo persists goals yet) — that's the next natural story.
 2. Rate-limiting/abuse resistance for anonymous `voterKey`s (e.g. a bot casting votes from
    many cookie values) is intentionally out of scope here — that's a storefront-layer
    concern (e.g. a CAPTCHA or IP-based throttle in front of the vote endpoint), not something
