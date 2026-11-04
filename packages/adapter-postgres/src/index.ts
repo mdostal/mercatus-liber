@@ -50,6 +50,7 @@ interface SkuRow {
   price_amount: number;
   price_currency: string;
   status: string;
+  images: Sku["images"] | null; // JSONB, sku-images epic
 }
 
 interface AttributeRow {
@@ -81,6 +82,7 @@ function rowToSku(row: SkuRow): Sku {
     identifyingAttributes: row.identifying_attributes,
     price: { amount: row.price_amount, currency: row.price_currency },
     status: row.status as ProductStatus,
+    ...(row.images ? { images: row.images } : {}),
   };
 }
 
@@ -168,14 +170,15 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
     },
     async save(sku: Sku): Promise<void> {
       await pool.query(
-        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status, images)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (id) DO UPDATE SET
            product_id = EXCLUDED.product_id,
            identifying_attributes = EXCLUDED.identifying_attributes,
            price_amount = EXCLUDED.price_amount,
            price_currency = EXCLUDED.price_currency,
-           status = EXCLUDED.status`,
+           status = EXCLUDED.status,
+           images = EXCLUDED.images`,
         [
           sku.id,
           sku.productId,
@@ -183,6 +186,7 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
           sku.price.amount,
           sku.price.currency,
           sku.status,
+          sku.images ? JSON.stringify(sku.images) : null,
         ],
       );
     },

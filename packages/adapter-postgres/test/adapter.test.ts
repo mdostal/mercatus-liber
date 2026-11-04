@@ -140,6 +140,19 @@ describe("createPostgresAdapter", () => {
     it("returns null for a missing SKU", async () => {
       expect(await adapter.skus.get("missing")).toBeNull();
     });
+
+    it("sku-images epic: round-trips a SKU's own images", async () => {
+      const withImages: Sku = { ...sku, id: "s3", images: [{ url: "https://example.com/red.jpg", alt: "Red lens" }] };
+      await adapter.skus.save(withImages);
+      expect(await adapter.skus.get("s3")).toEqual(withImages);
+    });
+
+    it("sku-images epic: a SKU saved without images omits the field entirely, not null/empty array", async () => {
+      await adapter.skus.save(sku);
+      const found = await adapter.skus.get("s1");
+      expect(found?.images).toBeUndefined();
+      expect("images" in (found as object)).toBe(false);
+    });
   });
 
   describe("attributes", () => {
