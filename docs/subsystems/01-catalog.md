@@ -39,7 +39,9 @@ depend on (read-only), so its interface stability matters more than any other pa
 
 ## Open questions
 1. Draft/active/archived — is a fourth state needed for "active but hidden from search/nav but
-   directly linkable" (common for a soft-launch SKU)?
+   directly linkable" (common for a soft-launch SKU)? **Still open** -- not answered by the
+   sku-availability-status epic below, which solves a different problem (still listed/
+   visible, but not currently selectable), not this one (hidden from nav but linkable).
 2. Cartesian-product SKU generation for products with many identifying attributes can explode
    combinatorially — cap/guard needed, or leave it to the caller?
 3. Does a Product need a notion of "default SKU" (what a PDP shows before the shopper picks
@@ -56,3 +58,11 @@ depend on (read-only), so its interface stability matters more than any other pa
    `createSku`/`generateSkus`, no way to edit a SKU after creation at all). A PDP falls back
    to the product-level gallery when the active SKU has none of its own
    (`apps/reference-storefront`'s product page: `activeSku?.images ?? viewModel.product.images`).
+5. ~~No way to show a variant as discontinued/unavailable while still displaying it, or let a
+   shopper request a non-stocked option~~ -- **resolved** (sku-availability-status epic):
+   `Sku.availabilityStatus?: AvailabilityStatus` ("active"/"discontinued"/"request") plus
+   `availabilityNote?: string` -- see `docs/subsystems/00-core-schema.md`'s own open
+   question 4 for the full type contract (it lives in core, shared with
+   `@mercatus-liber/customization`'s palette/finish entities). `updateSku` (new in the
+   sku-images epic) is the write path -- `createSku`'s `NewSkuInput` also accepts both
+   fields directly at creation time.

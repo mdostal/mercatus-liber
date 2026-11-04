@@ -153,6 +153,20 @@ describe("createPostgresAdapter", () => {
       expect(found?.images).toBeUndefined();
       expect("images" in (found as object)).toBe(false);
     });
+
+    it("sku-availability-status epic: round-trips availabilityStatus/availabilityNote", async () => {
+      const discontinued: Sku = { ...sku, id: "s4", availabilityStatus: "discontinued", availabilityNote: "Out of filament." };
+      await adapter.skus.save(discontinued);
+      expect(await adapter.skus.get("s4")).toEqual(discontinued);
+    });
+
+    it("sku-availability-status epic: a SKU saved without it omits both fields entirely, not null", async () => {
+      await adapter.skus.save(sku);
+      const found = await adapter.skus.get("s1");
+      expect(found?.availabilityStatus).toBeUndefined();
+      expect("availabilityStatus" in (found as object)).toBe(false);
+      expect("availabilityNote" in (found as object)).toBe(false);
+    });
   });
 
   describe("attributes", () => {

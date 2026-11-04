@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import type {
+  AvailabilityStatus,
   CatalogPersistenceAdapter,
   Product,
   ProductAttribute,
@@ -43,6 +44,8 @@ interface SkuRow {
   price_currency: string;
   status: string;
   images: string | null;
+  availability_status: string | null;
+  availability_note: string | null;
 }
 
 interface AttributeRow {
@@ -75,6 +78,8 @@ function rowToSku(row: SkuRow): Sku {
     price: { amount: row.price_amount, currency: row.price_currency },
     status: row.status as ProductStatus,
     ...(row.images ? { images: JSON.parse(row.images) as ProductImage[] } : {}),
+    ...(row.availability_status ? { availabilityStatus: row.availability_status as AvailabilityStatus } : {}),
+    ...(row.availability_note ? { availabilityNote: row.availability_note } : {}),
   };
 }
 
@@ -136,6 +141,19 @@ export function openSqliteDb(path: string): Database.Database {
   // Sku's new images field -- see Sku.images's own doc comment.
   try {
     db.exec("ALTER TABLE skus ADD COLUMN images TEXT");
+  } catch {
+    // already has the column.
+  }
+  // sku-availability-status epic: same defensive best-effort ALTER, same
+  // reason, for Sku's two new fields -- see Sku.availabilityStatus's own
+  // doc comment.
+  try {
+    db.exec("ALTER TABLE skus ADD COLUMN availability_status TEXT");
+  } catch {
+    // already has the column.
+  }
+  try {
+    db.exec("ALTER TABLE skus ADD COLUMN availability_note TEXT");
   } catch {
     // already has the column.
   }
@@ -229,15 +247,17 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
     },
     async save(sku: Sku): Promise<void> {
       db.prepare(
-        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status, images)
-         VALUES (@id, @productId, @identifyingAttributes, @priceAmount, @priceCurrency, @status, @images)
+        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status, images, availability_status, availability_note)
+         VALUES (@id, @productId, @identifyingAttributes, @priceAmount, @priceCurrency, @status, @images, @availabilityStatus, @availabilityNote)
          ON CONFLICT(id) DO UPDATE SET
            product_id = excluded.product_id,
            identifying_attributes = excluded.identifying_attributes,
            price_amount = excluded.price_amount,
            price_currency = excluded.price_currency,
            status = excluded.status,
-           images = excluded.images`,
+           images = excluded.images,
+           availability_status = excluded.availability_status,
+           availability_note = excluded.availability_note`,
       ).run({
         id: sku.id,
         productId: sku.productId,
@@ -246,6 +266,8 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
         priceCurrency: sku.price.currency,
         status: sku.status,
         images: sku.images ? JSON.stringify(sku.images) : null,
+        availabilityStatus: sku.availabilityStatus ?? null,
+        availabilityNote: sku.availabilityNote ?? null,
       });
     },
   };

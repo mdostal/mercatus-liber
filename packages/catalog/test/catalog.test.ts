@@ -345,6 +345,53 @@ describe("catalog service", () => {
     });
   });
 
+  describe("sku-availability-status", () => {
+    it("createSku without availabilityStatus omits it entirely -- meaning active, zero regression for every pre-existing caller", async () => {
+      const product = await catalog.createProduct({ slug: "caddy1", title: "Caddy", description: "d", identifyingAttributeKeys: ["color"] });
+      const sku = await catalog.createSku({ productId: product.id, identifyingAttributes: [{ key: "color", value: "blue" }], price: { amount: 1999, currency: "USD" } });
+      expect(sku.availabilityStatus).toBeUndefined();
+      expect(sku.availabilityNote).toBeUndefined();
+    });
+
+    it("createSku with availabilityStatus/availabilityNote round-trips them", async () => {
+      const product = await catalog.createProduct({ slug: "caddy2", title: "Caddy", description: "d", identifyingAttributeKeys: ["color"] });
+      const sku = await catalog.createSku({
+        productId: product.id,
+        identifyingAttributes: [{ key: "color", value: "brown" }],
+        price: { amount: 1999, currency: "USD" },
+        availabilityStatus: "discontinued",
+        availabilityNote: "Out of this filament, no restock planned.",
+      });
+      expect(sku.availabilityStatus).toBe("discontinued");
+      expect(sku.availabilityNote).toBe("Out of this filament, no restock planned.");
+    });
+
+    it("updateSku can move a SKU from discontinued to request (and back to active)", async () => {
+      const product = await catalog.createProduct({ slug: "caddy3", title: "Caddy", description: "d", identifyingAttributeKeys: ["color"] });
+      const sku = await catalog.createSku({
+        productId: product.id,
+        identifyingAttributes: [{ key: "color", value: "green" }],
+        price: { amount: 1999, currency: "USD" },
+        availabilityStatus: "discontinued",
+      });
+      const toRequest = await catalog.updateSku(sku.id, { availabilityStatus: "request", availabilityNote: "Special order, 2-3 week lead time." });
+      expect(toRequest?.availabilityStatus).toBe("request");
+      expect(toRequest?.availabilityNote).toBe("Special order, 2-3 week lead time.");
+    });
+
+    it("🔍 a Sku's own ProductStatus (status) and AvailabilityStatus are independent axes -- a published/active Sku can still be discontinued", async () => {
+      const product = await catalog.createProduct({ slug: "caddy4", title: "Caddy", description: "d", identifyingAttributeKeys: ["color"] });
+      const sku = await catalog.createSku({
+        productId: product.id,
+        identifyingAttributes: [{ key: "color", value: "yellow" }],
+        price: { amount: 1999, currency: "USD" },
+        availabilityStatus: "discontinued",
+      });
+      expect(sku.status).toBe("active");
+      expect(sku.availabilityStatus).toBe("discontinued");
+    });
+  });
+
   describe("full attribute map", () => {
     it("sets, lists, and removes product attributes independently of identifying attributes", async () => {
       const product = await catalog.createProduct({

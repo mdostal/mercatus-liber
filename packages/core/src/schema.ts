@@ -16,6 +16,35 @@ export interface IdentifyingAttribute {
 export type ProductStatus = "draft" | "active" | "archived";
 
 /**
+ * sku-availability-status epic: whether a specific purchasable unit (a Sku
+ * today; shared here in core, not forked per-package, since
+ * @mercatus-liber/customization's own PaletteColor/FinishTier need the
+ * identical three-state concept for the same reason) can currently be
+ * selected. Deliberately NOT the same concept as ProductStatus
+ * (draft/active/archived) -- that's a catalog publishing-workflow state
+ * ("is this listed at all"); AvailabilityStatus is "can a shopper pick
+ * this specific thing right now," which an `active` (published) Sku can
+ * independently be any of:
+ * - "active" (the default -- a missing/undefined value means this, so
+ *   every pre-existing Sku that predates this field needs no migration):
+ *   offered normally.
+ * - "discontinued": no longer offered -- a consumer must show it grayed
+ *   out and NOT selectable (never simply hidden; a returning buyer who
+ *   bought it before should still see it existed and why it's gone, not
+ *   get a silent 404-shaped gap in a product's option list).
+ * - "request": not currently stocked, but a shopper can still select it
+ *   "on request" -- a consumer must capture that request with the order
+ *   (e.g. a flag/note on the resulting OrderLineItem) rather than
+ *   silently treating it the same as a normal in-stock selection.
+ *
+ * Ported from a real, live reference implementation (dostal-3d-printing's
+ * color-regions.json manifest v2 and its reference editor), not invented
+ * from scratch -- the exact three-state vocabulary and semantics above
+ * are copied from that manifest's own `statuses`/`rules.status` blocks.
+ */
+export type AvailabilityStatus = "active" | "discontinued" | "request";
+
+/**
  * A single product photo. `url` is the raw source reference (an external
  * URL, a CDN asset path, whatever the merchant's real image host uses) --
  * this schema deliberately does NOT bake in any provider's own delivery/
@@ -112,6 +141,19 @@ export interface Sku {
    * Product.images[0].
    */
   images?: ProductImage[];
+  /**
+   * sku-availability-status epic: optional and additive, same zero-
+   * regression discipline as images above -- absent (meaning "active")
+   * for every SKU that predates this field. See AvailabilityStatus's own
+   * doc comment for the full three-state contract. Deliberately separate
+   * from `status` (ProductStatus) above -- a Sku can be ProductStatus
+   * "active" (published, listed) while its AvailabilityStatus is
+   * "discontinued" or "request" at the same time; the two axes are
+   * independent.
+   */
+  availabilityStatus?: AvailabilityStatus;
+  /** Shown to the shopper alongside a non-"active" availabilityStatus -- e.g. "Out of this filament until next restock." Never defaulted/invented; absent until a real caller sets it. */
+  availabilityNote?: string;
 }
 
 export interface Money {

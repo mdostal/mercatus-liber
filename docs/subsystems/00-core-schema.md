@@ -136,3 +136,13 @@ interface EventBus {
    or stay strictly scalar/array-of-scalar?
 3. Event bus delivery guarantees (at-least-once vs. best-effort) for the default in-process
    adapter — matters once inventory/notifications depend on events firing reliably.
+4. ~~A Sku has no concept of "still listed but can't currently be selected"~~ — **resolved**
+   (sku-availability-status epic): `Sku.availabilityStatus?: AvailabilityStatus` ("active" |
+   "discontinued" | "request", missing means active) plus `availabilityNote?: string`.
+   Deliberately a SEPARATE axis from `Sku.status` (`ProductStatus`) above -- a published/
+   listed Sku can independently be discontinued (shown grayed out, not selectable) or
+   request-only (selectable "on request," the request captured with the order) without
+   changing its catalog publishing state at all. Ported from a real, live reference
+   implementation (dostal-3d-printing's color-regions.json manifest v2), not invented --
+   `@mercatus-liber/customization`'s own `PaletteColor`/`FinishTier` reuse this exact shared
+   type for the identical three-state concept, rather than each subsystem forking its own.
