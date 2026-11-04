@@ -47,7 +47,7 @@ function createFakeCommunityGoalsPool(): FakePool {
         return { rows: [...goals.values()] as T[] };
       }
       if (sql.startsWith("INSERT INTO goals")) {
-        const [id, slug, title, description, targetCount, bonusCount, voteCount, demoSlug, createdAt] = values as [
+        const [id, slug, title, description, targetCount, bonusCount, voteCount, enabled, demoSlug, createdAt] = values as [
           string,
           string,
           string,
@@ -55,6 +55,7 @@ function createFakeCommunityGoalsPool(): FakePool {
           number,
           number | null,
           number,
+          boolean,
           string | null,
           string,
         ];
@@ -66,6 +67,7 @@ function createFakeCommunityGoalsPool(): FakePool {
           target_count: targetCount,
           bonus_count: bonusCount,
           vote_count: voteCount,
+          enabled,
           demo_slug: demoSlug,
           created_at: createdAt,
         });
@@ -113,6 +115,7 @@ describe("createPostgresGoalRepository", () => {
     targetCount: 1000,
     bonusCount: 2000,
     voteCount: 0,
+    enabled: true,
     createdAt: "2026-11-04T00:00:00.000Z",
   };
 
@@ -127,11 +130,16 @@ describe("createPostgresGoalRepository", () => {
   });
 
   it("round-trips a goal with no bonusCount/demoSlug -- omitted, not stored as null-ish values on the typed object", async () => {
-    const plain: Goal = { id: "g2", slug: "plain", title: "Plain", description: "", targetCount: 10, voteCount: 0, createdAt: "now" };
+    const plain: Goal = { id: "g2", slug: "plain", title: "Plain", description: "", targetCount: 10, voteCount: 0, enabled: true, createdAt: "now" };
     await repo.save(plain);
     const found = await repo.get("g2");
     expect(found?.bonusCount).toBeUndefined();
     expect(found?.demoSlug).toBeUndefined();
+  });
+
+  it("round-trips enabled: false (not just the true default)", async () => {
+    await repo.save({ ...goal, id: "g3", slug: "disabled-goal", enabled: false });
+    expect((await repo.get("g3"))?.enabled).toBe(false);
   });
 
   it("list filters by demoSlug the same way bundles/categories/pages do", async () => {

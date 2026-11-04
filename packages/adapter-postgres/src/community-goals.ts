@@ -22,9 +22,15 @@ CREATE TABLE IF NOT EXISTS goals (
   target_count INTEGER NOT NULL,
   bonus_count INTEGER,
   vote_count INTEGER NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
   demo_slug TEXT,
   created_at TEXT NOT NULL
 );
+-- enabled was added after this table's first release (PR #5) -- ADD COLUMN
+-- IF NOT EXISTS is safe against any already-created table missing it,
+-- same ALTER-after-CREATE discipline bundles.ts's own demo_slug addition
+-- and the product-media-attribution migration-safety work both established.
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE;
 CREATE INDEX IF NOT EXISTS idx_goals_demo_slug ON goals(demo_slug);
 
 CREATE TABLE IF NOT EXISTS goal_votes (
@@ -43,6 +49,7 @@ interface GoalRow {
   target_count: number;
   bonus_count: number | null;
   vote_count: number;
+  enabled: boolean;
   demo_slug: string | null;
   created_at: string;
 }
@@ -56,6 +63,7 @@ function rowToGoal(row: GoalRow): Goal {
     targetCount: row.target_count,
     ...(row.bonus_count !== null ? { bonusCount: row.bonus_count } : {}),
     voteCount: row.vote_count,
+    enabled: row.enabled,
     ...(row.demo_slug ? { demoSlug: row.demo_slug } : {}),
     createdAt: row.created_at,
   };
@@ -89,8 +97,8 @@ export function createPostgresGoalRepository(pool: Pool): GoalRepository {
     async save(goal: Goal): Promise<void> {
       await schemaReady;
       await pool.query(
-        `INSERT INTO goals (id, slug, title, description, target_count, bonus_count, vote_count, demo_slug, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO goals (id, slug, title, description, target_count, bonus_count, vote_count, enabled, demo_slug, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (id) DO UPDATE SET
            slug = EXCLUDED.slug,
            title = EXCLUDED.title,
@@ -98,9 +106,10 @@ export function createPostgresGoalRepository(pool: Pool): GoalRepository {
            target_count = EXCLUDED.target_count,
            bonus_count = EXCLUDED.bonus_count,
            vote_count = EXCLUDED.vote_count,
+           enabled = EXCLUDED.enabled,
            demo_slug = EXCLUDED.demo_slug,
            created_at = EXCLUDED.created_at`,
-        [goal.id, goal.slug, goal.title, goal.description, goal.targetCount, goal.bonusCount ?? null, goal.voteCount, goal.demoSlug ?? null, goal.createdAt],
+        [goal.id, goal.slug, goal.title, goal.description, goal.targetCount, goal.bonusCount ?? null, goal.voteCount, goal.enabled, goal.demoSlug ?? null, goal.createdAt],
       );
     },
   };

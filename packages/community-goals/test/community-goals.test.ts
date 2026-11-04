@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { computeGoalStatus } from "../src/status.js";
 import { createInMemoryGoalRepository, createInMemoryGoalVoteRepository } from "../src/in-memory-repository.js";
 import { createGoalsService, type GoalsService } from "../src/service.js";
-import { DuplicateGoalSlugError, InvalidGoalThresholdsError } from "../src/types.js";
+import { DuplicateGoalSlugError, GoalDisabledError, InvalidGoalThresholdsError } from "../src/types.js";
 
 describe("community-goals", () => {
   let service: GoalsService;
@@ -126,6 +126,44 @@ describe("community-goals", () => {
     });
   });
 
+  describe("enable/disable", () => {
+    it("a new goal is enabled by default", async () => {
+      const goal = await service.createGoal({ slug: "g", title: "G", description: "", targetCount: 10 });
+      expect(goal.enabled).toBe(true);
+    });
+
+    it("createGoal honors an explicit enabled: false", async () => {
+      const goal = await service.createGoal({ slug: "g", title: "G", description: "", targetCount: 10, enabled: false });
+      expect(goal.enabled).toBe(false);
+    });
+
+    it("disableGoal then enableGoal round-trips, and both return null for an unknown id", async () => {
+      const goal = await service.createGoal({ slug: "g", title: "G", description: "", targetCount: 10 });
+      const disabled = await service.disableGoal(goal.id);
+      expect(disabled?.enabled).toBe(false);
+      const reenabled = await service.enableGoal(goal.id);
+      expect(reenabled?.enabled).toBe(true);
+      expect(await service.disableGoal("nope")).toBeNull();
+      expect(await service.enableGoal("nope")).toBeNull();
+    });
+
+    it("castVote against a disabled goal throws GoalDisabledError and never counts the vote", async () => {
+      const goal = await service.createGoal({ slug: "g", title: "G", description: "", targetCount: 10 });
+      await service.disableGoal(goal.id);
+      await expect(service.castVote(goal.id, "voter-1")).rejects.toThrow(GoalDisabledError);
+      expect((await service.getGoal(goal.id))?.voteCount).toBe(0);
+    });
+
+    it("🔍 re-enabling a goal lets votes resume normally, including crossing a threshold it was close to before being disabled", async () => {
+      const goal = await service.createGoal({ slug: "g", title: "G", description: "", targetCount: 1 });
+      await service.disableGoal(goal.id);
+      await expect(service.castVote(goal.id, "voter-1")).rejects.toThrow(GoalDisabledError);
+      await service.enableGoal(goal.id);
+      const result = await service.castVote(goal.id, "voter-1");
+      expect(result?.crossedThreshold).toBe("target");
+    });
+  });
+
   describe("updateGoal", () => {
     it("merges fields but never lets input overwrite id/slug/voteCount/createdAt", async () => {
       const goal = await service.createGoal({ slug: "g", title: "Original", description: "", targetCount: 10 });
@@ -151,7 +189,7 @@ describe("community-goals", () => {
 
   describe("computeGoalStatus", () => {
     it("locked below target, unlocked at/above target, bonus-unlocked at/above bonus", () => {
-      const base = { id: "1", slug: "g", title: "G", description: "", targetCount: 1000, bonusCount: 2000, createdAt: "now" };
+      const base = { id: "1", slug: "g", title: "G", description: "", targetCount: 1000, bonusCount: 2000, enabled: true, createdAt: "now" };
       expect(computeGoalStatus({ ...base, voteCount: 500 }).status).toBe("locked");
       expect(computeGoalStatus({ ...base, voteCount: 1000 }).status).toBe("unlocked");
       expect(computeGoalStatus({ ...base, voteCount: 1500 }).status).toBe("unlocked");
@@ -159,7 +197,7 @@ describe("community-goals", () => {
     });
 
     it("progress fractions, including past-1.0 overflow for the liquid-container spill case", () => {
-      const base = { id: "1", slug: "g", title: "G", description: "", targetCount: 1000, bonusCount: 2000, createdAt: "now" };
+      const base = { id: "1", slug: "g", title: "G", description: "", targetCount: 1000, bonusCount: 2000, enabled: true, createdAt: "now" };
       const atHalf = computeGoalStatus({ ...base, voteCount: 500 });
       expect(atHalf.progressToTarget).toBeCloseTo(0.5);
       expect(atHalf.progressToBonus).toBeCloseTo(0.25);
@@ -170,7 +208,7 @@ describe("community-goals", () => {
     });
 
     it("🔍 progressToBonus is null, not NaN/Infinity, when the goal has no bonusCount", () => {
-      const status = computeGoalStatus({ id: "1", slug: "g", title: "G", description: "", targetCount: 100, voteCount: 50, createdAt: "now" });
+      const status = computeGoalStatus({ id: "1", slug: "g", title: "G", description: "", targetCount: 100, voteCount: 50, enabled: true, createdAt: "now" });
       expect(status.progressToBonus).toBeNull();
     });
   });
