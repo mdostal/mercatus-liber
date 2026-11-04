@@ -18,6 +18,16 @@ export interface PaletteColor {
   status?: AvailabilityStatus;
   /** Shown to the shopper alongside a non-"active" status -- e.g. "Out of this filament until next restock." */
   note?: string;
+  /**
+   * Additive money increment for choosing THIS color anywhere in a build
+   * -- a specialty/metallic filament that costs more regardless of which
+   * region it's applied to or how many regions use it. Counted once per
+   * customization even if the same color is used on multiple regions --
+   * see resolveCustomizationPriceDelta's own doc comment. Real business
+   * need (Mathew, shop owner): "some colors can cost more." Absent means
+   * no surcharge for this color. Never defaulted/invented.
+   */
+  priceDelta?: Money;
 }
 
 /**
@@ -105,6 +115,17 @@ export interface ColorRegion {
   allowedColorIds?: string[];
   /** Shown to the shopper when this region is restricted or locked -- e.g. "The LEDs shine through these, so they stay white." */
   why?: string;
+  /**
+   * Additive money increment for giving THIS region its own independent
+   * color choice -- charged once whenever the region is unlocked (not
+   * following a parent, not forced to a single whole-piece color) under
+   * the chosen finish, regardless of which color is picked. Real
+   * business need (Mathew, shop owner): "some other parts will cost
+   * more" -- breaking a part out as separately colorable/paintable is
+   * itself what costs extra, not just which color lands on it. Absent
+   * means no surcharge for this region. Never defaulted/invented.
+   */
+  priceDelta?: Money;
 }
 
 /**
@@ -145,6 +166,18 @@ export interface ProductCustomization {
    * global default" -- most products never need this.
    */
   finishPriceDeltas?: Record<string, Money>;
+  /**
+   * Additive money increment keyed by the distinct-color COUNT a build
+   * resolves to (see resolveColorCount) -- e.g. `{ "2": {...}, "3":
+   * {...} }` charges extra once a build uses 2 or 3 distinct colors.
+   * Real business need (Mathew, shop owner): "we'll charge more for the
+   * more color differentiations they put." A missing key at a given
+   * count means no surcharge at that count; the shop sets the real
+   * amounts and curve (flat, cliff, or per-step) -- this package never
+   * assumes linear pricing. Absent entirely means colorCount never
+   * affects price for this product.
+   */
+  colorCountPriceDeltas?: Record<string, Money>;
   /** Shown to the shopper for why this product's offered finishes are limited (e.g. "No one-color option: the coil diffusers must be white for the LEDs to shine through."). */
   why?: string;
 }

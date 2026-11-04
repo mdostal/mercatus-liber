@@ -16,6 +16,7 @@ export const REAL_PALETTE: PaletteColor[] = [
   { id: "green", label: "Green", hex: "#00AE42" },
   { id: "blue", label: "Blue", hex: "#1F5FD0" },
   { id: "brown", label: "Brown", hex: "#7A4A24" },
+  { id: "pink", label: "Pink", hex: "#F55A74", status: "request", note: "Arriving this week" },
 ];
 
 export const REAL_FINISHES: FinishTier[] = [
@@ -32,11 +33,20 @@ export function findFinish(id: string): FinishTier {
   return finish;
 }
 
-/** treasure-chest's real regions -- every region separable, no restrictions. */
+/**
+ * treasure-chest's real regions, as re-split by the 3D-printing side on
+ * 2026-11-04 ("break apart the chest so the straps and name are
+ * separate; the name plate and lock as well"): body/straps/plate/lock
+ * are each their own separable part; name and plate-border are non-
+ * separable, both parented to "plate".
+ */
 export const TREASURE_CHEST_REGIONS: ColorRegion[] = [
   { id: "body", label: "Chest", defaultHex: "#7A4A24", separable: true },
-  { id: "straps", label: "Straps and name", defaultHex: "#141414", separable: true },
-  { id: "plate", label: "Name plate and lock", defaultHex: "#F4D21F", separable: true },
+  { id: "straps", label: "Straps", defaultHex: "#141414", separable: true },
+  { id: "name", label: "Name", defaultHex: "#141414", separable: false, parentRegionId: "plate" },
+  { id: "plate-border", label: "Name plate border", defaultHex: "#141414", separable: false, parentRegionId: "plate" },
+  { id: "plate", label: "Name plate", defaultHex: "#F4D21F", separable: true },
+  { id: "lock", label: "Lock", defaultHex: "#F4D21F", separable: true },
 ];
 
 export const TREASURE_CHEST_CUSTOMIZATION: ProductCustomization = {
@@ -47,14 +57,16 @@ export const TREASURE_CHEST_CUSTOMIZATION: ProductCustomization = {
 };
 
 /**
- * stovetop-glow's real regions -- "diffusers" is non-separable (follows
- * "glass"), restricted to white only (allowedColorIds); "knob-pointers" is
- * non-separable (follows "knobs") with no restriction.
+ * stovetop-glow's real regions -- "coils" is non-separable (follows
+ * "glass"), restricted to white only (allowedColorIds); "rings" is
+ * non-separable (follows "glass") with no restriction; "knob-pointers"
+ * is non-separable (follows "knobs") with no restriction.
  */
 export const STOVETOP_GLOW_REGIONS: ColorRegion[] = [
   { id: "body", label: "Body", defaultHex: "#F4F4F2", separable: true },
   { id: "glass", label: "Cooktop", defaultHex: "#141414", separable: true },
-  { id: "diffusers", label: "Glowing coils", defaultHex: "#F4F4F2", separable: false, parentRegionId: "glass", allowedColorIds: ["white"], why: "The LEDs shine through these, so they stay white." },
+  { id: "coils", label: "Glowing coils", defaultHex: "#F4F4F2", separable: false, parentRegionId: "glass", allowedColorIds: ["white"], why: "The LEDs shine through these, so they stay white." },
+  { id: "rings", label: "Burner rings", defaultHex: "#F4F4F2", separable: false, parentRegionId: "glass" },
   { id: "knobs", label: "Knobs", defaultHex: "#141414", separable: true },
   { id: "knob-pointers", label: "Knob pointers", defaultHex: "#F4F4F2", separable: false, parentRegionId: "knobs" },
 ];

@@ -20,9 +20,10 @@ doing all of this... out of the box in mercatus liber."
 `ProductCustomization.productId` references a catalog `Product` by id only, the same
 "reference by id, never import the other package's types" discipline `@mercatus-liber/
 community-goals`/`@mercatus-liber/bundles` already draw. `resolveEffectiveColor`/
-`availableColorChoices`/`resolveFinishPriceDelta` are pure, I/O-free functions a storefront's
-own 3D-viewer/swatch UI calls directly — this package has no rendering/animation code of its
-own (see "Explicitly NOT this subsystem's job").
+`availableColorChoices`/`resolveFinishPriceDelta`/`resolveColorCount`/
+`resolveCustomizationPriceDelta` are pure, I/O-free functions a storefront's own 3D-viewer/
+swatch UI calls directly — this package has no rendering/animation code of its own (see
+"Explicitly NOT this subsystem's job").
 
 ## Responsibilities
 - `PaletteColor { id, label, hex, status?, note? }` — one shared palette across every product.
@@ -54,6 +55,25 @@ own (see "Explicitly NOT this subsystem's job").
   `ProductCustomizationRepository`), same posture `community-goals` and `bundles` each took
   initially — a durable adapter is a clearly-scoped follow-up once a real deployment needs
   these to survive a restart.
+- Pricing levers, all summable, none double-counting each other
+  (`resolveCustomizationPriceDelta`/`CustomizationService.getCustomizationPriceDelta`): the
+  finish tier's own delta (`resolveFinishPriceDelta`, shipped first); `PaletteColor.
+  priceDelta` for a specific color that costs more wherever it's used, charged once per
+  distinct color actually present in the build, not once per region it appears on;
+  `ColorRegion.priceDelta` for a specific part that costs more to give its own independent
+  color, charged once per region that actually took its own choice (never for a region that's
+  locked/inherits); `ProductCustomization.colorCountPriceDeltas`, keyed by the exact distinct-
+  color count a build resolves to (`resolveColorCount`/`CustomizationService.getColorCount`).
+  Direct response to the storefront owner's own instruction to the 3D-printing side: "some
+  colors can cost more, some other parts will cost more... we'll charge more for the more
+  color differentiations they put." `resolveColorCount` is reported by the reference editor
+  itself (the manifest's own `pricing.colors` note) and dedups by **palette id**, not by hex
+  — a resolved color's identity is the matching palette entry's id when one exists, else the
+  raw hex (for a free-picked color under ColorMode "any"). This is forward-compatible with a
+  proposed multi-color/blend filament shape (`kind: "multi"`, a representative `hex` plus a
+  `hexes` blend-stop list, floated by the 3D-printing side but not yet applied to the real
+  manifest) that could share its representative hex with an unrelated solid color — an
+  identity keyed on hex alone would wrongly merge two genuinely different choices.
 
 ## Availability status — how "discontinued" and "request" are the same mechanism
 Both halves of the storefront owner's ask ("a way to grey out options and discontinue... but

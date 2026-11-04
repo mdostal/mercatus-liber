@@ -121,3 +121,101 @@ export function validateSelectedColor(choices: RegionColorChoices, regionId: str
 export function resolveFinishPriceDelta(finish: FinishTier, customization: ProductCustomization): Money | undefined {
   return customization.finishPriceDeltas?.[finish.id] ?? finish.priceDelta;
 }
+
+/**
+ * A resolved hex's identity for counting/pricing purposes: the matching
+ * palette color's own `id` when one exists, else the raw (lowercased)
+ * hex itself -- for a free-picked color under ColorMode "any" that isn't
+ * in the palette at all. Identity is by palette id, not hex, because a
+ * future multi-color/blend filament (proposed by the 3D-printing side:
+ * `{ kind: "multi", hex: "<representative>", hexes: [...] }`) can share
+ * its representative `hex` with a different palette entry while still
+ * being a genuinely different choice (a different spool/slot) -- an
+ * identity keyed on hex alone would wrongly merge the two.
+ */
+function colorIdentity(palette: PaletteColor[], hex: string): string {
+  const match = palette.find((p) => p.hex.toLowerCase() === hex.toLowerCase());
+  return match ? match.id : hex.toLowerCase();
+}
+
+/**
+ * The number of DISTINCT colors a build actually resolves to, after
+ * finish rules are applied -- the real pricing lever Mathew (shop owner)
+ * wants ("we'll charge more for the more color differentiations they
+ * put"), reported by the reference editor as `colorCount`. ColorMode
+ * "single" always resolves to exactly 1 (the whole piece shares one
+ * color); otherwise every region's resolveEffectiveColor result is
+ * counted by colorIdentity, so parent-follows regions correctly collapse
+ * into their parent's one color instead of each counting separately.
+ */
+export function resolveColorCount(palette: PaletteColor[], regions: ColorRegion[], finish: FinishTier, selection: CustomizationSelection): number {
+  if (finish.colors === "single") return 1;
+  const identities = new Set<string>();
+  for (const region of regions) {
+    const hex = resolveEffectiveColor(regions, finish, selection, region.id);
+    identities.add(colorIdentity(palette, hex));
+  }
+  return identities.size;
+}
+
+/** Thrown when summing Money deltas that don't share one currency -- this package never silently mixes them. */
+export class MixedCurrencyError extends Error {
+  constructor(a: string, b: string) {
+    super(`Cannot sum price deltas in different currencies: ${a} and ${b}`);
+    this.name = "MixedCurrencyError";
+  }
+}
+
+function sumMoneyDeltas(deltas: (Money | undefined)[]): Money | undefined {
+  const present = deltas.filter((d): d is Money => d !== undefined);
+  if (present.length === 0) return undefined;
+  const currency = present[0]!.currency;
+  let amount = 0;
+  for (const delta of present) {
+    if (delta.currency !== currency) throw new MixedCurrencyError(currency, delta.currency);
+    amount += delta.amount;
+  }
+  return { amount, currency };
+}
+
+/**
+ * The total additive price delta for one fully-resolved build -- sums
+ * every independent lever this package supports, none of which double-
+ * count the others:
+ * 1. resolveFinishPriceDelta -- the chosen finish tier's own cost.
+ * 2. Each DISTINCT color actually used (by colorIdentity, see
+ *    resolveColorCount) that itself carries a `PaletteColor.priceDelta`
+ *    -- counted once per distinct color, not once per region it's used
+ *    on ("some colors can cost more").
+ * 3. Each region that took its OWN independent choice (not locked --
+ *    see RegionColorChoices.locked) whose `ColorRegion.priceDelta` is
+ *    set -- counted once per such region regardless of which color
+ *    landed on it ("some other parts will cost more").
+ * 4. `customization.colorCountPriceDeltas[String(colorCount)]`, if the
+ *    product names a surcharge at this exact distinct-color count.
+ * Returns undefined (no price change) only when every lever above is
+ * absent for this build -- otherwise a real Money sum, never a silent
+ * partial total.
+ */
+export function resolveCustomizationPriceDelta(palette: PaletteColor[], finish: FinishTier, customization: ProductCustomization, selection: CustomizationSelection): Money | undefined {
+  const regions = customization.regions;
+  const deltas: (Money | undefined)[] = [resolveFinishPriceDelta(finish, customization)];
+
+  const usedIdentities = new Set<string>();
+  for (const region of regions) {
+    const choices = availableColorChoices(palette, regions, finish, region.id);
+    const hex = resolveEffectiveColor(regions, finish, selection, region.id);
+    usedIdentities.add(colorIdentity(palette, hex));
+    if (!choices.locked && region.priceDelta) deltas.push(region.priceDelta);
+  }
+  for (const identity of usedIdentities) {
+    const color = palette.find((p) => p.id === identity);
+    if (color?.priceDelta) deltas.push(color.priceDelta);
+  }
+
+  const colorCount = resolveColorCount(palette, regions, finish, selection);
+  const colorCountDelta = customization.colorCountPriceDeltas?.[String(colorCount)];
+  if (colorCountDelta) deltas.push(colorCountDelta);
+
+  return sumMoneyDeltas(deltas);
+}

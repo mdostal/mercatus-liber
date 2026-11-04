@@ -68,13 +68,13 @@ describe("CustomizationService", () => {
     it("resolves every region of treasure-chest under 'solid' (ColorMode single) from selection.__all", async () => {
       const created = await service.createProductCustomization({ productId: TREASURE_CHEST_CUSTOMIZATION.productId, finishIds: TREASURE_CHEST_CUSTOMIZATION.finishIds, regions: TREASURE_CHEST_REGIONS });
       const result = await service.resolveEffectiveColors(created.id, "solid", { __all: "#7A4A24" });
-      expect(result).toEqual({ body: "#7A4A24", straps: "#7A4A24", plate: "#7A4A24" });
+      expect(result).toEqual({ body: "#7A4A24", straps: "#7A4A24", name: "#7A4A24", "plate-border": "#7A4A24", plate: "#7A4A24", lock: "#7A4A24" });
     });
 
-    it("resolves stovetop-glow under 'separate': diffusers/knob-pointers follow their parents", async () => {
+    it("resolves stovetop-glow under 'separate': coils/knob-pointers follow their parents", async () => {
       const created = await service.createProductCustomization({ productId: STOVETOP_GLOW_CUSTOMIZATION.productId, finishIds: STOVETOP_GLOW_CUSTOMIZATION.finishIds, regions: STOVETOP_GLOW_REGIONS });
       const result = await service.resolveEffectiveColors(created.id, "separate", { body: "#141414", glass: "#1F5FD0", knobs: "#C12E1F" });
-      expect(result.diffusers).toBe("#1F5FD0");
+      expect(result.coils).toBe("#1F5FD0");
       expect(result["knob-pointers"]).toBe("#C12E1F");
     });
 
@@ -92,21 +92,23 @@ describe("CustomizationService", () => {
     it("rejects a submitted discontinued palette color even though the UI would normally grey it out", async () => {
       await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "red")!, status: "discontinued" });
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["ams"], regions: TREASURE_CHEST_REGIONS });
-      await expect(service.resolveEffectiveColors(created.id, "ams", { body: "#C12E1F", straps: "#141414", plate: "#F4D21F" })).rejects.toThrow(InvalidColorSelectionError);
+      await expect(
+        service.resolveEffectiveColors(created.id, "ams", { body: "#C12E1F", straps: "#141414", name: "#141414", "plate-border": "#141414", plate: "#F4D21F", lock: "#F4D21F" }),
+      ).rejects.toThrow(InvalidColorSelectionError);
     });
 
     it("accepts a submitted 'request'-status palette color -- selectable on request, per AvailabilityStatus's contract", async () => {
       await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "red")!, status: "request" });
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["ams"], regions: TREASURE_CHEST_REGIONS });
-      const result = await service.resolveEffectiveColors(created.id, "ams", { body: "#C12E1F", straps: "#141414", plate: "#F4D21F" });
+      const result = await service.resolveEffectiveColors(created.id, "ams", { body: "#C12E1F", straps: "#141414", name: "#141414", "plate-border": "#141414", plate: "#F4D21F", lock: "#F4D21F" });
       expect(result.body).toBe("#C12E1F");
     });
 
     it("🔍 doesn't validate a LOCKED region's own missing selection entry (it has none -- it inherits), only the parent's", async () => {
       const created = await service.createProductCustomization({ productId: STOVETOP_GLOW_CUSTOMIZATION.productId, finishIds: STOVETOP_GLOW_CUSTOMIZATION.finishIds, regions: STOVETOP_GLOW_REGIONS });
-      // No "diffusers" key at all in the selection -- only its parent "glass" is set.
+      // No "coils" key at all in the selection -- only its parent "glass" is set.
       const result = await service.resolveEffectiveColors(created.id, "separate", { body: "#141414", glass: "#1F5FD0", knobs: "#C12E1F" });
-      expect(result.diffusers).toBe("#1F5FD0");
+      expect(result.coils).toBe("#1F5FD0");
     });
   });
 
@@ -118,11 +120,11 @@ describe("CustomizationService", () => {
       expect(choices.__all!.palette).toHaveLength(REAL_PALETTE.length);
     });
 
-    it("keys the result per-region for a 'palette'/'any' finish, restricting diffusers to white", async () => {
+    it("keys the result per-region for a 'palette'/'any' finish, restricting coils to white", async () => {
       const created = await service.createProductCustomization({ productId: STOVETOP_GLOW_CUSTOMIZATION.productId, finishIds: STOVETOP_GLOW_CUSTOMIZATION.finishIds, regions: STOVETOP_GLOW_REGIONS });
       const choices = await service.getRegionChoices(created.id, "painted");
-      expect(choices.diffusers!.palette.map((c) => c.id)).toEqual(["white"]);
-      expect(choices.diffusers!.freeColor).toBe(false);
+      expect(choices.coils!.palette.map((c) => c.id)).toEqual(["white"]);
+      expect(choices.coils!.freeColor).toBe(false);
       expect(choices.body!.freeColor).toBe(true);
     });
   });
@@ -143,6 +145,44 @@ describe("CustomizationService", () => {
       await service.setFinishTier({ ...REAL_FINISHES.find((f) => f.id === "painted")!, priceDelta: { amount: 1500, currency: "USD" } });
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["painted"], regions: [], finishPriceDeltas: { painted: { amount: 5000, currency: "USD" } } });
       expect(await service.getFinishPriceDelta(created.id, "painted")).toEqual({ amount: 5000, currency: "USD" });
+    });
+  });
+
+  describe("getColorCount", () => {
+    it("counts distinct colors across treasure-chest's real regions under 'separate', collapsing parent-follows regions", async () => {
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
+      const count = await service.getColorCount(created.id, "separate", { body: "#C12E1F", straps: "#00AE42", plate: "#1F5FD0", lock: "#1F5FD0" });
+      expect(count).toBe(3);
+    });
+
+    it("rejects a submitted discontinued color before counting it -- same validation as resolveEffectiveColors", async () => {
+      await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "red")!, status: "discontinued" });
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
+      await expect(service.getColorCount(created.id, "separate", { body: "#C12E1F", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" })).rejects.toThrow(InvalidColorSelectionError);
+    });
+  });
+
+  describe("getCustomizationPriceDelta", () => {
+    it("sums finish + per-color + per-region + colorCount levers for a real build", async () => {
+      await service.setFinishTier({ ...REAL_FINISHES.find((f) => f.id === "separate")!, priceDelta: { amount: 500, currency: "USD" } });
+      await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "yellow")!, priceDelta: { amount: 300, currency: "USD" } });
+      const regions = TREASURE_CHEST_REGIONS.map((r) => (r.id === "lock" ? { ...r, priceDelta: { amount: 700, currency: "USD" } } : r));
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions, colorCountPriceDeltas: { "2": { amount: 1200, currency: "USD" } } });
+
+      const delta = await service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" });
+      expect(delta).toEqual({ amount: 500 + 300 + 700 + 1200, currency: "USD" });
+    });
+
+    it("returns undefined for a build with no pricing levers set anywhere", async () => {
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
+      const delta = await service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" });
+      expect(delta).toBeUndefined();
+    });
+
+    it("rejects a submitted discontinued color before pricing it", async () => {
+      await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "red")!, status: "discontinued" });
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
+      await expect(service.getCustomizationPriceDelta(created.id, "separate", { body: "#C12E1F", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" })).rejects.toThrow(InvalidColorSelectionError);
     });
   });
 });

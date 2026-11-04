@@ -853,3 +853,17 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   (a non-separable, allowed-colors-restricted region following its parent under an
   assembled-parts finish, plus a rejected discontinued-color submission). Full repo check:
   148/148 tasks green.
+  Also adds the pricing primitives the shop owner asked for directly, in the same package:
+  `PaletteColor.priceDelta` (a specific color costs more wherever it's used), `ColorRegion.
+  priceDelta` (a specific part costs more to give its own independent color), and
+  `ProductCustomization.colorCountPriceDeltas` (a surcharge keyed by the exact number of
+  distinct colors a build resolves to) -- all summed by a new `resolveCustomizationPriceDelta`/
+  `CustomizationService.getCustomizationPriceDelta` without double-counting each other. The
+  distinct-color count itself (`resolveColorCount`/`CustomizationService.getColorCount`) is
+  exactly what the reference editor's own manifest now asks for (a new `pricing.colors` note,
+  confirmed by reading the real file directly after a peer session updated it) and dedups by
+  palette id rather than hex -- forward-compatible with a proposed multi-color/blend filament
+  shape that could share a representative hex with an unrelated solid color. Test fixtures
+  updated to match the manifest's real, finer-grained region split (the chest's straps/name/
+  plate-border/plate/lock) and new `pink` "request"-status palette color. 20 more tests (64
+  total in the package).

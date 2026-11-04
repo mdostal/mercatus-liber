@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Money } from "@mercatus-liber/core";
-import { resolveEffectiveColor, resolveFinishPriceDelta, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
+import { resolveColorCount, resolveCustomizationPriceDelta, resolveEffectiveColor, resolveFinishPriceDelta, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
 import type {
   CustomizationSelection,
   FinishTier,
@@ -71,6 +71,25 @@ export interface CustomizationService {
    * own doc comment.
    */
   getFinishPriceDelta(productCustomizationId: string, finishId: string): Promise<Money | undefined>;
+
+  /**
+   * The number of distinct colors `selection` resolves to under
+   * `finishId`, after finish rules are applied -- see resolveColorCount's
+   * own doc comment. Validates `selection` exactly as
+   * resolveEffectiveColors does (never trusts a discontinued color
+   * through).
+   */
+  getColorCount(productCustomizationId: string, finishId: string, selection: CustomizationSelection): Promise<number>;
+
+  /**
+   * The total additive price delta for one fully-resolved build -- sums
+   * the finish's own delta, any per-color surcharges for distinct colors
+   * actually used, any per-region surcharges for regions that took their
+   * own independent choice, and any colorCount-tier surcharge. See
+   * resolveCustomizationPriceDelta's own doc comment. Validates
+   * `selection` exactly as resolveEffectiveColors does.
+   */
+  getCustomizationPriceDelta(productCustomizationId: string, finishId: string, selection: CustomizationSelection): Promise<Money | undefined>;
 }
 
 export function createCustomizationService(deps: {
@@ -89,6 +108,24 @@ export function createCustomizationService(deps: {
     if (!tier) throw new UnknownFinishTierError(finishId);
     if (tier.status === "discontinued") throw new DiscontinuedFinishError(finishId);
     return tier;
+  }
+
+  // Validate what the shopper actually submitted -- never trust client-side
+  // greying-out alone. Only the slot(s) the shopper actually fills in get
+  // checked: selection.__all under ColorMode "single", else each unlocked
+  // region's own entry (a locked region has no entry of its own -- it
+  // inherits, and its parent's entry is validated when the parent is reached).
+  // Shared by every method that resolves a selection into colors or price.
+  function validateSelection(customization: ProductCustomization, finish: FinishTier, paletteColors: PaletteColor[], selection: CustomizationSelection): void {
+    if (finish.colors === "single") {
+      const allChoices = availableColorChoices(paletteColors, customization.regions, finish, "__all");
+      if (selection.__all) validateSelectedColor(allChoices, "__all", selection.__all);
+      return;
+    }
+    for (const region of customization.regions) {
+      const choices = availableColorChoices(paletteColors, customization.regions, finish, region.id);
+      if (!choices.locked && selection[region.id]) validateSelectedColor(choices, region.id, selection[region.id]!);
+    }
   }
 
   return {
@@ -143,21 +180,7 @@ export function createCustomizationService(deps: {
       if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
       const finish = await requireFinish(customization, finishId);
       const paletteColors = await palette.list();
-
-      // Validate what the shopper actually submitted -- never trust client-side
-      // greying-out alone. Only the slot(s) the shopper actually fills in get
-      // checked: selection.__all under ColorMode "single", else each unlocked
-      // region's own entry (a locked region has no entry of its own -- it
-      // inherits, and its parent's entry is validated when the parent is reached).
-      if (finish.colors === "single") {
-        const allChoices = availableColorChoices(paletteColors, customization.regions, finish, "__all");
-        if (selection.__all) validateSelectedColor(allChoices, "__all", selection.__all);
-      } else {
-        for (const region of customization.regions) {
-          const choices = availableColorChoices(paletteColors, customization.regions, finish, region.id);
-          if (!choices.locked && selection[region.id]) validateSelectedColor(choices, region.id, selection[region.id]!);
-        }
-      }
+      validateSelection(customization, finish, paletteColors, selection);
 
       const result: Record<string, string> = {};
       for (const region of customization.regions) {
@@ -187,6 +210,24 @@ export function createCustomizationService(deps: {
       if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
       const finish = await requireFinish(customization, finishId);
       return resolveFinishPriceDelta(finish, customization);
+    },
+
+    async getColorCount(productCustomizationId, finishId, selection): Promise<number> {
+      const customization = await productCustomizations.get(productCustomizationId);
+      if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
+      const finish = await requireFinish(customization, finishId);
+      const paletteColors = await palette.list();
+      validateSelection(customization, finish, paletteColors, selection);
+      return resolveColorCount(paletteColors, customization.regions, finish, selection);
+    },
+
+    async getCustomizationPriceDelta(productCustomizationId, finishId, selection): Promise<Money | undefined> {
+      const customization = await productCustomizations.get(productCustomizationId);
+      if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
+      const finish = await requireFinish(customization, finishId);
+      const paletteColors = await palette.list();
+      validateSelection(customization, finish, paletteColors, selection);
+      return resolveCustomizationPriceDelta(paletteColors, finish, customization, selection);
     },
   };
 }
