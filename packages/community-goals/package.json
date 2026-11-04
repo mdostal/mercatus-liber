@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/community-goals",
+  "version": "0.1.0",
+  "description": "Vote-threshold-gated feature unlocks (subsystem 26) -- a storefront publishes a Goal (a vote target, e.g. \"1000 votes unlocks the live print stream\"), customers/visitors cast one vote each (deduped by a caller-supplied voterKey), and the goal's status derives from voteCount vs its thresholds. Depends on @mercatus-liber/core only. Carries no UI/animation concern of its own -- the progress-bar/liquid-fill/gradient rendering a storefront builds on top of GoalStatus's plain numbers is entirely the storefront's own design-system work, same separation PDP/theming already draws from catalog.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}
