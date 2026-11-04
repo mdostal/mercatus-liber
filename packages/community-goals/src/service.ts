@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { EventBus } from "@mercatus-liber/core";
 import type { CreateGoalInput, Goal, GoalRepository, GoalThreshold, GoalVoteRepository } from "./types.js";
-import { DuplicateGoalSlugError, InvalidGoalThresholdsError } from "./types.js";
+import { DuplicateGoalSlugError, GoalDisabledError, InvalidGoalThresholdsError } from "./types.js";
 
 export interface CastVoteResult {
   goal: Goal;
@@ -25,11 +25,16 @@ export interface GoalsService {
   listGoals(filter?: { demoSlug?: string }): Promise<Goal[]>;
   /** Merges fields into an existing goal; null if no goal has this id. Id/voteCount/createdAt are never overwritten by input. Re-validates thresholds exactly as createGoal does. */
   updateGoal(id: string, input: Partial<Omit<CreateGoalInput, "slug">>): Promise<Goal | null>;
+  /** Convenience one-liners over updateGoal's `enabled` field, same shape as Bundle's deactivateBundle. Null if no goal has this id. */
+  enableGoal(id: string): Promise<Goal | null>;
+  disableGoal(id: string): Promise<Goal | null>;
   /**
    * Records one vote from `voterKey` toward `goalId`, deduped via
    * GoalVoteRepository.recordIfNew. Idempotent: voting again with the same
    * voterKey returns `alreadyVoted: true` and never increments voteCount
-   * twice. Returns null only when goalId doesn't resolve to a Goal.
+   * twice. Returns null only when goalId doesn't resolve to a Goal. Throws
+   * GoalDisabledError (does not return a result) when the goal's `enabled`
+   * is false -- a disabled goal never accepts a vote, counted or not.
    */
   castVote(goalId: string, voterKey: string): Promise<CastVoteResult | null>;
 }
@@ -60,6 +65,7 @@ export function createGoalsService(deps: { repository: GoalRepository; votes: Go
         ...input,
         id: randomUUID(),
         voteCount: 0,
+        enabled: input.enabled ?? true,
         createdAt: new Date().toISOString(),
       };
       await repository.save(goal);
@@ -87,9 +93,28 @@ export function createGoalsService(deps: { repository: GoalRepository; votes: Go
       return updated;
     },
 
+    async enableGoal(id: string): Promise<Goal | null> {
+      const existing = await repository.get(id);
+      if (!existing) return null;
+      const updated: Goal = { ...existing, enabled: true };
+      await repository.save(updated);
+      return updated;
+    },
+
+    async disableGoal(id: string): Promise<Goal | null> {
+      const existing = await repository.get(id);
+      if (!existing) return null;
+      const updated: Goal = { ...existing, enabled: false };
+      await repository.save(updated);
+      return updated;
+    },
+
     async castVote(goalId: string, voterKey: string): Promise<CastVoteResult | null> {
       const goal = await repository.get(goalId);
       if (!goal) return null;
+      if (!goal.enabled) {
+        throw new GoalDisabledError(goal.slug);
+      }
 
       const newlyRecorded = await votes.recordIfNew(goalId, voterKey, new Date().toISOString());
       await events?.publish("community-goals.vote.cast", { goalId, slug: goal.slug, voterKey, alreadyVoted: !newlyRecorded });

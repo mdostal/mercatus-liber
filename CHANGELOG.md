@@ -721,3 +721,17 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   calls probe against the real built package export, not just sequential tests. Closes
   `docs/subsystems/26-community-goals.md`'s open question 1. Not yet wired into any live
   demo's `services.ts` -- no deploy triggered.
+
+## [0.36.1] - 2026-11-03
+
+### Added
+
+- **Community Goals: enable/disable** (`@mercatus-liber/community-goals`): `Goal` gains an
+  `enabled` field (admin on/off switch, defaults true, deliberately named apart from
+  `GoalStatus`'s own derived `status` to avoid colliding). `GoalsService.enableGoal`/
+  `disableGoal` (same convenience-one-liner shape as `Bundle.deactivateBundle`);
+  `castVote` against a disabled goal throws a new `GoalDisabledError` rather than silently
+  no-op'ing or silently counting it. `@mercatus-liber/adapter-postgres`'s `goals` table
+  gains a matching `enabled BOOLEAN NOT NULL DEFAULT TRUE` column, added via `ALTER TABLE
+  ... ADD COLUMN IF NOT EXISTS` for safety against any already-created table. Not yet wired
+  into any live demo -- no deploy triggered.

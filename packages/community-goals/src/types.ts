@@ -25,6 +25,18 @@ export interface Goal {
   bonusCount?: number;
   voteCount: number;
   /**
+   * Whether this goal currently accepts votes -- an explicit admin on/off
+   * switch, separate from (and unrelated to) GoalStatus's derived unlock
+   * `status` ("locked"/"unlocked"/"bonus-unlocked"). Named `enabled` rather
+   * than reusing Bundle's `status: "active"|"inactive"` convention
+   * specifically to avoid colliding with GoalStatus's own `status` field --
+   * "Goal.status" and "GoalStatus.status" meaning two unrelated things
+   * would be a real foot-gun. Defaults to true at createGoal. castVote
+   * throws GoalDisabledError against a disabled goal -- it does not
+   * silently no-op or silently succeed.
+   */
+  enabled: boolean;
+  /**
    * Which demo store this goal belongs to -- same optional/additive
    * shape as Bundle.demoSlug, Page.demoSlug, Category.demoSlug,
    * ServiceArea.demoSlug (see bundles/src/types.ts's Bundle.demoSlug doc
@@ -83,8 +95,16 @@ export interface GoalVoteRepository {
   countForGoal(goalId: string): Promise<number>;
 }
 
-/** Input to GoalsService.createGoal -- id/voteCount are always service-assigned (voteCount starts at 0). */
-export type CreateGoalInput = Omit<Goal, "id" | "voteCount" | "createdAt">;
+/** Input to GoalsService.createGoal -- id/voteCount/createdAt are always service-assigned (voteCount starts at 0); enabled defaults to true when omitted. */
+export type CreateGoalInput = Omit<Goal, "id" | "voteCount" | "createdAt" | "enabled"> & { enabled?: boolean };
+
+/** Thrown by castVote against a goal whose `enabled` is false -- a disabled goal rejects every vote, it never silently no-ops or silently counts it. */
+export class GoalDisabledError extends Error {
+  constructor(slug: string) {
+    super(`Goal "${slug}" is disabled and is not accepting votes`);
+    this.name = "GoalDisabledError";
+  }
+}
 
 /** Thrown by createGoal/updateGoal when bonusCount is set but not greater than targetCount. */
 export class InvalidGoalThresholdsError extends Error {

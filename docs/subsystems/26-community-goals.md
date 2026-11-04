@@ -20,8 +20,13 @@ session/cookie token. This subsystem has no opinion which.
 - `Goal` entity: id, slug (storefront-facing, unique), title, description, `targetCount`,
   optional `bonusCount` (a second, higher stretch threshold — must exceed `targetCount`),
   `voteCount` (denormalized, incremented once per newly-recorded vote, never re-derived by
-  counting), optional `demoSlug` (same scoping precedent as `Bundle.demoSlug`/
-  `Page.demoSlug`/`Category.demoSlug`/`ServiceArea.demoSlug`).
+  counting), `enabled` (admin on/off switch, defaults true, deliberately named apart from
+  `GoalStatus`'s own derived `status` field to avoid the two colliding), optional `demoSlug`
+  (same scoping precedent as `Bundle.demoSlug`/`Page.demoSlug`/`Category.demoSlug`/
+  `ServiceArea.demoSlug`).
+- `GoalsService.enableGoal`/`disableGoal` — admin toggle, same one-liner-over-a-partial-patch
+  shape as `Bundle.deactivateBundle`. `castVote` against a disabled goal throws
+  `GoalDisabledError` rather than silently no-op'ing or silently counting it.
 - `GoalRepository` + `GoalVoteRepository` (adapter pattern) + in-memory reference
   implementations. `GoalVoteRepository.recordIfNew` is the single atomicity-critical
   operation in this subsystem — a durable adapter MUST back it with a real unique constraint
