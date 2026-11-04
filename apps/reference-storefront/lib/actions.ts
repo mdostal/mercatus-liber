@@ -1218,3 +1218,46 @@ export async function resetDemoDataAction(formData: FormData): Promise<void> {
   await resetDemoData(demoSlug);
   revalidatePath(`/demo/${demoSlug}`, "layout");
 }
+
+/**
+ * Minimal admin CRUD for @mercatus-liber/community-goals, same plain-form
+ * shape as createBundleAction/deactivateBundleAction above -- no visual/
+ * animation concern here, just the data (see that package's own doc
+ * comment for why). targetCount/bonusCount come through as form strings;
+ * bonusCount is omitted entirely (not sent as 0/empty-string) when the
+ * input is left blank, matching GoalsService.createGoal's own
+ * optional-bonusCount contract.
+ */
+export async function createGoalAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const { goals } = await getServicesForDemo(demoSlug);
+
+  const bonusCountRaw = String(formData.get("bonusCount") ?? "").trim();
+  await goals.createGoal({
+    slug: String(formData.get("slug") ?? "").trim(),
+    title: String(formData.get("title") ?? "").trim(),
+    description: String(formData.get("description") ?? "").trim(),
+    targetCount: Number(formData.get("targetCount") ?? 0),
+    ...(bonusCountRaw ? { bonusCount: Number(bonusCountRaw) } : {}),
+    demoSlug,
+  });
+  revalidatePath(`/demo/${demoSlug}/admin/community-goals`);
+  redirect(`/demo/${demoSlug}/admin/community-goals`);
+}
+
+export async function enableGoalAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const { goals } = await getServicesForDemo(demoSlug);
+  await goals.enableGoal(String(formData.get("id")));
+  revalidatePath(`/demo/${demoSlug}/admin/community-goals`);
+}
+
+export async function disableGoalAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const { goals } = await getServicesForDemo(demoSlug);
+  await goals.disableGoal(String(formData.get("id")));
+  revalidatePath(`/demo/${demoSlug}/admin/community-goals`);
+}

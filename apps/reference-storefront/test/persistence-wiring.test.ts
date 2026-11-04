@@ -31,6 +31,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { __resetServicesCacheForTests } from "../lib/services.js";
 
 const createPostgresAdapterMock = vi.fn();
 const createPostgresCategoryRepositoryMock = vi.fn();
@@ -55,6 +56,8 @@ const createPostgresPromotionRepositoryMock = vi.fn();
 const createPostgresReviewRepositoryMock = vi.fn();
 const createPostgresStorefrontViewRepositoryMock = vi.fn();
 const createPostgresBundleRepositoryMock = vi.fn();
+const createPostgresGoalRepositoryMock = vi.fn();
+const createPostgresGoalVoteRepositoryMock = vi.fn();
 const createPostgresRecommendationRepositoryMock = vi.fn();
 const createPostgresCampaignRepositoryMock = vi.fn();
 const createPostgresServiceAreaRepositoryMock = vi.fn();
@@ -85,6 +88,7 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
   const { createInMemoryReviewRepository } = await import("@mercatus-liber/reviews");
   const { createInMemoryStorefrontViewRepository } = await import("@mercatus-liber/storefront-views");
   const { createInMemoryBundleRepository } = await import("@mercatus-liber/bundles");
+  const { createInMemoryGoalRepository, createInMemoryGoalVoteRepository } = await import("@mercatus-liber/community-goals");
   const { createInMemoryRecommendationRepository } = await import("@mercatus-liber/recommendations");
   const { createInMemoryCampaignRepository } = await import("@mercatus-liber/advertising");
   const { createInMemoryServiceAreaRepository, createInMemoryServiceAreaProductRepository } = await import(
@@ -140,6 +144,14 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
     createPostgresBundleRepository: (pool: unknown) => {
       createPostgresBundleRepositoryMock(pool);
       return createInMemoryBundleRepository();
+    },
+    createPostgresGoalRepository: (pool: unknown) => {
+      createPostgresGoalRepositoryMock(pool);
+      return createInMemoryGoalRepository();
+    },
+    createPostgresGoalVoteRepository: (pool: unknown) => {
+      createPostgresGoalVoteRepositoryMock(pool);
+      return createInMemoryGoalVoteRepository();
     },
     createPostgresRecommendationRepository: (pool: unknown) => {
       createPostgresRecommendationRepositoryMock(pool);
@@ -278,6 +290,7 @@ vi.mock("pg", () => ({
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
+  __resetServicesCacheForTests();
   createPostgresAdapterMock.mockClear();
   createPostgresCategoryRepositoryMock.mockClear();
   createPostgresProductCategoryRepositoryMock.mockClear();
@@ -291,6 +304,8 @@ afterEach(() => {
   createPostgresReviewRepositoryMock.mockClear();
   createPostgresStorefrontViewRepositoryMock.mockClear();
   createPostgresBundleRepositoryMock.mockClear();
+  createPostgresGoalRepositoryMock.mockClear();
+  createPostgresGoalVoteRepositoryMock.mockClear();
   createPostgresRecommendationRepositoryMock.mockClear();
   createPostgresCampaignRepositoryMock.mockClear();
   createPostgresServiceAreaRepositoryMock.mockClear();
@@ -312,6 +327,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("SQLITE_FILE_PATH", "");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -331,6 +347,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
       vi.stubEnv("DATABASE_URL", "");
       vi.stubEnv("SQLITE_FILE_PATH", sqliteFilePath);
       vi.resetModules();
+      __resetServicesCacheForTests();
 
       const { getServicesForDemo } = await import("../lib/services.js");
       const services = await getServicesForDemo("print-shop");
@@ -348,6 +365,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
     vi.stubEnv("SQLITE_FILE_PATH", "/tmp/should-not-be-used-services-test.db");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -382,6 +400,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
   it("wires every newly-added subsystem (Catalog entity, cart, orders, customer profiles, promotions, reviews, storefront views, bundles, recommendations, advertising, service areas, BI event log, fulfillment routing) to real Postgres when DATABASE_URL is set, all sharing the same pool", async () => {
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -397,6 +416,8 @@ describe("Persistence wiring (lib/services.ts)", () => {
       createPostgresReviewRepositoryMock,
       createPostgresStorefrontViewRepositoryMock,
       createPostgresBundleRepositoryMock,
+      createPostgresGoalRepositoryMock,
+      createPostgresGoalVoteRepositoryMock,
       createPostgresRecommendationRepositoryMock,
       createPostgresCampaignRepositoryMock,
       createPostgresServiceAreaRepositoryMock,
@@ -422,6 +443,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("SQLITE_FILE_PATH", "");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -436,6 +458,8 @@ describe("Persistence wiring (lib/services.ts)", () => {
       createPostgresReviewRepositoryMock,
       createPostgresStorefrontViewRepositoryMock,
       createPostgresBundleRepositoryMock,
+      createPostgresGoalRepositoryMock,
+      createPostgresGoalVoteRepositoryMock,
       createPostgresRecommendationRepositoryMock,
       createPostgresCampaignRepositoryMock,
       createPostgresServiceAreaRepositoryMock,
@@ -458,6 +482,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/shop");
     vi.stubEnv("SQLITE_FILE_PATH", "/tmp/should-not-be-used-mongo-test.db");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -489,6 +514,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
     vi.stubEnv("MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/shop");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     await getServicesForDemo("print-shop");
@@ -503,6 +529,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("CONVEX_URL", "https://my-deployment-123.convex.cloud");
     vi.stubEnv("SQLITE_FILE_PATH", "/tmp/should-not-be-used-convex-test.db");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -522,6 +549,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/shop");
     vi.stubEnv("CONVEX_URL", "https://my-deployment-123.convex.cloud");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     await getServicesForDemo("print-shop");
@@ -534,6 +562,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
     it("a demo with no per-demo override vars falls through to the global chain, unchanged", async () => {
       vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
       vi.resetModules();
+      __resetServicesCacheForTests();
 
       const { getServicesForDemo } = await import("../lib/services.js");
       await getServicesForDemo("northline");
@@ -549,6 +578,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
       vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
       vi.stubEnv("NORTHLINE_MONGODB_URL", "mongodb+srv://user:pass@cluster0.mongodb.net/northline");
       vi.resetModules();
+      __resetServicesCacheForTests();
 
       const { getServicesForDemo } = await import("../lib/services.js");
       await getServicesForDemo("northline");
@@ -564,6 +594,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
       vi.stubEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/db");
       vi.stubEnv("BROADLEAF_CONVEX_URL", "https://kindhearted-corgi-798.convex.cloud");
       vi.resetModules();
+      __resetServicesCacheForTests();
 
       const { getServicesForDemo } = await import("../lib/services.js");
       await getServicesForDemo("print-shop");
@@ -576,6 +607,7 @@ describe("Persistence wiring (lib/services.ts)", () => {
 
     it("demoEnvPrefix derives PRINT_SHOP / NORTHLINE / BROADLEAF from the real demo slugs", async () => {
       vi.resetModules();
+      __resetServicesCacheForTests();
       const { demoEnvPrefix } = await import("../lib/services.js");
       expect(demoEnvPrefix("print-shop")).toBe("PRINT_SHOP");
       expect(demoEnvPrefix("northline")).toBe("NORTHLINE");

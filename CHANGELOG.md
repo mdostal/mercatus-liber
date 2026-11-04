@@ -735,3 +735,30 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   gains a matching `enabled BOOLEAN NOT NULL DEFAULT TRUE` column, added via `ALTER TABLE
   ... ADD COLUMN IF NOT EXISTS` for safety against any already-created table. Not yet wired
   into any live demo -- no deploy triggered.
+
+## [0.37.0] - 2026-11-03
+
+### Added
+
+- **Community Goals: reference-storefront wiring** -- `goals` exposed on the Services bag
+  (Postgres-when-configured / in-memory-otherwise), a minimal admin CRUD page
+  (`/demo/[demoSlug]/admin/community-goals`), and a public, unauthenticated
+  `GET`/`POST /api/demo/[demoSlug]/community-goals/[slug]` route for a storefront's own
+  client-side UI to read live status and cast a vote (anonymous, cookie-deduped voter
+  identity via new `lib/voter-cookie.ts`). Verified end-to-end against a real `next start`
+  production build.
+
+### Fixed
+
+- **`lib/services.ts`'s per-demo services cache now survives a Route-Handler-vs-page bundle
+  split.** Found live, verifying the above against a real production build: Next.js's App
+  Router bundles Route Handlers into their own module graph, so a plain module-scoped
+  `const servicesByDemo` was NOT actually shared with the Server Action/page bundle, even in
+  the same running process -- an admin-created goal was invisible to the public vote route,
+  and a thrown `GoalDisabledError` failed an `instanceof` check across the same boundary.
+  Fixed by pinning the cache onto `globalThis` (the standard Next.js singleton pattern) and
+  switching the error check to `err.name`. Restores the in-memory default working correctly
+  for ANY subsystem pairing a Route Handler with mutable Server-Action-written state, not
+  just this one -- previously untested because community-goals is the first to do that.
+  5 test files' `vi.resetModules()`-based isolation needed a matching test-only
+  `__resetServicesCacheForTests()` export (same fix, same reason) to keep working.

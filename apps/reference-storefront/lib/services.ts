@@ -14,6 +14,8 @@ import {
   createPostgresReviewRepository,
   createPostgresStorefrontViewRepository,
   createPostgresBundleRepository,
+  createPostgresGoalRepository,
+  createPostgresGoalVoteRepository,
   createPostgresRecommendationRepository,
   createPostgresCampaignRepository,
   createPostgresServiceAreaRepository,
@@ -51,6 +53,7 @@ import {
   type AnalyticsInsightsAdapter,
 } from "@mercatus-liber/analytics";
 import { createBundlesService, createInMemoryBundleRepository, type BundlesService } from "@mercatus-liber/bundles";
+import { createGoalsService, createInMemoryGoalRepository, createInMemoryGoalVoteRepository, type GoalsService } from "@mercatus-liber/community-goals";
 import { createCartService, createInMemoryCartRepository, type CartService } from "@mercatus-liber/cart";
 import {
   createCatalogService,
@@ -198,6 +201,7 @@ export interface Services {
   reviews: ReviewsService;
   storefrontViews: StorefrontViewsService;
   bundles: BundlesService;
+  goals: GoalsService;
   recommendations: RecommendationsService;
   advertising: AdvertisingService;
   bi: BiMetricsAdapter;
@@ -342,7 +346,30 @@ function createDevAdminAuthAdapter(): AdminAuthAdapter {
   };
 }
 
-const servicesByDemo = new Map<DemoSlug, Promise<Services>>();
+/**
+ * community-goals-storefront-wiring: pinned onto `globalThis`, not a plain
+ * module-level `const`, after a real, confirmed-live bug -- a `next start`
+ * production build still had it, so this is NOT a dev/Turbopack-only
+ * artifact. Next.js's App Router bundles Route Handlers (app/api/**\/
+ * route.ts) into their OWN module graph, separate from the Server Action/
+ * page-render bundle -- a plain top-level `const` gets its own, genuinely
+ * separate instance per bundle, even inside the same long-running Node
+ * process. Confirmed directly: created a goal via the admin page's Server
+ * Action, then queried the SAME demo's goals from a Route Handler --
+ * `listGoals()` came back empty there. Any backend whose own state is
+ * already durable and shared externally (Postgres/Mongo/Convex) never hits
+ * this, since both bundles independently connect to the SAME external
+ * store regardless of which module instance holds the connection pool --
+ * this was invisible until community-goals became the first subsystem
+ * pairing a Route Handler with in-memory, Server-Action-written mutable
+ * state. `globalThis` is one object shared by every module instance in the
+ * process (the same Next.js-recommended pattern used to survive HMR for a
+ * Prisma client singleton), so this fix restores "the in-memory default
+ * genuinely works, zero infra" (docs/ARCHITECTURE.md principle 4) for
+ * every subsystem's in-memory repository, not just this one.
+ */
+const globalForServices = globalThis as unknown as { __mercatusLiberServicesByDemo?: Map<DemoSlug, Promise<Services>> };
+const servicesByDemo: Map<DemoSlug, Promise<Services>> = globalForServices.__mercatusLiberServicesByDemo ?? (globalForServices.__mercatusLiberServicesByDemo = new Map());
 
 /**
  * per-demo-backend-diversity epic: `print-shop` -> `PRINT_SHOP`,
@@ -728,6 +755,17 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   const bundles = createBundlesService({
     repository: pgPool ? createPostgresBundleRepository(pgPool) : createInMemoryBundleRepository(),
     skuLookup: catalog,
+  });
+
+  // Core-only dependency (plus the shared event bus) -- same posture as
+  // bundles/promotions/recommendations above. voterKey is left entirely to
+  // the app layer to decide (see @mercatus-liber/community-goals's own
+  // GoalVoteRepository doc comment) -- the storefront routes wiring this to
+  // an actual customer/session identity, not this file.
+  const goals = createGoalsService({
+    repository: pgPool ? createPostgresGoalRepository(pgPool) : createInMemoryGoalRepository(),
+    votes: pgPool ? createPostgresGoalVoteRepository(pgPool) : createInMemoryGoalVoteRepository(),
+    events,
   });
 
   // Core-only dependency, mirroring promotions/bundles exactly (see
@@ -1154,6 +1192,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     reviews,
     storefrontViews,
     bundles,
+    goals,
     recommendations,
     advertising,
     bi,
@@ -1205,4 +1244,27 @@ export function getServicesForDemo(demoSlug: DemoSlug): Promise<Services> {
  */
 export function evictServicesForDemo(demoSlug: DemoSlug): void {
   servicesByDemo.delete(demoSlug);
+}
+
+/**
+ * Test-only. `servicesByDemo` moved onto `globalThis` (see that const's own
+ * doc comment, community-goals-storefront-wiring) specifically so it
+ * survives a fresh module re-evaluation across a bundle boundary -- which
+ * means it now ALSO survives `vi.resetModules()` in this app's own test
+ * suite, breaking every test file that relied on "resetModules() + a fresh
+ * dynamic import of lib/services.js gives a clean, empty services cache"
+ * (cms-persistence-wiring.test.ts, persistence-wiring.test.ts,
+ * persistence-postgres-live.test.ts, services-demo-registry.test.ts,
+ * traffic-sources-wiring.test.ts -- confirmed by running the full suite
+ * after the globalThis fix: 14 failures, all in exactly these files, all
+ * state bleeding in from an earlier test's cached instance). Call this in
+ * `beforeEach` alongside `vi.resetModules()` to restore that isolation --
+ * it works through a STATIC top-level import (unaffected by
+ * vi.resetModules(), which only changes what a SUBSEQUENT dynamic import()
+ * returns) specifically because `servicesByDemo` resolves through
+ * `globalThis` the same way regardless of which module instance's closure
+ * calls it.
+ */
+export function __resetServicesCacheForTests(): void {
+  servicesByDemo.clear();
 }

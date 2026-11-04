@@ -17,9 +17,11 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DemoSlug } from "../lib/demos.js";
+import { __resetServicesCacheForTests } from "../lib/services.js";
 
 beforeEach(() => {
   vi.resetModules();
+  __resetServicesCacheForTests();
 });
 
 describe("getServicesForDemo (demo-routing-01 services registry)", () => {
@@ -63,5 +65,42 @@ describe("getServicesForDemo (demo-routing-01 services registry)", () => {
     const { getServicesForDemo } = await import("../lib/services.js");
 
     expect(() => getServicesForDemo("not-a-real-demo" as DemoSlug)).toThrow(/unknown demo slug/i);
+  });
+
+  /**
+   * community-goals-storefront-wiring: a real, confirmed-live bug (found
+   * verifying against a `next start` production build, not a dev-only
+   * artifact) -- Next.js's App Router bundles Route Handlers into their OWN
+   * module graph, separate from the Server Action/page-render bundle, so a
+   * plain module-scoped `const servicesByDemo = new Map()` gets a genuinely
+   * separate instance per bundle even inside the same long-running Node
+   * process: a goal created via the admin page's Server Action was
+   * invisible to a Route Handler reading the "same" demo's services right
+   * after. Fixed by pinning the Map onto `globalThis` (lib/services.ts).
+   * `vi.resetModules()` + a fresh dynamic import is this test's proxy for
+   * "a separate bundle re-evaluates lib/services.ts's module scope" -- the
+   * two tests above (memoizes/isolates) never reset modules between their
+   * two getServicesForDemo calls, so neither would have caught this; this
+   * one specifically forces a fresh module instance between the write and
+   * the read, the same shape of gap the real bug had.
+   */
+  it("survives a fresh module re-evaluation (globalThis-pinned, not a plain module-scoped Map) -- proxies the real Route-Handler-vs-page bundle split", async () => {
+    const { getServicesForDemo: getServicesForDemoFirstInstance } = await import("../lib/services.js");
+    const first = await getServicesForDemoFirstInstance("print-shop");
+    const created = await first.goals.createGoal({ slug: "cross-bundle-goal", title: "T", description: "", targetCount: 5 });
+
+    // Deliberately NOT calling __resetServicesCacheForTests() here -- that
+    // would wipe the very globalThis-pinned state this test exists to
+    // prove survives a fresh module re-evaluation. Only vi.resetModules()
+    // (clears the module REGISTRY, forcing the next import() to
+    // re-evaluate lib/services.ts's module scope from scratch) belongs
+    // here; see this test's own doc comment above.
+    vi.resetModules();
+
+    const { getServicesForDemo: getServicesForDemoSecondInstance } = await import("../lib/services.js");
+    const second = await getServicesForDemoSecondInstance("print-shop");
+    const foundFromFreshInstance = await second.goals.getGoal(created.id);
+
+    expect(foundFromFreshInstance?.slug).toBe("cross-bundle-goal");
   });
 });
