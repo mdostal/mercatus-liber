@@ -42,6 +42,7 @@ interface SkuRow {
   price_amount: number;
   price_currency: string;
   status: string;
+  images: string | null;
 }
 
 interface AttributeRow {
@@ -73,6 +74,7 @@ function rowToSku(row: SkuRow): Sku {
     identifyingAttributes: JSON.parse(row.identifying_attributes) as Sku["identifyingAttributes"],
     price: { amount: row.price_amount, currency: row.price_currency },
     status: row.status as ProductStatus,
+    ...(row.images ? { images: JSON.parse(row.images) as ProductImage[] } : {}),
   };
 }
 
@@ -127,6 +129,13 @@ export function openSqliteDb(path: string): Database.Database {
   }
   try {
     db.exec("ALTER TABLE products ADD COLUMN license TEXT");
+  } catch {
+    // already has the column.
+  }
+  // sku-images epic: same defensive best-effort ALTER, same reason, for
+  // Sku's new images field -- see Sku.images's own doc comment.
+  try {
+    db.exec("ALTER TABLE skus ADD COLUMN images TEXT");
   } catch {
     // already has the column.
   }
@@ -220,14 +229,15 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
     },
     async save(sku: Sku): Promise<void> {
       db.prepare(
-        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status)
-         VALUES (@id, @productId, @identifyingAttributes, @priceAmount, @priceCurrency, @status)
+        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status, images)
+         VALUES (@id, @productId, @identifyingAttributes, @priceAmount, @priceCurrency, @status, @images)
          ON CONFLICT(id) DO UPDATE SET
            product_id = excluded.product_id,
            identifying_attributes = excluded.identifying_attributes,
            price_amount = excluded.price_amount,
            price_currency = excluded.price_currency,
-           status = excluded.status`,
+           status = excluded.status,
+           images = excluded.images`,
       ).run({
         id: sku.id,
         productId: sku.productId,
@@ -235,6 +245,7 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
         priceAmount: sku.price.amount,
         priceCurrency: sku.price.currency,
         status: sku.status,
+        images: sku.images ? JSON.stringify(sku.images) : null,
       });
     },
   };

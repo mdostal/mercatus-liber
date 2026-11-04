@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS skus (
   identifying_attributes TEXT NOT NULL, -- JSON IdentifyingAttribute[]
   price_amount INTEGER NOT NULL,
   price_currency TEXT NOT NULL,
-  status TEXT NOT NULL
+  status TEXT NOT NULL,
+  images TEXT -- JSON ProductImage[] | null, sku-images epic
 );
 CREATE INDEX IF NOT EXISTS idx_skus_product_id ON skus(product_id);
 

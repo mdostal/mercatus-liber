@@ -44,3 +44,15 @@ depend on (read-only), so its interface stability matters more than any other pa
    combinatorially — cap/guard needed, or leave it to the caller?
 3. Does a Product need a notion of "default SKU" (what a PDP shows before the shopper picks
    options) as a core concept, or is that purely a PDP-layer concern?
+4. ~~Sku has no images field~~ -- **resolved** (sku-images epic, closes GitHub issue #1):
+   `Sku.images?: ProductImage[]`, optional/additive, same zero-regression discipline as
+   `Product.images`. Only set when a SKU's identifying attribute is itself visual (lens
+   color, fabric finish) and needs its own photo distinct from the product's shared gallery
+   -- e.g. sunglasses with red/brown/yellow/clear lens SKUs, each showing the shopper the
+   real color they're selecting. `generateSkus`' bulk cartesian-product path never sets
+   per-SKU images (there's no per-combination argument to pass them through); the real
+   workflow is `generateSkus()` to create the grid, then the new `updateSku(id, patch)` once
+   per SKU to set its own photo -- `updateSku` didn't exist before this epic (only
+   `createSku`/`generateSkus`, no way to edit a SKU after creation at all). A PDP falls back
+   to the product-level gallery when the active SKU has none of its own
+   (`apps/reference-storefront`'s product page: `activeSku?.images ?? viewModel.product.images`).

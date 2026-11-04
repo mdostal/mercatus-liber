@@ -98,6 +98,20 @@ export interface Sku {
   identifyingAttributes: IdentifyingAttribute[];
   price: Money;
   status: ProductStatus;
+  /**
+   * sku-images epic: optional and additive, same zero-regression discipline
+   * as Product.images -- absent for every SKU that predates this field or
+   * was never given its own photo. Only needed when a SKU's identifying
+   * attribute is itself visual (lens color, fabric color, finish) and the
+   * shopper needs to see the actual variant, not just the product's shared
+   * gallery -- the common case (e.g. a size-only SKU) never sets this. A
+   * consumer (e.g. a PDP's variant picker) falls back to the parent
+   * Product's own images when a given SKU has none of its own; this field
+   * never requires every SKU of a product to have one. `images[0]`, when
+   * present, is this SKU's primary/hero photo, same convention as
+   * Product.images[0].
+   */
+  images?: ProductImage[];
 }
 
 export interface Money {

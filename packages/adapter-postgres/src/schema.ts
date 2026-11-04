@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS skus (
   status TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_skus_product_id ON skus(product_id);
+-- sku-images epic: same idempotent-ADD-COLUMN-IF-NOT-EXISTS pattern, same
+-- reason, for Sku's new images field -- see Sku.images's own doc comment.
+ALTER TABLE skus ADD COLUMN IF NOT EXISTS images JSONB;
 
 CREATE TABLE IF NOT EXISTS product_attributes (
   product_id TEXT NOT NULL REFERENCES products(id),

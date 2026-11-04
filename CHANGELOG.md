@@ -762,3 +762,22 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   just this one -- previously untested because community-goals is the first to do that.
   5 test files' `vi.resetModules()`-based isolation needed a matching test-only
   `__resetServicesCacheForTests()` export (same fix, same reason) to keep working.
+
+## [0.38.0] - 2026-11-03
+
+### Added
+
+- **SKU-level images** (closes GitHub issue #1): `Sku` gains an optional, additive
+  `images?: ProductImage[]`, same zero-regression discipline as `Product.images` -- for a
+  product whose identifying attribute is itself visual (e.g. sunglasses lens color), a SKU
+  can now carry its own photo distinct from the product's shared gallery. New
+  `CatalogService.updateSku(id, patch)` -- SKUs previously had no post-creation edit path at
+  all (only `createSku`/`generateSkus`); the real workflow is `generateSkus()` to create the
+  variant grid, then `updateSku()` once per SKU to set its own image (or price/status).
+  `apps/reference-storefront`'s product page falls back to the product-level gallery when
+  the active SKU has none of its own. Both reference adapters (sqlite/postgres) persist the
+  new field with the established `ALTER TABLE ... ADD COLUMN` migration-safety pattern, each
+  with a dedicated test building a real pre-migration-shape DB by hand. Verified at the real
+  built-dist package boundary against the exact sunglasses scenario from the filed issue (4
+  lens-color SKUs, each getting its own photo via the generate-then-update workflow,
+  surviving a process restart).

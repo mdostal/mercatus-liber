@@ -8,6 +8,7 @@ import type {
   ProductAttribute,
   ProductFilter,
   ProductImage,
+  ProductStatus,
   ProductVideo,
   Sku,
 } from "@mercatus-liber/core";
@@ -50,6 +51,15 @@ export interface NewSkuInput {
   productId: string;
   identifyingAttributes: IdentifyingAttribute[];
   price: Money;
+  /** sku-images epic: optional/additive, see Sku.images's own doc comment (@mercatus-liber/core). */
+  images?: ProductImage[];
+}
+
+/** Patchable fields on an existing Sku -- deliberately excludes productId/identifyingAttributes, which never change after creation (same "id is immutable" discipline as updateProduct). */
+export interface UpdateSkuInput {
+  price?: Money;
+  status?: ProductStatus;
+  images?: ProductImage[];
 }
 
 export class ProductNotFoundError extends Error {
@@ -77,6 +87,8 @@ export interface CatalogService {
   listProducts(filter?: ProductFilter): Promise<Product[]>;
 
   createSku(input: NewSkuInput): Promise<Sku>;
+  /** Merges patch into an existing SKU; null if no SKU has this id. Id/productId/identifyingAttributes are never overwritten. The realistic sku-images workflow: generateSkus() to create the grid, then updateSku() per SKU to set its own photo. */
+  updateSku(id: string, patch: UpdateSkuInput): Promise<Sku | null>;
   getSku(id: string): Promise<Sku | null>;
   listSkusByProduct(productId: string): Promise<Sku[]>;
   generateSkus(
@@ -205,10 +217,19 @@ export function createCatalogService(deps: {
         identifyingAttributes: input.identifyingAttributes,
         price: input.price,
         status: "active",
+        ...(input.images ? { images: input.images } : {}),
       };
       await persistence.skus.save(sku);
       await events.publish("catalog.sku.created", { id: sku.id, productId: sku.productId });
       return sku;
+    },
+
+    async updateSku(id, patch) {
+      const existing = await persistence.skus.get(id);
+      if (!existing) return null;
+      const updated: Sku = { ...existing, ...patch, id: existing.id, productId: existing.productId, identifyingAttributes: existing.identifyingAttributes };
+      await persistence.skus.save(updated);
+      return updated;
     },
 
     async getSku(id) {

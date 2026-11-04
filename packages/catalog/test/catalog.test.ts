@@ -241,6 +241,110 @@ describe("catalog service", () => {
     });
   });
 
+  describe("sku-images", () => {
+    it("createSku with images round-trips them on the created Sku", async () => {
+      const product = await catalog.createProduct({
+        slug: "sunglasses",
+        title: "Sunglasses",
+        description: "d",
+        identifyingAttributeKeys: ["lens"],
+      });
+      const sku = await catalog.createSku({
+        productId: product.id,
+        identifyingAttributes: [{ key: "lens", value: "red" }],
+        price: { amount: 1999, currency: "USD" },
+        images: [{ url: "https://example.com/red-lens.jpg", alt: "Red lens sunglasses" }],
+      });
+      expect(sku.images).toEqual([{ url: "https://example.com/red-lens.jpg", alt: "Red lens sunglasses" }]);
+    });
+
+    it("createSku without images omits the field entirely -- zero regression for every pre-existing caller", async () => {
+      const product = await catalog.createProduct({
+        slug: "sunglasses2",
+        title: "Sunglasses 2",
+        description: "d",
+        identifyingAttributeKeys: ["lens"],
+      });
+      const sku = await catalog.createSku({
+        productId: product.id,
+        identifyingAttributes: [{ key: "lens", value: "clear" }],
+        price: { amount: 1999, currency: "USD" },
+      });
+      expect(sku.images).toBeUndefined();
+    });
+
+    it("generateSkus (the bulk cartesian-product path) never sets images -- confirms the real sunglasses workflow is generate-then-updateSku", async () => {
+      const product = await catalog.createProduct({
+        slug: "sunglasses3",
+        title: "Sunglasses 3",
+        description: "d",
+        identifyingAttributeKeys: ["lens"],
+      });
+      const skus = await catalog.generateSkus(product.id, { lens: ["red", "brown"] }, { amount: 1999, currency: "USD" });
+      expect(skus.every((s) => s.images === undefined)).toBe(true);
+    });
+
+    describe("updateSku", () => {
+      it("sets images on a SKU that was created without any -- the real sunglasses workflow (generateSkus, then updateSku per lens color)", async () => {
+        const product = await catalog.createProduct({
+          slug: "sunglasses4",
+          title: "Sunglasses 4",
+          description: "d",
+          identifyingAttributeKeys: ["lens"],
+        });
+        const [sku] = await catalog.generateSkus(product.id, { lens: ["red"] }, { amount: 1999, currency: "USD" });
+        const updated = await catalog.updateSku(sku!.id, { images: [{ url: "https://example.com/red.jpg", alt: "Red lens" }] });
+        expect(updated?.images).toEqual([{ url: "https://example.com/red.jpg", alt: "Red lens" }]);
+        expect(await catalog.getSku(sku!.id)).toEqual(updated);
+      });
+
+      it("a partial patch (price only) never touches images already set, or any other field", async () => {
+        const product = await catalog.createProduct({
+          slug: "sunglasses5",
+          title: "Sunglasses 5",
+          description: "d",
+          identifyingAttributeKeys: ["lens"],
+        });
+        const sku = await catalog.createSku({
+          productId: product.id,
+          identifyingAttributes: [{ key: "lens", value: "brown" }],
+          price: { amount: 1999, currency: "USD" },
+          images: [{ url: "https://example.com/brown.jpg", alt: "Brown lens" }],
+        });
+        const updated = await catalog.updateSku(sku.id, { price: { amount: 2499, currency: "USD" } });
+        expect(updated?.price).toEqual({ amount: 2499, currency: "USD" });
+        expect(updated?.images).toEqual([{ url: "https://example.com/brown.jpg", alt: "Brown lens" }]);
+        expect(updated?.productId).toBe(product.id);
+        expect(updated?.identifyingAttributes).toEqual([{ key: "lens", value: "brown" }]);
+      });
+
+      it("returns null for an unknown sku id", async () => {
+        expect(await catalog.updateSku("missing", { images: [] })).toBeNull();
+      });
+
+      it("🔍 updateSku cannot be used to change productId or identifyingAttributes, even if a caller's patch object tries to -- id is immutable, same discipline as updateProduct", async () => {
+        const product = await catalog.createProduct({
+          slug: "sunglasses6",
+          title: "Sunglasses 6",
+          description: "d",
+          identifyingAttributeKeys: ["lens"],
+        });
+        const sku = await catalog.createSku({
+          productId: product.id,
+          identifyingAttributes: [{ key: "lens", value: "yellow" }],
+          price: { amount: 1999, currency: "USD" },
+        });
+        // UpdateSkuInput's own type doesn't expose productId/identifyingAttributes at
+        // all -- this is a compile-time guarantee, not just a runtime one. Casting
+        // past it here only to prove the service-layer merge order still wins even
+        // if a caller somehow got a stray field into the patch object at runtime.
+        const updated = await catalog.updateSku(sku.id, { productId: "someone-elses-product", identifyingAttributes: [{ key: "lens", value: "tampered" }] } as never);
+        expect(updated?.productId).toBe(product.id);
+        expect(updated?.identifyingAttributes).toEqual([{ key: "lens", value: "yellow" }]);
+      });
+    });
+  });
+
   describe("full attribute map", () => {
     it("sets, lists, and removes product attributes independently of identifying attributes", async () => {
       const product = await catalog.createProduct({

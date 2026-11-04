@@ -223,13 +223,21 @@ export default async function ProductPage({
     (viewModel.templateKey && TEMPLATE_COMPONENTS[viewModel.templateKey as keyof typeof TEMPLATE_COMPONENTS]) ||
     PdpTabbedDetail;
 
+  // sku-images epic: the active (selected) SKU's own images win when it has
+  // any -- e.g. a sunglasses product's "red lens" SKU showing its own real
+  // red-lens photo instead of the product's generic shared gallery -- and
+  // fall back to the product-level gallery otherwise, exactly the
+  // consumption behavior GitHub issue #1's own "Proposed fix" described.
+  // See Sku.images's own doc comment (@mercatus-liber/core) -- most
+  // products never set per-SKU images at all, so this is a no-op for them.
+  const activeImages = activeSku?.images ?? viewModel.product.images;
   // image-cdn epic: resolves to null (never a fabricated placeholder URL)
-  // when this product has no `images` yet -- see lib/product-image.ts's own
-  // doc comment. Every PDP template below treats a null imageUrl as
-  // "render nothing extra," so this is a safe no-op ahead of seed data
-  // actually carrying real photos.
-  const imageUrl = resolveProductImageUrl(media, viewModel.product, { width: 1000, height: 1000, fit: "cover" });
-  const imageAlt = resolveProductImageAlt(viewModel.product);
+  // when neither the active SKU nor the product has `images` yet -- see
+  // lib/product-image.ts's own doc comment. Every PDP template below treats
+  // a null imageUrl as "render nothing extra," so this is a safe no-op
+  // ahead of seed data actually carrying real photos.
+  const imageUrl = resolveProductImageUrl(media, { images: activeImages }, { width: 1000, height: 1000, fit: "cover" });
+  const imageAlt = resolveProductImageAlt({ images: activeImages });
 
   // Recommendations is deliberately NOT part of pdp's view model, same
   // "app composes multiple services" pattern as stock/bundles above -- see
