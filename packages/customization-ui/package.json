@@ -1,0 +1,30 @@
+{
+  "name": "@mercatus-liber/customization-ui",
+  "version": "0.1.0",
+  "description": "Default, out-of-the-box UI for product customization (subsystem: customization) -- a real, usable Web Component (Custom Element), not just a data contract. Built as a Custom Element specifically so it embeds into any frontend (React, Angular, Vue, a plain page) without a framework-specific build step, the same pattern @google/model-viewer already proves out in shop.mdostal.com's own PDPs. Ships alongside @mercatus-liber/customization (the framework-agnostic data model + resolution logic + persistence, owned separately) -- this package is pure rendering, no persistence, no network calls. Pending @mercatus-liber/customization's real types landing, this package's resolution logic (resolveEffectiveColor) is a faithful local port (same rules: single/palette/any color modes, separable/parent-follows regions, allowed-color lists, active/discontinued/request availability) -- swap to depending on the real package once it ships, rather than maintaining two copies.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1",
+    "jsdom": "^30.0.1"
+  }
+}
