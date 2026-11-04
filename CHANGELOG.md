@@ -688,3 +688,22 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   Registered only when `QUICKBOOKS_REALM_ID` is configured -- unregistered and behaviorally
   inert for every live demo today, so no deploy was triggered. Closes the last of the three
   new-epic-candidates `integrations-catalog-and-ecosystem-audit` recorded (`[0.28.16]`).
+
+## [0.35.0] - 2026-11-03
+
+### Added
+
+- **Product media: 3D viewer, teardown video, license/attribution** (core schema): `Product`
+  gains three additive, optional fields -- `videos?: ProductVideo[]`, `viewerUrl?: string`,
+  `license?: string` -- mirroring the image-cdn epic's own precedent exactly (core schema,
+  catalog service, both reference adapters, a migration-safety test building a legacy-shape
+  SQLite file by hand). Closes issue #2, filed by a downstream storefront (shop.mdostal.com)
+  that had been working around the gap with the generic `ProductAttribute` mechanism.
+- **Community Goals: vote-threshold-gated feature unlocks** (`@mercatus-liber/community-goals`,
+  subsystem 26): a storefront publishes a `Goal` (a vote target, optionally with a second,
+  higher stretch threshold), visitors cast one deduped vote each via
+  `GoalsService.castVote(goalId, voterKey)`, and `computeGoalStatus()` derives
+  locked/unlocked/bonus-unlocked plus uncapped 0..1+ progress fractions for a liquid-fill/
+  overflow UI. Carries zero rendering/animation concern of its own by design. Ships in-memory
+  only at v1 (same posture `@mercatus-liber/bundles` took initially); a durable adapter is a
+  separable follow-up.
