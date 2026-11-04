@@ -93,6 +93,19 @@ function createFakeCommunityGoalsPool(): FakePool {
         return { rows: [{ count: String(count) }] as T[] };
       }
 
+      // castvote-race-condition fix: the real Postgres UPDATE is atomic at
+      // the database level (single statement, row-locked); this fake pool
+      // mirrors that by never yielding between the read and the write --
+      // same no-await-in-between argument as the in-memory repository's
+      // own incrementVoteCount.
+      if (sql === "UPDATE goals SET vote_count = vote_count + 1 WHERE id = $1 RETURNING *") {
+        const goal = goals.get(values[0] as string);
+        if (!goal) return { rows: [] };
+        const updated = { ...goal, vote_count: (goal.vote_count as number) + 1 };
+        goals.set(values[0] as string, updated);
+        return { rows: [updated] as T[] };
+      }
+
       throw new Error(`FakeCommunityGoalsPool: unrecognized query -- ${sql}`);
     },
   };
@@ -155,6 +168,26 @@ describe("createPostgresGoalRepository", () => {
     await repo.save(goal);
     await repo.save({ ...goal, voteCount: 500 });
     expect((await repo.get("g1"))?.voteCount).toBe(500);
+  });
+
+  describe("incrementVoteCount", () => {
+    it("increments voteCount by exactly 1 and returns the full updated goal", async () => {
+      await repo.save(goal);
+      const updated = await repo.incrementVoteCount("g1");
+      expect(updated.voteCount).toBe(goal.voteCount + 1);
+      expect(updated.slug).toBe(goal.slug);
+      expect((await repo.get("g1"))?.voteCount).toBe(goal.voteCount + 1);
+    });
+
+    it("throws for an unknown id, rather than silently returning something wrong", async () => {
+      await expect(repo.incrementVoteCount("missing")).rejects.toThrow(/not found/i);
+    });
+
+    it("🔍 N concurrent increments (fired via Promise.all, no await between them) land exactly N higher -- the real castvote-race-condition regression", async () => {
+      await repo.save({ ...goal, voteCount: 0 });
+      await Promise.all(Array.from({ length: 10 }, () => repo.incrementVoteCount("g1")));
+      expect((await repo.get("g1"))?.voteCount).toBe(10);
+    });
   });
 });
 

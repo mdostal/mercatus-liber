@@ -781,3 +781,22 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   built-dist package boundary against the exact sunglasses scenario from the filed issue (4
   lens-color SKUs, each getting its own photo via the generate-then-update workflow,
   surviving a process restart).
+
+## [0.38.1] - 2026-11-03
+
+### Fixed
+
+- **Community Goals: `castVote` vote-count race condition**, reported from a real downstream
+  integration building against this API. `castVote` used to read `goal.voteCount` once, then
+  compute `before`/`after` locally before calling `save()` -- concurrent votes on the same
+  goal could read the same stale snapshot, silently lose a real vote (last `save()` wins),
+  and independently (sometimes wrongly) believe they crossed a threshold. Fixed with a new
+  `GoalRepository.incrementVoteCount(id)`, required to be atomic at the repository layer (a
+  single `UPDATE ... SET vote_count = vote_count + 1 RETURNING *` for Postgres; a
+  synchronous Map read-modify-write for in-memory). `castVote` now derives `before`/`after`
+  from its own atomic increment's return value instead of the earlier stale read. Per-voter
+  dedup (`GoalVoteRepository.recordIfNew`) was never affected -- only the aggregate
+  `voteCount` counter had the race. Confirmed the fix genuinely closes the gap: reverted it
+  temporarily and watched 20 real concurrent votes (via `Promise.all`, the real built-dist
+  export) collapse to `voteCount: 1`, restored it and watched the same 20 votes correctly
+  land at `voteCount: 20` with `crossedThreshold` firing exactly once.

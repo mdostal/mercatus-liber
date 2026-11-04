@@ -26,6 +26,17 @@ export function createInMemoryGoalRepository(): GoalRepository {
     async save(goal: Goal): Promise<void> {
       goals.set(goal.id, structuredClone(goal));
     },
+    async incrementVoteCount(id: string): Promise<Goal> {
+      const existing = goals.get(id);
+      if (!existing) throw new Error(`Goal not found: ${id}`);
+      // Atomic by construction: a synchronous Map read-modify-write, no
+      // `await` anywhere in this body for another call to interleave on
+      // (see GoalRepository.incrementVoteCount's own doc comment -- this is
+      // the in-memory equivalent of Postgres's single atomic UPDATE).
+      const updated: Goal = { ...existing, voteCount: existing.voteCount + 1 };
+      goals.set(id, structuredClone(updated));
+      return structuredClone(updated);
+    },
   };
 }
 

@@ -114,3 +114,16 @@ wires a UI on top of it.
 3. Multi-state unlock rewards beyond two tiers (target/bonus) — not requested yet; the type
    shape (`targetCount`/`bonusCount`) would need to become an ordered list of thresholds if a
    real use case needs a third tier.
+4. ~~`castVote` had a vote-count race condition~~ — **resolved** (castvote-race-condition
+   fix, reported from a real downstream integration building against this API): `castVote`
+   used to read `goal.voteCount` once, then compute `before`/`after` locally before calling
+   `save()` — concurrent votes on the same goal could read the same stale snapshot, silently
+   lose an increment (last `save()` wins), and independently (sometimes wrongly) believe they
+   crossed a threshold. Fixed with a new `GoalRepository.incrementVoteCount(id)`, required to
+   be atomic at the repository layer (a single `UPDATE ... SET vote_count = vote_count + 1
+   RETURNING *` for Postgres; a synchronous Map read-modify-write for in-memory, atomic by
+   construction since there's no `await` inside it). `castVote` now derives `before`/`after`
+   from its own atomic increment's return value (`before = after - 1`) instead of the earlier
+   stale read, which is correct regardless of how many other votes are racing alongside it.
+   `GoalVoteRepository.recordIfNew`'s own dedup was never affected — per-voter dedup was
+   already correctly atomic; only the aggregate `voteCount` counter had the race.
