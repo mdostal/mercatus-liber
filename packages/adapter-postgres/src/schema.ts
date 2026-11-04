@@ -20,6 +20,11 @@ CREATE TABLE IF NOT EXISTS products (
 -- so this one statement (idempotent, safe to run every startup) covers both
 -- cases with no separate migration runner needed.
 ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB;
+-- product-media-attribution epic: same idempotent-ADD-COLUMN-IF-NOT-EXISTS
+-- pattern, same reason, for the three new Product fields.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS videos JSONB;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS viewer_url TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS license TEXT;
 
 CREATE TABLE IF NOT EXISTS skus (
   id TEXT PRIMARY KEY,

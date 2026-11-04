@@ -8,6 +8,7 @@ import type {
   ProductImage,
   ProductRepository,
   ProductStatus,
+  ProductVideo,
   Sku,
   SkuRepository,
 } from "@mercatus-liber/core";
@@ -29,6 +30,9 @@ interface ProductRow {
   identifying_attribute_keys: string;
   status: string;
   images: string | null;
+  videos: string | null;
+  viewer_url: string | null;
+  license: string | null;
 }
 
 interface SkuRow {
@@ -56,6 +60,9 @@ function rowToProduct(row: ProductRow): Product {
     identifyingAttributeKeys: JSON.parse(row.identifying_attribute_keys) as string[],
     status: row.status as ProductStatus,
     ...(row.images ? { images: JSON.parse(row.images) as ProductImage[] } : {}),
+    ...(row.videos ? { videos: JSON.parse(row.videos) as ProductVideo[] } : {}),
+    ...(row.viewer_url ? { viewerUrl: row.viewer_url } : {}),
+    ...(row.license ? { license: row.license } : {}),
   };
 }
 
@@ -105,6 +112,23 @@ export function openSqliteDb(path: string): Database.Database {
   } catch {
     // already has the column -- expected on every fresh DB and every DB
     // that already ran this migration once.
+  }
+  // product-media-attribution epic: same defensive best-effort ALTER, same
+  // reason, for the three new Product fields (videos/viewerUrl/license).
+  try {
+    db.exec("ALTER TABLE products ADD COLUMN videos TEXT");
+  } catch {
+    // already has the column.
+  }
+  try {
+    db.exec("ALTER TABLE products ADD COLUMN viewer_url TEXT");
+  } catch {
+    // already has the column.
+  }
+  try {
+    db.exec("ALTER TABLE products ADD COLUMN license TEXT");
+  } catch {
+    // already has the column.
   }
   // demo-scoping epic (row 61): same defensive best-effort ALTER, for the
   // same reason, for categories.demo_slug -- see
@@ -156,15 +180,18 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
     },
     async save(product: Product): Promise<void> {
       db.prepare(
-        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images)
-         VALUES (@id, @slug, @title, @description, @identifyingAttributeKeys, @status, @images)
+        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images, videos, viewer_url, license)
+         VALUES (@id, @slug, @title, @description, @identifyingAttributeKeys, @status, @images, @videos, @viewerUrl, @license)
          ON CONFLICT(id) DO UPDATE SET
            slug = excluded.slug,
            title = excluded.title,
            description = excluded.description,
            identifying_attribute_keys = excluded.identifying_attribute_keys,
            status = excluded.status,
-           images = excluded.images`,
+           images = excluded.images,
+           videos = excluded.videos,
+           viewer_url = excluded.viewer_url,
+           license = excluded.license`,
       ).run({
         id: product.id,
         slug: product.slug,
@@ -173,6 +200,9 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
         identifyingAttributeKeys: JSON.stringify(product.identifyingAttributeKeys),
         status: product.status,
         images: product.images ? JSON.stringify(product.images) : null,
+        videos: product.videos ? JSON.stringify(product.videos) : null,
+        viewerUrl: product.viewerUrl ?? null,
+        license: product.license ?? null,
       });
     },
   };

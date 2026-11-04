@@ -77,6 +77,31 @@ describe("createPostgresAdapter", () => {
       expect(found?.images).toBeUndefined();
       expect("images" in (found as object)).toBe(false);
     });
+
+    it("product-media-attribution epic: saves and retrieves a product's videos/viewerUrl/license through the JSONB/TEXT columns", async () => {
+      const withMedia: Product = {
+        ...dragon,
+        videos: [{ url: "https://example.com/dragon-teardown.mp4", title: "Teardown" }],
+        viewerUrl: "https://example.com/dragon.glb",
+        license: "Self-modeled, owned -- OSS/CC-BY",
+      };
+      await adapter.products.save(withMedia);
+      const found = await adapter.products.get("p1");
+      expect(found?.videos).toEqual(withMedia.videos);
+      expect(found?.viewerUrl).toBe(withMedia.viewerUrl);
+      expect(found?.license).toBe(withMedia.license);
+    });
+
+    it("product-media-attribution epic: a product saved with no videos/viewerUrl/license round-trips with all three absent, not empty/null", async () => {
+      await adapter.products.save(dragon);
+      const found = await adapter.products.get("p1");
+      expect(found?.videos).toBeUndefined();
+      expect(found?.viewerUrl).toBeUndefined();
+      expect(found?.license).toBeUndefined();
+      expect("videos" in (found as object)).toBe(false);
+      expect("viewerUrl" in (found as object)).toBe(false);
+      expect("license" in (found as object)).toBe(false);
+    });
   });
 
   describe("skus", () => {

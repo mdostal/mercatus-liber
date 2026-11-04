@@ -53,13 +53,16 @@ export function createFakePgPool(): FakePool {
         };
       }
       if (sql.startsWith("INSERT INTO products")) {
-        const [id, slug, title, description, identifyingAttributeKeys, status, images] = values as [
+        const [id, slug, title, description, identifyingAttributeKeys, status, images, videos, viewerUrl, license] = values as [
           string,
           string,
           string,
           string,
           string,
           string,
+          string | null,
+          string | null,
+          string | null,
           string | null,
         ];
         products.set(id, {
@@ -73,6 +76,11 @@ export function createFakePgPool(): FakePool {
           // for the driver -- mirrored here the same way
           // identifying_attribute_keys already is above.
           images: images ? JSON.parse(images) : null,
+          // product-media-attribution epic: same JSONB auto-parse mirror as
+          // images above; viewer_url/license are plain TEXT, no parsing.
+          videos: videos ? JSON.parse(videos) : null,
+          viewer_url: viewerUrl,
+          license,
         });
         return { rows: [] };
       }

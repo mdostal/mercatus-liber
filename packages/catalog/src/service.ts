@@ -8,6 +8,7 @@ import type {
   ProductAttribute,
   ProductFilter,
   ProductImage,
+  ProductVideo,
   Sku,
 } from "@mercatus-liber/core";
 import { randomUUID } from "node:crypto";
@@ -28,6 +29,10 @@ export interface NewProductInput {
   identifyingAttributeKeys: string[];
   /** image-cdn epic: optional/additive, see Product.images's own doc comment (@mercatus-liber/core). Omitted entirely by every pre-existing caller -- zero regression. */
   images?: ProductImage[];
+  /** product-media-attribution epic: optional/additive, see Product.videos/viewerUrl/license's own doc comments (@mercatus-liber/core). */
+  videos?: ProductVideo[];
+  viewerUrl?: string;
+  license?: string;
 }
 
 export interface UpdateProductInput {
@@ -36,6 +41,9 @@ export interface UpdateProductInput {
   description?: string;
   identifyingAttributeKeys?: string[];
   images?: ProductImage[];
+  videos?: ProductVideo[];
+  viewerUrl?: string;
+  license?: string;
 }
 
 export interface NewSkuInput {
@@ -145,6 +153,9 @@ export function createCatalogService(deps: {
         identifyingAttributeKeys: input.identifyingAttributeKeys,
         status: "draft",
         ...(input.images ? { images: input.images } : {}),
+        ...(input.videos ? { videos: input.videos } : {}),
+        ...(input.viewerUrl ? { viewerUrl: input.viewerUrl } : {}),
+        ...(input.license ? { license: input.license } : {}),
       };
       await persistence.products.save(product);
       await events.publish("catalog.product.created", { id: product.id });

@@ -37,6 +37,9 @@ interface ProductRow {
   identifying_attribute_keys: string[]; // JSONB -- already parsed by the pg driver
   status: string;
   images: Product["images"] | null; // JSONB, image-cdn epic
+  videos: Product["videos"] | null; // JSONB, product-media-attribution epic
+  viewer_url: string | null; // product-media-attribution epic
+  license: string | null; // product-media-attribution epic
 }
 
 interface SkuRow {
@@ -64,6 +67,9 @@ function rowToProduct(row: ProductRow): Product {
     identifyingAttributeKeys: row.identifying_attribute_keys,
     status: row.status as ProductStatus,
     ...(row.images ? { images: row.images } : {}),
+    ...(row.videos ? { videos: row.videos } : {}),
+    ...(row.viewer_url ? { viewerUrl: row.viewer_url } : {}),
+    ...(row.license ? { license: row.license } : {}),
   };
 }
 
@@ -122,15 +128,18 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
     },
     async save(product: Product): Promise<void> {
       await pool.query(
-        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images, videos, viewer_url, license)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (id) DO UPDATE SET
            slug = EXCLUDED.slug,
            title = EXCLUDED.title,
            description = EXCLUDED.description,
            identifying_attribute_keys = EXCLUDED.identifying_attribute_keys,
            status = EXCLUDED.status,
-           images = EXCLUDED.images`,
+           images = EXCLUDED.images,
+           videos = EXCLUDED.videos,
+           viewer_url = EXCLUDED.viewer_url,
+           license = EXCLUDED.license`,
         [
           product.id,
           product.slug,
@@ -139,6 +148,9 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
           JSON.stringify(product.identifyingAttributeKeys),
           product.status,
           product.images ? JSON.stringify(product.images) : null,
+          product.videos ? JSON.stringify(product.videos) : null,
+          product.viewerUrl ?? null,
+          product.license ?? null,
         ],
       );
     },

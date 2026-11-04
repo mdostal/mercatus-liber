@@ -1,0 +1,35 @@
+name: product-media-attribution
+title: Product media (3D viewer, video) + license/attribution
+description: >
+  Real fix for the gap filed as mercatus-liber#2 by shop.mdostal.com: Product
+  had no way to carry a 3D-model-viewer URL, a demo/teardown video, or a
+  license/attribution line. Adds three new, additive, optional Product
+  fields (videos?, viewerUrl?, license?), mirroring the image-cdn epic's
+  own precedent exactly across core/catalog/both reference adapters, with
+  the same migration-safety discipline. See docs/design-discussion.md.
+target_codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+methodology: classic
+version_bump: minor
+sidecar_retention: transient
+
+git_flow:
+  base_branch: master
+  branch_strategy: per-epic
+
+planning_team:
+  matched_tags: [core-schema, persistence-adapters]
+  roster: [orchestrator-authored]
+  per_tag_reasoning:
+    core-schema: "New optional Product fields -- closed shape, mirrors image-cdn epic's own precedent"
+    persistence-adapters: "Both reference adapters (postgres, sqlite) need the same migration-safety treatment images got"
+  confidence: high
+
+stories:
+  - id: pma-01-core-schema-and-catalog-service
+    title: Product.videos/viewerUrl/license fields + catalog service pass-through
+    complexity: medium
+    depends_on: []
+  - id: pma-02-adapters-and-migration-tests
+    title: Postgres + SQLite adapter columns, migrations, and migration-safety tests
+    complexity: medium
+    depends_on: [pma-01-core-schema-and-catalog-service]

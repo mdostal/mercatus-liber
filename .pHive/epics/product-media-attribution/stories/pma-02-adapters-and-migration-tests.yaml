@@ -1,0 +1,69 @@
+id: pma-02-adapters-and-migration-tests
+epic: product-media-attribution
+title: Postgres + SQLite adapter columns, migrations, and migration-safety tests
+status: pending
+complexity: medium
+methodology: classic
+depends_on: [pma-01-core-schema-and-catalog-service]
+
+description: |
+  Persists the three new Product fields in both reference adapters, with
+  the same migration-safety discipline images? got: Postgres via an
+  idempotent `ALTER TABLE products ADD COLUMN IF NOT EXISTS` (native,
+  no try/catch needed); SQLite via the same defensive best-effort
+  `ALTER TABLE ... ADD COLUMN` + try/catch fallback in openSqliteDb, proven
+  against a real pre-existing-file-shape DB the same way
+  images-migration.test.ts already proves it for images.
+
+acceptance_criteria:
+  - "Given a product with videos/viewerUrl/license saved via createPostgresAdapter, when read back (including via a fresh pool/connection), then all three round-trip exactly"
+  - "Given the same, for createSqliteAdapter/openSqliteDb, when read back, then all three round-trip exactly"
+  - "Given a real pre-existing SQLite DB file built by hand with the OLD table shape (no videos/viewer_url/license columns), when opened through createSqliteAdapter, then the ALTER TABLE fallback adds all three columns and both old and new rows read/write correctly -- mirrors images-migration.test.ts exactly, for these three columns"
+  - "Given the full adapter-postgres and adapter-sqlite test suites, when run, then they pass unchanged plus the new tests"
+
+steps:
+  - id: implement
+    description: >
+      adapter-postgres: schema.ts gets three ALTER TABLE ADD COLUMN IF NOT EXISTS
+      statements (videos JSONB, viewer_url TEXT, license TEXT) right after the
+      existing images one; index.ts's ProductRow/rowToProduct/save mirror the
+      images column exactly for all three.
+      adapter-sqlite: schema.ts's SCHEMA_SQL comment-documents the three new
+      columns; openSqliteDb gets three more best-effort
+      try { db.exec("ALTER TABLE products ADD COLUMN ...") } catch {} blocks,
+      same pattern as the existing images one; index.ts's ProductRow/
+      rowToProduct/save mirror images (videos JSON-encoded like images is,
+      viewer_url/license plain TEXT, no encoding needed).
+    agent: developer
+  - id: test
+    description: New round-trip tests per adapter, plus a new sqlite migration-safety test file mirroring images-migration.test.ts's hand-built-legacy-DB-file approach for the three new columns. Run both adapters' full suites.
+    agent: tester
+    depends_on: [implement]
+  - id: review
+    description: Confirm the Postgres ALTER statements are idempotent (IF NOT EXISTS) and the SQLite ones are wrapped in try/catch exactly like the images precedent -- no adapter crashes against a DB that already has the columns.
+    agent: reviewer
+    depends_on: [test]
+  - id: integrate
+    description: Commit to feat/product-media-schema; open the PR against mercatus-liber's master, referencing and closing issue #2.
+    agent: developer
+    depends_on: [review]
+
+context:
+  codebase: /Users/mdostal/Documents/work/personal/mercatus-liber
+  key_files:
+    - path: packages/adapter-sqlite/test/images-migration.test.ts
+      purpose: "Exact test pattern to mirror for the new columns' migration safety"
+    - path: packages/adapter-postgres/src/schema.ts
+      purpose: "ALTER TABLE ... ADD COLUMN IF NOT EXISTS pattern to copy for videos/viewer_url/license"
+
+files_to_modify:
+  - file: packages/adapter-postgres/src/schema.ts
+    change: "Three new ALTER TABLE ADD COLUMN IF NOT EXISTS statements"
+  - file: packages/adapter-postgres/src/index.ts
+    change: "ProductRow + rowToProduct + save mirror images for the three new columns"
+  - file: packages/adapter-sqlite/src/schema.ts
+    change: "Doc-comment the three new columns"
+  - file: packages/adapter-sqlite/src/index.ts
+    change: "openSqliteDb's best-effort ALTER TABLE fallback + ProductRow + rowToProduct + save"
+  - file: packages/adapter-sqlite/test/media-attribution-migration.test.ts
+    change: "New -- mirrors images-migration.test.ts for the three new columns"
