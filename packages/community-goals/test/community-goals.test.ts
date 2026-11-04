@@ -124,6 +124,36 @@ describe("community-goals", () => {
       expect(thresholdEvents).toHaveLength(1);
       expect(thresholdEvents[0]!.payload).toMatchObject({ threshold: "target", voteCountAtCrossing: 1 });
     });
+
+    it("🔍 N concurrent votes from N different voters (fired via Promise.all, not sequentially) all count -- the real castvote-race-condition regression reported from a live integration", async () => {
+      // The bug this guards against: castVote used to read goal.voteCount
+      // once, then compute before/after from that single stale snapshot --
+      // under real concurrency (Promise.all, no sequential awaiting), many
+      // calls could read the SAME pre-vote count and silently overwrite
+      // each other's increment, undercounting real votes. Fixed via
+      // GoalRepository.incrementVoteCount being atomic at the repository
+      // layer (see that method's own doc comment for the full report).
+      const goal = await service.createGoal({ slug: "concurrent", title: "G", description: "", targetCount: 1000 });
+      const results = await Promise.all(Array.from({ length: 20 }, (_, i) => service.castVote(goal.id, `voter-${i}`)));
+      expect(results.every((r) => r?.alreadyVoted === false)).toBe(true);
+      const final = await service.getGoal(goal.id);
+      expect(final?.voteCount).toBe(20);
+    });
+
+    it("🔍 crossedThreshold fires on exactly one of several concurrent votes that collectively cross it, never zero times and never more than once", async () => {
+      // Exercises the SAME race the test above does, but specifically at
+      // the exact threshold boundary -- the failure mode the old code had
+      // was either firing crossedThreshold on more than one concurrent
+      // call (both read the same stale before/after and both thought they
+      // crossed it) or on none at all (the lost-update meant the stored
+      // count never actually reached the threshold).
+      const goal = await service.createGoal({ slug: "concurrent-threshold", title: "G", description: "", targetCount: 5 });
+      const results = await Promise.all(Array.from({ length: 5 }, (_, i) => service.castVote(goal.id, `voter-${i}`)));
+      const crossings = results.filter((r) => r?.crossedThreshold === "target");
+      expect(crossings).toHaveLength(1);
+      const final = await service.getGoal(goal.id);
+      expect(final?.voteCount).toBe(5);
+    });
   });
 
   describe("enable/disable", () => {

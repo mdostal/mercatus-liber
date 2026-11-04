@@ -112,6 +112,18 @@ export function createPostgresGoalRepository(pool: Pool): GoalRepository {
         [goal.id, goal.slug, goal.title, goal.description, goal.targetCount, goal.bonusCount ?? null, goal.voteCount, goal.enabled, goal.demoSlug ?? null, goal.createdAt],
       );
     },
+
+    async incrementVoteCount(id: string): Promise<Goal> {
+      await schemaReady;
+      // Genuinely atomic -- Postgres serializes concurrent UPDATEs against
+      // the same row, so two concurrent votes can never both read the same
+      // pre-increment value the way the old service-layer get-then-save
+      // bug allowed. See GoalRepository.incrementVoteCount's own doc
+      // comment for the full bug report this fixes.
+      const result = await pool.query<GoalRow>("UPDATE goals SET vote_count = vote_count + 1 WHERE id = $1 RETURNING *", [id]);
+      if (!result.rows[0]) throw new Error(`Goal not found: ${id}`);
+      return rowToGoal(result.rows[0]);
+    },
   };
 }
 

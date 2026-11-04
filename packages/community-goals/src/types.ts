@@ -72,6 +72,26 @@ export interface GoalRepository {
   getBySlug(slug: string): Promise<Goal | null>;
   list(filter?: { demoSlug?: string }): Promise<Goal[]>;
   save(goal: Goal): Promise<void>;
+  /**
+   * castvote-race-condition fix: atomically increments voteCount by exactly
+   * 1 and returns the goal's full state immediately after -- a real
+   * confirmed bug (found live, verifying against a real storefront build)
+   * showed GoalsService.castVote previously read voteCount, computed
+   * before/after locally, then called save() with the whole object:
+   * two concurrent votes on the same goal could both read the same
+   * voteCount, both compute the same before/after pair, and the LAST
+   * save() win silently drops one real vote (lost update), while BOTH
+   * calls independently (and sometimes wrongly) believed they crossed a
+   * threshold. A conforming adapter MUST implement this as a single
+   * atomic operation (e.g. Postgres: `UPDATE goals SET vote_count =
+   * vote_count + 1 WHERE id = $1 RETURNING *`), not a separate get-then-
+   * save -- that's the entire fix. Throws if no goal has this id (the
+   * service always checks existence immediately before calling this, so
+   * in practice this only fires if the goal was deleted in the narrow
+   * window between -- there is no deleteGoal today, so this is
+   * effectively unreachable, documented rather than silently assumed).
+   */
+  incrementVoteCount(id: string): Promise<Goal>;
 }
 
 /**

@@ -123,10 +123,22 @@ export function createGoalsService(deps: { repository: GoalRepository; votes: Go
         return { goal, alreadyVoted: true, crossedThreshold: null };
       }
 
-      const before = goal.voteCount;
-      const after = before + 1;
-      const updated: Goal = { ...goal, voteCount: after };
-      await repository.save(updated);
+      // castvote-race-condition fix: derive before/after from THIS call's
+      // own atomic increment result, never from the stale `goal` read
+      // above. Under concurrent votes, repository.incrementVoteCount
+      // serializes each call to a unique, correct `after` (no two
+      // concurrent increments can return the same value), and `after - 1`
+      // is guaranteed to be exactly the count immediately before THIS
+      // vote's own contribution -- regardless of how many other votes are
+      // racing alongside it. The old code read `goal.voteCount` once at
+      // the top of castVote and computed before/after from that single
+      // stale snapshot, so two concurrent calls could silently overwrite
+      // each other's increment (a real vote lost) and both independently
+      // believe they crossed the same threshold. See GoalRepository.
+      // incrementVoteCount's own doc comment for the full bug report.
+      const updated = await repository.incrementVoteCount(goalId);
+      const after = updated.voteCount;
+      const before = after - 1;
 
       const crossedThreshold = crossedThresholdBetween(updated, before, after);
       if (crossedThreshold) {
