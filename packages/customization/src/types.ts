@@ -311,7 +311,15 @@ export interface PricingAttribute {
  * region groups, each naming whichever `attributeId` the admin wants to
  * rate. Colors are compared by the resolved palette color id (via
  * PriceBuild.colors), case-insensitively if a raw hex is ever used
- * instead.
+ * instead. PriceBuild.colors MUST be each region's EFFECTIVE color
+ * (this package's own resolveEffectiveColor/resolveEffectiveColors
+ * output), never the shopper's raw, as-submitted selection -- a real
+ * bug caught in production use: under a finish/region combination
+ * where a region is locked (follows a parent, or the whole piece
+ * shares one color), its raw submitted value can still differ from a
+ * sibling's raw value even though the two end up the SAME effective
+ * color, which would falsely fire a contrast rule that should never
+ * have applied. See PriceBuild.colors' own doc comment.
  */
 export interface ContrastRule {
   attributeId: string;
@@ -361,7 +369,18 @@ export interface PricingDocument {
 export interface PriceBuild {
   finish: string;
   attributeCounts?: Record<string, number>;
-  /** regionId -> the resolved palette color id (or raw hex, for a free-picked color) actually used -- drives contrastRules and colorMarkupCents. */
+  /**
+   * regionId -> the resolved palette color id (or raw hex, for a
+   * free-picked color) actually used -- drives contrastRules and
+   * colorMarkupCents. MUST be each region's EFFECTIVE color (this
+   * package's own resolveEffectiveColor/CustomizationService.
+   * resolveEffectiveColors output), never the shopper's raw
+   * CustomizationSelection -- passing raw picks can misfire a contrast
+   * rule for a locked region whose raw value happens to differ from a
+   * sibling's even though both resolve to the same effective color
+   * under the current finish (caught in a real integration; see
+   * ContrastRule's own doc comment).
+   */
   colors?: Record<string, string>;
 }
 

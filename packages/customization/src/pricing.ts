@@ -55,6 +55,14 @@ function contrastFires(rule: ContrastRule, colors: Record<string, string>): bool
  * floored at `base` -- the same real-world rule the original cost model
  * used (never let a discount make the whole item cheaper than its own
  * starting price), ported as a deliberate choice, not an accident.
+ *
+ * `build.colors` MUST be each region's EFFECTIVE color, not the
+ * shopper's raw selection -- see PriceBuild.colors' own doc comment.
+ * Passing raw picks can misfire a contrastRule for a region that's
+ * locked (follows a parent, or the whole piece shares one color) under
+ * the current finish: its raw value can differ from a sibling's even
+ * though both actually resolve to the same color, which this function
+ * has no way to detect on its own (caught in a real integration).
  */
 export function resolvePrice(rules: PricingRules, build: PriceBuild): PriceResult {
   const base = rules.basePriceCents[build.finish] ?? 0;
