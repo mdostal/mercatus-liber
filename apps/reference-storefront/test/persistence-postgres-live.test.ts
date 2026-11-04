@@ -25,6 +25,7 @@
  */
 import { Pool } from "pg";
 import { afterAll, describe, expect, it, vi } from "vitest";
+import { __resetServicesCacheForTests } from "../lib/services.js";
 
 const LIVE_POSTGRES_URL = process.env.LIVE_POSTGRES_URL;
 
@@ -43,6 +44,7 @@ describe.skipIf(!LIVE_POSTGRES_URL)(
       vi.stubEnv("DATABASE_URL", LIVE_POSTGRES_URL);
       vi.stubEnv("SQLITE_FILE_PATH", "");
       vi.resetModules();
+      __resetServicesCacheForTests();
 
       const { getServicesForDemo } = await import("../lib/services.js");
       const services = await getServicesForDemo("print-shop");

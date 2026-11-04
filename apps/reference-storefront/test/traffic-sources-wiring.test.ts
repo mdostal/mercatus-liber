@@ -17,6 +17,7 @@
  * memoizes its result in a module-scoped Map.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { __resetServicesCacheForTests } from "../lib/services.js";
 
 const createPostHogInsightsAdapterMock = vi.fn();
 const createGa4InsightsAdapterMock = vi.fn();
@@ -41,6 +42,7 @@ const range = { from: "2026-01-01", to: "2026-02-01" };
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
+  __resetServicesCacheForTests();
   createPostHogInsightsAdapterMock.mockClear();
   createGa4InsightsAdapterMock.mockClear();
 });
@@ -53,6 +55,7 @@ describe("Traffic & Sources insights wiring (lib/services.ts)", () => {
     vi.stubEnv("GA4_SERVICE_ACCOUNT_EMAIL", "");
     vi.stubEnv("GA4_PRIVATE_KEY", "");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -80,6 +83,7 @@ describe("Traffic & Sources insights wiring (lib/services.ts)", () => {
     vi.stubEnv("GA4_SERVICE_ACCOUNT_EMAIL", "");
     vi.stubEnv("GA4_PRIVATE_KEY", "");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -105,6 +109,7 @@ describe("Traffic & Sources insights wiring (lib/services.ts)", () => {
     vi.stubEnv("GA4_SERVICE_ACCOUNT_EMAIL", "ga4-reader@my-project.iam.gserviceaccount.com");
     vi.stubEnv("GA4_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\\nABCD\\n-----END PRIVATE KEY-----\\n");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -130,6 +135,7 @@ describe("Traffic & Sources insights wiring (lib/services.ts)", () => {
     vi.stubEnv("GA4_SERVICE_ACCOUNT_EMAIL", "ga4-reader@my-project.iam.gserviceaccount.com");
     vi.stubEnv("GA4_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\\nABCD\\n-----END PRIVATE KEY-----\\n");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");

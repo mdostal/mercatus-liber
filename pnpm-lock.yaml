@@ -137,6 +137,9 @@ importers:
       '@mercatus-liber/cms':
         specifier: workspace:*
         version: link:../../packages/cms
+      '@mercatus-liber/community-goals':
+        specifier: workspace:*
+        version: link:../../packages/community-goals
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../../packages/core

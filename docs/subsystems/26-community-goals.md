@@ -9,6 +9,36 @@ MQTT printer-status feature, gated behind community demand before shipping a cam
 stream nobody asked for yet) but genuinely general-purpose — any "N people have to want this
 before we build it" feature fits the same shape.
 
+## Reference storefront wiring
+`apps/reference-storefront` exposes a `goals` service on the Services bag (Postgres-when-
+DATABASE_URL / in-memory-otherwise, same priority-chain pattern as every other subsystem in
+`lib/services.ts`), a minimal admin CRUD page (`/demo/[demoSlug]/admin/community-goals` --
+create a goal, see its real vote count/status, enable/disable it), and the **public,
+unauthenticated** toolset a storefront's own client-side UI calls:
+`GET`/`POST /api/demo/[demoSlug]/community-goals/[slug]` -- GET reads `computeGoalStatus`,
+POST casts one vote (deduped by an anonymous, demo-namespaced cookie minted by
+`lib/voter-cookie.ts`, same pattern as `lib/cart-cookie.ts`'s own anonymous cart identity) and
+returns 409 against a disabled goal. Verified end-to-end against a real `next start`
+production build (not just `next dev`), including a genuine race-free dedup, threshold
+crossing, and the 409 disabled-vote path.
+
+**A real bug found and fixed doing that verification**, not specific to community-goals:
+`lib/services.ts`'s `servicesByDemo` memoization cache was a plain module-scoped `const`.
+Next.js's App Router bundles Route Handlers into their own module graph, separate from the
+Server Action/page-render bundle -- confirmed live in production (not a dev/Turbopack
+artifact): a goal created via the admin page's Server Action was invisible to the Route
+Handler reading the same demo's services right after, and a thrown `GoalDisabledError` failed
+an `instanceof` check in the Route Handler's catch block for the identical cross-bundle
+reason. Fixed by pinning `servicesByDemo` onto `globalThis` (the standard Next.js singleton
+pattern) and switching the error check to `err.name === "GoalDisabledError"`. This had never
+surfaced before because community-goals is the first subsystem pairing a Route Handler with
+mutable, Server-Action-written in-memory state -- restores "the in-memory default genuinely
+works, zero infra" (docs/ARCHITECTURE.md principle 4) for every subsystem's in-memory
+repository, not just this one. The fix also broke 5 test files' `vi.resetModules()`-based
+isolation (they relied on module-registry reset alone to clear `servicesByDemo`, which no
+longer holds once it's globalThis-backed) -- fixed by a new, test-only
+`__resetServicesCacheForTests()` export, called alongside `vi.resetModules()` in all 5.
+
 ## Depends on
 `@mercatus-liber/core` only (the `EventBus` type, optional). No dependency on catalog, cart,
 or customer-account — voter identity is a caller-supplied opaque `voterKey` string, not a

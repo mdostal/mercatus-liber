@@ -14,6 +14,7 @@
  * test would just observe the first test's cached Services object.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { __resetServicesCacheForTests } from "../lib/services.js";
 
 const createSanityAdapterMock = vi.fn();
 
@@ -30,6 +31,7 @@ vi.mock("@mercatus-liber/adapter-sanity", async () => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
+  __resetServicesCacheForTests();
   createSanityAdapterMock.mockClear();
 });
 
@@ -37,6 +39,7 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
   it("falls back to the in-memory CMS adapter when SANITY_PROJECT_ID is unset -- zero regression", async () => {
     vi.stubEnv("SANITY_PROJECT_ID", "");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     const services = await getServicesForDemo("print-shop");
@@ -53,6 +56,7 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
     vi.stubEnv("SANITY_DATASET", "staging");
     vi.stubEnv("SANITY_TOKEN", "tok_abc");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     await getServicesForDemo("print-shop");
@@ -68,6 +72,7 @@ describe("CMS persistence wiring (lib/services.ts)", () => {
   it("defaults SANITY_DATASET to 'production' and SANITY_TOKEN to '' when only SANITY_PROJECT_ID is set", async () => {
     vi.stubEnv("SANITY_PROJECT_ID", "proj123");
     vi.resetModules();
+    __resetServicesCacheForTests();
 
     const { getServicesForDemo } = await import("../lib/services.js");
     await getServicesForDemo("print-shop");

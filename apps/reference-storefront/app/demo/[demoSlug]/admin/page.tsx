@@ -46,6 +46,9 @@ export default async function AdminHomePage({ params }: { params: Promise<{ demo
           <Link href={`${adminBase}/bundles`}>Bundles</Link>
         </li>
         <li>
+          <Link href={`${adminBase}/community-goals`}>Community Goals</Link>
+        </li>
+        <li>
           <Link href={`${adminBase}/recommendations`}>Recommendations</Link>
         </li>
         <li>
