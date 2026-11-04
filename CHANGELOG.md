@@ -867,3 +867,28 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   updated to match the manifest's real, finer-grained region split (the chest's straps/name/
   plate-border/plate/lock) and new `pink` "request"-status palette color. 20 more tests (64
   total in the package).
+
+## [0.41.0] - 2026-11-04
+
+### Added
+
+- **Art style pricing axis** (`@mercatus-liber/customization`): a new `ArtStyle` type
+  ("flush" or "raised" engraved/printed art, ported from the real reference manifest's own
+  `art_styles`), with `ProductCustomization.artStyleIds` (which styles a product offers) and
+  `artStylePriceDeltas` (a per-product override of a style's global `priceDelta`), same
+  override pattern as `finishPriceDeltas`. Real business driver: raised art prints faster
+  (fewer filament swaps) so the shop prices it lower -- this package carries the pricing
+  axis, never which GLB a style loads (that stays a pure rendering/asset concern). New
+  `resolveArtStylePriceDelta`, and `resolveCustomizationPriceDelta` grew two optional
+  trailing parameters (`artStyles`, `artStyleId`) so it keeps summing finish + per-color +
+  per-region + color-count + art-style without double-counting, backward-compatible with
+  every existing call site. `CustomizationService` gained `listArtStyles`/`setArtStyle`,
+  `getArtStylePriceDelta`, and an optional `artStyleId` parameter on
+  `getCustomizationPriceDelta`; a discontinued or not-offered art style is rejected
+  server-side (`DiscontinuedArtStyleError`/`UnknownArtStyleError`), never left to a
+  client-side UI alone, matching every other availability check in this package.
+  `createCustomizationService`'s deps now require an `ArtStyleRepository` (a new
+  `createInMemoryArtStyleRepository` ships alongside the existing in-memory repositories) --
+  the only breaking change in this release, with no other consumer in this repo to migrate.
+  16 new tests (80 total in the package). Verified at the real built-dist package boundary.
+  Full repo check: 151/151 tasks green.

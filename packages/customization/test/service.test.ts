@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createInMemoryFinishTierRepository, createInMemoryPaletteRepository, createInMemoryProductCustomizationRepository } from "../src/in-memory-repository.js";
+import { createInMemoryArtStyleRepository, createInMemoryFinishTierRepository, createInMemoryPaletteRepository, createInMemoryProductCustomizationRepository } from "../src/in-memory-repository.js";
 import { InvalidColorSelectionError } from "../src/resolution.js";
-import { DiscontinuedFinishError, UnknownFinishTierError, createCustomizationService, type CustomizationService } from "../src/service.js";
+import { DiscontinuedArtStyleError, DiscontinuedFinishError, UnknownArtStyleError, UnknownFinishTierError, createCustomizationService, type CustomizationService } from "../src/service.js";
 import { MissingParentRegionError } from "../src/types.js";
-import { REAL_FINISHES, REAL_PALETTE, STOVETOP_GLOW_CUSTOMIZATION, STOVETOP_GLOW_REGIONS, TREASURE_CHEST_CUSTOMIZATION, TREASURE_CHEST_REGIONS } from "./fixtures.js";
+import { REAL_ART_STYLES, REAL_FINISHES, REAL_PALETTE, STOVETOP_GLOW_CUSTOMIZATION, STOVETOP_GLOW_REGIONS, TREASURE_CHEST_CUSTOMIZATION, TREASURE_CHEST_REGIONS } from "./fixtures.js";
 
 describe("CustomizationService", () => {
   let service: CustomizationService;
@@ -12,10 +12,12 @@ describe("CustomizationService", () => {
     service = createCustomizationService({
       palette: createInMemoryPaletteRepository(),
       finishTiers: createInMemoryFinishTierRepository(),
+      artStyles: createInMemoryArtStyleRepository(),
       productCustomizations: createInMemoryProductCustomizationRepository(),
     });
     for (const color of REAL_PALETTE) await service.setPaletteColor(color);
     for (const finish of REAL_FINISHES) await service.setFinishTier(finish);
+    for (const style of REAL_ART_STYLES) await service.setArtStyle(style);
   });
 
   describe("palette / finish tiers", () => {
@@ -183,6 +185,62 @@ describe("CustomizationService", () => {
       await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "red")!, status: "discontinued" });
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
       await expect(service.getCustomizationPriceDelta(created.id, "separate", { body: "#C12E1F", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" })).rejects.toThrow(InvalidColorSelectionError);
+    });
+  });
+
+  describe("art styles", () => {
+    it("listArtStyles round-trips exactly what was seeded", async () => {
+      expect((await service.listArtStyles()).map((s) => s.id).sort()).toEqual(REAL_ART_STYLES.map((s) => s.id).sort());
+    });
+
+    it("getArtStylePriceDelta returns undefined with no override/global default set", async () => {
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"] });
+      expect(await service.getArtStylePriceDelta(created.id, "flush")).toBeUndefined();
+    });
+
+    it("getArtStylePriceDelta falls back to the art style's own global priceDelta", async () => {
+      await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, priceDelta: { amount: -500, currency: "USD" } });
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"] });
+      expect(await service.getArtStylePriceDelta(created.id, "raised")).toEqual({ amount: -500, currency: "USD" });
+    });
+
+    it("a product-level artStylePriceDeltas override wins over the art style's global default", async () => {
+      await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, priceDelta: { amount: -500, currency: "USD" } });
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"], artStylePriceDeltas: { raised: { amount: -900, currency: "USD" } } });
+      expect(await service.getArtStylePriceDelta(created.id, "raised")).toEqual({ amount: -900, currency: "USD" });
+    });
+
+    it("getArtStylePriceDelta throws UnknownArtStyleError when the product doesn't offer that art style at all", async () => {
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush"] });
+      await expect(service.getArtStylePriceDelta(created.id, "raised")).rejects.toThrow(UnknownArtStyleError);
+    });
+
+    it("getArtStylePriceDelta throws DiscontinuedArtStyleError for a discontinued style -- backend-enforced, not left to a client-side UI", async () => {
+      await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, status: "discontinued" });
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"] });
+      await expect(service.getArtStylePriceDelta(created.id, "raised")).rejects.toThrow(DiscontinuedArtStyleError);
+    });
+
+    it("getCustomizationPriceDelta with no artStyleId behaves exactly as before (unaffected by art style data)", async () => {
+      await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, priceDelta: { amount: -500, currency: "USD" } });
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS, artStyleIds: ["flush", "raised"] });
+      const delta = await service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" });
+      expect(delta).toBeUndefined();
+    });
+
+    it("getCustomizationPriceDelta adds the chosen art style's own delta on top of every other lever", async () => {
+      await service.setFinishTier({ ...REAL_FINISHES.find((f) => f.id === "separate")!, priceDelta: { amount: 500, currency: "USD" } });
+      await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, priceDelta: { amount: -500, currency: "USD" } });
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS, artStyleIds: ["flush", "raised"] });
+      const delta = await service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" }, "raised");
+      expect(delta).toEqual({ amount: 0, currency: "USD" });
+    });
+
+    it("getCustomizationPriceDelta rejects an artStyleId the product doesn't offer", async () => {
+      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS, artStyleIds: ["flush"] });
+      await expect(
+        service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" }, "raised"),
+      ).rejects.toThrow(UnknownArtStyleError);
     });
   });
 });

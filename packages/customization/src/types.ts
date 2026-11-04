@@ -86,6 +86,40 @@ export interface FinishTier {
 }
 
 /**
+ * A way a product's engraved/printed art (names, pictures) can be made --
+ * ported from the real reference manifest's own `art_styles`: "flush"
+ * (set level into the surface, printed in place) or "raised" (stands up
+ * off the surface). Orthogonal to FinishTier -- a product picks one
+ * finish AND one art style independently; this package has no opinion
+ * on which GLB a style loads (`glb_raised` is a pure rendering/asset
+ * concern, never carried here). Real business driver: raised is cheaper
+ * to print (fewer filament swaps), so this is its own pricing axis, not
+ * folded into FinishTier.
+ */
+export interface ArtStyle {
+  id: string;
+  label: string;
+  description: string;
+  /**
+   * Additive money increment for choosing this art style -- the GLOBAL
+   * default, used when a specific ProductCustomization doesn't name its
+   * own override in `artStylePriceDeltas`. Absent until a real business
+   * decision sets it. Never defaulted/invented -- e.g. "raised costs
+   * less" is a real claim from the reference manifest's own notes, but
+   * the actual discount amount is the shop's call, not this package's.
+   */
+  priceDelta?: Money;
+  /**
+   * sku-availability-status epic's shared type, reused here for the
+   * identical three-state concept -- missing means "active". See
+   * AvailabilityStatus's own doc comment (@mercatus-liber/core).
+   */
+  status?: AvailabilityStatus;
+  /** Shown to the shopper alongside a non-"active" status. */
+  note?: string;
+}
+
+/**
  * One independently-colorable part of a product's 3D model -- `id` must
  * match a named material/region in the product's own GLB (see
  * @mercatus-liber/core's Product.viewerUrl), so a storefront's 3D viewer
@@ -178,6 +212,14 @@ export interface ProductCustomization {
    * affects price for this product.
    */
   colorCountPriceDeltas?: Record<string, Money>;
+  /** Art style ids this product offers (e.g. "flush", "raised"), in presentation order. Absent means this product doesn't offer a choice of art style at all -- not every product needs one. */
+  artStyleIds?: string[];
+  /**
+   * Per-product override of an art style's global `priceDelta`, keyed by
+   * artStyleId -- wins over ArtStyle.priceDelta when present, same
+   * override pattern as `finishPriceDeltas`.
+   */
+  artStylePriceDeltas?: Record<string, Money>;
   /** Shown to the shopper for why this product's offered finishes are limited (e.g. "No one-color option: the coil diffusers must be white for the LEDs to shine through."). */
   why?: string;
 }
@@ -231,6 +273,12 @@ export interface PaletteRepository {
 export interface FinishTierRepository {
   list(): Promise<FinishTier[]>;
   save(tier: FinishTier): Promise<void>;
+}
+
+/** Adapter pattern, as everywhere else in this codebase. */
+export interface ArtStyleRepository {
+  list(): Promise<ArtStyle[]>;
+  save(style: ArtStyle): Promise<void>;
 }
 
 /** Adapter pattern, as everywhere else in this codebase. */

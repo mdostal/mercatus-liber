@@ -1,4 +1,4 @@
-import type { FinishTier, FinishTierRepository, PaletteColor, PaletteRepository, ProductCustomization, ProductCustomizationRepository } from "./types.js";
+import type { ArtStyle, ArtStyleRepository, FinishTier, FinishTierRepository, PaletteColor, PaletteRepository, ProductCustomization, ProductCustomizationRepository } from "./types.js";
 
 /** Default in-memory PaletteRepository -- Map-backed, structuredClone in/out, same shape as every other in-memory repository in this codebase. */
 export function createInMemoryPaletteRepository(): PaletteRepository {
@@ -22,6 +22,19 @@ export function createInMemoryFinishTierRepository(): FinishTierRepository {
     },
     async save(tier: FinishTier): Promise<void> {
       tiers.set(tier.id, structuredClone(tier));
+    },
+  };
+}
+
+/** Default in-memory ArtStyleRepository -- same shape as createInMemoryPaletteRepository above. */
+export function createInMemoryArtStyleRepository(): ArtStyleRepository {
+  const styles = new Map<string, ArtStyle>();
+  return {
+    async list(): Promise<ArtStyle[]> {
+      return Array.from(styles.values()).map((s) => structuredClone(s));
+    },
+    async save(style: ArtStyle): Promise<void> {
+      styles.set(style.id, structuredClone(style));
     },
   };
 }

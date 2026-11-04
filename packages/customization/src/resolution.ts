@@ -1,5 +1,5 @@
 import type { Money } from "@mercatus-liber/core";
-import type { ColorRegion, CustomizationSelection, FinishTier, PaletteColor, ProductCustomization, RegionColorChoices } from "./types.js";
+import type { ArtStyle, ColorRegion, CustomizationSelection, FinishTier, PaletteColor, ProductCustomization, RegionColorChoices } from "./types.js";
 import { MissingParentRegionError, UnknownParentRegionError } from "./types.js";
 
 /**
@@ -123,15 +123,28 @@ export function resolveFinishPriceDelta(finish: FinishTier, customization: Produ
 }
 
 /**
+ * The price delta a shopper actually pays for choosing `artStyle` on this
+ * specific product -- same override pattern as resolveFinishPriceDelta:
+ * `customization.artStylePriceDeltas[artStyle.id]` wins when present,
+ * else the art style's own global `priceDelta`, else undefined.
+ */
+export function resolveArtStylePriceDelta(artStyle: ArtStyle, customization: ProductCustomization): Money | undefined {
+  return customization.artStylePriceDeltas?.[artStyle.id] ?? artStyle.priceDelta;
+}
+
+/**
  * A resolved hex's identity for counting/pricing purposes: the matching
  * palette color's own `id` when one exists, else the raw (lowercased)
  * hex itself -- for a free-picked color under ColorMode "any" that isn't
  * in the palette at all. Identity is by palette id, not hex, because a
- * future multi-color/blend filament (proposed by the 3D-printing side:
- * `{ kind: "multi", hex: "<representative>", hexes: [...] }`) can share
- * its representative `hex` with a different palette entry while still
- * being a genuinely different choice (a different spool/slot) -- an
- * identity keyed on hex alone would wrongly merge the two.
+ * multi-color/blend filament (the reference manifest's own real "kind":
+ * "multi" palette entries, e.g. "Dawn Radiance" -- a representative
+ * `hex` plus blend-stop `hexes`) can share its representative hex with a
+ * different palette entry while still being a genuinely different
+ * choice (a different spool) -- an identity keyed on hex alone would
+ * wrongly merge the two. This package doesn't yet carry `kind`/`hexes`
+ * on PaletteColor (a separate, not-yet-built epic); the identity rule is
+ * designed to stay correct once it does.
  */
 function colorIdentity(palette: PaletteColor[], hex: string): string {
   const match = palette.find((p) => p.hex.toLowerCase() === hex.toLowerCase());
@@ -193,13 +206,28 @@ function sumMoneyDeltas(deltas: (Money | undefined)[]): Money | undefined {
  *    landed on it ("some other parts will cost more").
  * 4. `customization.colorCountPriceDeltas[String(colorCount)]`, if the
  *    product names a surcharge at this exact distinct-color count.
+ * 5. resolveArtStylePriceDelta -- the chosen art style's own cost, only
+ *    when both `artStyles` and `artStyleId` are given (a product that
+ *    doesn't offer a choice of art style never has one to price).
  * Returns undefined (no price change) only when every lever above is
  * absent for this build -- otherwise a real Money sum, never a silent
  * partial total.
  */
-export function resolveCustomizationPriceDelta(palette: PaletteColor[], finish: FinishTier, customization: ProductCustomization, selection: CustomizationSelection): Money | undefined {
+export function resolveCustomizationPriceDelta(
+  palette: PaletteColor[],
+  finish: FinishTier,
+  customization: ProductCustomization,
+  selection: CustomizationSelection,
+  artStyles: ArtStyle[] = [],
+  artStyleId?: string,
+): Money | undefined {
   const regions = customization.regions;
   const deltas: (Money | undefined)[] = [resolveFinishPriceDelta(finish, customization)];
+  if (artStyleId) {
+    const artStyle = artStyles.find((a) => a.id === artStyleId);
+    if (!artStyle) throw new Error(`Unknown art style: ${artStyleId}`);
+    deltas.push(resolveArtStylePriceDelta(artStyle, customization));
+  }
 
   const usedIdentities = new Set<string>();
   for (const region of regions) {
