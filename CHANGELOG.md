@@ -818,3 +818,52 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   hand). Shared in core specifically so `@mercatus-liber/customization` (shipping next) can
   reuse the identical three-state concept for its own palette colors and finish tiers,
   rather than each subsystem forking its own status enum.
+
+## [0.40.0] - 2026-11-04
+
+### Added
+
+- **Customization** (`@mercatus-liber/customization`, subsystem 27): a shared color palette,
+  ranked/priced finish tiers (one-color print up to hand-painted), and per-product color
+  regions with the real printing-process rules a made-to-order shop needs -- a region too
+  small to be its own physically separate part follows its parent region's color once a
+  finish produces separate assembled parts; a region can restrict which palette colors it
+  offers (e.g. a light-diffuser that must stay white for an LED to shine through). Ported
+  faithfully from a real reference implementation (dostal-3d-printing's
+  `shop-assets/color/color-regions.json` and its reference editor's own `effective()`/
+  `choices()` logic), not invented from scratch. Direct response to the storefront owner's
+  own request for "the components, controls, and framework for doing all of this... out of
+  the box in mercatus liber," with the actual UI/rendering explicitly left to the storefront
+  (shop-ce's separately-shipped `@mercatus-liber/customization-ui` Web Component).
+  `AvailabilityStatus` (the sku-availability-status epic's shared type) is reused verbatim
+  for both `PaletteColor.status` and `FinishTier.status` -- "discontinued" and "request" are
+  the same mechanism answering both halves of the owner's ask (grey-out-but-still-show, and
+  a request option), not two separate features. Both are enforced server-side, not left to a
+  client-side UI alone: `resolveEffectiveColors` throws `DiscontinuedFinishError` for a
+  discontinued finish tier and `InvalidColorSelectionError` for any submitted color that
+  matches a discontinued palette entry; a `request`-status finish or color is explicitly let
+  through. Adds `ProductCustomization.finishPriceDeltas`, a per-product override of a finish
+  tier's global `priceDelta` (added after a design discussion with shop-ce: hand-painting a
+  large chest costs more than hand-painting a small insert tray, so one global delta per
+  finish tier can't be the only price lever). Ships in-memory only at v1, the same posture
+  `community-goals`/`bundles` each took initially. 44 new tests (resolution-logic unit tests
+  built from two real products' own region data -- treasure-chest and stovetop-glow --
+  mirroring the reference manifest's own rules exactly, plus full service-layer coverage).
+  Verified at the real built-dist package boundary against the exact stovetop-glow scenario
+  (a non-separable, allowed-colors-restricted region following its parent under an
+  assembled-parts finish, plus a rejected discontinued-color submission). Full repo check:
+  148/148 tasks green.
+  Also adds the pricing primitives the shop owner asked for directly, in the same package:
+  `PaletteColor.priceDelta` (a specific color costs more wherever it's used), `ColorRegion.
+  priceDelta` (a specific part costs more to give its own independent color), and
+  `ProductCustomization.colorCountPriceDeltas` (a surcharge keyed by the exact number of
+  distinct colors a build resolves to) -- all summed by a new `resolveCustomizationPriceDelta`/
+  `CustomizationService.getCustomizationPriceDelta` without double-counting each other. The
+  distinct-color count itself (`resolveColorCount`/`CustomizationService.getColorCount`) is
+  exactly what the reference editor's own manifest now asks for (a new `pricing.colors` note,
+  confirmed by reading the real file directly after a peer session updated it) and dedups by
+  palette id rather than hex -- forward-compatible with a proposed multi-color/blend filament
+  shape that could share a representative hex with an unrelated solid color. Test fixtures
+  updated to match the manifest's real, finer-grained region split (the chest's straps/name/
+  plate-border/plate/lock) and new `pink` "request"-status palette color. 20 more tests (64
+  total in the package).

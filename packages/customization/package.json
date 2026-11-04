@@ -1,0 +1,32 @@
+{
+  "name": "@mercatus-liber/customization",
+  "version": "0.1.0",
+  "description": "Per-region color/finish customization for made-to-order products (subsystem 27) -- a shared palette, ranked/priced finish tiers (one-color print up to hand-painted), and per-product color regions with real printing-process rules (a region too small to be its own physically separate part follows its parent region's color once a finish produces separate assembled parts; a region can restrict which palette colors are offered, e.g. a light-diffuser that must stay white for an LED to shine through). Ported faithfully from a real reference implementation (dostal-3d-printing/shop-assets/color/color-regions.json + its reference editor), not invented from scratch. Depends on @mercatus-liber/core only -- resolveEffectiveColor/availableColorChoices are pure, I/O-free functions a storefront's own 3D-viewer UI calls directly; this package has no rendering/animation concern of its own, same separation @mercatus-liber/community-goals draws for its own progress numbers.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}
