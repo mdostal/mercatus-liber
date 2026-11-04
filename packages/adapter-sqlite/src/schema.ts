@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS skus (
   price_amount INTEGER NOT NULL,
   price_currency TEXT NOT NULL,
   status TEXT NOT NULL,
-  images TEXT -- JSON ProductImage[] | null, sku-images epic
+  images TEXT, -- JSON ProductImage[] | null, sku-images epic
+  availability_status TEXT, -- sku-availability-status epic
+  availability_note TEXT -- sku-availability-status epic
 );
 CREATE INDEX IF NOT EXISTS idx_skus_product_id ON skus(product_id);
 

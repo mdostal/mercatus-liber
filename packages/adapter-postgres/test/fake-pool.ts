@@ -94,13 +94,15 @@ export function createFakePgPool(): FakePool {
         return { rows: [...skus.values()].filter((s) => s.product_id === values[0]) as T[] };
       }
       if (sql.startsWith("INSERT INTO skus")) {
-        const [id, productId, identifyingAttributes, priceAmount, priceCurrency, status, images] = values as [
+        const [id, productId, identifyingAttributes, priceAmount, priceCurrency, status, images, availabilityStatus, availabilityNote] = values as [
           string,
           string,
           string,
           number,
           string,
           string,
+          string | null,
+          string | null,
           string | null,
         ];
         skus.set(id, {
@@ -111,6 +113,8 @@ export function createFakePgPool(): FakePool {
           price_currency: priceCurrency,
           status,
           images: images ? JSON.parse(images) : null,
+          availability_status: availabilityStatus,
+          availability_note: availabilityNote,
         });
         return { rows: [] };
       }

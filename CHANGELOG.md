@@ -800,3 +800,21 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   temporarily and watched 20 real concurrent votes (via `Promise.all`, the real built-dist
   export) collapse to `voteCount: 1`, restored it and watched the same 20 votes correctly
   land at `voteCount: 20` with `crossedThreshold` firing exactly once.
+
+## [0.39.0] - 2026-11-04
+
+### Added
+
+- **SKU availability status**: a shared `AvailabilityStatus` type ("active" | "discontinued"
+  | "request", missing means active) in `@mercatus-liber/core`, plus `Sku.availabilityStatus`/
+  `availabilityNote`. Deliberately a separate axis from `Sku.status` (`ProductStatus`) -- a
+  published Sku can independently be discontinued (shown grayed out, not selectable) or
+  request-only (selectable "on request," captured with the order) without changing its
+  catalog publishing state. Ported from a real, live reference implementation
+  (dostal-3d-printing's color-regions.json manifest v2's own `statuses`/`rules.status`
+  blocks), confirmed by reading the real file directly, not guessed at. Threaded through
+  `catalog.createSku`/`updateSku` and both reference adapters with the established
+  migration-safety pattern (a dedicated test building a real pre-migration-shape DB file by
+  hand). Shared in core specifically so `@mercatus-liber/customization` (shipping next) can
+  reuse the identical three-state concept for its own palette colors and finish tiers,
+  rather than each subsystem forking its own status enum.

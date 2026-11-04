@@ -1,5 +1,6 @@
 import type {
   AttributeValue,
+  AvailabilityStatus,
   CatalogPersistenceAdapter,
   EventBus,
   IdentifyingAttribute,
@@ -53,6 +54,9 @@ export interface NewSkuInput {
   price: Money;
   /** sku-images epic: optional/additive, see Sku.images's own doc comment (@mercatus-liber/core). */
   images?: ProductImage[];
+  /** sku-availability-status epic: optional/additive, see Sku.availabilityStatus's own doc comment (@mercatus-liber/core). */
+  availabilityStatus?: AvailabilityStatus;
+  availabilityNote?: string;
 }
 
 /** Patchable fields on an existing Sku -- deliberately excludes productId/identifyingAttributes, which never change after creation (same "id is immutable" discipline as updateProduct). */
@@ -60,6 +64,8 @@ export interface UpdateSkuInput {
   price?: Money;
   status?: ProductStatus;
   images?: ProductImage[];
+  availabilityStatus?: AvailabilityStatus;
+  availabilityNote?: string;
 }
 
 export class ProductNotFoundError extends Error {
@@ -218,6 +224,8 @@ export function createCatalogService(deps: {
         price: input.price,
         status: "active",
         ...(input.images ? { images: input.images } : {}),
+        ...(input.availabilityStatus ? { availabilityStatus: input.availabilityStatus } : {}),
+        ...(input.availabilityNote ? { availabilityNote: input.availabilityNote } : {}),
       };
       await persistence.skus.save(sku);
       await events.publish("catalog.sku.created", { id: sku.id, productId: sku.productId });
