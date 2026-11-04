@@ -1,4 +1,4 @@
-import type { ArtStyle, ArtStyleRepository, FinishTier, FinishTierRepository, PaletteColor, PaletteRepository, ProductCustomization, ProductCustomizationRepository } from "./types.js";
+import type { ArtStyle, ArtStyleRepository, FinishTier, FinishTierRepository, PaletteColor, PaletteRepository, PricingRules, PricingRulesRepository, ProductCustomization, ProductCustomizationRepository } from "./types.js";
 
 /** Default in-memory PaletteRepository -- Map-backed, structuredClone in/out, same shape as every other in-memory repository in this codebase. */
 export function createInMemoryPaletteRepository(): PaletteRepository {
@@ -35,6 +35,25 @@ export function createInMemoryArtStyleRepository(): ArtStyleRepository {
     },
     async save(style: ArtStyle): Promise<void> {
       styles.set(style.id, structuredClone(style));
+    },
+  };
+}
+
+/** Default in-memory PricingRulesRepository -- Map keyed by productId, structuredClone in/out, same shape as every other in-memory repository in this codebase. */
+export function createInMemoryPricingRulesRepository(): PricingRulesRepository {
+  const rules = new Map<string, PricingRules>();
+  return {
+    async get(productId: string): Promise<PricingRules | null> {
+      const found = rules.get(productId);
+      return found ? structuredClone(found) : null;
+    },
+    async save(productId: string, value: PricingRules): Promise<void> {
+      rules.set(productId, structuredClone(value));
+    },
+    async list(): Promise<Record<string, PricingRules>> {
+      const out: Record<string, PricingRules> = {};
+      for (const [productId, value] of rules) out[productId] = structuredClone(value);
+      return out;
     },
   };
 }

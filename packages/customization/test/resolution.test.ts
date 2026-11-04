@@ -1,18 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  InvalidColorSelectionError,
-  MixedCurrencyError,
-  availableColorChoices,
-  resolveArtStylePriceDelta,
-  resolveColorCount,
-  resolveCustomizationPriceDelta,
-  resolveEffectiveColor,
-  resolveFinishPriceDelta,
-  validateRegions,
-  validateSelectedColor,
-} from "../src/resolution.js";
-import { MissingParentRegionError, UnknownParentRegionError, type ColorRegion, type PaletteColor, type ProductCustomization } from "../src/types.js";
-import { REAL_ART_STYLES, REAL_PALETTE, STOVETOP_GLOW_CUSTOMIZATION, STOVETOP_GLOW_REGIONS, TREASURE_CHEST_REGIONS, findArtStyle, findFinish } from "./fixtures.js";
+import { InvalidColorSelectionError, availableColorChoices, resolveColorCount, resolveEffectiveColor, validateRegions, validateSelectedColor } from "../src/resolution.js";
+import { MissingParentRegionError, UnknownParentRegionError, type ColorRegion } from "../src/types.js";
+import { REAL_PALETTE, STOVETOP_GLOW_REGIONS, TREASURE_CHEST_REGIONS, findFinish } from "./fixtures.js";
 
 describe("validateRegions", () => {
   it("accepts treasure-chest's real all-separable region list", () => {
@@ -148,31 +137,6 @@ describe("validateSelectedColor", () => {
   });
 });
 
-describe("resolveFinishPriceDelta", () => {
-  const baseCustomization: ProductCustomization = { id: "c1", productId: "p1", finishIds: ["painted"], regions: [] };
-
-  it("returns undefined when neither the product nor the finish names a delta", () => {
-    expect(resolveFinishPriceDelta(findFinish("painted"), baseCustomization)).toBeUndefined();
-  });
-
-  it("returns the finish's own global priceDelta when the product has no override", () => {
-    const finish = { ...findFinish("painted"), priceDelta: { amount: 1500, currency: "USD" } };
-    expect(resolveFinishPriceDelta(finish, baseCustomization)).toEqual({ amount: 1500, currency: "USD" });
-  });
-
-  it("a product-specific finishPriceDeltas override wins over the finish's global default", () => {
-    const finish = { ...findFinish("painted"), priceDelta: { amount: 1500, currency: "USD" } };
-    const customization = { ...baseCustomization, finishPriceDeltas: { painted: { amount: 4000, currency: "USD" } } };
-    expect(resolveFinishPriceDelta(finish, customization)).toEqual({ amount: 4000, currency: "USD" });
-  });
-
-  it("an override for a DIFFERENT finish id doesn't leak into this finish's resolved delta", () => {
-    const finish = { ...findFinish("painted"), priceDelta: { amount: 1500, currency: "USD" } };
-    const customization = { ...baseCustomization, finishPriceDeltas: { finished: { amount: 900, currency: "USD" } } };
-    expect(resolveFinishPriceDelta(finish, customization)).toEqual({ amount: 1500, currency: "USD" });
-  });
-});
-
 describe("resolveColorCount", () => {
   it("ColorMode 'single' always resolves to exactly 1, regardless of region count", () => {
     expect(resolveColorCount(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("solid"), { __all: "#7A4A24" })).toBe(1);
@@ -200,105 +164,5 @@ describe("resolveColorCount", () => {
     // Under "painted" (producesSeparateParts: false) every region takes its own selection entry, including non-separable ones.
     const selection = { body: "#ABCDEF", straps: "#ABCDEF", name: "#1F5FD0", "plate-border": "#1F5FD0", plate: "#1F5FD0", lock: "#1F5FD0" };
     expect(resolveColorCount(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("painted"), selection)).toBe(2);
-  });
-});
-
-describe("resolveCustomizationPriceDelta", () => {
-  const separateCustomization: ProductCustomization = { id: "c1", productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS };
-  const selection = { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" };
-
-  it("returns undefined when no pricing lever (finish/color/region/colorCount) is set anywhere", () => {
-    expect(resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), separateCustomization, selection)).toBeUndefined();
-  });
-
-  it("includes the finish's own resolveFinishPriceDelta", () => {
-    const finish = { ...findFinish("separate"), priceDelta: { amount: 500, currency: "USD" } };
-    expect(resolveCustomizationPriceDelta(REAL_PALETTE, finish, separateCustomization, selection)).toEqual({ amount: 500, currency: "USD" });
-  });
-
-  it("adds a used color's own priceDelta exactly once, even though it's used on two regions (plate and lock)", () => {
-    const palette: PaletteColor[] = REAL_PALETTE.map((c) => (c.id === "yellow" ? { ...c, priceDelta: { amount: 300, currency: "USD" } } : c));
-    expect(resolveCustomizationPriceDelta(palette, findFinish("separate"), separateCustomization, selection)).toEqual({ amount: 300, currency: "USD" });
-  });
-
-  it("does NOT charge a color's priceDelta when that color is never actually used in this build", () => {
-    const palette: PaletteColor[] = REAL_PALETTE.map((c) => (c.id === "pink" ? { ...c, priceDelta: { amount: 900, currency: "USD" } } : c));
-    expect(resolveCustomizationPriceDelta(palette, findFinish("separate"), separateCustomization, selection)).toBeUndefined();
-  });
-
-  it("charges an unlocked region's own priceDelta once -- 'lock' is separable, so it took its own independent choice under 'separate'", () => {
-    const regions = TREASURE_CHEST_REGIONS.map((r) => (r.id === "lock" ? { ...r, priceDelta: { amount: 700, currency: "USD" } } : r));
-    const customization = { ...separateCustomization, regions };
-    expect(resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), customization, selection)).toEqual({ amount: 700, currency: "USD" });
-  });
-
-  it("does NOT charge a LOCKED region's priceDelta -- 'name' inherits from 'plate' under 'separate', it never took its own choice", () => {
-    const regions = TREASURE_CHEST_REGIONS.map((r) => (r.id === "name" ? { ...r, priceDelta: { amount: 700, currency: "USD" } } : r));
-    const customization = { ...separateCustomization, regions };
-    expect(resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), customization, selection)).toBeUndefined();
-  });
-
-  it("charges a colorCountPriceDeltas surcharge keyed by the exact resolved distinct-color count", () => {
-    // selection above resolves to 2 distinct colors: black (body/straps) and yellow (plate/lock).
-    const customization = { ...separateCustomization, colorCountPriceDeltas: { "2": { amount: 1200, currency: "USD" } } };
-    expect(resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), customization, selection)).toEqual({ amount: 1200, currency: "USD" });
-  });
-
-  it("a colorCountPriceDeltas entry for a DIFFERENT count than what was actually resolved doesn't apply", () => {
-    const customization = { ...separateCustomization, colorCountPriceDeltas: { "4": { amount: 1200, currency: "USD" } } };
-    expect(resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), customization, selection)).toBeUndefined();
-  });
-
-  it("sums every applicable lever together, not just the first one found", () => {
-    const finish = { ...findFinish("separate"), priceDelta: { amount: 500, currency: "USD" } };
-    const palette: PaletteColor[] = REAL_PALETTE.map((c) => (c.id === "yellow" ? { ...c, priceDelta: { amount: 300, currency: "USD" } } : c));
-    const regions = TREASURE_CHEST_REGIONS.map((r) => (r.id === "lock" ? { ...r, priceDelta: { amount: 700, currency: "USD" } } : r));
-    const customization = { ...separateCustomization, regions, colorCountPriceDeltas: { "2": { amount: 1200, currency: "USD" } } };
-    expect(resolveCustomizationPriceDelta(palette, finish, customization, selection)).toEqual({ amount: 500 + 300 + 700 + 1200, currency: "USD" });
-  });
-
-  it("throws MixedCurrencyError rather than silently summing deltas in different currencies", () => {
-    const finish = { ...findFinish("separate"), priceDelta: { amount: 500, currency: "USD" } };
-    const customization = { ...separateCustomization, colorCountPriceDeltas: { "2": { amount: 1200, currency: "EUR" } } };
-    expect(() => resolveCustomizationPriceDelta(REAL_PALETTE, finish, customization, selection)).toThrow(MixedCurrencyError);
-  });
-
-  it("includes the chosen art style's own resolveArtStylePriceDelta when an artStyleId is given", () => {
-    const artStyles = [{ ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } }];
-    expect(resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), separateCustomization, selection, artStyles, "raised")).toEqual({ amount: -500, currency: "USD" });
-  });
-
-  it("omitting artStyleId never adds an art style delta, even when artStyles carries one", () => {
-    const artStyles = [{ ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } }];
-    expect(resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), separateCustomization, selection, artStyles)).toBeUndefined();
-  });
-
-  it("throws when artStyleId is given but not found in the artStyles list", () => {
-    expect(() => resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), separateCustomization, selection, REAL_ART_STYLES, "nonexistent")).toThrow(/Unknown art style/);
-  });
-});
-
-describe("resolveArtStylePriceDelta", () => {
-  const baseCustomization: ProductCustomization = { id: "c1", productId: "p1", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"] };
-
-  it("returns undefined when neither the product nor the art style names a delta", () => {
-    expect(resolveArtStylePriceDelta(findArtStyle("raised"), baseCustomization)).toBeUndefined();
-  });
-
-  it("returns the art style's own global priceDelta when the product has no override", () => {
-    const style = { ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } };
-    expect(resolveArtStylePriceDelta(style, baseCustomization)).toEqual({ amount: -500, currency: "USD" });
-  });
-
-  it("a product-specific artStylePriceDeltas override wins over the art style's global default", () => {
-    const style = { ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } };
-    const customization = { ...baseCustomization, artStylePriceDeltas: { raised: { amount: -900, currency: "USD" } } };
-    expect(resolveArtStylePriceDelta(style, customization)).toEqual({ amount: -900, currency: "USD" });
-  });
-
-  it("an override for a DIFFERENT art style id doesn't leak into this style's resolved delta", () => {
-    const style = { ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } };
-    const customization = { ...baseCustomization, artStylePriceDeltas: { flush: { amount: 200, currency: "USD" } } };
-    expect(resolveArtStylePriceDelta(style, customization)).toEqual({ amount: -500, currency: "USD" });
   });
 });

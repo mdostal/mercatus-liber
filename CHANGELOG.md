@@ -892,3 +892,41 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   the only breaking change in this release, with no other consumer in this repo to migrate.
   16 new tests (80 total in the package). Verified at the real built-dist package boundary.
   Full repo check: 151/151 tasks green.
+
+## [0.42.0] - 2026-11-04
+
+### Changed
+
+- **Customization pricing, rebuilt as a generic, fully admin-defined rules engine.** Direct
+  correction from the shop owner, reacting to real per-region slicer-time data (a treasure
+  chest's straps cost ~$45 extra only when they *differ* from the chest body) plus his own
+  words: "it isn't a flat per color count charge... fully customizeable across the entire
+  board... our tool should basically allow us to build a formula and have a bunch of
+  attributes for a product." **Removed** the fixed-field pricing design shipped in the
+  previous two releases: `FinishTier.priceDelta`/`ProductCustomization.finishPriceDeltas`,
+  `ArtStyle.priceDelta`/`artStylePriceDeltas`, `ColorRegion.priceDelta`,
+  `ProductCustomization.colorCountPriceDeltas`, `PaletteColor.priceDelta`,
+  `resolveFinishPriceDelta`/`resolveArtStylePriceDelta`/`resolveCustomizationPriceDelta`, and
+  `CustomizationService.getFinishPriceDelta`/`getArtStylePriceDelta`/
+  `getCustomizationPriceDelta` -- all superseded, not deprecated-and-kept (no other consumer in
+  this repo depended on them; confirmed with the storefront consumer before removing).
+  **Added**: `PricingAttribute` (an admin-defined cost driver, `id`/`label`/`perUnitCents`,
+  can be negative, `quoteOnly` for request-only hardware), `ContrastRule` (generalizes the
+  real, measured "cost only when colors actually differ" mechanism to any product/region
+  pair, not just the one chest case), `PricingRules` (one product's complete, standalone
+  pricing formula -- no global/override layering, since there's no automated regeneration to
+  clobber an admin's edit), and `resolvePrice` -- the one real pricing path both a storefront
+  preview and the real charge must call. Validated against 7 real cent-exact scenarios ported
+  from dostal-3d-printing's own cost model (`pricing.js`/`suggested-levers.json`, kept as a
+  reference, never a contract this package maintains). New `PricingService`/
+  `PricingRulesRepository`, deliberately separate from `CustomizationService` -- a storefront's
+  admin screen reads/writes one product's whole pricing document at a time through this.
+  `PaletteColor` gains `kind`/`hexes` (real multi-color/blend filaments, e.g. a silk gradient)
+  and `material` (the real cost driver behind a per-material surcharge, carried as a fact, not
+  a price). In-memory only at v1 for the new pricing repository, same posture as everything
+  else in this package -- flagged as the clearly-scoped next step (an admin screen's edits
+  need to survive a restart to mean anything). 69 tests total in the package (the old
+  fixed-field pricing tests retired along with the fields/functions they covered, replaced by
+  a new pricing.ts/pricing-service.ts test suite). Verified at the real built-dist package
+  boundary against 6 real scenarios including the request-only-hardware and missing-rules
+  paths. Full repo check: 151/151 tasks green.
