@@ -3,6 +3,7 @@ import {
   InvalidColorSelectionError,
   MixedCurrencyError,
   availableColorChoices,
+  resolveArtStylePriceDelta,
   resolveColorCount,
   resolveCustomizationPriceDelta,
   resolveEffectiveColor,
@@ -11,7 +12,7 @@ import {
   validateSelectedColor,
 } from "../src/resolution.js";
 import { MissingParentRegionError, UnknownParentRegionError, type ColorRegion, type PaletteColor, type ProductCustomization } from "../src/types.js";
-import { REAL_PALETTE, STOVETOP_GLOW_CUSTOMIZATION, STOVETOP_GLOW_REGIONS, TREASURE_CHEST_REGIONS, findFinish } from "./fixtures.js";
+import { REAL_ART_STYLES, REAL_PALETTE, STOVETOP_GLOW_CUSTOMIZATION, STOVETOP_GLOW_REGIONS, TREASURE_CHEST_REGIONS, findArtStyle, findFinish } from "./fixtures.js";
 
 describe("validateRegions", () => {
   it("accepts treasure-chest's real all-separable region list", () => {
@@ -260,5 +261,44 @@ describe("resolveCustomizationPriceDelta", () => {
     const finish = { ...findFinish("separate"), priceDelta: { amount: 500, currency: "USD" } };
     const customization = { ...separateCustomization, colorCountPriceDeltas: { "2": { amount: 1200, currency: "EUR" } } };
     expect(() => resolveCustomizationPriceDelta(REAL_PALETTE, finish, customization, selection)).toThrow(MixedCurrencyError);
+  });
+
+  it("includes the chosen art style's own resolveArtStylePriceDelta when an artStyleId is given", () => {
+    const artStyles = [{ ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } }];
+    expect(resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), separateCustomization, selection, artStyles, "raised")).toEqual({ amount: -500, currency: "USD" });
+  });
+
+  it("omitting artStyleId never adds an art style delta, even when artStyles carries one", () => {
+    const artStyles = [{ ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } }];
+    expect(resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), separateCustomization, selection, artStyles)).toBeUndefined();
+  });
+
+  it("throws when artStyleId is given but not found in the artStyles list", () => {
+    expect(() => resolveCustomizationPriceDelta(REAL_PALETTE, findFinish("separate"), separateCustomization, selection, REAL_ART_STYLES, "nonexistent")).toThrow(/Unknown art style/);
+  });
+});
+
+describe("resolveArtStylePriceDelta", () => {
+  const baseCustomization: ProductCustomization = { id: "c1", productId: "p1", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"] };
+
+  it("returns undefined when neither the product nor the art style names a delta", () => {
+    expect(resolveArtStylePriceDelta(findArtStyle("raised"), baseCustomization)).toBeUndefined();
+  });
+
+  it("returns the art style's own global priceDelta when the product has no override", () => {
+    const style = { ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } };
+    expect(resolveArtStylePriceDelta(style, baseCustomization)).toEqual({ amount: -500, currency: "USD" });
+  });
+
+  it("a product-specific artStylePriceDeltas override wins over the art style's global default", () => {
+    const style = { ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } };
+    const customization = { ...baseCustomization, artStylePriceDeltas: { raised: { amount: -900, currency: "USD" } } };
+    expect(resolveArtStylePriceDelta(style, customization)).toEqual({ amount: -900, currency: "USD" });
+  });
+
+  it("an override for a DIFFERENT art style id doesn't leak into this style's resolved delta", () => {
+    const style = { ...findArtStyle("raised"), priceDelta: { amount: -500, currency: "USD" } };
+    const customization = { ...baseCustomization, artStylePriceDeltas: { flush: { amount: 200, currency: "USD" } } };
+    expect(resolveArtStylePriceDelta(style, customization)).toEqual({ amount: -500, currency: "USD" });
   });
 });

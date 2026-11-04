@@ -1,4 +1,4 @@
-import type { ColorRegion, FinishTier, PaletteColor, ProductCustomization } from "../src/types.js";
+import type { ArtStyle, ColorRegion, FinishTier, PaletteColor, ProductCustomization } from "../src/types.js";
 
 /**
  * Ported directly from dostal-3d-printing/shop-assets/color/color-regions.json
@@ -33,6 +33,18 @@ export function findFinish(id: string): FinishTier {
   return finish;
 }
 
+/** Ported from the real reference manifest's own top-level `art_styles`. */
+export const REAL_ART_STYLES: ArtStyle[] = [
+  { id: "flush", label: "Flush inlay", description: "Names and pictures are set level into the surface, printed in place." },
+  { id: "raised", label: "Raised", description: "Names and pictures stand up off the surface. Fewer filament swaps, so it prints faster and costs less." },
+];
+
+export function findArtStyle(id: string): ArtStyle {
+  const style = REAL_ART_STYLES.find((s) => s.id === id);
+  if (!style) throw new Error(`fixture bug: no art style "${id}"`);
+  return style;
+}
+
 /**
  * treasure-chest's real regions, as re-split by the 3D-printing side on
  * 2026-11-04 ("break apart the chest so the straps and name are
@@ -54,6 +66,7 @@ export const TREASURE_CHEST_CUSTOMIZATION: ProductCustomization = {
   productId: "treasure-chest",
   finishIds: ["solid", "ams", "separate", "finished", "painted"],
   regions: TREASURE_CHEST_REGIONS,
+  artStyleIds: ["flush", "raised"],
 };
 
 /**

@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { Money } from "@mercatus-liber/core";
-import { resolveColorCount, resolveCustomizationPriceDelta, resolveEffectiveColor, resolveFinishPriceDelta, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
+import { resolveArtStylePriceDelta, resolveColorCount, resolveCustomizationPriceDelta, resolveEffectiveColor, resolveFinishPriceDelta, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
 import type {
+  ArtStyle,
+  ArtStyleRepository,
   CustomizationSelection,
   FinishTier,
   FinishTierRepository,
@@ -29,12 +31,31 @@ export class DiscontinuedFinishError extends Error {
   }
 }
 
+/** Thrown when a ProductCustomization lists an artStyleId that isn't a known ArtStyle, or doesn't offer that style at all -- same "this package's own catalog, never invented by the caller" discipline as UnknownFinishTierError. */
+export class UnknownArtStyleError extends Error {
+  constructor(artStyleId: string) {
+    super(`Unknown art style: ${artStyleId}`);
+    this.name = "UnknownArtStyleError";
+  }
+}
+
+/** Thrown when a request names an art style that's discontinued -- same server-side enforcement as DiscontinuedFinishError. */
+export class DiscontinuedArtStyleError extends Error {
+  constructor(artStyleId: string) {
+    super(`Art style "${artStyleId}" is discontinued and cannot be selected`);
+    this.name = "DiscontinuedArtStyleError";
+  }
+}
+
 export interface CustomizationService {
   listPalette(): Promise<PaletteColor[]>;
   setPaletteColor(color: PaletteColor): Promise<PaletteColor>;
 
   listFinishTiers(): Promise<FinishTier[]>;
   setFinishTier(tier: FinishTier): Promise<FinishTier>;
+
+  listArtStyles(): Promise<ArtStyle[]>;
+  setArtStyle(style: ArtStyle): Promise<ArtStyle>;
 
   createProductCustomization(input: NewProductCustomizationInput): Promise<ProductCustomization>;
   /** Merges patch into an existing ProductCustomization; null if no customization has this id. Id/productId are never overwritten. Re-validates regions/finishIds exactly as createProductCustomization does. */
@@ -89,15 +110,32 @@ export interface CustomizationService {
    * resolveCustomizationPriceDelta's own doc comment. Validates
    * `selection` exactly as resolveEffectiveColors does.
    */
-  getCustomizationPriceDelta(productCustomizationId: string, finishId: string, selection: CustomizationSelection): Promise<Money | undefined>;
+  /**
+   * `artStyleId` is optional -- most callers price without regard to art
+   * style until a storefront actually offers that choice. When given, it
+   * must be one of this product's own `artStyleIds` and not discontinued
+   * (same enforcement as finishId). Adds resolveArtStylePriceDelta's own
+   * result on top of every other lever.
+   */
+  getCustomizationPriceDelta(productCustomizationId: string, finishId: string, selection: CustomizationSelection, artStyleId?: string): Promise<Money | undefined>;
+
+  /**
+   * The price delta a shopper pays for choosing `artStyleId` on this
+   * product -- the product's own override from
+   * ProductCustomization.artStylePriceDeltas when present, else the art
+   * style's global default, else undefined. See
+   * resolveArtStylePriceDelta's own doc comment.
+   */
+  getArtStylePriceDelta(productCustomizationId: string, artStyleId: string): Promise<Money | undefined>;
 }
 
 export function createCustomizationService(deps: {
   palette: PaletteRepository;
   finishTiers: FinishTierRepository;
+  artStyles: ArtStyleRepository;
   productCustomizations: ProductCustomizationRepository;
 }): CustomizationService {
-  const { palette, finishTiers, productCustomizations } = deps;
+  const { palette, finishTiers, artStyles, productCustomizations } = deps;
 
   async function requireFinish(customization: ProductCustomization, finishId: string): Promise<FinishTier> {
     if (!customization.finishIds.includes(finishId)) {
@@ -108,6 +146,17 @@ export function createCustomizationService(deps: {
     if (!tier) throw new UnknownFinishTierError(finishId);
     if (tier.status === "discontinued") throw new DiscontinuedFinishError(finishId);
     return tier;
+  }
+
+  async function requireArtStyle(customization: ProductCustomization, artStyleId: string): Promise<ArtStyle> {
+    if (!customization.artStyleIds?.includes(artStyleId)) {
+      throw new UnknownArtStyleError(artStyleId);
+    }
+    const styles = await artStyles.list();
+    const style = styles.find((s) => s.id === artStyleId);
+    if (!style) throw new UnknownArtStyleError(artStyleId);
+    if (style.status === "discontinued") throw new DiscontinuedArtStyleError(artStyleId);
+    return style;
   }
 
   // Validate what the shopper actually submitted -- never trust client-side
@@ -145,6 +194,15 @@ export function createCustomizationService(deps: {
     async setFinishTier(tier: FinishTier): Promise<FinishTier> {
       await finishTiers.save(tier);
       return tier;
+    },
+
+    async listArtStyles(): Promise<ArtStyle[]> {
+      return artStyles.list();
+    },
+
+    async setArtStyle(style: ArtStyle): Promise<ArtStyle> {
+      await artStyles.save(style);
+      return style;
     },
 
     async createProductCustomization(input: NewProductCustomizationInput): Promise<ProductCustomization> {
@@ -221,13 +279,25 @@ export function createCustomizationService(deps: {
       return resolveColorCount(paletteColors, customization.regions, finish, selection);
     },
 
-    async getCustomizationPriceDelta(productCustomizationId, finishId, selection): Promise<Money | undefined> {
+    async getCustomizationPriceDelta(productCustomizationId, finishId, selection, artStyleId): Promise<Money | undefined> {
       const customization = await productCustomizations.get(productCustomizationId);
       if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
       const finish = await requireFinish(customization, finishId);
       const paletteColors = await palette.list();
       validateSelection(customization, finish, paletteColors, selection);
-      return resolveCustomizationPriceDelta(paletteColors, finish, customization, selection);
+      if (artStyleId === undefined) {
+        return resolveCustomizationPriceDelta(paletteColors, finish, customization, selection);
+      }
+      await requireArtStyle(customization, artStyleId);
+      const allStyles = await artStyles.list();
+      return resolveCustomizationPriceDelta(paletteColors, finish, customization, selection, allStyles, artStyleId);
+    },
+
+    async getArtStylePriceDelta(productCustomizationId, artStyleId): Promise<Money | undefined> {
+      const customization = await productCustomizations.get(productCustomizationId);
+      if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
+      const style = await requireArtStyle(customization, artStyleId);
+      return resolveArtStylePriceDelta(style, customization);
     },
   };
 }

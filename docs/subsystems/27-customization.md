@@ -74,6 +74,19 @@ swatch UI calls directly — this package has no rendering/animation code of its
   `hexes` blend-stop list, floated by the 3D-printing side but not yet applied to the real
   manifest) that could share its representative hex with an unrelated solid color — an
   identity keyed on hex alone would wrongly merge two genuinely different choices.
+- `ArtStyle { id, label, description, priceDelta?, status?, note? }` — ported from the real
+  reference manifest's own top-level `art_styles` ("flush"/"raised" engraved/printed art).
+  Orthogonal to `FinishTier` (a product picks one finish AND one art style independently);
+  this package carries only the pricing axis, never which GLB a style loads
+  (`glb_raised` stays a pure rendering/asset concern, out of scope here). `ProductCustomization.
+  artStyleIds`/`artStylePriceDeltas` and `resolveArtStylePriceDelta` mirror `finishIds`/
+  `finishPriceDeltas`/`resolveFinishPriceDelta` exactly. `resolveCustomizationPriceDelta` grew
+  two optional trailing parameters (`artStyles`, `artStyleId`) to fold this lever in without
+  breaking any existing call. `CustomizationService.getCustomizationPriceDelta` gained an
+  optional `artStyleId` parameter; a discontinued or not-offered art style is rejected
+  server-side (`DiscontinuedArtStyleError`/`UnknownArtStyleError`), same enforcement as every
+  other availability check in this package. `createCustomizationService`'s deps now require
+  an `ArtStyleRepository`.
 
 ## Availability status — how "discontinued" and "request" are the same mechanism
 Both halves of the storefront owner's ask ("a way to grey out options and discontinue... but
