@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Money } from "@mercatus-liber/core";
-import { resolveArtStylePriceDelta, resolveColorCount, resolveCustomizationPriceDelta, resolveEffectiveColor, resolveFinishPriceDelta, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
+import { resolveColorCount, resolveEffectiveColor, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
 import type {
   ArtStyle,
   ArtStyleRepository,
@@ -85,48 +84,24 @@ export interface CustomizationService {
   getRegionChoices(productCustomizationId: string, finishId: string): Promise<Record<string, RegionColorChoices>>;
 
   /**
-   * The price delta a shopper pays for choosing `finishId` on this
-   * product -- the product's own override from
-   * ProductCustomization.finishPriceDeltas when present, else the finish
-   * tier's global default, else undefined. See resolveFinishPriceDelta's
-   * own doc comment.
-   */
-  getFinishPriceDelta(productCustomizationId: string, finishId: string): Promise<Money | undefined>;
-
-  /**
    * The number of distinct colors `selection` resolves to under
    * `finishId`, after finish rules are applied -- see resolveColorCount's
    * own doc comment. Validates `selection` exactly as
    * resolveEffectiveColors does (never trusts a discontinued color
-   * through).
+   * through). Real pricing (see @mercatus-liber/customization's
+   * PricingRules/resolvePrice, src/pricing.ts) takes this count as one of
+   * its own caller-supplied attribute counts -- this service has no
+   * pricing opinion of its own.
    */
   getColorCount(productCustomizationId: string, finishId: string, selection: CustomizationSelection): Promise<number>;
 
   /**
-   * The total additive price delta for one fully-resolved build -- sums
-   * the finish's own delta, any per-color surcharges for distinct colors
-   * actually used, any per-region surcharges for regions that took their
-   * own independent choice, and any colorCount-tier surcharge. See
-   * resolveCustomizationPriceDelta's own doc comment. Validates
-   * `selection` exactly as resolveEffectiveColors does.
+   * Validates that `artStyleId` is one of this product's own offered
+   * `artStyleIds` and not discontinued -- never trusts a client-side UI
+   * alone, same discipline as requireFinish. Returns the resolved
+   * ArtStyle on success.
    */
-  /**
-   * `artStyleId` is optional -- most callers price without regard to art
-   * style until a storefront actually offers that choice. When given, it
-   * must be one of this product's own `artStyleIds` and not discontinued
-   * (same enforcement as finishId). Adds resolveArtStylePriceDelta's own
-   * result on top of every other lever.
-   */
-  getCustomizationPriceDelta(productCustomizationId: string, finishId: string, selection: CustomizationSelection, artStyleId?: string): Promise<Money | undefined>;
-
-  /**
-   * The price delta a shopper pays for choosing `artStyleId` on this
-   * product -- the product's own override from
-   * ProductCustomization.artStylePriceDeltas when present, else the art
-   * style's global default, else undefined. See
-   * resolveArtStylePriceDelta's own doc comment.
-   */
-  getArtStylePriceDelta(productCustomizationId: string, artStyleId: string): Promise<Money | undefined>;
+  validateArtStyleChoice(productCustomizationId: string, artStyleId: string): Promise<ArtStyle>;
 }
 
 export function createCustomizationService(deps: {
@@ -263,13 +238,6 @@ export function createCustomizationService(deps: {
       return result;
     },
 
-    async getFinishPriceDelta(productCustomizationId, finishId): Promise<Money | undefined> {
-      const customization = await productCustomizations.get(productCustomizationId);
-      if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
-      const finish = await requireFinish(customization, finishId);
-      return resolveFinishPriceDelta(finish, customization);
-    },
-
     async getColorCount(productCustomizationId, finishId, selection): Promise<number> {
       const customization = await productCustomizations.get(productCustomizationId);
       if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
@@ -279,25 +247,10 @@ export function createCustomizationService(deps: {
       return resolveColorCount(paletteColors, customization.regions, finish, selection);
     },
 
-    async getCustomizationPriceDelta(productCustomizationId, finishId, selection, artStyleId): Promise<Money | undefined> {
+    async validateArtStyleChoice(productCustomizationId, artStyleId): Promise<ArtStyle> {
       const customization = await productCustomizations.get(productCustomizationId);
       if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
-      const finish = await requireFinish(customization, finishId);
-      const paletteColors = await palette.list();
-      validateSelection(customization, finish, paletteColors, selection);
-      if (artStyleId === undefined) {
-        return resolveCustomizationPriceDelta(paletteColors, finish, customization, selection);
-      }
-      await requireArtStyle(customization, artStyleId);
-      const allStyles = await artStyles.list();
-      return resolveCustomizationPriceDelta(paletteColors, finish, customization, selection, allStyles, artStyleId);
-    },
-
-    async getArtStylePriceDelta(productCustomizationId, artStyleId): Promise<Money | undefined> {
-      const customization = await productCustomizations.get(productCustomizationId);
-      if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
-      const style = await requireArtStyle(customization, artStyleId);
-      return resolveArtStylePriceDelta(style, customization);
+      return requireArtStyle(customization, artStyleId);
     },
   };
 }

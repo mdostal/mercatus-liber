@@ -4,6 +4,9 @@ import { InvalidColorSelectionError } from "../src/resolution.js";
 import { DiscontinuedArtStyleError, DiscontinuedFinishError, UnknownArtStyleError, UnknownFinishTierError, createCustomizationService, type CustomizationService } from "../src/service.js";
 import { MissingParentRegionError } from "../src/types.js";
 import { REAL_ART_STYLES, REAL_FINISHES, REAL_PALETTE, STOVETOP_GLOW_CUSTOMIZATION, STOVETOP_GLOW_REGIONS, TREASURE_CHEST_CUSTOMIZATION, TREASURE_CHEST_REGIONS } from "./fixtures.js";
+// NOTE: pricing-related service tests (getFinishPriceDelta/getArtStylePriceDelta/getCustomizationPriceDelta)
+// were removed along with those methods -- pricing now lives entirely in PricingService (test/pricing.test.ts
+// and test/pricing-service.test.ts), decoupled from CustomizationService.
 
 describe("CustomizationService", () => {
   let service: CustomizationService;
@@ -131,25 +134,6 @@ describe("CustomizationService", () => {
     });
   });
 
-  describe("getFinishPriceDelta", () => {
-    it("returns undefined when the product has no override and the finish has no global default", async () => {
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["painted"], regions: [] });
-      expect(await service.getFinishPriceDelta(created.id, "painted")).toBeUndefined();
-    });
-
-    it("falls back to the finish tier's own global priceDelta", async () => {
-      await service.setFinishTier({ ...REAL_FINISHES.find((f) => f.id === "painted")!, priceDelta: { amount: 1500, currency: "USD" } });
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["painted"], regions: [] });
-      expect(await service.getFinishPriceDelta(created.id, "painted")).toEqual({ amount: 1500, currency: "USD" });
-    });
-
-    it("a product-level finishPriceDeltas override wins over the finish's global default -- a large chest costs more to hand-paint than a small insert tray", async () => {
-      await service.setFinishTier({ ...REAL_FINISHES.find((f) => f.id === "painted")!, priceDelta: { amount: 1500, currency: "USD" } });
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["painted"], regions: [], finishPriceDeltas: { painted: { amount: 5000, currency: "USD" } } });
-      expect(await service.getFinishPriceDelta(created.id, "painted")).toEqual({ amount: 5000, currency: "USD" });
-    });
-  });
-
   describe("getColorCount", () => {
     it("counts distinct colors across treasure-chest's real regions under 'separate', collapsing parent-follows regions", async () => {
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
@@ -164,83 +148,26 @@ describe("CustomizationService", () => {
     });
   });
 
-  describe("getCustomizationPriceDelta", () => {
-    it("sums finish + per-color + per-region + colorCount levers for a real build", async () => {
-      await service.setFinishTier({ ...REAL_FINISHES.find((f) => f.id === "separate")!, priceDelta: { amount: 500, currency: "USD" } });
-      await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "yellow")!, priceDelta: { amount: 300, currency: "USD" } });
-      const regions = TREASURE_CHEST_REGIONS.map((r) => (r.id === "lock" ? { ...r, priceDelta: { amount: 700, currency: "USD" } } : r));
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions, colorCountPriceDeltas: { "2": { amount: 1200, currency: "USD" } } });
-
-      const delta = await service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" });
-      expect(delta).toEqual({ amount: 500 + 300 + 700 + 1200, currency: "USD" });
-    });
-
-    it("returns undefined for a build with no pricing levers set anywhere", async () => {
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
-      const delta = await service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" });
-      expect(delta).toBeUndefined();
-    });
-
-    it("rejects a submitted discontinued color before pricing it", async () => {
-      await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "red")!, status: "discontinued" });
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
-      await expect(service.getCustomizationPriceDelta(created.id, "separate", { body: "#C12E1F", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" })).rejects.toThrow(InvalidColorSelectionError);
-    });
-  });
-
   describe("art styles", () => {
     it("listArtStyles round-trips exactly what was seeded", async () => {
       expect((await service.listArtStyles()).map((s) => s.id).sort()).toEqual(REAL_ART_STYLES.map((s) => s.id).sort());
     });
 
-    it("getArtStylePriceDelta returns undefined with no override/global default set", async () => {
+    it("validateArtStyleChoice returns the resolved ArtStyle when it's one of this product's own offered styles", async () => {
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"] });
-      expect(await service.getArtStylePriceDelta(created.id, "flush")).toBeUndefined();
+      const style = await service.validateArtStyleChoice(created.id, "raised");
+      expect(style.id).toBe("raised");
     });
 
-    it("getArtStylePriceDelta falls back to the art style's own global priceDelta", async () => {
-      await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, priceDelta: { amount: -500, currency: "USD" } });
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"] });
-      expect(await service.getArtStylePriceDelta(created.id, "raised")).toEqual({ amount: -500, currency: "USD" });
-    });
-
-    it("a product-level artStylePriceDeltas override wins over the art style's global default", async () => {
-      await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, priceDelta: { amount: -500, currency: "USD" } });
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"], artStylePriceDeltas: { raised: { amount: -900, currency: "USD" } } });
-      expect(await service.getArtStylePriceDelta(created.id, "raised")).toEqual({ amount: -900, currency: "USD" });
-    });
-
-    it("getArtStylePriceDelta throws UnknownArtStyleError when the product doesn't offer that art style at all", async () => {
+    it("validateArtStyleChoice throws UnknownArtStyleError when the product doesn't offer that art style at all", async () => {
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush"] });
-      await expect(service.getArtStylePriceDelta(created.id, "raised")).rejects.toThrow(UnknownArtStyleError);
+      await expect(service.validateArtStyleChoice(created.id, "raised")).rejects.toThrow(UnknownArtStyleError);
     });
 
-    it("getArtStylePriceDelta throws DiscontinuedArtStyleError for a discontinued style -- backend-enforced, not left to a client-side UI", async () => {
+    it("validateArtStyleChoice throws DiscontinuedArtStyleError for a discontinued style -- backend-enforced, not left to a client-side UI", async () => {
       await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, status: "discontinued" });
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"] });
-      await expect(service.getArtStylePriceDelta(created.id, "raised")).rejects.toThrow(DiscontinuedArtStyleError);
-    });
-
-    it("getCustomizationPriceDelta with no artStyleId behaves exactly as before (unaffected by art style data)", async () => {
-      await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, priceDelta: { amount: -500, currency: "USD" } });
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS, artStyleIds: ["flush", "raised"] });
-      const delta = await service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" });
-      expect(delta).toBeUndefined();
-    });
-
-    it("getCustomizationPriceDelta adds the chosen art style's own delta on top of every other lever", async () => {
-      await service.setFinishTier({ ...REAL_FINISHES.find((f) => f.id === "separate")!, priceDelta: { amount: 500, currency: "USD" } });
-      await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, priceDelta: { amount: -500, currency: "USD" } });
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS, artStyleIds: ["flush", "raised"] });
-      const delta = await service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" }, "raised");
-      expect(delta).toEqual({ amount: 0, currency: "USD" });
-    });
-
-    it("getCustomizationPriceDelta rejects an artStyleId the product doesn't offer", async () => {
-      const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS, artStyleIds: ["flush"] });
-      await expect(
-        service.getCustomizationPriceDelta(created.id, "separate", { body: "#141414", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" }, "raised"),
-      ).rejects.toThrow(UnknownArtStyleError);
+      await expect(service.validateArtStyleChoice(created.id, "raised")).rejects.toThrow(DiscontinuedArtStyleError);
     });
   });
 });

@@ -16,77 +16,101 @@ but still show and display it... we have to have the components, controls, and f
 doing all of this... out of the box in mercatus liber."
 
 ## Depends on
-`@mercatus-liber/core` only (`AvailabilityStatus`, `Money`). No dependency on catalog —
+`@mercatus-liber/core` only (`AvailabilityStatus`). No dependency on catalog —
 `ProductCustomization.productId` references a catalog `Product` by id only, the same
 "reference by id, never import the other package's types" discipline `@mercatus-liber/
 community-goals`/`@mercatus-liber/bundles` already draw. `resolveEffectiveColor`/
-`availableColorChoices`/`resolveFinishPriceDelta`/`resolveColorCount`/
-`resolveCustomizationPriceDelta` are pure, I/O-free functions a storefront's own 3D-viewer/
-swatch UI calls directly — this package has no rendering/animation code of its own (see
-"Explicitly NOT this subsystem's job").
+`availableColorChoices`/`resolveColorCount`/`resolvePrice` (see "Pricing" below) are pure,
+I/O-free functions a storefront's own 3D-viewer/swatch UI calls directly — this package has no
+rendering/animation code of its own (see "Explicitly NOT this subsystem's job").
 
 ## Responsibilities
-- `PaletteColor { id, label, hex, status?, note? }` — one shared palette across every product.
+- `PaletteColor { id, label, hex, kind?, hexes?, material?, status?, note? }` — one shared
+  palette across every product. `kind: "multi"` + `hexes` is a real filament whose color
+  changes along the strand (e.g. a silk gradient); `material` (e.g. "silk") is the real cost
+  driver a storefront's pricing rules key a per-material surcharge off, carried here as a fact,
+  never as a price itself.
 - `FinishTier { id, rank, label, colors: "single"|"palette"|"any", description,
-  producesSeparateParts, priceDelta?, status?, note? }` — `colors` is the reference's own
-  `ColorMode`; `producesSeparateParts` is this package's named generalization of the
-  reference's hardcoded `finish === "separate" || finish === "finished"` check (true only for
-  tiers that assemble physically separate, independently-colored parts).
+  producesSeparateParts, status?, note? }` — `colors` is the reference's own `ColorMode`;
+  `producesSeparateParts` is this package's named generalization of the reference's hardcoded
+  `finish === "separate" || finish === "finished"` check (true only for tiers that assemble
+  physically separate, independently-colored parts). No price field — see "Pricing" below.
 - `ColorRegion { id, label, defaultHex, separable, parentRegionId?, allowedColorIds?, why? }` —
   a region with `separable: false` must name a real `parentRegionId` on the same product;
   enforced by `validateRegions`, called by both `createProductCustomization` and
-  `updateProductCustomization`.
+  `updateProductCustomization`. No price field — see "Pricing" below.
 - `ProductCustomization { id, productId, finishIds, regions, bundledProductIds?,
-  finishPriceDeltas?, why? }` — `finishPriceDeltas` is a per-product override of a finish
-  tier's global `priceDelta` (a large treasure chest costs more to hand-paint than a small
-  insert tray); `bundledProductIds` is informational provenance only, never auto-merged (a
-  combined product like the reference's "cubby set" already lists its own full, pre-combined
-  region list directly on its own `ProductCustomization`).
+  artStyleIds?, why? }` — `bundledProductIds` is informational provenance only, never
+  auto-merged (a combined product like the reference's "cubby set" already lists its own full,
+  pre-combined region list directly on its own `ProductCustomization`).
+- `ArtStyle { id, label, description, status?, note? }` — ported from the real reference
+  manifest's own top-level `art_styles` ("flush"/"raised" engraved/printed art). Orthogonal to
+  `FinishTier` (a product picks one finish AND one art style independently); this package has
+  no opinion on which GLB a style loads (`glb_raised` stays a pure rendering/asset concern, out
+  of scope here) or what it costs — see "Pricing" below.
 - Pure resolution functions (`src/resolution.ts`): `validateRegions`, `resolveEffectiveColor`,
-  `availableColorChoices`, `validateSelectedColor`, `resolveFinishPriceDelta` — see their own
-  doc comments for exact semantics; all ported directly from the reference editor's
+  `availableColorChoices`, `validateSelectedColor`, `resolveColorCount` — see their own doc
+  comments for exact semantics; all ported directly from the reference editor's
   `effective()`/`choices()` or newly added for this package (locked/freeColor derivation,
-  price-delta override, submitted-selection validation).
-- `CustomizationService`: palette/finish-tier CRUD, product-customization CRUD,
+  submitted-selection validation, distinct-color counting).
+- `CustomizationService`: palette/finish-tier/art-style CRUD, product-customization CRUD,
   `resolveEffectiveColors` (every region's effective color under one finish+selection — the
   live data a 3D viewer paints with), `getRegionChoices` (every region's current swatch-row
-  choices), `getFinishPriceDelta`.
-- In-memory repositories only at v1 (`PaletteRepository`/`FinishTierRepository`/
-  `ProductCustomizationRepository`), same posture `community-goals` and `bundles` each took
-  initially — a durable adapter is a clearly-scoped follow-up once a real deployment needs
-  these to survive a restart.
-- Pricing levers, all summable, none double-counting each other
-  (`resolveCustomizationPriceDelta`/`CustomizationService.getCustomizationPriceDelta`): the
-  finish tier's own delta (`resolveFinishPriceDelta`, shipped first); `PaletteColor.
-  priceDelta` for a specific color that costs more wherever it's used, charged once per
-  distinct color actually present in the build, not once per region it appears on;
-  `ColorRegion.priceDelta` for a specific part that costs more to give its own independent
-  color, charged once per region that actually took its own choice (never for a region that's
-  locked/inherits); `ProductCustomization.colorCountPriceDeltas`, keyed by the exact distinct-
-  color count a build resolves to (`resolveColorCount`/`CustomizationService.getColorCount`).
-  Direct response to the storefront owner's own instruction to the 3D-printing side: "some
-  colors can cost more, some other parts will cost more... we'll charge more for the more
-  color differentiations they put." `resolveColorCount` is reported by the reference editor
-  itself (the manifest's own `pricing.colors` note) and dedups by **palette id**, not by hex
-  — a resolved color's identity is the matching palette entry's id when one exists, else the
-  raw hex (for a free-picked color under ColorMode "any"). This is forward-compatible with a
-  proposed multi-color/blend filament shape (`kind: "multi"`, a representative `hex` plus a
-  `hexes` blend-stop list, floated by the 3D-printing side but not yet applied to the real
-  manifest) that could share its representative hex with an unrelated solid color — an
-  identity keyed on hex alone would wrongly merge two genuinely different choices.
-- `ArtStyle { id, label, description, priceDelta?, status?, note? }` — ported from the real
-  reference manifest's own top-level `art_styles` ("flush"/"raised" engraved/printed art).
-  Orthogonal to `FinishTier` (a product picks one finish AND one art style independently);
-  this package carries only the pricing axis, never which GLB a style loads
-  (`glb_raised` stays a pure rendering/asset concern, out of scope here). `ProductCustomization.
-  artStyleIds`/`artStylePriceDeltas` and `resolveArtStylePriceDelta` mirror `finishIds`/
-  `finishPriceDeltas`/`resolveFinishPriceDelta` exactly. `resolveCustomizationPriceDelta` grew
-  two optional trailing parameters (`artStyles`, `artStyleId`) to fold this lever in without
-  breaking any existing call. `CustomizationService.getCustomizationPriceDelta` gained an
-  optional `artStyleId` parameter; a discontinued or not-offered art style is rejected
-  server-side (`DiscontinuedArtStyleError`/`UnknownArtStyleError`), same enforcement as every
-  other availability check in this package. `createCustomizationService`'s deps now require
-  an `ArtStyleRepository`.
+  choices), `getColorCount`, `validateArtStyleChoice` (server-side discontinued/not-offered
+  enforcement, same discipline as `requireFinish`).
+- In-memory repositories only for the structural/availability data (`PaletteRepository`/
+  `FinishTierRepository`/`ArtStyleRepository`/`ProductCustomizationRepository`), same posture
+  `community-goals` and `bundles` each took initially — a durable adapter for these is a
+  clearly-scoped follow-up once a real deployment needs them to survive a restart. Pricing's
+  own storage is a separate concern — see "Pricing" below.
+
+## Pricing — a generic, fully admin-defined rules engine
+**Replaced an earlier fixed-field design** (`FinishTier.priceDelta`/`finishPriceDeltas`,
+`ArtStyle.priceDelta`/`artStylePriceDeltas`, `ColorRegion.priceDelta`,
+`ProductCustomization.colorCountPriceDeltas`, `PaletteColor.priceDelta`,
+`resolveCustomizationPriceDelta`) after a direct correction from the shop owner, reacting to
+real per-region slicer-time data (a treasure chest's straps cost ~$45 extra only when they
+*differ* from the chest body — matching costs nothing extra) PLUS his own explicit words:
+"it isn't a flat per color count charge... fully customizeable across the entire board...
+our tool should basically allow us to build a formula and have a bunch of attributes for a
+product." Nothing about pricing is a fixed, named field on any type anymore — every cost
+driver is admin-defined data.
+- `PricingAttribute { id, label, perUnitCents, quoteOnly? }` — one admin-defined cost driver
+  ("extra color," "silk filament," "custom name," anything). Nothing about the id is special
+  to this package; what it means and how many units apply is entirely the admin's (via `id`)
+  and the caller's (via `PriceBuild.attributeCounts`) business. `perUnitCents` can be negative
+  (a discount — raised art is cheaper on some products, pricier on others, per real slicer
+  data). `quoteOnly` (e.g. real metal hardware) never adds a price line; it sets
+  `PriceResult.quoteRequired` instead.
+- `ContrastRule { attributeId, regions, core }` — generalizes the real, measured mechanism
+  behind e.g. a chest's straps: contributes one unit to `attributeId` whenever any of
+  `regions` has a color that doesn't match any of `core`'s own colors. Not fixed to one
+  product or region pair — a product defines as many as it has real contrast-sensitive region
+  groups. This is this package's only automatic attribute-counting logic (everything else is
+  caller-supplied) because it genuinely needs `PriceBuild.colors` to evaluate.
+- `PricingRules { basePriceCents, attributes, contrastRules?, colorMarkupCents? }` — one
+  product's complete, standalone pricing formula. No global/override layering: "fully
+  customizable across the board" means per-product, and each product's document is the whole
+  story for itself (confirmed with the storefront consumer before building — simpler to
+  implement correctly, and there's no automated-regeneration-clobbers-admin-edits risk because
+  there's no automated regeneration at all; admin edits the live document directly).
+  `colorMarkupCents` is a specific palette color's own markup (e.g. a specialty filament),
+  independent of any attribute count.
+- `resolvePrice(rules, build)` (`src/pricing.ts`) — the one real pricing path every consumer
+  (this package, the storefront) must call, so a preview price and the real charge never
+  drift apart. Sums `basePriceCents[build.finish]` + each listed attribute's
+  `count * perUnitCents` + contrast-rule-driven counts + `colorMarkupCents` for every distinct
+  color actually used. A zero-amount line is omitted; `total` is floored at the base price
+  (never let a discount make the whole item cheaper than its own starting price). Validated
+  against 7 real cent-exact scenarios derived from dostal-3d-printing's own slicer-time cost
+  model (kept as a *reference*, not a contract — ownership of any cost-estimation tooling is
+  explicitly not this package's or the 3D side's job).
+- `PricingService`/`PricingRulesRepository` (`src/pricing-service.ts`) — deliberately separate
+  from `CustomizationService`: a storefront's admin screen reads/writes one product's whole
+  `PricingRules` document at a time through this; `priceOf(productId, build)` throws
+  `MissingPricingRulesError` rather than silently pricing an unconfigured product at $0.
+  In-memory only at v1 (`createInMemoryPricingRulesRepository`) — a durable (Postgres) adapter
+  is the clearly-scoped next step once a real admin screen needs edits to survive a restart.
 
 ## Availability status — how "discontinued" and "request" are the same mechanism
 Both halves of the storefront owner's ask ("a way to grey out options and discontinue... but
@@ -120,7 +144,12 @@ sku-availability-status epic, reused here verbatim for `PaletteColor.status` and
   supplementing the free-text `customizationNote`), plus a flag/note on the order when a
   `request`-status option was chosen so fulfillment sees it needs special handling, is a
   clearly-scoped, separate follow-up epic — not started as of this subsystem's initial ship.
-- **A durable (sqlite/postgres) adapter in v1.** See "Responsibilities" above.
+- **A durable adapter for either repository group in v1.** See "Responsibilities"/"Pricing" above.
+- **Cost-estimation tooling** (deriving a good `perUnitCents` from real wastage/print-time/
+  reprint-risk data). dostal-3d-printing's own `pricing.js`/`suggested-levers.json` are a real,
+  validated reference a human can read when deciding what rate to set, but this package
+  neither owns nor maintains that calculator as a contract — `resolvePrice` only sums
+  whatever rates are already set.
 
 ## Decoupling notes
 `packages/customization`'s only dependency is `@mercatus-liber/core`. Verify via
@@ -129,6 +158,9 @@ this package's own `src`; it's consumed only by `apps/reference-storefront` (if/
 downstream by whichever storefront UI builds on top of it (shop-ce's `customization-ui`).
 
 ## Open questions
+0. A durable adapter for `PricingRulesRepository` specifically — needed before a real admin
+   screen's edits can be trusted to survive a restart; not started as of this subsystem's
+   pricing-engine rewrite.
 1. Structured cart/order customization-selection field — not started. See "Explicitly NOT"
    above; the real target shape (per a peer session's own stated order data) is
    `{ productId, finishId, colors: { regionId: "#hex" } }`.

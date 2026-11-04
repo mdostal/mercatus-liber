@@ -1,4 +1,4 @@
-import type { ArtStyle, ColorRegion, FinishTier, PaletteColor, ProductCustomization } from "../src/types.js";
+import type { ArtStyle, ColorRegion, FinishTier, PaletteColor, PricingRules, ProductCustomization } from "../src/types.js";
 
 /**
  * Ported directly from dostal-3d-printing/shop-assets/color/color-regions.json
@@ -90,4 +90,33 @@ export const STOVETOP_GLOW_CUSTOMIZATION: ProductCustomization = {
   finishIds: ["ams", "separate", "finished", "painted"],
   regions: STOVETOP_GLOW_REGIONS,
   why: "No one-color option: the coil diffusers must be white for the LEDs to shine through.",
+};
+
+/**
+ * Ported from dostal-3d-printing's real suggested-levers.json entry for
+ * treasure-chest/plate (flattening base+finishDelta into one absolute
+ * basePriceCents per finish, and the one real contrast group into a
+ * generic, admin-defined attribute+rule pair) -- used to prove
+ * resolvePrice reproduces the exact same cent totals as the real cost
+ * model's own 7 generated test vectors, just expressed as fully
+ * admin-defined attributes rather than fixed fields. `core: ["body"]`
+ * only (the real manifest also lists "lid-body", omitted here since this
+ * test fixture's own TREASURE_CHEST_REGIONS doesn't model a separate
+ * chest lid region).
+ */
+export const TREASURE_CHEST_PRICING_RULES: PricingRules = {
+  basePriceCents: {
+    solid: 5900,
+    ams: 8300,
+    separate: 13300,
+    finished: 13800,
+    painted: 17700,
+  },
+  attributes: [
+    { id: "extraColor", label: "Extra color", perUnitCents: 200 },
+    { id: "customName", label: "Custom name", perUnitCents: 400 },
+    { id: "raisedArt", label: "Raised art", perUnitCents: -1500 },
+    { id: "strapsContrast", label: "Contrast: straps", perUnitCents: 4500 },
+  ],
+  contrastRules: [{ attributeId: "strapsContrast", regions: ["straps"], core: ["body"] }],
 };

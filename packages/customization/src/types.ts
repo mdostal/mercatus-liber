@@ -1,4 +1,4 @@
-import type { AvailabilityStatus, Money } from "@mercatus-liber/core";
+import type { AvailabilityStatus } from "@mercatus-liber/core";
 
 /**
  * One filament/paint color offered for customization -- a shared palette
@@ -8,7 +8,25 @@ import type { AvailabilityStatus, Money } from "@mercatus-liber/core";
 export interface PaletteColor {
   id: string;
   label: string;
+  /** For a "multi" kind entry, the representative color used wherever a single value is needed (3D preview base color, anywhere one hex is required). */
   hex: string;
+  /**
+   * "solid" (default when missing) or "multi" -- a real filament whose
+   * color changes along the strand (e.g. a silk gradient), ported from
+   * the reference manifest's own real `kind`/`hexes` fields. Additive:
+   * every existing consumer that only reads `hex` keeps working.
+   */
+  kind?: "solid" | "multi";
+  /** Only present for kind "multi" -- the blend's stop colors, for a swatch gradient and order display. Absent for "solid". */
+  hexes?: string[];
+  /**
+   * Which filament material this is -- e.g. "silk" (glossier, and the
+   * real cost driver behind a per-silk-color surcharge; see
+   * PricingLevers.silkColorDelta). Absent means the shop's base material
+   * ("basic" in the reference manifest). Never a price itself -- this
+   * package carries the material fact, pricing lives in the levers.
+   */
+  material?: string;
   /**
    * sku-availability-status epic's shared type, reused here for the
    * identical three-state concept the real reference manifest's v2 adds
@@ -18,16 +36,6 @@ export interface PaletteColor {
   status?: AvailabilityStatus;
   /** Shown to the shopper alongside a non-"active" status -- e.g. "Out of this filament until next restock." */
   note?: string;
-  /**
-   * Additive money increment for choosing THIS color anywhere in a build
-   * -- a specialty/metallic filament that costs more regardless of which
-   * region it's applied to or how many regions use it. Counted once per
-   * customization even if the same color is used on multiple regions --
-   * see resolveCustomizationPriceDelta's own doc comment. Real business
-   * need (Mathew, shop owner): "some colors can cost more." Absent means
-   * no surcharge for this color. Never defaulted/invented.
-   */
-  priceDelta?: Money;
 }
 
 /**
@@ -40,12 +48,13 @@ export type ColorMode = "single" | "palette" | "any";
 
 /**
  * A way a product can be made -- e.g. "one color print" up to "hand-painted," each a real
- * step up in cost. `rank` orders tiers cheapest-to-priciest (1 = cheapest); this package
- * never invents a price delta -- see FinishTier's own doc comment on `priceDelta`.
+ * step up in cost. `rank` orders tiers cheapest-to-priciest (1 = cheapest); the real price
+ * delta for choosing this tier lives in PricingLevers.products[productId].variants[variantId]
+ * .finishDeltas[id], generated from real cost/slicer data -- not carried on this type.
  */
 export interface FinishTier {
   id: string;
-  /** Price rank, ascending (1 = cheapest). Display-only ordering; the real price delta (if any) is priceDelta. */
+  /** Price rank, ascending (1 = cheapest). Display-only ordering; the real price delta (if any) lives in PricingLevers. */
   rank: number;
   label: string;
   colors: ColorMode;
@@ -65,16 +74,6 @@ export interface FinishTier {
    */
   producesSeparateParts: boolean;
   /**
-   * Additive money increment over the product's base price for choosing
-   * this finish tier -- the GLOBAL default, used when a specific
-   * ProductCustomization doesn't name its own override in
-   * `finishPriceDeltas` (see that field's own doc comment for why a
-   * delta can legitimately vary by product -- hand-painting a small part
-   * costs less than hand-painting a large one). Absent until a real
-   * business decision sets it. Never defaulted/invented.
-   */
-  priceDelta?: Money;
-  /**
    * sku-availability-status epic's shared type, reused here for the
    * identical three-state concept the real reference manifest's v2 adds
    * to finish entries -- missing means "active". See AvailabilityStatus's
@@ -93,22 +92,15 @@ export interface FinishTier {
  * finish AND one art style independently; this package has no opinion
  * on which GLB a style loads (`glb_raised` is a pure rendering/asset
  * concern, never carried here). Real business driver: raised is cheaper
- * to print (fewer filament swaps), so this is its own pricing axis, not
- * folded into FinishTier.
+ * to print on most products (fewer filament swaps) but not all (see
+ * PricingLevers.products[productId].variants[variantId].artDeltas.raised,
+ * generated from real slicer data -- the delta isn't carried on this
+ * type since it genuinely varies by product, not just globally).
  */
 export interface ArtStyle {
   id: string;
   label: string;
   description: string;
-  /**
-   * Additive money increment for choosing this art style -- the GLOBAL
-   * default, used when a specific ProductCustomization doesn't name its
-   * own override in `artStylePriceDeltas`. Absent until a real business
-   * decision sets it. Never defaulted/invented -- e.g. "raised costs
-   * less" is a real claim from the reference manifest's own notes, but
-   * the actual discount amount is the shop's call, not this package's.
-   */
-  priceDelta?: Money;
   /**
    * sku-availability-status epic's shared type, reused here for the
    * identical three-state concept -- missing means "active". See
@@ -149,17 +141,6 @@ export interface ColorRegion {
   allowedColorIds?: string[];
   /** Shown to the shopper when this region is restricted or locked -- e.g. "The LEDs shine through these, so they stay white." */
   why?: string;
-  /**
-   * Additive money increment for giving THIS region its own independent
-   * color choice -- charged once whenever the region is unlocked (not
-   * following a parent, not forced to a single whole-piece color) under
-   * the chosen finish, regardless of which color is picked. Real
-   * business need (Mathew, shop owner): "some other parts will cost
-   * more" -- breaking a part out as separately colorable/paintable is
-   * itself what costs extra, not just which color lands on it. Absent
-   * means no surcharge for this region. Never defaulted/invented.
-   */
-  priceDelta?: Money;
 }
 
 /**
@@ -190,36 +171,8 @@ export interface ProductCustomization {
    * combined product.
    */
   bundledProductIds?: string[];
-  /**
-   * Per-product override of a finish tier's global `priceDelta`, keyed by
-   * finishId -- wins over FinishTier.priceDelta when present for a given
-   * finish. Real production need, not speculative: a large product (a
-   * treasure chest) hand-painted costs more than a small one (an insert
-   * tray) hand-painted, so a single global delta per finish tier can't be
-   * the only price lever. Absent entirely means "use every finish's own
-   * global default" -- most products never need this.
-   */
-  finishPriceDeltas?: Record<string, Money>;
-  /**
-   * Additive money increment keyed by the distinct-color COUNT a build
-   * resolves to (see resolveColorCount) -- e.g. `{ "2": {...}, "3":
-   * {...} }` charges extra once a build uses 2 or 3 distinct colors.
-   * Real business need (Mathew, shop owner): "we'll charge more for the
-   * more color differentiations they put." A missing key at a given
-   * count means no surcharge at that count; the shop sets the real
-   * amounts and curve (flat, cliff, or per-step) -- this package never
-   * assumes linear pricing. Absent entirely means colorCount never
-   * affects price for this product.
-   */
-  colorCountPriceDeltas?: Record<string, Money>;
   /** Art style ids this product offers (e.g. "flush", "raised"), in presentation order. Absent means this product doesn't offer a choice of art style at all -- not every product needs one. */
   artStyleIds?: string[];
-  /**
-   * Per-product override of an art style's global `priceDelta`, keyed by
-   * artStyleId -- wins over ArtStyle.priceDelta when present, same
-   * override pattern as `finishPriceDeltas`.
-   */
-  artStylePriceDeltas?: Record<string, Money>;
   /** Shown to the shopper for why this product's offered finishes are limited (e.g. "No one-color option: the coil diffusers must be white for the LEDs to shine through."). */
   why?: string;
 }
@@ -287,4 +240,134 @@ export interface ProductCustomizationRepository {
   getByProductId(productId: string): Promise<ProductCustomization | null>;
   list(): Promise<ProductCustomization[]>;
   save(customization: ProductCustomization): Promise<void>;
+}
+
+// ---------------------------------------------------------------------------
+// Pricing. A generic, fully admin-defined rules engine -- direct correction
+// from the shop owner after an earlier fixed-field design ("it isn't a flat
+// per color count charge... fully customizeable across the entire board...
+// our tool should basically allow us to build a formula and have a bunch of
+// attributes for a product"). Nothing here hardcodes "colors cost $X" or
+// "raised art is cheaper" as a named field -- every cost driver is an
+// admin-defined PricingAttribute with its own rate, and a product's
+// PricingRules is just a flat list of whichever attributes apply to it, plus
+// per-specific-color markup and contrast rules (both also fully admin-
+// editable, not fixed to any one product). The REAL slicer-time/wastage/
+// reprint-risk data (dostal-3d-printing's estimates.json) is an input a
+// human uses to DECIDE what rate to set for an attribute -- this package
+// doesn't compute cost from slicer data itself, it just stores and sums
+// whatever rates the admin set. See resolvePrice's own doc comment
+// (src/pricing.ts) for exactly how a build's attribute counts are summed.
+// ---------------------------------------------------------------------------
+
+/** One line of an itemized price breakdown -- `amount` is the line's own additive cents, never cumulative. */
+export interface PriceLine {
+  id: string;
+  label: string;
+  amount: number;
+}
+
+/** The full priced result of one build. `total` is floored at `rules.basePriceCents[build.finish]` -- never let a discount attribute make the whole item cheaper than its own starting price. */
+export interface PriceResult {
+  lines: PriceLine[];
+  total: number;
+  /** True when `build.quoteOnly` named a request-only attribute (e.g. real metal hardware) -- quoted by request, never auto-priced. */
+  quoteRequired: boolean;
+}
+
+/**
+ * One admin-defined cost driver -- "extra color," "silk filament,"
+ * "custom name," "chest straps differ from the body," a drop-ship
+ * fulfillment surcharge, anything. Nothing about PricingAttribute is
+ * specific to any one product or concept; what it means and how many
+ * units apply is entirely up to the admin (via its `id`) and the caller
+ * (via PriceBuild.attributeCounts) -- this package only sums
+ * `count * perUnitCents` for whichever attributes a product's PricingRules
+ * actually lists. `perUnitCents` can be negative (a discount, e.g. raised
+ * art costs less on some products).
+ */
+export interface PricingAttribute {
+  id: string;
+  label: string;
+  perUnitCents: number;
+  /**
+   * When true, this attribute is request-only -- its own units are never
+   * added to the total (real metal hardware has no settled price yet);
+   * PriceResult.quoteRequired is set instead whenever a build's
+   * attributeCounts names this attribute at all. Same real business need
+   * as the earlier `metal: true` flag, generalized to any attribute.
+   */
+  quoteOnly?: boolean;
+}
+
+/**
+ * An admin-defined rule that contributes exactly one unit to a named
+ * attribute's count whenever ANY of `regions` is given a color that
+ * doesn't match ANY of `core`'s own colors -- the real, measured
+ * mechanism behind e.g. a treasure chest's straps (matching the chest's
+ * core color costs nothing extra; differing from it is real, significant
+ * print time). Not specific to one product or one region pair -- a
+ * product can define as many of these as it has real contrast-sensitive
+ * region groups, each naming whichever `attributeId` the admin wants to
+ * rate. Colors are compared by the resolved palette color id (via
+ * PriceBuild.colors), case-insensitively if a raw hex is ever used
+ * instead.
+ */
+export interface ContrastRule {
+  attributeId: string;
+  regions: string[];
+  core: string[];
+}
+
+/**
+ * One product's complete, admin-editable pricing configuration -- the
+ * whole formula for this product lives here, nothing fixed in code.
+ */
+export interface PricingRules {
+  /** Starting price per finish id (e.g. "solid", "ams") -- the floor every attribute's charge is added on top of. */
+  basePriceCents: Record<string, number>;
+  /** This product's own rate table -- which cost drivers apply here and what they cost. A product only lists the attributes that actually apply to it. */
+  attributes: PricingAttribute[];
+  /** This product's contrast rules, if it has any region pairs where color difference is a real, priced cost driver. */
+  contrastRules?: ContrastRule[];
+  /** Extra cents for using this SPECIFIC palette color on this product, keyed by PaletteColor.id -- e.g. a specialty filament that costs more to buy, independent of any attribute count. Admin-set, never computed. */
+  colorMarkupCents?: Record<string, number>;
+}
+
+/**
+ * The full pricing document -- one PricingRules per product, plus a shared
+ * attribute library new products can start from (never required -- a
+ * product's own `attributes` list is authoritative for itself). "suggested"
+ * until a human approves it; this package never flips `status` itself, and
+ * never treats any shipped number as an approved price.
+ */
+export interface PricingDocument {
+  status: string;
+  currency: string;
+  products: Record<string, PricingRules>;
+  /** Reusable attribute definitions a new product's own `attributes` list can copy from -- purely a convenience library, never consulted automatically by resolvePrice. */
+  attributeLibrary?: PricingAttribute[];
+}
+
+/**
+ * One shopper's concrete choices, priced by resolvePrice. `attributeCounts`
+ * is supplied by the caller for whichever cost drivers it already knows how
+ * to count (e.g. distinct colors beyond the first, distinct silk colors,
+ * whether a custom name was entered) -- this package adds to it
+ * automatically only for `rules.contrastRules` matches, since those need
+ * `colors` to evaluate and nothing else can do it without duplicating that
+ * logic. `colors` is also used for `colorMarkupCents` lookups.
+ */
+export interface PriceBuild {
+  finish: string;
+  attributeCounts?: Record<string, number>;
+  /** regionId -> the resolved palette color id (or raw hex, for a free-picked color) actually used -- drives contrastRules and colorMarkupCents. */
+  colors?: Record<string, string>;
+}
+
+/** Adapter pattern, as everywhere else in this codebase. Keyed by productId; one PricingRules document per product, no separate global/override layering -- "fully customizable across the board" means every product's formula stands on its own. */
+export interface PricingRulesRepository {
+  get(productId: string): Promise<PricingRules | null>;
+  save(productId: string, rules: PricingRules): Promise<void>;
+  list(): Promise<Record<string, PricingRules>>;
 }
