@@ -88,23 +88,45 @@ driver is admin-defined data.
   product or region pair — a product defines as many as it has real contrast-sensitive region
   groups. This is this package's only automatic attribute-counting logic (everything else is
   caller-supplied) because it genuinely needs `PriceBuild.colors` to evaluate.
-- `PricingRules { basePriceCents, attributes, contrastRules?, colorMarkupCents? }` — one
-  product's complete, standalone pricing formula. No global/override layering: "fully
-  customizable across the board" means per-product, and each product's document is the whole
-  story for itself (confirmed with the storefront consumer before building — simpler to
-  implement correctly, and there's no automated-regeneration-clobbers-admin-edits risk because
-  there's no automated regeneration at all; admin edits the live document directly).
-  `colorMarkupCents` is a specific palette color's own markup (e.g. a specialty filament),
-  independent of any attribute count.
+- `ExcessUnitRule { attributeId, source: "estimatedMinutes"|"colorChanges"|"nameLength",
+  freeUnits, unitsPerExcess? }` — generalizes `ContrastRule`'s own split (this package derives
+  a count, the admin keeps the rate/label on a normal `PricingAttribute`) to three more
+  real-world drivers: estimated print minutes beyond a free threshold, distinct colors beyond
+  the first ("color changes off base"), and personalization length beyond a free character
+  count. Direct response to the shop owner's own follow-up request, once the base engine
+  shipped: "take in the rough time of the print and do a... multiplier to determine the
+  minutes over 3 hours and charge an upcharge for that... the printer could also do the
+  estimated wastage of the filament... or a heuristic of 'complexity'... multiplier times
+  number of color changes off of base" plus "the name plate over 8 characters probably bumps
+  up in cost... since that causes more layers." `estimatedMinutes` is a **(product,
+  finish)-level admin constant** on `PricingRules` (read once by a human from the 3D side's
+  own real slicer-time reference data, never a live dependency); `colorChanges` is derived
+  automatically from the same `PriceBuild.colors` map `ContrastRule`/`colorMarkupCents`
+  already consume, reusing the exact "one color free" convention the existing `extraColor`
+  attribute already relies on — never a second caller-computed count that could drift.
+  `nameLength` is the one genuinely new `PriceBuild` field this required (a plain character
+  count, never the personalization text itself — pricing has no business reason to see what
+  was typed). `unitsPerExcess` lets one rule's derived count feed a *different* unit than it
+  was measured in (e.g. estimated waste grams per excess color change, priced by a sibling
+  attribute's cents-per-gram rate) without a fourth coefficient field anywhere.
+- `PricingRules { basePriceCents, attributes, contrastRules?, colorMarkupCents?,
+  estimatedMinutes?, excessUnitRules? }` — one product's complete, standalone pricing formula.
+  No global/override layering: "fully customizable across the board" means per-product, and
+  each product's document is the whole story for itself (confirmed with the storefront
+  consumer before building — simpler to implement correctly, and there's no
+  automated-regeneration-clobbers-admin-edits risk because there's no automated regeneration
+  at all; admin edits the live document directly). `colorMarkupCents` is a specific palette
+  color's own markup (e.g. a specialty filament), independent of any attribute count.
 - `resolvePrice(rules, build)` (`src/pricing.ts`) — the one real pricing path every consumer
   (this package, the storefront) must call, so a preview price and the real charge never
   drift apart. Sums `basePriceCents[build.finish]` + each listed attribute's
-  `count * perUnitCents` + contrast-rule-driven counts + `colorMarkupCents` for every distinct
-  color actually used. A zero-amount line is omitted; `total` is floored at the base price
-  (never let a discount make the whole item cheaper than its own starting price). Validated
-  against 7 real cent-exact scenarios derived from dostal-3d-printing's own slicer-time cost
-  model (kept as a *reference*, not a contract — ownership of any cost-estimation tooling is
-  explicitly not this package's or the 3D side's job).
+  `count * perUnitCents` + contrast-rule-driven counts + excess-unit-rule-derived counts +
+  `colorMarkupCents` for every distinct color actually used. A zero-amount line is omitted;
+  `total` is floored at the base price (never let a discount make the whole item cheaper than
+  its own starting price). Validated against 7 real cent-exact scenarios derived from
+  dostal-3d-printing's own slicer-time cost model, plus real treasure-chest minute numbers for
+  the excess-time lever (kept as a *reference*, not a contract — ownership of any
+  cost-estimation tooling is explicitly not this package's or the 3D side's job).
 - `PricingService`/`PricingRulesRepository` (`src/pricing-service.ts`) — deliberately separate
   from `CustomizationService`: a storefront's admin screen reads/writes one product's whole
   `PricingRules` document at a time through this; `priceOf(productId, build)` throws

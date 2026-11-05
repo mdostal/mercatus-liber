@@ -120,3 +120,43 @@ export const TREASURE_CHEST_PRICING_RULES: PricingRules = {
   ],
   contrastRules: [{ attributeId: "strapsContrast", regions: ["straps"], core: ["body"] }],
 };
+
+/**
+ * Extends TREASURE_CHEST_PRICING_RULES with the complexity-based levers
+ * (excess print time, color-change waste, long personalization) -- real
+ * minute numbers ported from dostal-3d-printing's own estimates.json:
+ * treasure-chest `solid.time_s=50249` (837.48 min) and `ams.time_s=218501`
+ * (3641.68 min), rounded to whole minutes since the source estimates are
+ * themselves approximate ("Times are slicer estimates, and real prints
+ * run longer" -- print/README.md). Rates below are illustrative, NOT
+ * approved prices -- same disclaimer the shop owner gave his own example
+ * numbers. Deliberately NOT the owner's own placeholder 7 cents/minute:
+ * at the real ~3642-minute ams estimate, 7 cents/min would add ~$241 to
+ * an $83 product, which is exactly why real minute-scale numbers matter
+ * even for an illustrative test -- a plausible rate here is a couple
+ * cents per minute, not whatever round number sounded easy to type.
+ *
+ * NOTE: `ams.swaps` in the real estimates.json (1625 for treasure-chest)
+ * is an UPPER BOUND assuming every tiny region segment gets its own
+ * filament swap, not a stand-in for a realistic shopper's colorChanges
+ * count (2-4 distinct colors in practice) -- never calibrate
+ * colorChangeWaste's rate by spreading that number across a realistic
+ * selection; it would wildly overcharge.
+ */
+export const TREASURE_CHEST_COMPLEXITY_PRICING_RULES: PricingRules = {
+  ...TREASURE_CHEST_PRICING_RULES,
+  attributes: [
+    ...TREASURE_CHEST_PRICING_RULES.attributes,
+    { id: "excessTime", label: "Extra print time", perUnitCents: 2 },
+    { id: "colorChangeComplexity", label: "Color-change complexity", perUnitCents: 150 },
+    { id: "colorChangeWaste", label: "Filament waste from color changes", perUnitCents: 3 },
+    { id: "longName", label: "Personalization over 8 characters", perUnitCents: 50 },
+  ],
+  estimatedMinutes: { solid: 837, ams: 3642 },
+  excessUnitRules: [
+    { attributeId: "excessTime", source: "estimatedMinutes", freeUnits: 180 },
+    { attributeId: "colorChangeComplexity", source: "colorChanges", freeUnits: 0 },
+    { attributeId: "colorChangeWaste", source: "colorChanges", freeUnits: 0, unitsPerExcess: 5 },
+    { attributeId: "longName", source: "nameLength", freeUnits: 8 },
+  ],
+};
