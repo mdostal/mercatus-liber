@@ -930,3 +930,33 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   a new pricing.ts/pricing-service.ts test suite). Verified at the real built-dist package
   boundary against 6 real scenarios including the request-only-hardware and missing-rules
   paths. Full repo check: 151/151 tasks green.
+
+## [0.43.0] - 2026-11-04
+
+### Added
+
+- **Complexity-based pricing lever** (`@mercatus-liber/customization`): a new `ExcessUnitRule`
+  type generalizing `ContrastRule`'s own split (this package derives a real-world count, the
+  admin keeps the rate/label on a normal `PricingAttribute`) to three more drivers --
+  estimated print minutes beyond a free threshold, distinct colors beyond the first ("color
+  changes off base"), and personalization length beyond a free character count. Direct
+  follow-up request from the shop owner once the base engine shipped: a time-over-threshold
+  multiplier, an estimated-filament-wastage charge scaled off color-change count, and
+  "the name plate over 8 characters probably bumps up in cost... since that causes more
+  layers." `PricingRules` gains `estimatedMinutes` (a (product, finish)-level admin constant,
+  read once from the 3D side's own real slicer-time reference data, never a live dependency)
+  and `excessUnitRules`. `PriceBuild` gains exactly one new field, `nameLength` (a plain
+  character count, never the personalization text itself). `colorChanges` is deliberately
+  NOT a new field -- derived automatically inside `resolvePrice` from the same `colors` map
+  `contrastRules`/`colorMarkupCents` already consume, reusing the existing `extraColor`
+  convention so there's no second caller-computed count that could drift. No change to
+  `resolvePrice`'s public signature, main attribute loop, `quoteOnly` branch,
+  `colorMarkupCents` block, or base-floor -- the new logic folds into the existing private
+  `resolveAttributeCounts` helper only. Planned with the user directly (plan-mode review)
+  before implementation, given it's a real formula with its own admin-tunable coefficients,
+  not just another flat-rate attribute. 8 new tests (77 total in the package), including
+  real treasure-chest minute numbers (ported from the 3D side's own estimates.json:
+  `solid.time_s=50249` ~837min, `ams.time_s=218501` ~3642min) and 🔍 probes for rounding
+  (never truncation), zero-floor (never negative), and the per-product attribute allowlist
+  still holding for derived counts. Verified at the real built-dist package boundary. Full
+  repo check: 151/151 tasks green.

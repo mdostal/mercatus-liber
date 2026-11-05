@@ -328,6 +328,45 @@ export interface ContrastRule {
 }
 
 /**
+ * An admin-defined rule that derives a named attribute's unit count from
+ * one of a small, fixed set of real build-time inputs -- estimated print
+ * minutes, distinct colors used beyond the first ("color changes off
+ * base"), or personalization character count -- instead of the caller
+ * pre-computing yet another count that could drift from this package's
+ * own logic. Generalizes the exact split ContrastRule already uses: this
+ * package derives the count, the admin keeps the rate/label on a normal
+ * PricingAttribute (one admin-editable table, not a second one).
+ * Contributes `round(max(0, sourceValue - freeUnits) * (unitsPerExcess ??
+ * 1))` units to `attributeId`, added on top of whatever
+ * `build.attributeCounts`/other ExcessUnitRules/ContrastRules already
+ * contribute to the same id. Real business need (Mathew, shop owner): "a
+ * .07 multiplier... to determine the minutes over 3 hours," "the
+ * estimated wastage of the filament," "the name plate over 8 characters
+ * probably bumps up in cost... since that causes more layers."
+ *
+ * - "estimatedMinutes": `rules.estimatedMinutes[build.finish]` (0 if
+ *   missing) -- a (product, finish)-level ADMIN CONSTANT, read once by a
+ *   human from the 3D side's own real slicer-time reference data, never
+ *   a live slicer call and never caller-supplied (this package has no
+ *   slicer access and never will).
+ * - "colorChanges": distinct `build.colors` values used, minus 1 (one
+ *   color free) -- the same convention this package's own `extraColor`-
+ *   style attributes already use, now also exposable as a
+ *   threshold+rate complexity term, independent of (and stackable with)
+ *   a flat per-extra-color attribute under a different `attributeId`.
+ * - "nameLength": `build.nameLength` (0 if missing) -- caller-supplied,
+ *   because only the caller knows the shopper's personalization text;
+ *   this package only ever needs its length, never the string itself.
+ */
+export interface ExcessUnitRule {
+  attributeId: string;
+  source: "estimatedMinutes" | "colorChanges" | "nameLength";
+  freeUnits: number;
+  /** Multiplier on the excess source units before counting -- e.g. estimated waste grams of filament per excess color change, so a sibling attribute's own perUnitCents (a cents-per-gram rate) prices total wasted grams rather than raw color-change count. Defaults to 1 when omitted. */
+  unitsPerExcess?: number;
+}
+
+/**
  * One product's complete, admin-editable pricing configuration -- the
  * whole formula for this product lives here, nothing fixed in code.
  */
@@ -340,6 +379,19 @@ export interface PricingRules {
   contrastRules?: ContrastRule[];
   /** Extra cents for using this SPECIFIC palette color on this product, keyed by PaletteColor.id -- e.g. a specialty filament that costs more to buy, independent of any attribute count. Admin-set, never computed. */
   colorMarkupCents?: Record<string, number>;
+  /**
+   * (product, finish)-level estimated print minutes, admin-set from a
+   * one-time read of the 3D side's own real slicer-time reference data
+   * -- never computed live, never caller-supplied (a real build's exact
+   * time genuinely varies with the shopper's own choices, but this
+   * package deliberately prices off the admin's own reference number,
+   * same "never a live dependency" posture as colorMarkupCents). Drives
+   * any ExcessUnitRule whose source is "estimatedMinutes"; a missing
+   * finish entry means 0 (no time-based charge fires).
+   */
+  estimatedMinutes?: Record<string, number>;
+  /** This product's excess-unit complexity rules, if it has any -- see ExcessUnitRule's own doc comment. */
+  excessUnitRules?: ExcessUnitRule[];
 }
 
 /**
@@ -360,28 +412,38 @@ export interface PricingDocument {
 /**
  * One shopper's concrete choices, priced by resolvePrice. `attributeCounts`
  * is supplied by the caller for whichever cost drivers it already knows how
- * to count (e.g. distinct colors beyond the first, distinct silk colors,
- * whether a custom name was entered) -- this package adds to it
- * automatically only for `rules.contrastRules` matches, since those need
- * `colors` to evaluate and nothing else can do it without duplicating that
- * logic. `colors` is also used for `colorMarkupCents` lookups.
+ * to count (e.g. distinct silk colors, whether a custom name was entered)
+ * -- this package adds to it automatically for `rules.contrastRules`
+ * matches (need `colors`) and `rules.excessUnitRules` matches (need
+ * `colors`, `estimatedMinutes`, or `nameLength` depending on each rule's
+ * own `source`), since nothing else can derive those without duplicating
+ * this package's own logic. `colors` is also used for `colorMarkupCents`
+ * lookups.
  */
 export interface PriceBuild {
   finish: string;
   attributeCounts?: Record<string, number>;
   /**
    * regionId -> the resolved palette color id (or raw hex, for a
-   * free-picked color) actually used -- drives contrastRules and
-   * colorMarkupCents. MUST be each region's EFFECTIVE color (this
-   * package's own resolveEffectiveColor/CustomizationService.
-   * resolveEffectiveColors output), never the shopper's raw
-   * CustomizationSelection -- passing raw picks can misfire a contrast
-   * rule for a locked region whose raw value happens to differ from a
-   * sibling's even though both resolve to the same effective color
-   * under the current finish (caught in a real integration; see
-   * ContrastRule's own doc comment).
+   * free-picked color) actually used -- drives contrastRules,
+   * colorMarkupCents, and an ExcessUnitRule with source "colorChanges".
+   * MUST be each region's EFFECTIVE color (this package's own
+   * resolveEffectiveColor/CustomizationService.resolveEffectiveColors
+   * output), never the shopper's raw CustomizationSelection -- passing
+   * raw picks can misfire a contrast rule for a locked region whose raw
+   * value happens to differ from a sibling's even though both resolve
+   * to the same effective color under the current finish (caught in a
+   * real integration; see ContrastRule's own doc comment).
    */
   colors?: Record<string, string>;
+  /**
+   * Character count of the shopper's personalization text (custom
+   * name/engraving), if this product offers one -- drives an
+   * ExcessUnitRule with source "nameLength". Omitted means 0. This
+   * package only ever needs the length, never the text's content --
+   * pricing has no business reason to see what was typed.
+   */
+  nameLength?: number;
 }
 
 /** Adapter pattern, as everywhere else in this codebase. Keyed by productId; one PricingRules document per product, no separate global/override layering -- "fully customizable across the board" means every product's formula stands on its own. */
