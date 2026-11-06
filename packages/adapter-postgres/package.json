@@ -26,10 +26,11 @@
     "@mercatus-liber/advertising": "workspace:*",
     "@mercatus-liber/bundles": "workspace:*",
     "@mercatus-liber/cart": "workspace:*",
-    "@mercatus-liber/community-goals": "workspace:*",
     "@mercatus-liber/catalog": "workspace:*",
     "@mercatus-liber/checkout-orders": "workspace:*",
+    "@mercatus-liber/community-goals": "workspace:*",
     "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/customization": "workspace:*",
     "@mercatus-liber/fulfillment": "workspace:*",
     "@mercatus-liber/internal-bi": "workspace:*",
     "@mercatus-liber/marketing-catalog": "workspace:*",
@@ -42,6 +43,7 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.15",
     "@types/node": "^22.7.5",
     "@types/pg": "^8.23.1",
     "typescript": "^7.0.2",

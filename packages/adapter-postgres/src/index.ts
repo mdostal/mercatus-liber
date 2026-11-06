@@ -29,6 +29,13 @@ export { createPostgresServiceAreaRepository, createPostgresServiceAreaProductRe
 export { createPostgresBiEventLogRepository } from "./internal-bi.js";
 export { createPostgresFulfillmentRoutingRepository } from "./fulfillment-routing.js";
 export { createPostgresWebhookSubscriptionStore, createPostgresWebhookDeliveryLogStore } from "./webhooks.js";
+export {
+  createPostgresPaletteRepository,
+  createPostgresFinishTierRepository,
+  createPostgresArtStyleRepository,
+  createPostgresProductCustomizationRepository,
+  createPostgresPricingRulesRepository,
+} from "./customization.js";
 
 interface ProductRow {
   id: string;

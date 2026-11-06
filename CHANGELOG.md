@@ -1002,3 +1002,10 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 - Two palette entries sharing a hex count as two colors in `resolveColorCount`.
 - `colorChanges` no longer counts hexes differing only by case as two colors.
 
+## [0.45.0] - 2026-11-05
+
+### Added
+
+- Postgres repositories for customization in `@mercatus-liber/adapter-postgres`: palette, finish tiers, art styles, product customizations, and pricing rules. An admin's price edits now survive a restart on Postgres.
+- `@electric-sql/pglite` as a dev dependency, so these repositories are tested against real Postgres SQL rather than a fake pool.
+

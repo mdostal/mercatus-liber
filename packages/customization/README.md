@@ -60,7 +60,7 @@ Selections, effective colors, and `PriceBuild.colors` all use palette ids, such 
 
 ## Known limitations
 
-- Repositories for customization are in-memory only.
+- Durable repositories exist for Postgres only (`createPostgres*Repository` in `@mercatus-liber/adapter-postgres`). SQLite, Convex, and MongoDB are not built yet.
 - There is no options or variants support yet.
 
 See [docs/subsystems/27-customization.md](../../docs/subsystems/27-customization.md).

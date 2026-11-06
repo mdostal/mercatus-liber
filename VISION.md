@@ -236,12 +236,12 @@ see "Still open, blocked on something real" below):
 
 - **Community goals** (subsystem 26) and **made-to-order customization** (subsystem 27): vote-gated
   feature unlocks, plus a shared color palette, finish tiers, per-part color rules, available /
-  discontinued / by-request status, and an admin-defined pricing engine. Customization is in-memory
-  only and not yet rendered by a sample store; see "In progress" below.
+  discontinued / by-request status, and an admin-defined pricing engine. Customization persists on
+  Postgres only so far and isn't rendered by a sample store yet; see "In progress" below.
 
 **In progress:**
 
-- Customization: palette ids as the canonical color value, durable storage across databases, lock
+- Customization: storage on SQLite, Convex, and MongoDB, lock
   and hardware options, structured order data from cart through to print job.
 - A common UI component package and a default UI, extracted from the sample stores'
   in-app components.
