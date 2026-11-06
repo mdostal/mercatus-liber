@@ -1,7 +1,7 @@
 {
   "name": "@mercatus-liber/adapter-postgres",
   "version": "0.1.0",
-  "description": "Second reference persistence adapter, backed by Postgres. Implements @mercatus-liber/core's CatalogPersistenceAdapter interface -- its public surface is exactly those interfaces, no pg-specific type leaks out. Uses JSONB columns (deliberately different internal storage than adapter-sqlite's TEXT-encoded JSON) to prove the interface doesn't secretly assume a particular encoding.",
+  "description": "Postgres persistence adapter: the catalog interfaces plus repositories for most other commerce subsystems. No pg-specific type leaks out of its public surface.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",

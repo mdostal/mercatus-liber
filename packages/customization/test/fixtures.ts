@@ -96,10 +96,9 @@ export const STOVETOP_GLOW_CUSTOMIZATION: ProductCustomization = {
  * Ported from dostal-3d-printing's real suggested-levers.json entry for
  * treasure-chest/plate (flattening base+finishDelta into one absolute
  * basePriceCents per finish, and the one real contrast group into a
- * generic, admin-defined attribute+rule pair) -- used to prove
- * resolvePrice reproduces the exact same cent totals as the real cost
- * model's own 7 generated test vectors, just expressed as fully
- * admin-defined attributes rather than fixed fields. `core: ["body"]`
+ * generic, admin-defined attribute+rule pair) -- used to check
+ * resolvePrice against the 4 treasure-chest "plate" vectors from that
+ * file's `examples`, expressed as admin-defined attributes. `core: ["body"]`
  * only (the real manifest also lists "lid-body", omitted here since this
  * test fixture's own TREASURE_CHEST_REGIONS doesn't model a separate
  * chest lid region).
@@ -129,8 +128,7 @@ export const TREASURE_CHEST_PRICING_RULES: PricingRules = {
  * (3641.68 min), rounded to whole minutes since the source estimates are
  * themselves approximate ("Times are slicer estimates, and real prints
  * run longer" -- print/README.md). Rates below are illustrative, NOT
- * approved prices -- same disclaimer the shop owner gave his own example
- * numbers. Deliberately NOT the owner's own placeholder 7 cents/minute:
+ * approved prices -- matching the placeholder status of the source data. Deliberately NOT the owner's own placeholder 7 cents/minute:
  * at the real ~3642-minute ams estimate, 7 cents/min would add ~$241 to
  * an $83 product, which is exactly why real minute-scale numbers matter
  * even for an illustrative test -- a plausible rate here is a couple

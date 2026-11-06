@@ -110,15 +110,11 @@ export function validateSelectedColor(choices: RegionColorChoices, regionId: str
 }
 
 /**
- * A resolved hex's identity for counting/pricing purposes: the matching
- * palette color's own `id` when one exists, else the raw (lowercased)
- * hex itself -- for a free-picked color under ColorMode "any" that isn't
- * in the palette at all. Identity is by palette id, not hex, because a
- * multi-color/blend filament (PaletteColor.kind "multi", e.g. "Dawn
- * Radiance" -- a representative `hex` plus blend-stop `hexes`) can share
- * its representative hex with a different palette entry while still
- * being a genuinely different choice (a different spool) -- an identity
- * keyed on hex alone would wrongly merge the two.
+ * A resolved hex's identity for counting: the first palette entry with
+ * that hex, else the lowercased hex for a free-picked color. Known
+ * limitation: selections are hex values, so two palette entries sharing a
+ * hex (e.g. a multi-color filament whose representative hex matches a
+ * solid) resolve to the same identity and count as one color.
  */
 function colorIdentity(palette: PaletteColor[], hex: string): string {
   const match = palette.find((p) => p.hex.toLowerCase() === hex.toLowerCase());
@@ -127,9 +123,7 @@ function colorIdentity(palette: PaletteColor[], hex: string): string {
 
 /**
  * The number of DISTINCT colors a build actually resolves to, after
- * finish rules are applied -- the real pricing lever Mathew (shop owner)
- * wants ("we'll charge more for the more color differentiations they
- * put"), reported by the reference editor as `colorCount`. ColorMode
+ * finish rules are applied -- reported by the reference editor as `colorCount`. ColorMode
  * "single" always resolves to exactly 1 (the whole piece shares one
  * color); otherwise every region's resolveEffectiveColor result is
  * counted by colorIdentity, so parent-follows regions correctly collapse

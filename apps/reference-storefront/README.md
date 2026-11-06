@@ -1,12 +1,12 @@
 # Reference Storefront
 
-A minimal Next.js app proving the `core-foundation` epic's vertical slice end-to-end: browse a
-seeded catalog, add items to a cart, check out via Stripe, see the order.
+The sample stores: The Print Shop, Northline Home Tech, and Broadleaf & Co., all served from this
+one Next.js app. It wires the framework's packages together and is public so you can read and copy
+it when building your own storefront. See the
+[sample stores page](../docs/content-src/sample-stores.md) for live URLs and backends.
 
-**This is a proof-of-integration demo, not a production storefront template.** No theming, no
-PDP layout options, no CMS -- those arrive in later epics (`pdp-theming`, `cms-pages`). Data is
-entirely in-memory (SQLite `:memory:`, in-memory cart/order repositories) and reseeded fresh on
-every process start.
+With no environment variables set it runs on in-memory SQLite and reseeds on every start.
+Configuration: [`configuration.md`](../docs/content-src/configuration.md).
 
 ## The one architectural rule this app exists to prove
 `lib/services.ts` is **the only module in this repo** that imports concrete adapter
@@ -17,20 +17,22 @@ structural interfaces -- see each package's own `src/` for confirmation. Deletin
 adapter here should never require touching a subsystem package's code.
 
 ## Running it
+From the repo root:
 ```
-STRIPE_SECRET_KEY=sk_test_... STRIPE_WEBHOOK_SECRET=whsec_... pnpm dev
+pnpm install
+pnpm turbo run build --filter=@mercatus-liber/reference-storefront^...
+pnpm --filter @mercatus-liber/reference-storefront dev
 ```
-Without a real Stripe test-mode key, browsing/cart works fully; the "Check out with Stripe"
-step will fail at the live Stripe API call (expected -- no key exists in this project's vault
-yet, see cf-05/cf-07 execution notes in `.pHive/epics/core-foundation/`).
+Then open `http://localhost:3000/demo/print-shop`. Browsing and the cart work with no setup; real
+checkout needs a Stripe test key (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`).
 
 ## Routes
-`/` (CMS-authored home page -- see below), `/products/[slug]` (themed PDP -- see below), `/cart`,
+Each is prefixed with `/demo/<slug>`, or served at the root when `SINGLE_TENANT_DEMO_SLUG` is set. `/` (CMS-authored home page -- see below), `/products/[slug]` (themed PDP -- see below), `/cart`,
 `/category/[slug]`, `/search`, `/campaign/[slug]` (CMS marketing/campaign page), `/order/[id]`,
 `/order/confirmed`, `/account` (order history + recent activity -- see below).
 
 ## Themes
-6 selectable themes (classic, dark, minimal, vibrant, retro, high-contrast) via the "Theme"
+10 selectable themes (classic, dark, minimal, vibrant, retro, high-contrast, northline, editorial, maximalist, datasheet) via the "Theme"
 dropdown in the header. Selection is stored in an `ml_theme` cookie (mirrors the cart/customer
 cookie pattern -- Next.js layouts can't read `searchParams`, only cookies). The root layout
 renders the active bundle's tokens as real `:root` CSS custom properties, and PDP components use

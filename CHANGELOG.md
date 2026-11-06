@@ -834,7 +834,7 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   `choices()` logic), not invented from scratch. Direct response to the storefront owner's
   own request for "the components, controls, and framework for doing all of this... out of
   the box in mercatus liber," with the actual UI/rendering explicitly left to the storefront
-  (shop-ce's separately-shipped `@mercatus-liber/customization-ui` Web Component).
+  (the separately-shipped `@mercatus-liber/customization-ui` Web Component).
   `AvailabilityStatus` (the sku-availability-status epic's shared type) is reused verbatim
   for both `PaletteColor.status` and `FinishTier.status` -- "discontinued" and "request" are
   the same mechanism answering both halves of the owner's ask (grey-out-but-still-show, and
@@ -843,7 +843,7 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   discontinued finish tier and `InvalidColorSelectionError` for any submitted color that
   matches a discontinued palette entry; a `request`-status finish or color is explicitly let
   through. Adds `ProductCustomization.finishPriceDeltas`, a per-product override of a finish
-  tier's global `priceDelta` (added after a design discussion with shop-ce: hand-painting a
+  tier's global `priceDelta` (hand-painting a
   large chest costs more than hand-painting a small insert tray, so one global delta per
   finish tier can't be the only price lever). Ships in-memory only at v1, the same posture
   `community-goals`/`bundles` each took initially. 44 new tests (resolution-logic unit tests
@@ -916,7 +916,7 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   pair, not just the one chest case), `PricingRules` (one product's complete, standalone
   pricing formula -- no global/override layering, since there's no automated regeneration to
   clobber an admin's edit), and `resolvePrice` -- the one real pricing path both a storefront
-  preview and the real charge must call. Validated against 7 real cent-exact scenarios ported
+  preview and the real charge must call. Checked against 4 of the 7 cent-exact scenarios (corrected in 0.43.1) ported
   from dostal-3d-printing's own cost model (`pricing.js`/`suggested-levers.json`, kept as a
   reference, never a contract this package maintains). New `PricingService`/
   `PricingRulesRepository`, deliberately separate from `CustomizationService` -- a storefront's
@@ -960,3 +960,28 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
   (never truncation), zero-floor (never negative), and the per-product attribute allowlist
   still holding for derived counts. Verified at the real built-dist package boundary. Full
   repo check: 151/151 tasks green.
+
+## [0.43.1] - 2026-11-05
+
+### Documentation
+
+- Rewrote the root README around verified state: live sample stores, a tested quick start, an
+  adapter status table, how to write plugins and adapters, and how the UI layers are organized,
+  including what isn't built yet. Moved the environment-variable reference to
+  `apps/docs/content-src/configuration.md`.
+- Added a README to all 40 packages that lacked one.
+- Brought `docs/ARCHITECTURE.md`'s subsystem map current (14 to 28), updated `VISION.md`, and added
+  PayPal and QuickBooks to the integrations catalog.
+
+### Corrections
+
+- Earlier entries overstated customization testing and behavior. 0.42.0 said the engine was
+  validated against 7 scenarios; tests cover 4. 0.40.0 and 0.42.0 said color counting dedups by
+  palette id in a way that stays correct for multi-color filaments; it matches by hex, so entries
+  sharing a hex count as one color. Source comments claimed `resolveEffectiveColors` output could
+  drive `colorMarkupCents`; it can't, because one is hex and the other is keyed by palette id. See
+  "Known limitations" in `docs/subsystems/27-customization.md`. No behavior changed in this release.
+
+### Chores
+
+- Ignored local Hive runtime state and committed the storefront's generated agent files.

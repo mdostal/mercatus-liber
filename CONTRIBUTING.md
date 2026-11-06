@@ -8,9 +8,8 @@ tooling — not generic boilerplate.
 
 ## Before you start
 
-- Read `README.md` for the architecture (adapter-first, no subsystem imports another
-  subsystem's internals — see the "Prime directive" section) and `docs/ARCHITECTURE.md` for the
-  full rule this repo is built around.
+- Read `docs/ARCHITECTURE.md` for the architecture (adapter-first, no subsystem imports another
+  subsystem's internals — see its "Prime directive" section).
 - Read `VISION.md`, specifically the **"Wanted, not started — the community plugin frontier"**
   table. That table is the single best place to find something worth building: wishlist,
   backorder/pre-order, gift cards, subscriptions, loyalty, multi-currency, returns/RMA,
@@ -35,16 +34,19 @@ pnpm install
 Nothing else is required to get most of the repo building and testing. Individual
 apps/adapters have their own optional environment variables (real database URLs, Stripe keys,
 Clerk keys, Sanity project IDs, etc.) — every one of them has a documented, harmless fallback
-so the repo runs with zero external accounts. See `README.md`'s "Configuration" section for the
-full, verified list (each entry there was confirmed by grepping `process.env` in the actual
-app, not written from memory) and `apps/reference-storefront/README.md` for that app
+so the repo runs with zero external accounts. See `apps/docs/content-src/configuration.md` for the
+full list and `apps/reference-storefront/README.md` for that app
 specifically.
 
 To run the reference storefront locally:
 
 ```
+pnpm turbo run build --filter=@mercatus-liber/reference-storefront^...
 pnpm --filter @mercatus-liber/reference-storefront dev
 ```
+
+The first command builds the workspace packages the app imports; `dev` alone fails on a fresh
+clone because their `dist/` output doesn't exist yet.
 
 ## The standing full-check command
 

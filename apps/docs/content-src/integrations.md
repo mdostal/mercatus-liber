@@ -1,14 +1,14 @@
 # Integrations
 
-_Last verified 2026-10-07, directly against the running code — `ls packages/ | grep adapter-`,
+_Package list and env vars last verified 2026-11-05; per-adapter status text last fully re-verified 2026-10-07, directly against the running code — `ls packages/ | grep adapter-`,
 `apps/reference-storefront/lib/services.ts`'s actual env-var branches, and
 [`.pHive/planning/epic-backlog.md`](/planning-index)'s own disclosed build history. This page
 goes stale the moment any of those three things change, so if you're reading this well after
 the date above, re-run that same check before trusting a status below._
 
-Mercatus Liber integrates with **12 real third-party adapter packages** (`packages/adapter-*`)
+Mercatus Liber integrates with **14 adapter packages** (`packages/adapter-*`)
 plus two built-in provider integrations (Stripe inside `@mercatus-liber/payments`, PostHog/GA4
-inside `@mercatus-liber/analytics`) — 15 real integrations in total. Nothing below is
+inside `@mercatus-liber/analytics`). Nothing below is
 hypothetical or planned-but-unbuilt: every entry on this page is real, committed code with its
 own test suite. What varies is how far past "built" each one has gotten:
 
@@ -60,6 +60,14 @@ a zero-infra single-session dev adapter — explicitly **never** a real security
 | Package | Wraps | Status | Env var(s) to enable |
 |---|---|---|---|
 | `payments` (built-in) | Stripe Checkout Sessions, as the reference `PaymentAdapter` | **Live-wired, but currently running in sandbox mode in production** — no real (non-sandbox) Stripe key exists yet, so every order across all 3 demos today completes through the built-in `createSandboxPaymentAdapter`, a genuinely working, no-external-provider "practice card" checkout, not a placeholder or broken flow. | `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (unset → sandbox mode) |
+
+| `adapter-paypal` | PayPal's Orders v2 API | **Built, tested. Credential-gated** — never run against a real account. | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, optional `PAYPAL_BASE_URL` |
+
+## Accounting
+
+| Package | Wraps | Status | Env var(s) to enable |
+|---|---|---|---|
+| `adapter-quickbooks` | QuickBooks Online's v3 Accounting API, through `@mercatus-liber/accounting-sync` | **Built, tested. Credential-gated** — never run against a real account. | `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_REALM_ID`, `QUICKBOOKS_REFRESH_TOKEN` (see `lib/services.ts` for the rest) |
 
 ## Fulfillment & shipping
 

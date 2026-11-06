@@ -32,7 +32,7 @@ blow-by-blow ledger this summarizes.
    what genuinely needs to be shared infrastructure. Everything else — loyalty,
    subscriptions, marketplace-channel sync, and dozens of features
    listed below — is designed to be a plugin or adapter someone else can build, using the same
-   contract pattern the core itself uses internally. The plugin subsystem (see `docs/subsystems/12-plugins.md`)
+   contract pattern the core itself uses internally. The plugin subsystem (see `docs/subsystems/12-plugins-extensibility.md`)
    and the event bus exist specifically so this is possible without forking the core.
 4. **No AI-agent tax.** The framework ships an MCP server and Claude Code skills so an AI agent
    can set up, operate, and extend a store the same way a human developer would — this isn't a
@@ -234,10 +234,23 @@ see "Still open, blocked on something real" below):
   icon-mark exploration via `/logo-exploration` remains open, blocked on the `openai-image` MCP
   tool, which has stayed disconnected the entire session.
 
+- **Community goals** (subsystem 26) and **made-to-order customization** (subsystem 27): vote-gated
+  feature unlocks, plus a shared color palette, finish tiers, per-part color rules, available /
+  discontinued / by-request status, and an admin-defined pricing engine. Customization is in-memory
+  only and not yet rendered by a sample store; see "In progress" below.
+
+**In progress:**
+
+- Customization: palette ids as the canonical color value, durable storage across databases, lock
+  and hardware options, structured order data from cart through to print job.
+- A common UI component package and a default UI, extracted from the sample stores'
+  in-app components.
+- npm publishing, after dogfooding on a real store. Nothing is on npm yet.
+
 **Still open, blocked on something real (not forgotten, not silently dropped):**
 
-- **Real external-provider credentials** — Cloudinary, GA4, Shippo, Printful, Printify, and a
-  real (non-sandbox) Stripe key. Every adapter for these is real, built, and unit-tested against
+- **Real external-provider credentials** — Cloudinary, GA4, Shippo, Printful, Printify, PayPal,
+  QuickBooks, and a real (non-sandbox) Stripe key. Every adapter for these is real, built, and unit-tested against
   current provider docs; each is honestly disclosed as live-unverified rather than claimed
   working end to end, the same posture this document has held throughout.
 - **MongoDB, live** — built, tested, wired into `services.ts`'s adapter-priority chain; blocked
@@ -263,7 +276,6 @@ start.
 | Backorder / pre-order | Sell out-of-stock items with an expected ship date | Extension of inventory, not a new purchase primitive | Extends `inventory`'s existing contract |
 | Gift cards & store credit | Purchasable/redeemable stored-value codes | A payment-adjacent primitive most platforms bolt on separately | New subsystem, adapter-shaped like `promotions` |
 | Dynamic/AI-driven upsell | Recommendations computed from real behavior data, not admin-curated mappings | The existing `recommendations` subsystem is deliberately explicit/admin-authored — a computed variant is a distinct, optional strategy | A second `RecommendationsAdapter` implementation |
-| Product personalization / customizer | Let a shopper attach custom text/artwork to a cart line (e.g. embroidery, engraving) | Needs its own data model (design assets, per-line customization state) genuinely separate from `catalog` | New subsystem; also the concrete blocker for a fully-real "Print Shop" demo, so likely gets a minimal scoped version sooner than the rest of this list |
 | Ad-pixel / tag management | Meta/Google/TikTok conversion pixel wiring | A configuration/integration concern layered on top of existing `analytics` | Adapter or plugin on top of subsystem 13 |
 | Abandoned-cart recovery | Automated email/SMS nudges for incomplete carts | Needs an email/SMS provider integration this project doesn't have yet | New subsystem + provider adapter (e.g. Klaviyo, Postmark) |
 | Lifecycle email/SMS marketing | Broader automated marketing flows beyond cart recovery | Same provider-integration gap as above | Same shape, larger scope |

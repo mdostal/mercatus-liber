@@ -179,7 +179,7 @@ export interface ProductCustomization {
 
 export type NewProductCustomizationInput = Omit<ProductCustomization, "id">;
 
-/** A shopper's in-progress or submitted color choice -- regionId -> palette color id (or a free hex string, only valid for a region whose available choices allow it, see availableColorChoices). The special key `__all` holds the single whole-piece color under a ColorMode "single" finish. */
+/** A shopper's in-progress or submitted color choice -- regionId -> hex value. Palette colors are selected by their `hex`; validateSelectedColor rejects a palette id. A hex outside the palette is valid only where availableColorChoices offers a free color. The special key `__all` holds the single whole-piece color under a ColorMode "single" finish. */
 export type CustomizationSelection = Record<string, string>;
 
 /** What a region can be colored under the CURRENT finish selection -- the live result of availableColorChoices, driving a storefront's swatch row. */
@@ -243,21 +243,11 @@ export interface ProductCustomizationRepository {
 }
 
 // ---------------------------------------------------------------------------
-// Pricing. A generic, fully admin-defined rules engine -- direct correction
-// from the shop owner after an earlier fixed-field design ("it isn't a flat
-// per color count charge... fully customizeable across the entire board...
-// our tool should basically allow us to build a formula and have a bunch of
-// attributes for a product"). Nothing here hardcodes "colors cost $X" or
-// "raised art is cheaper" as a named field -- every cost driver is an
-// admin-defined PricingAttribute with its own rate, and a product's
-// PricingRules is just a flat list of whichever attributes apply to it, plus
-// per-specific-color markup and contrast rules (both also fully admin-
-// editable, not fixed to any one product). The REAL slicer-time/wastage/
-// reprint-risk data (dostal-3d-printing's estimates.json) is an input a
-// human uses to DECIDE what rate to set for an attribute -- this package
-// doesn't compute cost from slicer data itself, it just stores and sums
-// whatever rates the admin set. See resolvePrice's own doc comment
-// (src/pricing.ts) for exactly how a build's attribute counts are summed.
+// Pricing: a generic, admin-defined rules engine. Nothing here hardcodes a
+// cost concept as a named field. Every cost driver is a PricingAttribute with
+// its own rate, and a product's PricingRules lists whichever apply to it. This
+// package sums the rates it is given; it does not estimate costs from slicer
+// data. See resolvePrice (src/pricing.ts).
 // ---------------------------------------------------------------------------
 
 /** One line of an itemized price breakdown -- `amount` is the line's own additive cents, never cumulative. */
@@ -309,17 +299,8 @@ export interface PricingAttribute {
  * print time). Not specific to one product or one region pair -- a
  * product can define as many of these as it has real contrast-sensitive
  * region groups, each naming whichever `attributeId` the admin wants to
- * rate. Colors are compared by the resolved palette color id (via
- * PriceBuild.colors), case-insensitively if a raw hex is ever used
- * instead. PriceBuild.colors MUST be each region's EFFECTIVE color
- * (this package's own resolveEffectiveColor/resolveEffectiveColors
- * output), never the shopper's raw, as-submitted selection -- a real
- * bug caught in production use: under a finish/region combination
- * where a region is locked (follows a parent, or the whole piece
- * shares one color), its raw submitted value can still differ from a
- * sibling's raw value even though the two end up the SAME effective
- * color, which would falsely fire a contrast rule that should never
- * have applied. See PriceBuild.colors' own doc comment.
+ * rate. Compares PriceBuild.colors values case-insensitively; those must
+ * be effective colors, see PriceBuild.colors.
  */
 export interface ContrastRule {
   attributeId: string;
@@ -339,10 +320,7 @@ export interface ContrastRule {
  * Contributes `round(max(0, sourceValue - freeUnits) * (unitsPerExcess ??
  * 1))` units to `attributeId`, added on top of whatever
  * `build.attributeCounts`/other ExcessUnitRules/ContrastRules already
- * contribute to the same id. Real business need (Mathew, shop owner): "a
- * .07 multiplier... to determine the minutes over 3 hours," "the
- * estimated wastage of the filament," "the name plate over 8 characters
- * probably bumps up in cost... since that causes more layers."
+ * contribute to the same id.
  *
  * - "estimatedMinutes": `rules.estimatedMinutes[build.finish]` (0 if
  *   missing) -- a (product, finish)-level ADMIN CONSTANT, read once by a
@@ -424,16 +402,14 @@ export interface PriceBuild {
   finish: string;
   attributeCounts?: Record<string, number>;
   /**
-   * regionId -> the resolved palette color id (or raw hex, for a
-   * free-picked color) actually used -- drives contrastRules,
-   * colorMarkupCents, and an ExcessUnitRule with source "colorChanges".
-   * MUST be each region's EFFECTIVE color (this package's own
-   * resolveEffectiveColor/CustomizationService.resolveEffectiveColors
-   * output), never the shopper's raw CustomizationSelection -- passing
-   * raw picks can misfire a contrast rule for a locked region whose raw
-   * value happens to differ from a sibling's even though both resolve
-   * to the same effective color under the current finish (caught in a
-   * real integration; see ContrastRule's own doc comment).
+   * regionId -> each region's EFFECTIVE color, never the raw selection:
+   * a locked region's raw value can differ from a sibling's while both
+   * resolve to the same color, which falsely fires a contrast rule.
+   * Drives contrastRules, colorMarkupCents, and a "colorChanges"
+   * ExcessUnitRule. Known limitations: colorMarkupCents is keyed by
+   * palette id while resolveEffectiveColors returns hex, so convert hex
+   * to palette ids or markups never apply; "colorChanges" compares raw
+   * strings, so use one consistent form and casing.
    */
   colors?: Record<string, string>;
   /**

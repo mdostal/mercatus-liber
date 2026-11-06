@@ -1,9 +1,6 @@
 /**
- * Local types, shaped to match @mercatus-liber/customization's stated
- * design (shop-5c, in progress) and dostal-3d-printing-19's color-
- * regions.json v2 manifest -- not yet a dependency on that package since
- * it isn't published. Swap these for real imports once it lands; keep the
- * shape identical so that's a type-only change, not a logic rewrite.
+ * Local types, a separate copy of @mercatus-liber/customization's shapes.
+ * To be replaced with imports from that package.
  */
 
 export type AvailabilityStatus = "active" | "discontinued" | "request";
