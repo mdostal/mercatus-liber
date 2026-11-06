@@ -331,6 +331,9 @@ importers:
       '@mercatus-liber/customization':
         specifier: workspace:*
         version: link:../customization
+      '@mercatus-liber/fulfillment':
+        specifier: workspace:*
+        version: link:../fulfillment
       '@mercatus-liber/marketing-catalog':
         specifier: workspace:*
         version: link:../marketing-catalog
@@ -362,6 +365,9 @@ importers:
       '@mercatus-liber/customization':
         specifier: workspace:*
         version: link:../customization
+      '@mercatus-liber/fulfillment':
+        specifier: workspace:*
+        version: link:../fulfillment
       '@mercatus-liber/marketing-catalog':
         specifier: workspace:*
         version: link:../marketing-catalog

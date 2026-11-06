@@ -322,3 +322,5 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
 export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
   return createSqliteAdapterFromDb(openSqliteDb(path));
 }
+
+export { createSqliteProviderCatalogMappingRepository } from "./provider-catalog-mappings.js";

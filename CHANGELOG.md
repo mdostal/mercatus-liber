@@ -1072,3 +1072,15 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 
 - Moved the three cart templates, three product page templates, and the variant picker from the reference storefront into `@mercatus-liber/storefront-ui`. They now take a `store` and `actions` prop instead of importing the app's routes and server actions.
 
+## [0.51.0] - 2026-11-06
+
+### Added
+
+- `ProviderCatalogMappingRepository` in `@mercatus-liber/fulfillment`, storing which Printful or Printify product each SKU is made from, with repositories for Postgres, SQLite, MongoDB, and Convex.
+- `printifyCatalogTargetsFrom` and `printfulCatalogTargetsFrom`, building each adapter's `resolveCatalogTarget` from stored mappings.
+- `holdOrders` on both print-on-demand adapters, leaving orders unsubmitted for safe testing against a real account. The storefront reads `PRINTFUL_HOLD_ORDERS` and `PRINTIFY_HOLD_ORDERS`.
+
+### Changed
+
+- The reference storefront resolves Printful and Printify products from stored mappings instead of always throwing.
+

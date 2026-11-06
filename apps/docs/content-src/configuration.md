@@ -157,3 +157,12 @@ pause/auto-resume research this logic is built from, and
 `.github/scripts/keepalive-supabase.test.sh` (also run on every CI push/PR) for its dry-run test
 harness against fake/injected provider responses.
 
+## Print-on-demand testing
+
+| Variable | Effect |
+|---|---|
+| `PRINTFUL_HOLD_ORDERS` | `true` leaves new Printful orders as drafts instead of confirming them. |
+| `PRINTIFY_HOLD_ORDERS` | `true` leaves new Printify orders on hold instead of sending them to production. |
+
+Without these, orders go straight to production and are charged. SKUs also need a provider catalog mapping before they can route to either provider; see [fulfillment](../../docs/subsystems/22-fulfillment.md).
+

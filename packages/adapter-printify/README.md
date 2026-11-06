@@ -34,3 +34,8 @@ Set `webhookSecret` to verify incoming webhooks, or `verifyWebhookSignature` to 
 - `verifyPrintifySignature`, `parsePrintifyWebhookPayload`, `PrintifyWebhookEvent`, `PrintifyWebhookSignatureInvalidError`, `PrintifyWebhookSignatureNotConfiguredError`, `PrintifyWebhookPayloadParseError`.
 
 See [docs/subsystems/22-fulfillment.md](../../docs/subsystems/22-fulfillment.md) and [integrations.md](../../apps/docs/content-src/integrations.md).
+
+## Stored mappings and testing safely
+
+`printifyCatalogTargetsFrom(repo)` builds `resolveCatalogTarget` from a `ProviderCatalogMappingRepository` (in `@mercatus-liber/fulfillment`, with durable versions in each database adapter). Set `holdOrders: true` to leave new orders on hold in Printify instead of sending them to production. Use it for any test against a real account.
+

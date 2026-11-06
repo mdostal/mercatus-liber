@@ -1,5 +1,6 @@
 export * from "./types.js";
 export * from "./routing-repository.js";
+export * from "./catalog-mapping.js";
 export * from "./manual-adapter.js";
 export * from "./service.js";
 

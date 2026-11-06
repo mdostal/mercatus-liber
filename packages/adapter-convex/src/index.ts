@@ -276,3 +276,5 @@ export {
 export async function connectConvexCustomizationRepositories(convexUrl: string): Promise<ConvexCustomizationRepositories> {
   return createConvexCustomizationRepositories(await connectConvexClient(convexUrl));
 }
+
+export { createConvexProviderCatalogMappingRepository } from "./provider-catalog-mappings.js";

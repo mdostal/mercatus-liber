@@ -232,3 +232,5 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
 
   return { products, skus, attributes };
 }
+
+export { createPostgresProviderCatalogMappingRepository } from "./provider-catalog-mappings.js";

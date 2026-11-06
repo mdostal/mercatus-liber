@@ -86,4 +86,11 @@ export default defineSchema({
     .index("by_kind", ["kind"])
     .index("by_kind_and_external_id", ["kind", "externalId"])
     .index("by_kind_and_product_id", ["kind", "productId"]),
+
+  // SKU -> print-on-demand provider product. See providerCatalogMappings.ts.
+  providerCatalogMappings: defineTable({
+    skuId: v.string(),
+    provider: v.string(),
+    target: v.string(),
+  }).index("by_sku_and_provider", ["skuId", "provider"]),
 });

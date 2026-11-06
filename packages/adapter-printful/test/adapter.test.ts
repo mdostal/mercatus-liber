@@ -1,7 +1,8 @@
+import { createInMemoryProviderCatalogMappingRepository, InvalidCatalogMappingError, MissingCatalogMappingError } from "@mercatus-liber/fulfillment";
 import type { FulfillmentLineRecord, FulfillmentRecipient } from "@mercatus-liber/fulfillment";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assertPrintfulAdapterSatisfiesFulfillmentAdapter } from "../src/fulfillment-adapter-compat.js";
-import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, type PrintfulFulfillmentAdapterConfig } from "../src/index.js";
+import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom, type PrintfulFulfillmentAdapterConfig } from "../src/index.js";
 import type { PrintfulHttpClient } from "../src/http-client.js";
 import type { PrintfulCatalogTarget, PrintfulRecipientAddress } from "../src/mapping.js";
 import { createHmac } from "node:crypto";
@@ -85,6 +86,29 @@ function baseConfig(client: PrintfulHttpClient): PrintfulFulfillmentAdapterConfi
     },
   };
 }
+
+describe("Printful catalog mappings and holdOrders", () => {
+  it("🔍 holdOrders leaves the order as a draft, never confirming it", async () => {
+    const client = fakeClient();
+    const adapter = createPrintfulFulfillmentAdapter({ ...baseConfig(client), holdOrders: true });
+    const records = await adapter.submitOrder({ orderId: "order-1", items: [{ skuId: "sku-mug", quantity: 2 }] });
+    expect(client.calls.confirmOrder).toEqual([]);
+    expect(records).toHaveLength(1);
+  });
+
+  it("sends stored mappings, and refuses an unmapped or malformed SKU before creating anything", async () => {
+    const repo = createInMemoryProviderCatalogMappingRepository();
+    await repo.save({ skuId: "sku-mug", provider: PRINTFUL_PROVIDER, target: { catalogVariantId: 4011 } });
+    await repo.save({ skuId: "bad", provider: PRINTFUL_PROVIDER, target: { catalogVariantId: "4011" } });
+    const client = fakeClient();
+    const adapter = createPrintfulFulfillmentAdapter({ ...baseConfig(client), resolveCatalogTarget: printfulCatalogTargetsFrom(repo) });
+    await adapter.submitOrder({ orderId: "order-1", items: [{ skuId: "sku-mug", quantity: 2 }] });
+    expect((client.calls.createOrder![0] as { order_items: { catalog_variant_id: number }[] }).order_items[0]!.catalog_variant_id).toBe(4011);
+    await expect(adapter.submitOrder({ orderId: "o2", items: [{ skuId: "none", quantity: 1 }] })).rejects.toThrow(MissingCatalogMappingError);
+    await expect(adapter.submitOrder({ orderId: "o3", items: [{ skuId: "bad", quantity: 1 }] })).rejects.toThrow(InvalidCatalogMappingError);
+    expect(client.calls.createOrder).toHaveLength(1);
+  });
+});
 
 describe("createPrintfulFulfillmentAdapter", () => {
   describe("submitOrder", () => {
