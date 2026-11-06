@@ -34,7 +34,8 @@ disclosed with the exact env vars and test evidence behind it on
 Postgres database; the third runs on a completely independent Convex deployment, in
 production, right now.
 
-**Live status, re-checked 2026-10-15 (later same day):** all three return `200` right now.
+**Live status, re-checked 2026-11-05:** all three standalone stores and all three shared paths return `200`.
+**Earlier, 2026-10-15:**
 Print Shop and Northline did go down earlier today with a real `500` — their shared Supabase
 Postgres project had gone to sleep (free-tier auto-pause from inactivity), not an application
 bug — and have since been recovered. The underlying graceful-degradation handling (an honest

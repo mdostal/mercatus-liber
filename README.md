@@ -3,230 +3,182 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/mdostal/mercatus-liber/ci.yml?branch=master&label=CI)](https://github.com/mdostal/mercatus-liber/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/mdostal/mercatus-liber)](LICENSE)
 
-**[Docs site](https://mercatus-liber-docs.vercel.app)** — architecture, subsystem reference, integrations catalog, sample-stores reference &nbsp;|&nbsp;
-**[Wiki](https://github.com/mdostal/mercatus-liber/wiki)** — FAQ, troubleshooting, decisions log &nbsp;|&nbsp;
-**[Live demo](https://commerce.mdostal.com)** — three running reference stores &nbsp;|&nbsp;
-**[Repo topics](https://github.com/mdostal/mercatus-liber)** — `headless-commerce`, `nextjs`, `typescript`, `open-source`, and more, in the About panel
-
 # Mercatus Liber
 
-_"Free market" (Latin). A legitimate, 100% free/open-source alternative to Shopify/Medusa/
-Saleor/etc. -- headless, AI-agent-accessible, and built to be stood up with a single tool._
+**A free, MIT-licensed, headless commerce framework: an open alternative to Shopify that you
+own and can run anywhere.**
 
-A free, MIT-licensed, headless commerce framework: schema-first product/SKU catalog with
-pluggable database adapters, a **marketing catalog genuinely separate from the sales
-catalog** (the gap no existing free/OSS commerce platform actually fills), a real interactive
-multi-axis product configurator (e.g. color x size) resolving to real per-combination
-price/stock server-side, a per-page CMS instead of forced whole-site theming, a long-lived
-cart, adapter-based payments (Stripe first), analytics on by default (PostHog,
-config-swappable), and a plugin system for everything else (OMS, fulfillment, notifications).
+No per-transaction cut, no app-store tax, no required vendor. Every subsystem is its own
+package behind a narrow interface, so you can swap the database, CMS, payments, auth, or
+fulfillment provider without touching the rest. Everything a person can do in the admin, an AI
+agent can do through the same interfaces over MCP.
 
-Built as an **AI *and* human commerce tool from the ground up** — every capability exposed to a
-human storefront/admin UI is equally exposed to AI agents via a documented skills/tool catalog
-and an MCP server, calling the exact same subsystem interfaces. No shadow API, no reduced
-agent-only surface.
+[Live demo](https://commerce.mdostal.com) · [Docs](https://mercatus-liber-docs.vercel.app) ·
+[Wiki](https://github.com/mdostal/mercatus-liber/wiki) · [Vision and roadmap](VISION.md) ·
+[Contributing](CONTRIBUTING.md)
 
-**Status (updated 2026-09-22):** far past the original core-foundation stage this paragraph
-used to describe — the full commerce loop (catalog, marketing catalog, search, PDP, CMS, cart,
-checkout, Stripe payments, orders, accounts, inventory, plugins) is done, four real reference
-persistence adapters exist (SQLite, Postgres, MongoDB, Convex, plus a Shopify commerce-backend
-adapter), admin auth/promotions/bundles/recommendations/advertising/reviews/internal-BI/
-fulfillment/shipping/SEO are all real and shipped, and three genuinely distinct, live demo
-stores (`print-shop`, `northline`, `broadleaf`) run in production at `commerce.mdostal.com`
-today, two of them on different real database backends (Postgres and Convex). See
-`.pHive/planning/epic-backlog.md` for the full, currently 85-epic build-out backlog and
-`VISION.md` for a narrative "where things stand today."
+> **Status: pre-1.0, not yet on npm.** The packages run in production on the demo stores below,
+> but you consume them from this monorepo for now. npm publishing is planned after a dogfooding
+> period on a real store. Expect breaking changes between versions; see
+> [CHANGELOG.md](CHANGELOG.md).
 
-## Why
-Evaluated against every serious free/OSS option (Medusa, Saleor, Vendure, Spree/Solidus,
-Shopware, Bagisto, Sylius) plus proprietary options (Snipcart, Swell) for
-[shop.mdostal.com](../shop) — a small maker shop needing a real multi-item cart. None fit: wrong
-stack, wrong deploy shape, unnecessary infrastructure for a small catalog, or not actually free.
-See [`shop/.pHive/epics/v1-launch/docs/oss-cart-cba.md`](../shop/.pHive/epics/v1-launch/docs/oss-cart-cba.md)
-for the full CBA that led here.
+## See it running
 
-`shop.mdostal.com` becomes this project's first real reference deployment once packages exist
-here to consume.
+Three sample stores, all built from the same open-source app
+([`apps/reference-storefront`](apps/reference-storefront)). They are meant to be read and
+copied: each one is a public example of building a storefront on the framework.
 
-## Read next
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — design principles, subsystem map, repo shape.
-- [`docs/subsystems/`](docs/subsystems/) — one doc per subsystem (26 total), each covering
-  purpose, dependencies, responsibilities, explicit non-responsibilities, and open questions.
-- [`docs/NAMING-CANDIDATES.md`](docs/NAMING-CANDIDATES.md) — naming history (decided: Mercatus Liber).
+| Store | What it is | Theme | Backend | Links |
+|---|---|---|---|---|
+| The Print Shop | Embroidery and custom prints | `editorial` | Postgres | [standalone](https://mercatus-liber-print-shop.vercel.app) · [shared](https://commerce.mdostal.com/demo/print-shop) |
+| Northline Home Tech | Smart-home installer with service-area pages | `northline` | Postgres | [standalone](https://mercatus-liber-northline.vercel.app) · [shared](https://commerce.mdostal.com/demo/northline) |
+| Broadleaf & Co. | Artisan and handmade goods | `vibrant` | Convex | [standalone](https://mercatus-liber-broadleaf.vercel.app) · [shared](https://commerce.mdostal.com/demo/broadleaf) |
 
-## Prime directive
-No subsystem imports another subsystem's internals. Everything talks through shared core
-types, adapter interfaces, or a typed event bus. See `docs/ARCHITECTURE.md` → "Prime directive:
-no tight coupling" for the test used to catch violations.
+The demos run in sandbox payment mode, so no real charges happen. Details:
+[sample stores](apps/docs/content-src/sample-stores.md).
 
-## Integrations
+## Quick start
 
-Mercatus Liber integrates with 12 real third-party adapter packages (`packages/adapter-*`) plus
-two built-in provider integrations (Stripe, PostHog/GA4) — covering persistence, CMS, admin
-auth, payments, fulfillment & shipping, image/media, and analytics & insights. Several are
-already live in production today (Postgres, Convex, Sanity, Clerk, PostHog); others are real,
-built, and unit-tested but currently credential-gated, honestly disclosed rather than claimed
-working end to end. See [the full Integrations catalog](https://mercatus-liber-docs.vercel.app/integrations)
-on the docs site for every package's real current status and the exact environment variable(s)
-that would turn it on.
+Requires Node 22.13 or newer and pnpm 11 (`corepack enable` picks up the pinned version).
 
-## Configuration
-Environment variables `apps/reference-storefront` actually reads (confirmed by grepping
-`process.env` across the app, not from memory). None are required to run the app locally —
-every one has a documented, harmless fallback — but real deployments need the identity-provider
-and payment keys to get real behavior instead of a local stand-in.
+```bash
+git clone https://github.com/mdostal/mercatus-liber.git
+cd mercatus-liber
+pnpm install
+pnpm turbo run build --filter=@mercatus-liber/reference-storefront^...
+pnpm --filter @mercatus-liber/reference-storefront dev
+```
 
-**Admin authentication** (subsystem 21, `@mercatus-liber/admin-auth` + `@mercatus-liber/adapter-clerk`):
-- `CLERK_SECRET_KEY` — Clerk's Backend API secret key. This is the single signal the app uses to
-  decide whether Clerk is configured at all: when set, `/admin` is gated by real Clerk
-  authentication (`middleware.ts`) and the real `createClerkAdminAuthAdapter()` is wired in
-  (`lib/services.ts`); when unset, Clerk's middleware/provider are skipped entirely and the app
-  falls back to the zero-infra `createDefaultAdminAuthAdapter()` dev adapter.
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — Clerk's publishable key identifying the Clerk instance,
-  required alongside `CLERK_SECRET_KEY`. **Corrected 2026-09-22, real-provider-verification
-  (epic 56):** an earlier version of this doc claimed a separate, non-`NEXT_PUBLIC_`-prefixed
-  `CLERK_PUBLISHABLE_KEY` was what the server-side SDK (`clerkMiddleware()`, `<ClerkProvider>`)
-  reads. That was wrong — confirmed by reading `@clerk/nextjs@7.9.1`'s own published source
-  (`server/constants.js`): `PUBLISHABLE_KEY` is read exclusively from
-  `process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, both server- and client-side. There is no
-  separate `CLERK_PUBLISHABLE_KEY` this SDK version ever reads, anywhere. Setting the
-  non-`NEXT_PUBLIC_` name instead (as this doc previously instructed) leaves the real variable
-  unset, and `clerkMiddleware()` throws `MissingPublishableKeyError` on every request its broad
-  route matcher covers — i.e. nearly the whole site returns 500, not just `/admin` — reproduced
-  live against a real Clerk test-mode key during this fix. See
-  `packages/adapter-clerk/README.md` for the full writeup, including the separate, expected
-  Clerk-SDK behavior (not a bug) where an unauthenticated non-browser request to `/admin` — e.g.
-  a bare `curl` with no `Accept: text/html`/`Sec-Fetch-Dest` headers — gets a genuine 404
-  instead of a sign-in redirect.
-- `ADMIN_DEV_PASSWORD` — **local-development-only fallback, never a real security boundary.**
-  Gates the dev-default admin adapter's single shared session cookie (see
-  `packages/admin-auth/src/default-adapter.ts`): whatever value this is set to must match the
-  cookie value for a session to resolve, and it always resolves to a single synthetic "owner"
-  identity. No per-user sessions, no expiry, no CSRF protection, no rate limiting. Unset means
-  no dev session can ever authenticate. Not used at all once `CLERK_SECRET_KEY` is set.
+Then open <http://localhost:3000/demo/print-shop>. No accounts or environment variables are
+needed: with nothing configured, the app runs on in-memory SQLite and reseeds on restart.
+Set `DATABASE_URL` or `SQLITE_FILE_PATH` to persist the catalog. Every variable is listed in
+the [configuration reference](apps/docs/content-src/configuration.md).
 
-**Payments** (predates this epic):
-- `STRIPE_SECRET_KEY` — Stripe's secret API key. Without it, `lib/services.ts` still constructs
-  the payments adapter (`createLazyStripeAdapter`), but it defers building the real Stripe
-  client until a payment method is actually called — so every page except checkout keeps
-  working, and checkout itself fails loudly only when actually exercised.
-- `STRIPE_WEBHOOK_SECRET` — Stripe's webhook signing secret, used to verify incoming webhook
-  events. Same empty-string fallback as `STRIPE_SECRET_KEY` above.
+To start your own store, use the scaffolder:
+[`packages/create-store`](packages/create-store/README.md).
 
-**Analytics** (predates this epic):
-- `POSTHOG_API_KEY` — PostHog project API key, read server-side. When set, `lib/services.ts`
-  wires the real `createPostHogAdapter()`; when unset, it falls back to a deliberately valid,
-  fully-functional `createNoopAdapter()` (not an error state).
-- `POSTHOG_HOST` — optional PostHog host override, only meaningful alongside `POSTHOG_API_KEY`.
-- `NEXT_PUBLIC_POSTHOG_KEY` — PostHog project API key read client-side
-  (`lib/analytics-client.ts`), for browser-only interaction/impression events. Without it,
-  `trackEvent()` is a safe no-op that never touches the network.
-- `NEXT_PUBLIC_POSTHOG_HOST` — optional client-side PostHog host override; falls back to
-  `https://us.i.posthog.com` when unset.
+## What's in the box
 
-**Content (CMS)** (`@mercatus-liber/cms` + `@mercatus-liber/adapter-sanity`):
-- `SANITY_PROJECT_ID` — Sanity project ID. This is the single signal `lib/services.ts` uses to
-  decide whether Sanity is configured at all: when set, the real `createSanityAdapter()` is
-  wired in as the CMS's persistence; when unset, the app falls back to the zero-infra
-  `createInMemoryCmsAdapter()` -- no external CMS required to run this app locally.
-- `SANITY_DATASET` — optional, defaults to `"production"` (Sanity's own conventional dataset
-  name) when unset. Only meaningful alongside `SANITY_PROJECT_ID`.
-- `SANITY_TOKEN` — Sanity API token used to authenticate reads/writes against the configured
-  project and dataset. Falls back to an empty string when unset, same posture as the Stripe
-  keys above; only meaningful alongside `SANITY_PROJECT_ID`.
+**Commerce core:** catalog with multi-axis variants, a marketing catalog kept separate from the
+sales catalog, search, product pages, long-lived cart, checkout and orders, customer accounts,
+inventory.
 
-**AI content copilot** (`apps/reference-storefront/lib/copilot/`, `/admin/copilot`):
-- `ANTHROPIC_API_KEY` — a real Anthropic API key. This is the single signal
-  `lib/copilot-runtime.ts`'s `isCopilotConfigured()` checks: when set, `/admin/copilot` runs the
-  real tool-calling loop against the live Anthropic API; when unset, the page renders an honest
-  "AI copilot is not configured for this environment" message instead of a broken or fake UI.
-  **Deliberately never set on `commerce.mdostal.com` (the shared public demo), and this is not an
-  oversight to "fix" — it's the intended, permanent posture.** A public demo with a shared
-  Anthropic key would let any anonymous visitor burn real API spend on the site owner's account;
-  the copilot's backend, UI, permission gating, and tests are all fully real and shippable without
-  it (see `.pHive/epics/sanity-challenge-commerce-copilot/docs/design-discussion.md`). If you're
-  running this framework yourself (locally, or your own deployment) and want to actually try the
-  copilot, set this to your own key in your own `.env.local`/hosting environment — never the
-  shared public one.
-- `SANITY_CONTEXT_ORG_ID` / `SANITY_CONTEXT_ENDPOINT_NAME` — optional, only meaningful alongside
-  `SANITY_TOKEN` (see Content (CMS) above): a Sanity Context MCP org-scoped token and endpoint
-  name for the copilot's Sanity Context (Knowledge Base) search tool. Same "bring your own
-  credential" posture as `ANTHROPIC_API_KEY` above — never set on the shared public demo.
+**Merchandising and content:** per-page CMS (no forced whole-site theme), 10 theme bundles,
+promotions, bundles, recommendations, advertising, reviews, storefront views, service-area
+pages, community goals, and made-to-order customization with an admin-defined pricing engine.
 
-**Persistence (catalog)** (`@mercatus-liber/adapter-sqlite` + `@mercatus-liber/adapter-postgres`):
-- `DATABASE_URL` — a Postgres connection string. This is the highest-priority signal
-  `lib/services.ts` uses to decide catalog persistence: when set, a real `createPostgresAdapter()`
-  is wired in, backed by a `pg` `Pool` connected to this string; when unset, the app falls back to
-  checking `SQLITE_FILE_PATH` next.
-- `SQLITE_FILE_PATH` — a filesystem path for a durable, file-backed SQLite database. Only
-  consulted when `DATABASE_URL` is unset. When set, `lib/services.ts` wires in
-  `createSqliteAdapter(path)` against that real file (`journal_mode = WAL`, durable across
-  restarts) instead of the zero-infra default; when both this and `DATABASE_URL` are unset, the
-  app falls back to `createSqliteAdapter(":memory:")` — no setup required to run locally, but
-  catalog data resets on every restart. A file-backed database at this path can be backed up and
-  restored with `packages/adapter-sqlite`'s own CLI — see that package's README and
-  [`apps/docs/content-src/deep-dive/adapters-and-portability.md`](apps/docs/content-src/deep-dive/adapters-and-portability.md#backup-and-restore).
+**Operations:** role-based admin auth, fulfillment, shipping, webhooks, accounting sync,
+analytics, internal BI, a store scaffolder, auto-update, and a Shopify migration tool.
 
-**Demo content**:
-- Demo selection is routed, not env-var-driven — `apps/reference-storefront/lib/demos.ts`'s
-  `DEMO_REGISTRY` holds three real public demo stores, each picked live via the
-  `/demo/[demoSlug]/...` route param (see `.pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md`
-  §3; this replaced an earlier `DEMO_BRAND` env var, no longer read anywhere): `print-shop`
-  ("The Print Shop", embroidery/custom prints, opens on the `editorial` theme by default),
-  `northline` ("Northline Home Tech", a smart-home installer, opens on the `northline` theme by
-  default), and `broadleaf` ("Broadleaf & Co.", an eclectic artisan/handmade-goods shop across
-  Plants, Ceramics & Planters, Textiles & Fiber Arts, and Paper & Ephemera, opens on the
-  `vibrant` theme by default).
+**AI access:** MCP server and tool catalog calling the same subsystem interfaces as the admin
+([`packages/ai-interface`](packages/ai-interface/README.md)).
 
-**Docs site link**:
-- `NEXT_PUBLIC_DOCS_URL` — the public URL of the deployed `apps/docs` documentation site,
-  read client-side by the framework landing page's "Docs" link
-  (`app/(landing)/layout.tsx`). Unset falls back to a clearly-labeled placeholder URL rather
-  than a broken bare `/docs` link — the docs site's real, deployed public domain is an
-  operational decision (DNS/domain binding, Vercel project creation) outside this repo's
-  scope, not something to hardcode as a guess.
+## Adapters
 
-**SEO canonical URLs** (epic 45, `seo-01-dynamic-metadata-and-canonical`):
-- `NEXT_PUBLIC_SITE_URL` — `NEXT_PUBLIC_DOCS_URL`'s sibling for `apps/reference-storefront`
-  itself: the real deployed base URL (`commerce.mdostal.com` per
-  `.pHive/epics/commerce-landing-and-demo-routing/docs/design-discussion.md`) used to build
-  every page's real absolute `<link rel="canonical">` URL (`lib/site-url.ts`). Unlike
-  `NEXT_PUBLIC_DOCS_URL`'s decorative placeholder, canonical tags need to actually resolve in
-  local dev too, so unset falls back to `http://localhost:3000` rather than a placeholder.
+An adapter implements a subsystem's interface for one provider. "Live" means running on the demo
+stores. "Unverified" means built and unit-tested against the provider's documented API, but
+never run against a real account.
 
-## Keep-alive job (GitHub Actions)
-free-tier-resilience-and-keepalive epic (fr-03): `.github/workflows/keepalive.yml` runs daily
-(06:00 UTC cron, plus manual `workflow_dispatch`) to ping — and, if needed, attempt a real
-Management API resume against — the one free backend actually live-wired to a public demo today:
-Supabase Postgres (print-shop and northline both share `DATABASE_URL`; Broadleaf & Co. runs on
-Convex, which has no comparable pause/resume concept; MongoDB Atlas isn't wired into any live
-demo right now, so it's deliberately not pinged — see the workflow file's own header comment for
-the researched Atlas-specific pause/resume semantics if that ever changes). This is a **separate**
-set of credentials from the app's own `DATABASE_URL` above — GitHub Actions cannot read Vercel's
-environment variables, so these must be added by hand as their own repository secrets (GitHub repo
-→ Settings → Secrets and variables → Actions → New repository secret):
+| Area | Adapter | State |
+|---|---|---|
+| Database | `adapter-sqlite` | Local and zero-config default |
+| Database | `adapter-postgres`, `adapter-postgres-inventory` | Live |
+| Database | `adapter-convex` | Live |
+| Database | `adapter-mongodb` | Built and tested, not live |
+| Commerce backend | `adapter-shopify` | Unverified; available through `create-store`, not used by the demos |
+| CMS | `adapter-sanity` | Live |
+| Admin auth | `adapter-clerk` | Live |
+| Payments | Stripe (in `payments`) | Live in sandbox mode |
+| Payments | `adapter-paypal` | Unverified |
+| Print on demand | `adapter-printful`, `adapter-printify` | Unverified; activates when credentials are set |
+| Shipping | `adapter-shippo` | Unverified |
+| Images | `adapter-cloudinary` | Unverified |
+| Accounting | `adapter-quickbooks` | Unverified |
+| Analytics | PostHog (in `analytics`) | Live |
+| Analytics | GA4 (in `analytics`) | Unverified |
 
-- `SUPABASE_DATABASE_URL` — the same Supavisor pooler connection string as production's
-  `DATABASE_URL` (Supabase dashboard → Project Settings → Database → Connection string → URI,
-  transaction-pooler/`:6543` form). Required for the job to do anything at all — without it the
-  job can't even ping.
-- `SUPABASE_ACCESS_TOKEN` — a Supabase account Personal Access Token
-  ([supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens)) with
-  the `projects:write` scope (`project_admin_write` fine-grained permission), used only to call the
-  real Management API restore endpoint (`POST /v1/projects/{ref}/restore`) if a ping ever fails.
-  Optional in the sense that the job still runs and still pings without it, but can't attempt a
-  real resume.
-- `SUPABASE_PROJECT_REF` — the Supabase project's ref/ID, visible in the dashboard URL and as the
-  `postgres.<ref>` pooler username inside `DATABASE_URL` itself. Only meaningful alongside
-  `SUPABASE_ACCESS_TOKEN`.
+Database support is not uniform yet. Postgres covers nearly every commerce subsystem, while Convex,
+MongoDB, and SQLite mainly cover the catalog. `customization` is in-memory only today. The
+[integrations catalog](apps/docs/content-src/integrations.md) has per-adapter detail and the
+environment variables for each.
 
-Every run's real outcome (already healthy / woke it up / unrecoverable — needs manual check) is
-recorded in that run's own GitHub Actions step summary, and the job fails loudly (visible in the
-repo's Actions tab) on an unrecoverable outcome rather than failing silently. See
-`.github/scripts/keepalive-supabase.sh`'s own header comment for the full Supabase
-pause/auto-resume research this logic is built from, and
-`.github/scripts/keepalive-supabase.test.sh` (also run on every CI push/PR) for its dry-run test
-harness against fake/injected provider responses.
+**Leaving Shopify:** [`migrate-shopify`](packages/migrate-shopify/README.md) reads a store once
+and writes it into native persistence, with a dry-run default. It covers products, collections,
+and inventory, but not orders, customers, or images yet. `adapter-shopify` is the other route: it
+keeps Shopify as the backend.
+
+## Build on it
+
+**Write a plugin** for anything that should react to commerce events. A plugin gets the event bus
+and nothing else:
+
+```ts
+import type { Plugin } from "@mercatus-liber/plugins";
+
+export const orderLogger: Plugin = {
+  name: "order-logger",
+  init({ events }) {
+    events.subscribe<{ orderId: string }>("checkout.order.placed", async ({ orderId }) => {
+      console.log(`order placed: ${orderId}`);
+    });
+  },
+};
+```
+
+**Write an adapter** to connect a new provider: implement the subsystem's interface in a new
+`packages/adapter-*` package. See [the adapter pattern](CONTRIBUTING.md#the-adapter-pattern--how-most-contributions-are-shaped).
+
+**Looking for something to build?** Wishlists, gift cards, subscriptions, returns, marketplace
+sync, and more are listed in [VISION.md's community frontier](VISION.md#wanted-not-started--the-community-plugin-frontier).
+
+## UI: how it's organized
+
+| Layer | Where | State |
+|---|---|---|
+| Sample stores | `apps/reference-storefront` | Live, public, and meant to be copied |
+| Theme tokens and bundles | `packages/theming` | Live, 10 bundles |
+| Storefront components | `apps/reference-storefront/components` | Live, but inside the app, so they can't be imported as a package |
+| Customizer component | `packages/customization-ui` | A framework-agnostic Web Component, not yet used by a sample store |
+| Common component package and default UI | Not built | Planned: extract the app's components into an importable package |
+
+## What's being worked on
+
+- **Customization:** making palette ids the canonical color value, which fixes the
+  [known limitations](packages/customization/README.md#known-limitations); durable storage across
+  databases; lock and hardware options; structured order data from cart through to print job.
+- **UI:** extracting the common component package and default UI, and rendering the customizer in
+  the sample stores.
+- **Release:** npm publishing, after dogfooding on a real store.
+
+## How it's built
+
+```
+packages/    49 packages: core types, one package per subsystem, one per adapter
+apps/
+  reference-storefront/   the sample stores (Next.js)
+  docs/                   the docs site (Nextra)
+docs/        architecture and one reference doc per subsystem
+```
+
+One rule holds it together: **no subsystem imports another subsystem's internals.** They share
+core types, adapter interfaces, and a typed event bus. If replacing subsystem A means changing
+code inside subsystem B, that's a bug. `apps/reference-storefront/lib/services.ts` is where
+concrete adapters get chosen. Read more in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Documentation
+
+- [Getting started](apps/docs/content-src/getting-started.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Subsystem reference](docs/subsystems/) (28 docs)
+- [Configuration reference](apps/docs/content-src/configuration.md)
+- [Integrations catalog](apps/docs/content-src/integrations.md)
+- Each package's own `README.md`
+
+## Contributing
+
+Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md). Please report
+security problems as described in [SECURITY.md](SECURITY.md).
 
 ## License
-MIT — see [`LICENSE`](LICENSE). Give it away.
+
+[MIT](LICENSE)

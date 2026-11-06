@@ -12,9 +12,7 @@ import type { ColorSelection, CustomizableProduct, FinishTier, PaletteColor } fr
  * events, nothing more. A discontinued option stays visible (greyed out,
  * disabled) rather than disappearing; a request-only option gets a dashed
  * swatch/card plus a "Request this" affordance that fires `ml-request`,
- * for the host app to wire to its own lead-capture backend (shop-5c's
- * customization package owns that capture mechanism server-side -- this
- * element only asks for it).
+ * for the host app to wire to its own lead-capture backend.
  *
  * Usage:
  *   const el = document.createElement("ml-finish-color-picker");

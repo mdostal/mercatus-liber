@@ -60,10 +60,7 @@ function resolveExcessUnitCount(rules: PricingRules, build: PriceBuild, rule: Ex
  * must call, so a preview price and the real charge never drift apart.
  * Nothing about the formula is fixed: every line beyond "base" comes from
  * `rules.attributes`/`rules.contrastRules`/`rules.excessUnitRules`/
- * `rules.colorMarkupCents`, all admin-defined. Direct correction from the
- * shop owner, replacing an earlier fixed-field design (base + finishDeltas
- * + contrast + artDeltas + a few hardcoded global rates): "it isn't a flat
- * per color count charge... fully customizeable across the entire board."
+ * `rules.colorMarkupCents`, all admin-defined.
  *
  * Steps:
  * 1. "base": `rules.basePriceCents[build.finish]` (0 if missing -- a
@@ -90,7 +87,7 @@ function resolveExcessUnitCount(rules: PricingRules, build: PriceBuild, rule: Ex
  * used (never let a discount make the whole item cheaper than its own
  * starting price), ported as a deliberate choice, not an accident.
  *
- * `build.colors` MUST be each region's EFFECTIVE color, not the
+ * `build.colors` MUST hold each region's EFFECTIVE color, not the
  * shopper's raw selection -- see PriceBuild.colors' own doc comment.
  * Passing raw picks can misfire a contrastRule for a region that's
  * locked (follows a parent, or the whole piece shares one color) under

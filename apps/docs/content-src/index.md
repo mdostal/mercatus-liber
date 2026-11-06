@@ -12,7 +12,7 @@ Mercatus Liber," but "how Mercatus Liber actually works, and how to run one."
   CLI.
 - **[Architecture](/architecture)** — design principles, the subsystem map, repo shape, and the
   prime directive (no subsystem imports another subsystem's internals).
-- **[Subsystem reference](/subsystems/00-core-schema)** — one doc per subsystem (26 total),
+- **[Subsystem reference](/subsystems/00-core-schema)** — one doc per subsystem (28 total),
   each covering purpose, dependencies, responsibilities, explicit non-responsibilities, and
   open questions. Browse the sidebar for the full list, from `00-core-schema` through
   `25-storefront-views`.
@@ -23,8 +23,8 @@ Mercatus Liber," but "how Mercatus Liber actually works, and how to run one."
   today (persistence, CMS, auth, payments, fulfillment & shipping, image/media, analytics &
   insights), with each one's real current status and the exact env var(s) to turn it on.
 - **[Sample stores](/sample-stores)** — the three real demo storefronts, their real URLs,
-  their real per-store backends, and the honest current state of the in-progress move to give
-  each one its own independent deployment.
+  and their per-store backends.
+- **[Configuration](/configuration)** — every environment variable the reference storefront reads.
 
 ## What's covered here vs. elsewhere
 

@@ -15,3 +15,9 @@ dist/
 # generated PNG candidates themselves -- large binaries, fully reproducible
 # from prompts.md. See hive/references/logo-exploration-artifacts.md.
 .pHive/brand/logo-explorations/**/*.png
+
+# Hive runtime state (local, regenerated)
+.pHive/agent-complete/
+.pHive/interrupts/
+.pHive/metrics/
+.pHive/session-effort.txt

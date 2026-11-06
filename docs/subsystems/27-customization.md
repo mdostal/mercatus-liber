@@ -123,10 +123,10 @@ driver is admin-defined data.
   `count * perUnitCents` + contrast-rule-driven counts + excess-unit-rule-derived counts +
   `colorMarkupCents` for every distinct color actually used. A zero-amount line is omitted;
   `total` is floored at the base price (never let a discount make the whole item cheaper than
-  its own starting price). Validated against 7 real cent-exact scenarios derived from
-  dostal-3d-printing's own slicer-time cost model, plus real treasure-chest minute numbers for
-  the excess-time lever (kept as a *reference*, not a contract — ownership of any
-  cost-estimation tooling is explicitly not this package's or the 3D side's job).
+  its own starting price). Tests cover 4 of the 7 cent-exact examples in the 3D side's `suggested-levers.json`
+  (the treasure-chest `plate` ones; the `hasp`, art box, and cubby set examples are not ported),
+  plus real treasure-chest minute numbers for the excess-time lever. That file is a reference,
+  not a contract, and its numbers are unapproved suggestions.
 - `PricingService`/`PricingRulesRepository` (`src/pricing-service.ts`) — deliberately separate
   from `CustomizationService`: a storefront's admin screen reads/writes one product's whole
   `PricingRules` document at a time through this; `priceOf(productId, build)` throws
@@ -154,8 +154,8 @@ sku-availability-status epic, reused here verbatim for `PaletteColor.status` and
 ## Explicitly NOT this subsystem's job
 - **Any rendering, 3D-viewer wiring, or UI controls.** `resolveEffectiveColor`/
   `availableColorChoices`'s plain region→hex maps and swatch-choice lists are the entire
-  contract; a storefront's own component (shop-ce's `@mercatus-liber/customization-ui` Web
-  Component, `<ml-finish-color-picker>`, consuming this package directly) owns every pixel.
+  contract; a storefront's own component (`@mercatus-liber/customization-ui`'s Web Component,
+  `<ml-finish-color-picker>`, or the storefront's own) owns every pixel.
   Same separation this package's own sibling subsystems (`community-goals`, `pdp`, `theming`)
   already draw from their own data layers.
 - **build.json / 3D-asset-build tooling.** Part placement, pivots, glTF animations, and STL
@@ -177,15 +177,31 @@ sku-availability-status epic, reused here verbatim for `PaletteColor.status` and
 `packages/customization`'s only dependency is `@mercatus-liber/core`. Verify via
 `grep -rln "@mercatus-liber/customization" packages/*/src` before merge — every hit should be
 this package's own `src`; it's consumed only by `apps/reference-storefront` (if/when wired) and
-downstream by whichever storefront UI builds on top of it (shop-ce's `customization-ui`).
+downstream by whichever storefront UI builds on top of it.
+
+## Known limitations
+Verified against the built package, 2026-11-05:
+- Palette colors are selected by hex. `validateSelectedColor` rejects a palette id, even though
+  `print-order/1` requires palette ids.
+- `resolveEffectiveColors` returns hex but `colorMarkupCents` is keyed by palette id, so feeding one
+  to the other silently charges no markup.
+- `resolveColorCount` matches palette entries by hex, so two entries sharing a hex count as one
+  color. This contradicts the identity rule this doc previously claimed.
+- A "colorChanges" `ExcessUnitRule` compares raw strings, so differently cased hexes count twice.
+- `resolvePrice` charges for distinct colors beyond the first, not for each color differing from a
+  region's default. A per-region "differs from base" charge exists only through `ContrastRule`.
+- `estimatedMinutes` is one constant per finish, so the excess-time charge does not change with the
+  shopper's color choices.
+- Test files are not typechecked: `tsconfig.json` includes only `src`.
+- `PricingDocument` is exported but unused by the repository or service.
 
 ## Open questions
 0. A durable adapter for `PricingRulesRepository` specifically — needed before a real admin
    screen's edits can be trusted to survive a restart; not started as of this subsystem's
    pricing-engine rewrite.
 1. Structured cart/order customization-selection field — not started. See "Explicitly NOT"
-   above; the real target shape (per a peer session's own stated order data) is
-   `{ productId, finishId, colors: { regionId: "#hex" } }`.
+   above; the real target shape is the `print-order/1` shape: finish, raw option picks, art style,
+   name, and `colors` as region id to **palette id**.
 2. Request-status order-capture flagging (a note/flag fulfillment sees) — not started, folded
    into the same follow-up epic as (1) above.
 3. A durable (sqlite/postgres) adapter — not started; v1 ships in-memory only.
