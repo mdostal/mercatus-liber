@@ -251,6 +251,7 @@ vertical-slice invariant), not just "some files exist."_
 | 104 | `storefront-ui-customizer` | **Added 2026-11-05, direct user request for common UI components and a customizer that shows price changes and a chart.** New `storefront-ui` package with Customizer and PriceBreakdown, wired into The Print Shop with an admin pricing page. Clicked through in a real browser to sandbox payment. Remaining components and the default UI not moved yet. | **done** | 97 |
 | 105 | `storefront-ui-default-templates` | **Added 2026-11-05.** Moved cart and product page templates into `storefront-ui` behind `store` and `actions` props. Each template clicked through in a browser. Navigation, home, category, and CMS components not moved yet. | **done** | 97 |
 | 106 | `pod-catalog-mapping` | **Added 2026-11-06.** Stored SKU-to-provider-product mappings on all four databases, mapping-backed resolvers for Printful and Printify, and a hold mode so a live test can't create a charged order. No live run: no Printify account exists yet. | **done** | 97 |
+| 107 | `printful-catalog-and-products` | **Added 2026-11-06, user ask to nail out the full Printful integration in the library.** Catalog client, product-as-data import with real costs, held status, address check. Verified read-only against the live store, plus draft orders that were deleted: costs match Printful's own draft totals (one placement included). | **done** | 97 |
 
 ## Execution mode
 Driven via a self-pacing loop (`/loop`) cycling `/plugin-hive:plan` (per epic, when not yet

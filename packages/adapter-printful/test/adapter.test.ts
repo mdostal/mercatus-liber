@@ -94,6 +94,7 @@ describe("Printful catalog mappings and holdOrders", () => {
     const records = await adapter.submitOrder({ orderId: "order-1", items: [{ skuId: "sku-mug", quantity: 2 }] });
     expect(client.calls.confirmOrder).toEqual([]);
     expect(records).toHaveLength(1);
+    expect(records[0]!.status).toBe("held");
   });
 
   it("sends stored mappings, and refuses an unmapped or malformed SKU before creating anything", async () => {
@@ -321,7 +322,7 @@ describe("createPrintfulFulfillmentAdapter", () => {
     });
 
     it("narrows real Printful order statuses with no FulfillmentLineStatus equivalent ('failed'/'canceled'/'onhold') to 'submitted', not invented values", async () => {
-      for (const printfulStatus of ["failed", "canceled", "onhold", "inprocess", "partial", "draft"] as const) {
+      for (const printfulStatus of ["failed", "canceled", "onhold", "inprocess", "partial"] as const) {
         const client = fakeClient({
           getOrder: async () => ({
             data: { id: 555, external_id: "order-1", status: printfulStatus, recipient: {}, order_items: [{ id: 1, type: "order_item", source: "catalog", catalog_variant_id: 1, external_id: "sku-mug", quantity: 1 }] },

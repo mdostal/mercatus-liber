@@ -98,6 +98,8 @@ export function mapPrintfulOrderStatus(orderStatus: PrintfulOrderStatus, shipmen
   const anyShipped = shipments.some((s) => s.shipment_status === "shipped") || orderStatus === "fulfilled";
   if (anyShipped) return "shipped";
 
+  // A draft hasn't been confirmed, so nothing is made or charged yet.
+  if (orderStatus === "draft") return "held";
   return "submitted";
 }
 
@@ -112,4 +114,18 @@ export function mapPrintfulOrderStatus(orderStatus: PrintfulOrderStatus, shipmen
 export function findTrackingUrlForItem(shipments: PrintfulShipmentResponse[], orderItemId: number): string | null {
   const match = shipments.find((s) => s.shipment_items?.some((item) => item.order_item_id === orderItemId));
   return match?.tracking_url ?? null;
+}
+
+/** Thrown before calling Printful when a recipient lacks a field Printful needs to ship. */
+export class IncompleteRecipientError extends Error {
+  constructor(readonly missing: string[]) {
+    super(`The shipping address is missing ${missing.join(", ")}, which Printful needs to ship.`);
+    this.name = "IncompleteRecipientError";
+  }
+}
+
+/** Printful refuses an order without these, so check before sending rather than after. */
+export function assertShippableRecipient(address: PrintfulRecipientAddress): void {
+  const missing = (["address1", "city", "country_code", "zip"] as const).filter((key) => !address[key]?.trim());
+  if (missing.length > 0) throw new IncompleteRecipientError(missing);
 }

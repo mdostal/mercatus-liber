@@ -76,6 +76,7 @@ describe("holdOrders", () => {
     expect(http.sent).toEqual([]);
     expect(records).toHaveLength(1);
     expect(records[0]!.externalOrderId).toBe("po-1");
+    expect(records[0]!.status).toBe("held");
   });
 
   it("still sends to production by default", async () => {

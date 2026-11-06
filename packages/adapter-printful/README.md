@@ -39,3 +39,22 @@ See [docs/subsystems/22-fulfillment.md](../../docs/subsystems/22-fulfillment.md)
 
 `printfulCatalogTargetsFrom(repo)` builds `resolveCatalogTarget` from a `ProviderCatalogMappingRepository` (in `@mercatus-liber/fulfillment`, with durable versions in each database adapter). Set `holdOrders: true` to leave new orders as drafts in Printful instead of sending them to production. Use it for any test against a real account.
 
+## Running a Printful catalog
+
+`createPrintfulCatalogClient` reads Printful's catalog, prices, shipping rates, and webhook settings, and renders mockups. It never creates an order.
+
+Describe each product as data with `PrintfulProductSpec` (blank, colors, sizes, print files, retail price), then:
+
+```ts
+const client = createPrintfulCatalogClient({ apiToken, storeId });
+const [variants, prices] = await Promise.all([client.listVariants(spec.printfulProductId), client.getPrices(spec.printfulProductId)]);
+const plan = planPrintfulProduct(spec, variants, prices); // every SKU with Printful's cost and your margin
+await applyPrintfulProduct({ catalog, mappings, routing }, plan);
+```
+
+`applyPrintfulProduct` creates the product and SKUs, stores each SKU's Printful variant and print files, and routes it to Printful. Running it again creates nothing new and keeps prices changed in the admin, unless you pass `{ updatePrices: true }`.
+
+Costs follow Printful's own draft-order totals, checked on 2026-11-06: a variant's price covers one print placement, and each additional placement adds its price. Shipping and tax are extra; use `getShippingRates` for shipping.
+
+`submitOrder` refuses an address without a street line, city, country, or postal code before calling Printful. A draft left by `holdOrders` reports the status `"held"`.
+

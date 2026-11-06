@@ -11,7 +11,8 @@ export type FulfillmentProviderKey = string;
 /** The permanent, zero-infra default provider -- see manual-adapter.ts and design-discussion.md §1d. */
 export const MANUAL_FULFILLMENT_PROVIDER: FulfillmentProviderKey = "manual";
 
-export type FulfillmentLineStatus = "unfulfilled" | "submitted" | "shipped" | "delivered";
+/** "held": sent to the provider but waiting there to be released, such as a Printful draft or a Printify on-hold order. Nothing is made or charged until it's released. */
+export type FulfillmentLineStatus = "unfulfilled" | "held" | "submitted" | "shipped" | "delivered";
 
 /**
  * One provider's fulfillment record for one order line (orderId + skuId pair).

@@ -266,7 +266,7 @@ describe("createPrintifyFulfillmentAdapter", () => {
       }
     });
 
-    it.each(["on-hold", "sending-to-production", "has-issues", "canceled"] as const)(
+    it.each(["sending-to-production", "has-issues", "canceled"] as const)(
       "narrows real Printify line-item statuses with no FulfillmentLineStatus equivalent ('%s') to 'submitted', not invented values",
       async (printifyStatus) => {
         const client = fakeClient({

@@ -72,9 +72,10 @@ as a provider-shaped `target`. It's implemented in memory and on Postgres, SQLit
 Convex, all running one contract (`packages/fulfillment/test/catalog-mapping-contract.ts`).
 `printifyCatalogTargetsFrom(repo)` and `printfulCatalogTargetsFrom(repo)` turn it into each adapter's
 `resolveCatalogTarget`, refusing an unmapped or malformed SKU before anything is sent. The reference
-storefront uses Postgres where it has it. Nothing maps SKUs automatically yet; a catalog import is
-the planned next step.
+storefront uses Postgres where it has it. For Printful, `planPrintfulProduct` and `applyPrintfulProduct` create SKUs and their mappings from a
+product described as data; see `packages/adapter-printful/README.md`. Printify has no equivalent yet.
 
+`FulfillmentLineStatus` includes `"held"`: sent to the provider but waiting there to be released.
 Both adapters take `holdOrders: true` (in the storefront, `PRINTFUL_HOLD_ORDERS=true` or
 `PRINTIFY_HOLD_ORDERS=true`), which leaves new orders as Printful drafts or Printify on-hold orders, so
 nothing is made or charged until someone releases them. Without it, both send orders straight to

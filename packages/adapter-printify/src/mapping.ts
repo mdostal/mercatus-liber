@@ -119,6 +119,8 @@ export function mapPrintifyLineItemStatus(lineItemStatus: string | undefined, sh
     const anyDelivered = shipments.some((s) => Boolean(s.delivered_at));
     return anyDelivered ? "delivered" : "shipped";
   }
+  // On hold until sent to production, so nothing is made or charged yet.
+  if (lineItemStatus === "on-hold") return "held";
   return "submitted";
 }
 

@@ -1084,3 +1084,16 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 
 - The reference storefront resolves Printful and Printify products from stored mappings instead of always throwing.
 
+## [0.52.0] - 2026-11-06
+
+### Added
+
+- `createPrintfulCatalogClient` in `@mercatus-liber/adapter-printful`: catalog products and variants, prices, shipping rates, webhook settings, and mockups, following Printful's pagination.
+- `PrintfulProductSpec`, `planPrintfulProduct`, and `applyPrintfulProduct`: describe a Printful product as data and create its SKUs, mappings, and routing, with each SKU's real cost and margin.
+- `printfulUnitCostCents` and `printfulPriceToCents`.
+- `"held"` in `FulfillmentLineStatus`, reported for Printful drafts and Printify on-hold orders.
+
+### Changed
+
+- The Printful adapter refuses an address missing a street line, city, country, or postal code before calling Printful, which otherwise rejects it.
+
