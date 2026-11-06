@@ -143,8 +143,8 @@ sku-availability-status epic, reused here verbatim for `PaletteColor.status` and
 - `"discontinued"` — shown, never selectable. `CustomizationService` enforces this
   server-side, never left to a client-side UI alone: `resolveEffectiveColors` throws
   `DiscontinuedFinishError` for a discontinued finish tier, and `InvalidColorSelectionError`
-  (via `validateSelectedColor`) for any submitted hex that matches a discontinued palette
-  color. A client is free to render a discontinued option greyed-out, but a direct API call
+  (via `validateSelectedColor`) for any submitted palette id or free hex that resolves to a
+  discontinued palette color. A client is free to render a discontinued option greyed-out, but a direct API call
   (or a stale client) gets rejected either way.
 - `"request"` — shown, selectable; explicitly let through both checks above. Capturing that
   request alongside the order (so fulfillment knows a `request`-status choice needs special
@@ -162,7 +162,7 @@ sku-availability-status epic, reused here verbatim for `PaletteColor.status` and
   assembly are the 3D-printing/model-forge tooling side's domain, never commerce data — this
   package only names region ids that must match a product's own GLB material names.
 - **Cart/order capture of a shopper's selection or a `request`-status choice.** `CartItem`
-  gaining a structured `{finishId, colors: Record<regionId, hex>}` field (replacing/
+  gaining a structured `{finishId, colors: Record<regionId, paletteId>}` field (replacing/
   supplementing the free-text `customizationNote`), plus a flag/note on the order when a
   `request`-status option was chosen so fulfillment sees it needs special handling, is a
   clearly-scoped, separate follow-up epic — not started as of this subsystem's initial ship.
@@ -179,15 +179,23 @@ sku-availability-status epic, reused here verbatim for `PaletteColor.status` and
 this package's own `src`; it's consumed only by `apps/reference-storefront` (if/when wired) and
 downstream by whichever storefront UI builds on top of it.
 
+## Color values
+Selections, effective colors, and `PriceBuild.colors` all carry palette ids, matching the `colors`
+field of `print-order/1`. A `#rrggbb` hex is accepted only where `RegionColorChoices.freeColor` is
+true, and is rejected elsewhere even if it matches a palette entry's hex.
+
+`canonicalColor` defines the one form colors are compared in: a palette id, or a lowercase hex for a
+free pick. A hex matching exactly one solid palette entry becomes that entry's id. A multi-color
+entry never matches by hex, because its hex is only representative. A hex shared by two solid
+entries stays a hex. `resolveEffectiveColors` returns canonical values, so its output goes straight
+to `PriceBuild.colors`, and `colorMarkupCents` applies. `resolveColorHex` gets the hex for painting
+a viewer, and `defaultSelection` builds a starting selection from each region's `defaultHex`.
+
+`@mercatus-liber/customization-ui` keeps its own local hex-based copy of this logic and has not
+moved to palette ids yet.
+
 ## Known limitations
 Verified against the built package, 2026-11-05:
-- Palette colors are selected by hex. `validateSelectedColor` rejects a palette id, even though
-  `print-order/1` requires palette ids.
-- `resolveEffectiveColors` returns hex but `colorMarkupCents` is keyed by palette id, so feeding one
-  to the other silently charges no markup.
-- `resolveColorCount` matches palette entries by hex, so two entries sharing a hex count as one
-  color. This contradicts the identity rule this doc previously claimed.
-- A "colorChanges" `ExcessUnitRule` compares raw strings, so differently cased hexes count twice.
 - `resolvePrice` charges for distinct colors beyond the first, not for each color differing from a
   region's default. A per-region "differs from base" charge exists only through `ContrastRule`.
 - `estimatedMinutes` is one constant per finish, so the excess-time charge does not change with the
