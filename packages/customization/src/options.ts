@@ -84,15 +84,37 @@ export function activeRegions(customization: Pick<ProductCustomization, "regions
   });
 }
 
-/** A starting set of picks: each applicable option's first active choice whose `only` is met. Request-only and discontinued choices are never preselected. */
-export function defaultPicks(customization: Pick<ProductCustomization, "options">): Record<string, string> {
-  const picks: Record<string, string> = {};
+/** Whether an option applies given the other picks. */
+export function isOptionVisible(option: ProductOption, picks: Record<string, string>): boolean {
+  return matches(option.when, picks);
+}
+
+/** Whether a choice can be picked given the other picks: not discontinued, and its `only` met. */
+export function isChoiceAvailable(choice: OptionChoice, picks: Record<string, string>): boolean {
+  return choice.status !== "discontinued" && matches(choice.only, picks);
+}
+
+/**
+ * The closest valid picks to what's given, for a UI to hold while a shopper
+ * changes things. Walks options in order, keeps a pick that's still available,
+ * and otherwise takes the first active choice, so changing one option can't leave
+ * another stuck on something invalid. Request-only choices stay if picked, but are
+ * never chosen automatically.
+ */
+export function normalizePicks(customization: Pick<ProductCustomization, "options">, picks: Record<string, string>): Record<string, string> {
+  const result: Record<string, string> = {};
   for (const option of customization.options ?? []) {
-    if (!matches(option.when, picks)) continue;
-    const choice = option.choices.find((c) => (c.status ?? "active") === "active" && matches(c.only, picks));
-    if (choice) picks[option.id] = choice.id;
+    if (!matches(option.when, result)) continue;
+    const current = Object.hasOwn(picks, option.id) ? option.choices.find((c) => c.id === picks[option.id]) : undefined;
+    const choice = current && isChoiceAvailable(current, result) ? current : option.choices.find((c) => (c.status ?? "active") === "active" && matches(c.only, result));
+    if (choice) result[option.id] = choice.id;
   }
-  return picks;
+  return result;
+}
+
+/** A starting set of picks: each applicable option's first active choice whose `only` is met. */
+export function defaultPicks(customization: Pick<ProductCustomization, "options">): Record<string, string> {
+  return normalizePicks(customization, {});
 }
 
 /** Checks that a product's conditions only name options, choices' owners, and variants that exist. Called whenever a product customization is saved through the service. */

@@ -137,22 +137,22 @@ sync, and more are listed in [VISION.md's community frontier](VISION.md#wanted-n
 |---|---|---|
 | Sample stores | `apps/reference-storefront` | Live, public, and meant to be copied |
 | Theme tokens and bundles | `packages/theming` | Live, 10 bundles |
-| Storefront components | `apps/reference-storefront/components` | Live, but inside the app, so they can't be imported as a package |
-| Customizer component | `packages/customization-ui` | A framework-agnostic Web Component, not yet used by a sample store |
-| Common component package and default UI | Not built | Planned: extract the app's components into an importable package |
+| Storefront components | `apps/reference-storefront/components` | Live, but most are still inside the app, so they can't be imported as a package |
+| Common components | `packages/storefront-ui` | Started: the customizer and price breakdown, live on The Print Shop's [dad cap](https://commerce.mdostal.com/demo/print-shop/products/embroidered-dad-cap) |
+| Customizer Web Component | `packages/customization-ui` | Framework-free, but still on hex colors and not used by a sample store |
+| Default UI | Not built | Planned: move the remaining app components into `storefront-ui` as a default storefront |
 
 ## What's being worked on
 
 - **Customization:** a quote flow for request-only options; see its
   [known limitations](packages/customization/README.md#known-limitations).
-- **UI:** extracting the common component package and default UI, and rendering the customizer in
-  the sample stores.
+- **UI:** moving the rest of the app's components into `storefront-ui` as a default UI.
 - **Release:** npm publishing, after dogfooding on a real store.
 
 ## How it's built
 
 ```
-packages/    49 packages: core types, one package per subsystem, one per adapter
+packages/    50 packages: core types, one package per subsystem, one per adapter
 apps/
   reference-storefront/   the sample stores (Next.js)
   docs/                   the docs site (Nextra)

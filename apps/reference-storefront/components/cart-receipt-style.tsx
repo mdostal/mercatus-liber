@@ -90,7 +90,7 @@ export function CartReceiptStyle({
             </thead>
             <tbody>
               {lines.map((line) => (
-                <tr key={line.skuId}>
+                <tr key={line.lineId ?? line.skuId}>
                   <td>
                     <div className="ed-item-row">
                       {line.imageUrl && <img className="ed-item-thumb" src={line.imageUrl} alt={line.imageAlt ?? ""} />}
@@ -103,6 +103,7 @@ export function CartReceiptStyle({
                       <form action={updateCartItemQuantityAction} style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
                         <input type="hidden" name="demoSlug" value={demoSlug} />
                         <input type="hidden" name="skuId" value={line.skuId} />
+                        {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
                         {/* a11y-audit: same unlabeled-quantity-input pattern found live via
                             axe-core (see cart-standard.tsx's own doc comment for the full
                             writeup) -- per-line aria-label disambiguates multiple cart rows. */}
@@ -120,6 +121,7 @@ export function CartReceiptStyle({
                       <form action={removeCartItemAction}>
                         <input type="hidden" name="demoSlug" value={demoSlug} />
                         <input type="hidden" name="skuId" value={line.skuId} />
+                        {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
                         <button type="submit" className="ed-btn-ghost">
                           Remove
                         </button>

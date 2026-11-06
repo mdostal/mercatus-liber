@@ -60,8 +60,9 @@ rendering/animation code of its own (see "Explicitly NOT this subsystem's job").
   enforcement, same discipline as `requireFinish`).
 - In-memory repositories by default, plus durable repositories for all five on Postgres, SQLite,
   MongoDB, and Convex, each in its own adapter package. All of them run the same contract,
-  `packages/customization/test/repository-contract.ts`. The reference storefront doesn't use any of
-  them yet, and the Convex functions aren't deployed to the Broadleaf project.
+  `packages/customization/test/repository-contract.ts`. The reference storefront uses Postgres where a
+  store has it and in-memory otherwise. The Convex functions aren't deployed to the Broadleaf project,
+  which doesn't offer a customizer.
 
 ## Pricing — a generic, fully admin-defined rules engine
 **Replaced an earlier fixed-field design** (`FinishTier.priceDelta`/`finishPriceDeltas`,
@@ -184,6 +185,12 @@ A choice's `attributeId` charges one unit of a `PricingAttribute`, so rates stay
 `quoteOnly` attribute makes it a quote. `PricingRules.variantOverrides` replaces the base price or
 estimated minutes per variant and finish; pass the variant as `PriceBuild.variant`.
 
+## In the reference storefront
+The Print Shop's Embroidered Dad Cap is the worked example: `lib/customization-seed.ts` sets it up with
+sample prices, `Customizer` from `@mercatus-liber/storefront-ui` replaces its buy box, and
+`lib/actions.ts` prices on the server. Admin > Customization edits the rates. `@mercatus-liber/customization/client`
+exports the pure logic for browser code, without the services' server-only imports.
+
 ## From cart to print job
 `CustomizationService.resolveLine` validates a shopper's finish, colors, picks, art style, and name
 and returns a `LineCustomization` (defined in `@mercatus-liber/core`, because cart and checkout carry
@@ -211,14 +218,14 @@ entries stays a hex. `resolveEffectiveColors` returns canonical values, so its o
 to `PriceBuild.colors`, and `colorMarkupCents` applies. `resolveColorHex` gets the hex for painting
 a viewer, and `defaultSelection` builds a starting selection from each region's `defaultHex`.
 
-`@mercatus-liber/customization-ui` keeps its own local hex-based copy of this logic and has not
-moved to palette ids yet.
 
 ## Known limitations
 Verified against the built package, 2026-11-05:
 - `removeItem` and `updateQuantity` only target one line on customized lines. Two lines of one SKU
   that differ by free-text note alone still can't be told apart.
-- The reference storefront doesn't call `priceLine` yet.
+- Fulfillment records are per SKU, so two customized lines of one SKU share one record on the admin
+  orders page.
+- `@mercatus-liber/customization-ui` is still hex-based. Use `Customizer` in `@mercatus-liber/storefront-ui`.
 - `resolvePrice` charges for distinct colors beyond the first, not for each color differing from a
   region's default. A per-region "differs from base" charge exists only through `ContrastRule`.
 - `estimatedMinutes` is one constant per finish and optional variant, so the excess-time charge does

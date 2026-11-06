@@ -5,6 +5,8 @@ import type { DemoSlug } from "../lib/demos";
 /** One cart line's display shape -- the app-layer view of a CartItem plus the product title cart/page.tsx already resolves via catalog. */
 export interface CartTemplateLine {
   skuId: string;
+  /** Set on a customized line, so changing one line of a SKU leaves its others alone. */
+  lineId?: string;
   title: string;
   quantity: number;
   priceSnapshot: Money;
@@ -93,7 +95,7 @@ export function CartStandard({
       >
         {lines.map((line) => (
           <li
-            key={line.skuId}
+            key={line.lineId ?? line.skuId}
             className={isMaximalist ? "mx-line-item" : undefined}
             style={{
               display: "flex",
@@ -135,6 +137,7 @@ export function CartStandard({
             >
               <input type="hidden" name="demoSlug" value={demoSlug} />
               <input type="hidden" name="skuId" value={line.skuId} />
+              {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
               {/* a11y-audit: confirmed live via axe-core (northline PDP's own add-to-cart
                   quantity input surfaced the same pattern, "critical" impact -- no
                   implicit/explicit label, no aria-label, no title/placeholder). A per-line
@@ -154,6 +157,7 @@ export function CartStandard({
             <form action={removeCartItemAction}>
               <input type="hidden" name="demoSlug" value={demoSlug} />
               <input type="hidden" name="skuId" value={line.skuId} />
+              {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
               <button type="submit">Remove</button>
             </form>
             <span style={{ color: "var(--color-muted, #666)" }}>

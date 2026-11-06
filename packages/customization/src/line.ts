@@ -22,10 +22,16 @@ export async function priceLine(
 ): Promise<PricedLine> {
   const { line, build } = await deps.customization.resolveLine(productCustomizationId, input);
   const price = await deps.pricing.priceOf(productId, build);
+  const palette = await deps.customization.listPalette();
+  // resolvePrice only knows color ids, so shoppers would otherwise read "Color: dawn-radiance".
+  const lines = price.lines.map((priceLine) => {
+    const color = priceLine.id.startsWith("color:") ? palette.find((p) => p.id === priceLine.id.slice("color:".length)) : undefined;
+    return color ? { ...priceLine, label: color.label } : priceLine;
+  });
   return {
     line: price.quoteRequired ? { ...line, quoteRequired: true } : line,
     unitAmount: price.total,
-    lines: price.lines,
+    lines,
     price,
   };
 }

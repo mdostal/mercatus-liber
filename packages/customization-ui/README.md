@@ -2,7 +2,7 @@
 
 `<ml-finish-color-picker>`, a framework-free Custom Element for choosing a product's finish and colors. It renders state and emits events; it makes no network calls and stores nothing.
 
-**Status:** built and tested, but no reference store renders it yet. Not yet published to npm; use it from this monorepo via `workspace:*`.
+**Status:** built and tested, but no reference store renders it, and it still uses hex colors rather than palette ids. For React, use `Customizer` in `@mercatus-liber/storefront-ui`. Not yet published to npm; use it from this monorepo via `workspace:*`.
 
 ## Usage
 

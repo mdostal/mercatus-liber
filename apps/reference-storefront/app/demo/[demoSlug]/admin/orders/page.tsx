@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { isDemoSlug } from "../../../../../lib/demos";
 import { markFulfillmentLineShippedAction, submitOrderForFulfillmentAction } from "../../../../../lib/actions";
+import { describeCustomization } from "../../../../../lib/describe-customization";
 import { getServicesForDemo } from "../../../../../lib/services";
 
 export const dynamic = "force-dynamic";
@@ -38,11 +39,11 @@ export default async function AdminOrdersPage({ params }: { params: Promise<{ de
     orders.map(async (order) => {
       const records = await fulfillment.listForOrder(order.id);
       const lines = await Promise.all(
-        order.items.map(async (item) => {
+        order.items.map(async (item, index) => {
           const record = records.find((r) => r.skuId === item.skuId) ?? null;
           const provider = record?.provider ?? (await fulfillmentRouting.getProviderForSku(item.skuId));
           const status = record?.status ?? "unfulfilled";
-          return { skuId: item.skuId, quantity: item.quantity, provider, status, record };
+          return { key: `${item.skuId}-${index}`, skuId: item.skuId, customization: item.customization, quantity: item.quantity, provider, status, record };
         }),
       );
       return { order, lines, submitted: records.length > 0 };
@@ -78,8 +79,11 @@ export default async function AdminOrdersPage({ params }: { params: Promise<{ de
             </thead>
             <tbody>
               {lines.map((line) => (
-                <tr key={line.skuId}>
-                  <td>{line.skuId}</td>
+                <tr key={line.key}>
+                  <td>
+                    {line.skuId}
+                    {line.customization && <div>{describeCustomization(line.customization)}</div>}
+                  </td>
                   <td>{line.quantity}</td>
                   <td>{line.provider}</td>
                   <td>{line.status}</td>

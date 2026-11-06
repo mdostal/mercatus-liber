@@ -45,6 +45,7 @@ packages/
   auto-update/          applies updates to a scaffolded store
   migrate-shopify/      one-time Shopify import
   customization-ui/     framework-agnostic customizer Web Component
+  storefront-ui/        common React storefront components
 apps/
   reference-storefront/ the sample stores (Next.js)
   docs/                 the docs site (Nextra)
@@ -54,9 +55,9 @@ docs/
 ```
 
 **Where UI lives.** Sample stores in `apps/reference-storefront` are public examples meant to be
-copied. Themes live in `packages/theming`. Storefront components still live inside the app at
-`apps/reference-storefront/components`; extracting them into an importable common component
-package, with a default UI built on it, is planned and not built.
+copied. Themes live in `packages/theming`. Common components are moving to `packages/storefront-ui`, which holds the customizer and price
+breakdown so far. The rest still live inside the app at `apps/reference-storefront/components`, and
+a default UI built on the package is planned, not built.
 
 `shop.mdostal.com` (separate repo) consumes these packages, vendored as `pnpm pack` tarballs until
 they are on npm, with its own concrete config — it is NOT part of this monorepo. That keeps the "framework" and "a
