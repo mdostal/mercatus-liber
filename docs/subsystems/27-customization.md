@@ -58,11 +58,10 @@ rendering/animation code of its own (see "Explicitly NOT this subsystem's job").
   live data a 3D viewer paints with), `getRegionChoices` (every region's current swatch-row
   choices), `getColorCount`, `validateArtStyleChoice` (server-side discontinued/not-offered
   enforcement, same discipline as `requireFinish`).
-- In-memory repositories only for the structural/availability data (`PaletteRepository`/
-  `FinishTierRepository`/`ArtStyleRepository`/`ProductCustomizationRepository`), same posture
-  `community-goals` and `bundles` each took initially — a durable adapter for these is a
-  clearly-scoped follow-up once a real deployment needs them to survive a restart. Pricing's
-  own storage is a separate concern — see "Pricing" below.
+- In-memory repositories by default, plus Postgres repositories for all five
+  (`createPostgres*Repository` in `@mercatus-liber/adapter-postgres`), so palette, finish, art
+  style, product, and pricing data can survive a restart. SQLite, Convex, and MongoDB are not built.
+  The reference storefront doesn't use any of them yet.
 
 ## Pricing — a generic, fully admin-defined rules engine
 **Replaced an earlier fixed-field design** (`FinishTier.priceDelta`/`finishPriceDeltas`,
@@ -166,7 +165,6 @@ sku-availability-status epic, reused here verbatim for `PaletteColor.status` and
   supplementing the free-text `customizationNote`), plus a flag/note on the order when a
   `request`-status option was chosen so fulfillment sees it needs special handling, is a
   clearly-scoped, separate follow-up epic — not started as of this subsystem's initial ship.
-- **A durable adapter for either repository group in v1.** See "Responsibilities"/"Pricing" above.
 - **Cost-estimation tooling** (deriving a good `perUnitCents` from real wastage/print-time/
   reprint-risk data). dostal-3d-printing's own `pricing.js`/`suggested-levers.json` are a real,
   validated reference a human can read when deciding what rate to set, but this package
@@ -204,12 +202,9 @@ Verified against the built package, 2026-11-05:
 - `PricingDocument` is exported but unused by the repository or service.
 
 ## Open questions
-0. A durable adapter for `PricingRulesRepository` specifically — needed before a real admin
-   screen's edits can be trusted to survive a restart; not started as of this subsystem's
-   pricing-engine rewrite.
 1. Structured cart/order customization-selection field — not started. See "Explicitly NOT"
    above; the real target shape is the `print-order/1` shape: finish, raw option picks, art style,
    name, and `colors` as region id to **palette id**.
 2. Request-status order-capture flagging (a note/flag fulfillment sees) — not started, folded
    into the same follow-up epic as (1) above.
-3. A durable (sqlite/postgres) adapter — not started; v1 ships in-memory only.
+3. Durable repositories on SQLite, Convex, and MongoDB — not started. Postgres is done.
