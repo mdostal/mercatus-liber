@@ -63,7 +63,31 @@ export interface PrintfulPlacementFile {
   url: string;
 }
 
+/** Printful's own cost breakdown for an order, in its dollar strings. */
+export interface PrintfulOrderCosts {
+  calculation_status: string;
+  currency: string;
+  subtotal: string;
+  discount: string;
+  shipping: string;
+  tax: string;
+  total: string;
+}
+
+export interface PrintfulEstimateItem {
+  catalogVariantId: number;
+  quantity: number;
+  files: PrintfulPlacementFile[];
+}
+
 export interface PrintfulCatalogClient {
+  /**
+   * What Printful would actually charge for these items shipped here, from an
+   * order-estimation task, which creates no order. Can be lower than the price
+   * list (a hoodie listed at 23.95 estimated at 22.63 on 2026-11-06), so use it
+   * for real costs. Polls until the estimate is done.
+   */
+  estimateCosts(input: { recipient: { street1: string; city: string; stateCode?: string; countryCode: string; postalCode: string }; items: PrintfulEstimateItem[] }): Promise<PrintfulOrderCosts>;
   getProduct(productId: number): Promise<PrintfulCatalogProduct | null>;
   /** Every variant (every color and size), following pagination. */
   listVariants(productId: number): Promise<PrintfulCatalogVariant[]>;
@@ -97,7 +121,27 @@ export function createPrintfulCatalogClient(config: PrintfulCatalogClientConfig)
   }
   const data = async <T>(method: string, path: string, body?: unknown): Promise<T | null> => (await request<{ data: T }>(method, path, body))?.data ?? null;
 
+  const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
   return {
+    async estimateCosts({ recipient, items }) {
+      const body = {
+        recipient: { address1: recipient.street1, city: recipient.city, country_code: recipient.countryCode, zip: recipient.postalCode, ...(recipient.stateCode ? { state_code: recipient.stateCode } : {}) },
+        order_items: items.map((item) => ({
+          source: "catalog",
+          catalog_variant_id: item.catalogVariantId,
+          quantity: item.quantity,
+          placements: item.files.map((file) => ({ placement: file.placement, technique: file.technique, layers: [{ type: "file", url: file.url }] })),
+        })),
+      };
+      let task = await data<{ id: string; status: string; costs: PrintfulOrderCosts | null; failure_reasons?: unknown }>("POST", "/v2/order-estimation-tasks", body);
+      for (let attempt = 0; attempt < 20 && task && task.status === "pending"; attempt++) {
+        await sleep(1000);
+        task = await data<{ id: string; status: string; costs: PrintfulOrderCosts | null }>("GET", `/v2/order-estimation-tasks?id=${task.id}`);
+      }
+      if (!task?.costs || task.status !== "completed") throw new Error(`Printful couldn't estimate this order: ${JSON.stringify(task)}`.slice(0, 500));
+      return task.costs;
+    },
     getProduct: (productId) => data<PrintfulCatalogProduct>("GET", `/v2/catalog-products/${productId}`),
     async listVariants(productId) {
       const variants: PrintfulCatalogVariant[] = [];

@@ -54,7 +54,7 @@ await applyPrintfulProduct({ catalog, mappings, routing }, plan);
 
 `applyPrintfulProduct` creates the product and SKUs, stores each SKU's Printful variant and print files, and routes it to Printful. Running it again creates nothing new and keeps prices changed in the admin, unless you pass `{ updatePrices: true }`.
 
-Costs follow Printful's own draft-order totals, checked on 2026-11-06: a variant's price covers one print placement, and each additional placement adds its price. Shipping and tax are extra; use `getShippingRates` for shipping.
+Planned costs come from Printful's price list: a variant's price covers one print placement, and each additional placement adds its price. The price list can be higher than what Printful actually charges (a hoodie listed at 23.95 was estimated at 22.63 on 2026-11-06), so for exact costs call `estimateCosts`, which creates no order, and pass the results to `planPrintfulProduct` as its fourth argument. Shipping and tax are extra.
 
 `submitOrder` refuses an address without a street line, city, country, or postal code before calling Printful. A draft left by `holdOrders` reports the status `"held"`.
 

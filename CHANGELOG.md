@@ -1097,3 +1097,10 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 
 - The Printful adapter refuses an address missing a street line, city, country, or postal code before calling Printful, which otherwise rejects it.
 
+## [0.53.0] - 2026-11-06
+
+### Added
+
+- `estimateCosts` on the Printful catalog client: Printful's actual cost for items from an order-estimation task, which creates no order.
+- `planPrintfulProduct` takes exact costs per variant, since Printful's price list can be higher than what it charges.
+

@@ -45,8 +45,14 @@ export interface PrintfulProductPlan {
   unavailable: { color: string; size: string }[];
 }
 
-/** Works out every SKU a spec produces, with Printful's real cost and the margin at the spec's price. Pure: pass in the product's variants and prices from the catalog client. */
-export function planPrintfulProduct(spec: PrintfulProductSpec, variants: PrintfulCatalogVariant[], prices: PrintfulPrices): PrintfulProductPlan {
+/**
+ * Works out every SKU a spec produces, with its cost and the margin at the
+ * spec's price. Pure: pass in the product's variants and prices from the catalog
+ * client. Costs come from Printful's price list, which can be higher than what
+ * Printful actually charges; pass `costCentsByVariant` (e.g. from
+ * estimateCosts) to use exact costs instead.
+ */
+export function planPrintfulProduct(spec: PrintfulProductSpec, variants: PrintfulCatalogVariant[], prices: PrintfulPrices, costCentsByVariant: Record<number, number> = {}): PrintfulProductPlan {
   const currency = spec.currency ?? prices.currency;
   const placements = spec.files.map((f) => f.placement);
   const sizes = spec.sizes ?? [...new Set(variants.filter((v) => spec.colors.includes(v.color)).map((v) => v.size))];
@@ -59,7 +65,7 @@ export function planPrintfulProduct(spec: PrintfulProductSpec, variants: Printfu
         unavailable.push({ color, size });
         continue;
       }
-      const costCents = printfulUnitCostCents(prices, variant.id, spec.technique, placements);
+      const costCents = costCentsByVariant[variant.id] ?? printfulUnitCostCents(prices, variant.id, spec.technique, placements);
       const amount = spec.pricing.retailCents + (spec.pricing.sizeUpchargeCents?.[size] ?? 0);
       skus.push({ color, size, catalogVariantId: variant.id, price: { amount, currency }, costCents, marginCents: amount - costCents });
     }
