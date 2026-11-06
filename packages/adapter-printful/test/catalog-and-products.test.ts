@@ -52,6 +52,11 @@ describe("planPrintfulProduct", () => {
     ]);
   });
 
+  it("🔍 uses an exact cost for a variant when given one", () => {
+    const plan = planPrintfulProduct(SPEC, VARIANTS, PRICES, { 474: 900 });
+    expect(plan.skus.map((s) => s.costCents)).toEqual([900, 1163]);
+  });
+
   it("🔍 lists a requested size Printful doesn't make instead of inventing a variant", () => {
     const plan = planPrintfulProduct({ ...SPEC, sizes: ["S", "5XL"] }, VARIANTS, PRICES);
     expect(plan.skus.map((s) => s.size)).toEqual(["S"]);
@@ -156,6 +161,18 @@ describe("createPrintfulCatalogClient", () => {
     const prices = await createPrintfulCatalogClient({ apiToken: "t", fetchImpl: fetchImpl as unknown as typeof fetch }).getPrices(12);
     expect(prices!.variants).toHaveLength(101);
     expect(prices!.variants.at(-1)!.id).toBe(505);
+  });
+
+  it("estimates costs by polling the estimation task until it's done", async () => {
+    const replies = [
+      { data: { id: "e1", status: "pending", costs: null } },
+      { data: { id: "e1", status: "completed", costs: { calculation_status: "done", currency: "USD", subtotal: "22.63", discount: "0.00", shipping: "9.19", tax: "2.55", total: "34.37" } } },
+    ];
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(replies.shift()), { status: 200 }));
+    const client = createPrintfulCatalogClient({ apiToken: "t", fetchImpl: fetchImpl as unknown as typeof fetch });
+    const costs = await client.estimateCosts({ recipient: { street1: "1 Main", city: "C", countryCode: "US", postalCode: "60601" }, items: [{ catalogVariantId: 5530, quantity: 1, files: [{ placement: "front", technique: "dtg", url: "https://example.com/f.png" }] }] });
+    expect(printfulPriceToCents(costs.subtotal)).toBe(2263);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("builds the shipping-rate request in Printful's field names", async () => {
