@@ -1009,3 +1009,16 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 - Postgres repositories for customization in `@mercatus-liber/adapter-postgres`: palette, finish tiers, art styles, product customizations, and pricing rules. An admin's price edits now survive a restart on Postgres.
 - `@electric-sql/pglite` as a dev dependency, so these repositories are tested against real Postgres SQL rather than a fake pool.
 
+## [0.46.0] - 2026-11-05
+
+### Added
+
+- Customization repositories for SQLite, MongoDB, and Convex, alongside Postgres. New Convex functions in `convex-functions/customization.ts` and a `customizationRecords` table must be deployed before use.
+- A shared contract, `packages/customization/test/repository-contract.ts`, run against every storage backend.
+- Dev dependencies `convex-test` and `@edge-runtime/vm`, so the real Convex functions run in tests.
+- `MONGODB_TEST_URL` runs the customization contract against a real MongoDB server.
+
+### Changed
+
+- The in-memory finish tier repository lists by rank, matching every durable backend.
+

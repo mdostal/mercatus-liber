@@ -11,6 +11,10 @@ as the first reference adapter for lowest local-dev friction (no external DB ser
 `apps/reference-storefront/lib/services.ts`) or a real file path (durable across restarts, sets
 `journal_mode = WAL` on the connection).
 
+## Customization
+
+`createSqlitePaletteRepository`, `createSqliteFinishTierRepository`, `createSqliteArtStyleRepository`, `createSqliteProductCustomizationRepository`, and `createSqlitePricingRulesRepository` take an open database. They create their own tables.
+
 ## Backup and restore
 
 A durable, file-backed database (created via a real file path instead of `":memory:"`) can be

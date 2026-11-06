@@ -214,3 +214,11 @@ export async function connectMongoAdapter(
  * dedicated home for CatalogPersistenceAdapter's own products/skus/attributes.
  */
 export { createMongoCategoryRepository, createMongoProductCategoryRepository } from "./categories.js";
+
+export {
+  createMongoArtStyleRepository,
+  createMongoFinishTierRepository,
+  createMongoPaletteRepository,
+  createMongoPricingRulesRepository,
+  createMongoProductCustomizationRepository,
+} from "./customization.js";

@@ -98,7 +98,7 @@ never run against a real account.
 | Analytics | GA4 (in `analytics`) | Unverified |
 
 Database support is not uniform yet. Postgres covers nearly every commerce subsystem, while Convex,
-MongoDB, and SQLite mainly cover the catalog. `customization` persists on Postgres only so far. The
+MongoDB, and SQLite mainly cover the catalog and customization. The
 [integrations catalog](apps/docs/content-src/integrations.md) has per-adapter detail and the
 environment variables for each.
 
@@ -143,7 +143,7 @@ sync, and more are listed in [VISION.md's community frontier](VISION.md#wanted-n
 
 ## What's being worked on
 
-- **Customization:** storage on SQLite, Convex, and MongoDB; lock and hardware options; structured order
+- **Customization:** lock and hardware options; structured order
   data from cart through to print job. See its
   [known limitations](packages/customization/README.md#known-limitations).
 - **UI:** extracting the common component package and default UI, and rendering the customizer in
