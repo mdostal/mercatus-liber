@@ -1,5 +1,5 @@
-import { applyCouponAction, removeCartItemAction, startCheckoutAction, updateCartItemQuantityAction } from "../lib/actions";
-import type { CartTemplateProps } from "./cart-standard";
+import type { CartTemplateProps } from "./cart-standard.js";
+import { StoreFields, type CartActions, type StoreContext } from "../store-context.js";
 
 /**
  * The "cart.receipt-style" template -- the real receipt-styled cart from
@@ -17,7 +17,8 @@ import type { CartTemplateProps } from "./cart-standard";
  * to apply unconditionally.
  */
 export function CartReceiptStyle({
-  demoSlug,
+  store,
+  actions,
   lines,
   couponCode,
   couponEnteredButInvalid,
@@ -100,8 +101,8 @@ export function CartReceiptStyle({
                       </div>
                     </div>
                     <div className="ed-line-controls">
-                      <form action={updateCartItemQuantityAction} style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
-                        <input type="hidden" name="demoSlug" value={demoSlug} />
+                      <form action={actions.updateCartItemQuantity} style={{ display: "flex", alignItems: "center", gap: ".4rem" }}>
+                        <StoreFields store={store} />
                         <input type="hidden" name="skuId" value={line.skuId} />
                         {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
                         {/* a11y-audit: same unlabeled-quantity-input pattern found live via
@@ -118,8 +119,8 @@ export function CartReceiptStyle({
                           Update
                         </button>
                       </form>
-                      <form action={removeCartItemAction}>
-                        <input type="hidden" name="demoSlug" value={demoSlug} />
+                      <form action={actions.removeCartItem}>
+                        <StoreFields store={store} />
                         <input type="hidden" name="skuId" value={line.skuId} />
                         {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
                         <button type="submit" className="ed-btn-ghost">
@@ -137,8 +138,8 @@ export function CartReceiptStyle({
             </tbody>
           </table>
 
-          <form className="ed-coupon-form" action={applyCouponAction}>
-            <input type="hidden" name="demoSlug" value={demoSlug} />
+          <form className="ed-coupon-form" action={actions.applyCoupon}>
+            <StoreFields store={store} />
             <input type="text" name="code" placeholder="Promo code" defaultValue={couponCode ?? ""} />
             <button type="submit" className="ed-btn-ghost">
               Apply
@@ -169,8 +170,8 @@ export function CartReceiptStyle({
             </span>
           </p>
 
-          <form action={startCheckoutAction}>
-            <input type="hidden" name="demoSlug" value={demoSlug} />
+          <form action={actions.startCheckout}>
+            <StoreFields store={store} />
             <button type="submit" className="ed-btn-checkout">
               {checkoutLabel}
             </button>

@@ -77,8 +77,8 @@ curation.
 
 ## Theming / PDP
 `/products/[slug]` is driven by `@mercatus-liber/pdp`'s view model and `@mercatus-liber/theming`'s
-resolved template key -- **not** hardcoded markup. `components/pdp-tabbed-detail.tsx` and
-`components/pdp-long-scroll.tsx` are the two default templates (theming stays framework-agnostic;
+resolved template key -- **not** hardcoded markup. `PdpTabbedDetail` andtsx` and
+`PdpLongScroll` (in `@mercatus-liber/storefront-ui`) are the two default templates (theming stays framework-agnostic;
 turning a template *key* into real JSX is this app's job, same pattern as `lib/services.ts` for
 adapters). Try `?template=pdp.long-scroll` on any product page to see the same data rendered
 differently. Adding a third layout: register it with `theming.registerTemplate()`, add a

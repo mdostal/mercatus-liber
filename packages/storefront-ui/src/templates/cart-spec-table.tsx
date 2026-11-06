@@ -1,6 +1,6 @@
-import { applyCouponAction, removeCartItemAction, startCheckoutAction, updateCartItemQuantityAction } from "../lib/actions";
-import { DS_ATOMS_CSS, DS_FONT_MONO } from "./datasheet-styles";
-import type { CartTemplateProps } from "./cart-standard";
+import { DS_ATOMS_CSS, DS_FONT_MONO } from "./datasheet-styles.js";
+import type { CartTemplateProps } from "./cart-standard.js";
+import { StoreFields, type CartActions, type StoreContext } from "../store-context.js";
 
 /**
  * The "cart.spec-table" template -- the real "Datasheet Storefront" cart,
@@ -12,7 +12,8 @@ import type { CartTemplateProps } from "./cart-standard";
  * only the surrounding markup/visual treatment differs.
  */
 export function CartSpecTable({
-  demoSlug,
+  store,
+  actions,
   lines,
   couponCode,
   couponEnteredButInvalid,
@@ -177,8 +178,8 @@ export function CartSpecTable({
                     {line.customizationNote && <span className="ds-note">Custom: {line.customizationNote}</span>}
                   </div>
                 </div>
-                <form action={updateCartItemQuantityAction} className="ds-qty">
-                  <input type="hidden" name="demoSlug" value={demoSlug} />
+                <form action={actions.updateCartItemQuantity} className="ds-qty">
+                  <StoreFields store={store} />
                   <input type="hidden" name="skuId" value={line.skuId} />
                   {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
                   {/* a11y-audit: same unlabeled-quantity-input pattern found live via
@@ -198,8 +199,8 @@ export function CartSpecTable({
                 <span className="ds-total">
                   {((line.priceSnapshot.amount * line.quantity) / 100).toFixed(2)} {line.priceSnapshot.currency}
                 </span>
-                <form action={removeCartItemAction}>
-                  <input type="hidden" name="demoSlug" value={demoSlug} />
+                <form action={actions.removeCartItem}>
+                  <StoreFields store={store} />
                   <input type="hidden" name="skuId" value={line.skuId} />
                   {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
                   <button type="submit">&times;</button>
@@ -231,8 +232,8 @@ export function CartSpecTable({
               </span>
             </div>
 
-            <form action={applyCouponAction} className="ds-coupon-form">
-              <input type="hidden" name="demoSlug" value={demoSlug} />
+            <form action={actions.applyCoupon} className="ds-coupon-form">
+              <StoreFields store={store} />
               <input type="text" name="code" placeholder="Coupon code" defaultValue={couponCode ?? ""} />
               <button type="submit" className="ds-btn ds-btn-outline">
                 Apply
@@ -244,8 +245,8 @@ export function CartSpecTable({
               </p>
             )}
 
-            <form action={startCheckoutAction} style={{ marginTop: 16 }}>
-              <input type="hidden" name="demoSlug" value={demoSlug} />
+            <form action={actions.startCheckout} style={{ marginTop: 16 }}>
+              <StoreFields store={store} />
               <button type="submit" className="ds-btn ds-btn-accent ds-btn-block">
                 {checkoutLabel}
               </button>

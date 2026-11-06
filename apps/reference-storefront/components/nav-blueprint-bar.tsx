@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { ThemeBundle } from "@mercatus-liber/theming";
-import { DS_FONT_DISPLAY, DS_FONT_MONO } from "./datasheet-styles";
+import { DS_FONT_DISPLAY, DS_FONT_MONO } from "@mercatus-liber/storefront-ui";
 import { ThemeSwitcher } from "./theme-switcher";
 import type { DemoSlug } from "../lib/demos";
 

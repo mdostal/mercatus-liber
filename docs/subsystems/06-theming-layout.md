@@ -67,8 +67,8 @@ registered template; every other page type had exactly one hardcoded layout):
 | `category` | `category.standard-grid`, `category.magazine-grid`, `category.spec-grid` | `category.standard-grid` |
 | `cart` | `cart.standard`, `cart.receipt-style`, `cart.spec-table` | `cart.standard` |
 
-Each new template key is a real, distinct React component in `apps/reference-storefront/
-components/` (e.g. `nav-rail.tsx`, `home-magazine-grid.tsx`, `cart-spec-table.tsx`), consuming
+Each new template key is a real, distinct React component, in `packages/storefront-ui` for cart and
+product pages and `apps/reference-storefront/components/` for the rest (e.g. `nav-rail.tsx`, `home-magazine-grid.tsx`, `cart-spec-table.tsx`), consuming
 the exact same real data/actions as its page type's original component — a magazine-grid home
 page still renders the same CMS sections through `cms-sections.tsx`; a spec-table cart still
 submits through the same `updateCartItemQuantityAction`/`removeCartItemAction`/

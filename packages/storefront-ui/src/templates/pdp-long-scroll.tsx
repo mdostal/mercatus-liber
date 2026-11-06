@@ -1,9 +1,7 @@
 import type { Sku } from "@mercatus-liber/core";
 import type { PdpViewModel } from "@mercatus-liber/pdp";
-import { addToCartAction, submitReviewAction } from "../lib/actions";
-import type { DemoSlug } from "../lib/demos";
-import { readActiveThemeBundle } from "../lib/theme-cookie";
-import { VariantPicker } from "./variant-picker";
+import { VariantPicker } from "./variant-picker.js";
+import { StoreFields, type PdpActions, type StoreContext } from "../store-context.js";
 
 /** "★★★★☆"-style rendering of a rating (rounded to the nearest whole star), same convention as pdp-tabbed-detail.tsx's own ratingStars. */
 function ratingStars(value: number): string {
@@ -15,22 +13,25 @@ type PdpReviewSummary = { average: number; count: number; distribution: Record<n
 type PdpReview = { id: string; rating: number; authorName: string; title: string; body: string; createdAt: string };
 
 type PdpLongScrollProps = {
-  demoSlug: DemoSlug;
+  store: StoreContext;
+  actions: PdpActions;
+  /** The active theme's key. The "editorial" theme gets its own layout. */
+  themeKey?: string | undefined;
   viewModel: PdpViewModel;
   /** `null` means not inventory-tracked (always available, e.g. a bookable service) -- distinct from a real tracked 0. */
   stockBySkuId?: Record<string, number | null>;
   /** print-shop-02: same additive/optional personalization-input flag as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   customizable?: boolean;
   /** image-cdn epic: same additive/optional resolved-photo props as pdp-tabbed-detail.tsx -- see that component's doc comment. */
-  imageUrl?: string | null;
-  imageAlt?: string | null;
+  imageUrl?: string | null | undefined;
+  imageAlt?: string | null | undefined;
   /** bare-basics epic: same additive/optional rating-summary prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   ratingSummary?: PdpReviewSummary | null;
   /** bare-basics epic: same additive/optional published-reviews prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   reviews?: PdpReview[];
   /** pc-01: same additive/optional resolved-SKU/selection props as pdp-tabbed-detail.tsx -- see that component's doc comment. Threaded through to both the shared branch below and EditorialPdpLongScroll. */
-  activeSku?: Sku;
-  optionSelection?: Record<string, string>;
+  activeSku?: Sku | undefined;
+  optionSelection?: Record<string, string> | undefined;
 };
 
 /**
@@ -51,8 +52,10 @@ type PdpLongScrollProps = {
  * resolves the active theme itself via the same `readActiveThemeBundle`
  * every page/layout already uses, and branches on `.key === "editorial"`.
  */
-export async function PdpLongScroll({
-  demoSlug,
+export function PdpLongScroll({
+  store,
+  actions,
+  themeKey,
   viewModel,
   stockBySkuId = {},
   customizable = false,
@@ -63,11 +66,11 @@ export async function PdpLongScroll({
   activeSku,
   optionSelection,
 }: PdpLongScrollProps) {
-  const activeTheme = await readActiveThemeBundle(demoSlug);
-  if (activeTheme.key === "editorial") {
+  if (themeKey === "editorial") {
     return (
       <EditorialPdpLongScroll
-        demoSlug={demoSlug}
+        store={store}
+        actions={actions}
         viewModel={viewModel}
         stockBySkuId={stockBySkuId}
         customizable={customizable}
@@ -82,7 +85,7 @@ export async function PdpLongScroll({
   }
 
   const { product, skus, optionValues } = viewModel;
-  const basePath = `/demo/${demoSlug}/products/${product.slug}`;
+  const basePath = `${store.basePath}/products/${product.slug}`;
 
   return (
     <main>
@@ -124,14 +127,14 @@ export async function PdpLongScroll({
         <>
           <VariantPicker basePath={basePath} optionValues={optionValues} selection={optionSelection ?? {}} />
           <form
-            action={addToCartAction}
+            action={actions.addToCart}
             style={{
               marginBottom: "var(--space-sm, 16px)",
               borderTop: "1px solid var(--color-border, #e5e5e5)",
               paddingTop: "var(--space-xs, 8px)",
             }}
           >
-            <input type="hidden" name="demoSlug" value={demoSlug} />
+            <StoreFields store={store} />
             <input type="hidden" name="skuId" value={activeSku.id} />
             <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
               {activeSku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}
@@ -183,7 +186,7 @@ export async function PdpLongScroll({
       ) : (
         skus.map((sku) => (
           <form
-            action={addToCartAction}
+            action={actions.addToCart}
             key={sku.id}
             style={{
               marginBottom: "var(--space-sm, 16px)",
@@ -191,7 +194,7 @@ export async function PdpLongScroll({
               paddingTop: "var(--space-xs, 8px)",
             }}
           >
-            <input type="hidden" name="demoSlug" value={demoSlug} />
+            <StoreFields store={store} />
             <input type="hidden" name="skuId" value={sku.id} />
             <div style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
               {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}
@@ -271,8 +274,8 @@ export async function PdpLongScroll({
       <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
         Reviews are moderated before appearing publicly.
       </p>
-      <form action={submitReviewAction}>
-        <input type="hidden" name="demoSlug" value={demoSlug} />
+      <form action={actions.submitReview}>
+        <StoreFields store={store} />
         <input type="hidden" name="productId" value={product.id} />
         <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
           <label htmlFor="review-rating" style={{ fontSize: "var(--font-size-body, 1rem)" }}>
@@ -334,7 +337,8 @@ export async function PdpLongScroll({
  * server action as the shared branch above -- only presentation differs.
  */
 function EditorialPdpLongScroll({
-  demoSlug,
+  store,
+  actions,
   viewModel,
   stockBySkuId,
   customizable,
@@ -344,13 +348,13 @@ function EditorialPdpLongScroll({
   reviews,
   activeSku,
   optionSelection,
-}: Required<Omit<PdpLongScrollProps, "viewModel" | "activeSku" | "optionSelection">> & {
+}: Required<Omit<PdpLongScrollProps, "themeKey" | "viewModel" | "activeSku" | "optionSelection">> & {
   viewModel: PdpViewModel;
-  activeSku?: Sku;
-  optionSelection?: Record<string, string>;
+  activeSku?: Sku | undefined;
+  optionSelection?: Record<string, string> | undefined;
 }) {
   const { product, skus, optionValues } = viewModel;
-  const basePath = `/demo/${demoSlug}/products/${product.slug}`;
+  const basePath = `${store.basePath}/products/${product.slug}`;
   const firstWord = product.description.trim().slice(0, 1);
   const restOfDescription = product.description.trim().slice(1);
 
@@ -445,8 +449,8 @@ function EditorialPdpLongScroll({
                 const stock = stockBySkuId[activeSku.id];
                 const isLow = typeof stock === "number" && stock > 0 && stock <= 3;
                 return (
-                  <form action={addToCartAction} className="ed-sku-block">
-                    <input type="hidden" name="demoSlug" value={demoSlug} />
+                  <form action={actions.addToCart} className="ed-sku-block">
+                    <StoreFields store={store} />
                     <input type="hidden" name="skuId" value={activeSku.id} />
                     {activeSku.identifyingAttributes.length > 0 && (
                       <div className="ed-sku-attrs">
@@ -488,8 +492,8 @@ function EditorialPdpLongScroll({
               const stock = stockBySkuId[sku.id];
               const isLow = typeof stock === "number" && stock > 0 && stock <= 3;
               return (
-                <form action={addToCartAction} key={sku.id} className="ed-sku-block">
-                  <input type="hidden" name="demoSlug" value={demoSlug} />
+                <form action={actions.addToCart} key={sku.id} className="ed-sku-block">
+                  <StoreFields store={store} />
                   <input type="hidden" name="skuId" value={sku.id} />
                   {sku.identifyingAttributes.length > 0 && (
                     <div className="ed-sku-attrs">{sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(", ")}</div>
@@ -546,8 +550,8 @@ function EditorialPdpLongScroll({
         <div className="ed-review-form">
           <h2 className="ed-reviews-title">Write a review</h2>
           <p className="ed-review-meta">Reviews are moderated before appearing publicly.</p>
-          <form action={submitReviewAction}>
-            <input type="hidden" name="demoSlug" value={demoSlug} />
+          <form action={actions.submitReview}>
+            <StoreFields store={store} />
             <input type="hidden" name="productId" value={product.id} />
             <label htmlFor="review-rating">Rating</label>
             <select id="review-rating" name="rating" defaultValue={5}>
