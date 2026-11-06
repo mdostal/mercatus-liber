@@ -1,4 +1,5 @@
 import type { FulfillmentAdapter, FulfillmentLineRecord, FulfillmentProviderKey, SubmitFulfillmentOrderInput } from "@mercatus-liber/fulfillment";
+import { InvalidCatalogMappingError, requireCatalogTarget, type ProviderCatalogMappingRepository } from "@mercatus-liber/fulfillment";
 import { createPrintifyHttpClient, type PrintifyHttpClient } from "./http-client.js";
 import { findTrackingForLineItem, mapPrintifyLineItemStatus, mapRecipientToPrintifyAddress, resolveSkuId, type PrintifyCatalogTarget, type PrintifyRecipientAddress } from "./mapping.js";
 import type { PrintifyOrderResponse, PrintifyProductLineItemInput } from "./printify-types.js";
@@ -77,6 +78,12 @@ export interface PrintifyFulfillmentAdapterConfig {
    * `resolveCatalogTarget` above.
    */
   resolveExternalOrderId(orderId: string): Promise<string | null>;
+  /**
+   * Leaves new orders on hold in Printify instead of sending them to production,
+   * so nothing is printed or charged until someone sends them from Printify. Use
+   * it for testing against a real account. Defaults to false.
+   */
+  holdOrders?: boolean;
 
   /**
    * The webhook subscription's own `secret` (set via `POST
@@ -194,6 +201,10 @@ export function createPrintifyFulfillmentAdapter(config: PrintifyFulfillmentAdap
         address_to: recipient,
       });
 
+      if (config.holdOrders) {
+        const held = await client.getOrder(draft.id);
+        return held ? buildRecordsFromOrder(input.orderId, held) : [];
+      }
       const production = await client.sendToProduction(draft.id);
 
       return buildRecordsFromOrder(input.orderId, production);
@@ -226,5 +237,19 @@ export function createPrintifyFulfillmentAdapter(config: PrintifyFulfillmentAdap
       const event = parsePrintifyWebhookPayload(rawBody);
       await config.onWebhookEvent?.(event);
     },
+  };
+}
+
+/**
+ * A `resolveCatalogTarget` that reads stored mappings (see
+ * @mercatus-liber/fulfillment's ProviderCatalogMappingRepository), checking each
+ * one is a Printify product id and numeric variant id.
+ */
+export function printifyCatalogTargetsFrom(repository: ProviderCatalogMappingRepository): (skuId: string) => Promise<PrintifyCatalogTarget> {
+  return async (skuId) => {
+    const target = await requireCatalogTarget(repository, skuId, PRINTIFY_PROVIDER);
+    if (typeof target.productId !== "string" || !target.productId) throw new InvalidCatalogMappingError(skuId, PRINTIFY_PROVIDER, "productId must be a non-empty string");
+    if (typeof target.variantId !== "number" || !Number.isInteger(target.variantId)) throw new InvalidCatalogMappingError(skuId, PRINTIFY_PROVIDER, "variantId must be an integer");
+    return { productId: target.productId, variantId: target.variantId };
   };
 }

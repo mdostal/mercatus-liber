@@ -1,4 +1,5 @@
 import type { FulfillmentAdapter, FulfillmentLineRecord, FulfillmentProviderKey, SubmitFulfillmentOrderInput } from "@mercatus-liber/fulfillment";
+import { InvalidCatalogMappingError, requireCatalogTarget, type ProviderCatalogMappingRepository } from "@mercatus-liber/fulfillment";
 import { createPrintfulHttpClient, type PrintfulHttpClient } from "./http-client.js";
 import { findTrackingUrlForItem, mapPrintfulOrderStatus, mapRecipientToPrintfulAddress, type PrintfulCatalogTarget, type PrintfulRecipientAddress } from "./mapping.js";
 import type { PrintfulCatalogOrderItemInput, PrintfulOrderResponse, PrintfulShipmentResponse } from "./printful-types.js";
@@ -49,6 +50,12 @@ export interface PrintfulFulfillmentAdapterConfig {
    * arbitrary caller-assigned SKU string -- see mapping.ts's
    * `PrintfulCatalogTarget` doc comment.
    */
+  /**
+   * Leaves new orders as drafts in Printful instead of confirming them, so
+   * nothing is made or charged until someone confirms them in Printful. Use it
+   * for testing against a real store. Defaults to false.
+   */
+  holdOrders?: boolean;
   resolveCatalogTarget(skuId: string): Promise<PrintfulCatalogTarget>;
 
   /**
@@ -166,6 +173,7 @@ export function createPrintfulFulfillmentAdapter(config: PrintfulFulfillmentAdap
         order_items: toPrintfulOrderItems(input.items, targets),
       });
 
+      if (config.holdOrders) return buildRecordsFromOrder(input.orderId, draft.data, []);
       const confirmed = await client.confirmOrder(draft.data.id);
 
       return buildRecordsFromOrder(input.orderId, confirmed.data, []);
@@ -195,5 +203,18 @@ export function createPrintfulFulfillmentAdapter(config: PrintfulFulfillmentAdap
       const event = parsePrintfulWebhookPayload(rawBody);
       await config.onWebhookEvent?.(event);
     },
+  };
+}
+
+/**
+ * A `resolveCatalogTarget` that reads stored mappings (see
+ * @mercatus-liber/fulfillment's ProviderCatalogMappingRepository), checking each
+ * has an integer catalogVariantId. Optional fields pass through as stored.
+ */
+export function printfulCatalogTargetsFrom(repository: ProviderCatalogMappingRepository): (skuId: string) => Promise<PrintfulCatalogTarget> {
+  return async (skuId) => {
+    const target = await requireCatalogTarget(repository, skuId, PRINTFUL_PROVIDER);
+    if (typeof target.catalogVariantId !== "number" || !Number.isInteger(target.catalogVariantId)) throw new InvalidCatalogMappingError(skuId, PRINTFUL_PROVIDER, "catalogVariantId must be an integer");
+    return target as unknown as PrintfulCatalogTarget;
   };
 }

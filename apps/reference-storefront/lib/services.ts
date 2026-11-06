@@ -27,10 +27,11 @@ import {
   createPostgresPaletteRepository,
   createPostgresPricingRulesRepository,
   createPostgresProductCustomizationRepository,
+  createPostgresProviderCatalogMappingRepository,
 } from "@mercatus-liber/adapter-postgres";
 import { createPaypalPaymentAdapter } from "@mercatus-liber/adapter-paypal";
-import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
-import { createPrintifyFulfillmentAdapter, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
+import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom } from "@mercatus-liber/adapter-printful";
+import { createPrintifyFulfillmentAdapter, printifyCatalogTargetsFrom, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createQuickBooksAccountingSyncAdapter, QUICKBOOKS_PROVIDER } from "@mercatus-liber/adapter-quickbooks";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createCloudinaryFetchAdapter } from "@mercatus-liber/adapter-cloudinary";
@@ -103,8 +104,7 @@ import {
   MANUAL_FULFILLMENT_PROVIDER,
   type FulfillmentAdapter,
   type FulfillmentRoutingRepository,
-  type FulfillmentService,
-} from "@mercatus-liber/fulfillment";
+  type FulfillmentService, createInMemoryProviderCatalogMappingRepository } from "@mercatus-liber/fulfillment";
 import {
   createDefaultBiAdapter,
   createInMemoryBiEventLogRepository,
@@ -1028,6 +1028,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // below close over the same Map instance.
   const printifyExternalOrderIdByOrderId = new Map<string, string>();
 
+  // Which provider product each SKU is made from, for Printful and Printify.
+  const providerCatalogMappings = pgPool ? createPostgresProviderCatalogMappingRepository(pgPool) : createInMemoryProviderCatalogMappingRepository();
   const fulfillmentRouting = pgPool
     ? createPostgresFulfillmentRoutingRepository(pgPool)
     : createInMemoryFulfillmentRoutingRepository();
@@ -1052,14 +1054,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
                   address1: order.shippingInfo.address,
                 };
               },
-              async resolveCatalogTarget(skuId) {
-                throw new Error(
-                  `resolveCatalogTarget: no Printful catalog_variant_id mapping exists for SKU "${skuId}" -- ` +
-                    "this reference app's catalog has no notion of Printful's catalog surface; a real " +
-                    "deployment needs an explicit SKU -> Printful catalog_variant_id mapping before routing " +
-                    "any SKU to the \"printful\" provider.",
-                );
-              },
+              resolveCatalogTarget: printfulCatalogTargetsFrom(providerCatalogMappings),
+              holdOrders: process.env.PRINTFUL_HOLD_ORDERS === "true",
             }),
           }
         : {}),
@@ -1122,14 +1118,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
                     address1: order.shippingInfo.address,
                   };
                 },
-                async resolveCatalogTarget(skuId) {
-                  throw new Error(
-                    `resolveCatalogTarget: no Printify product/variant mapping exists for SKU "${skuId}" -- ` +
-                      "this reference app's catalog has no notion of Printify's catalog surface; a real " +
-                      "deployment needs an explicit SKU -> Printify product_id/variant_id mapping before " +
-                      "routing any SKU to the \"printify\" provider.",
-                  );
-                },
+                resolveCatalogTarget: printifyCatalogTargetsFrom(providerCatalogMappings),
+                holdOrders: process.env.PRINTIFY_HOLD_ORDERS === "true",
                 async resolveExternalOrderId(orderId) {
                   return printifyExternalOrderIdByOrderId.get(orderId) ?? null;
                 },

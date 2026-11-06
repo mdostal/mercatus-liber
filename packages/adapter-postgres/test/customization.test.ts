@@ -9,6 +9,8 @@ import type { LineCustomization } from "@mercatus-liber/core";
 import type { Pool } from "pg";
 import { describe, expect, it } from "vitest";
 import { describeCustomizationRepositoryContract } from "../../customization/test/repository-contract.js";
+import { describeCatalogMappingContract } from "../../fulfillment/test/catalog-mapping-contract.js";
+import { createPostgresProviderCatalogMappingRepository } from "../src/provider-catalog-mappings.js";
 import { createPostgresCartRepository } from "../src/cart.js";
 import { createPostgresOrderRepository } from "../src/orders.js";
 import {
@@ -47,6 +49,15 @@ describeCustomizationRepositoryContract(
         };
       },
     };
+  },
+  { timeout: TIMEOUT },
+);
+
+describeCatalogMappingContract(
+  "Postgres",
+  async () => {
+    const db = new PGlite();
+    return { open: () => createPostgresProviderCatalogMappingRepository(poolFor(db)) };
   },
   { timeout: TIMEOUT },
 );

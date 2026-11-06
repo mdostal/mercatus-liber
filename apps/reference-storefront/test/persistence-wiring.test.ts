@@ -89,6 +89,7 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
   const { createInMemoryStorefrontViewRepository } = await import("@mercatus-liber/storefront-views");
   const { createInMemoryBundleRepository } = await import("@mercatus-liber/bundles");
   const { createInMemoryGoalRepository, createInMemoryGoalVoteRepository } = await import("@mercatus-liber/community-goals");
+  const { createInMemoryProviderCatalogMappingRepository } = await import("@mercatus-liber/fulfillment");
   const { createInMemoryPaletteRepository, createInMemoryFinishTierRepository, createInMemoryArtStyleRepository, createInMemoryProductCustomizationRepository, createInMemoryPricingRulesRepository } = await import("@mercatus-liber/customization");
   const { createInMemoryRecommendationRepository } = await import("@mercatus-liber/recommendations");
   const { createInMemoryCampaignRepository } = await import("@mercatus-liber/advertising");
@@ -146,6 +147,7 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
       createPostgresBundleRepositoryMock(pool);
       return createInMemoryBundleRepository();
     },
+    createPostgresProviderCatalogMappingRepository: () => createInMemoryProviderCatalogMappingRepository(),
     createPostgresPaletteRepository: () => createInMemoryPaletteRepository(),
     createPostgresFinishTierRepository: () => createInMemoryFinishTierRepository(),
     createPostgresArtStyleRepository: () => createInMemoryArtStyleRepository(),

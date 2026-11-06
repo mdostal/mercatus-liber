@@ -222,3 +222,5 @@ export {
   createMongoPricingRulesRepository,
   createMongoProductCustomizationRepository,
 } from "./customization.js";
+
+export { createMongoProviderCatalogMappingRepository } from "./provider-catalog-mappings.js";
