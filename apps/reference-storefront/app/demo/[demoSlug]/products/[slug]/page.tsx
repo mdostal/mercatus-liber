@@ -7,6 +7,8 @@ import { PdpTabbedDetail } from "../../../../../components/pdp-tabbed-detail";
 import { BundleTierSelector } from "../../../../../components/bundle-tier-selector";
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { RecommendationShelf, resolvePdpRecommendations } from "../../../../../components/recommendation-shelf";
+import { PdpCustomizable } from "../../../../../components/pdp-customizable";
+import { addCustomizedToCartAction, quoteCustomizationAction } from "../../../../../lib/actions";
 import { isDemoSlug } from "../../../../../lib/demos";
 import { breadcrumbList, JsonLd, type BreadcrumbItem } from "../../../../../lib/json-ld";
 import { resolvePageTemplateOverride } from "../../../../../lib/resolve-page-template";
@@ -139,7 +141,7 @@ export default async function ProductPage({
   const { demoSlug, slug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
   const { template, ...selectionParams } = await searchParams;
-  const { pdp, theming, inventory, bundles, recommendations, catalog, marketingCatalog, media, reviews } =
+  const { pdp, theming, inventory, bundles, recommendations, catalog, marketingCatalog, media, reviews, customization, pricing } =
     await getServicesForDemo(demoSlug);
 
   // scc-04: resolvePageTemplateOverride's shared precedence (lib/resolve-page-template.ts)
@@ -154,6 +156,31 @@ export default async function ProductPage({
 
   const viewModel = await pdp.getViewModel(slug, templateOverride);
   if (!viewModel) notFound();
+
+  // A made-to-order product gets the customizer in place of the standard buy box.
+  const productCustomization = await customization.getProductCustomizationByProductId(viewModel.product.id);
+  const firstSku = viewModel.skus[0];
+  if (productCustomization && firstSku && (await pricing.getRules(viewModel.product.id))) {
+    const [palette, finishes, artStyles] = await Promise.all([customization.listPalette(), customization.listFinishTiers(), customization.listArtStyles()]);
+    const productId = viewModel.product.id;
+    return (
+      <PdpCustomizable
+        title={viewModel.product.title}
+        description={viewModel.product.description}
+        imageUrl={resolveProductImageUrl(media, viewModel.product, { width: 800, height: 600, fit: "cover" })}
+        imageAlt={resolveProductImageAlt(viewModel.product)}
+        palette={palette}
+        finishes={finishes}
+        artStyles={artStyles}
+        customization={productCustomization}
+        currency={firstSku.price.currency}
+        nameLabel="Name to embroider"
+        cartHref={`/demo/${demoSlug}/cart`}
+        quote={quoteCustomizationAction.bind(null, demoSlug, productCustomization.id, productId)}
+        addToCart={addCustomizedToCartAction.bind(null, demoSlug, productCustomization.id, productId, firstSku.id)}
+      />
+    );
+  }
 
   // pc-01: the real, live call site for pdp.resolveSelection (previously
   // dead code -- see design-discussion.md §2, zero call sites outside its

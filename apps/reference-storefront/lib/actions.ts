@@ -28,6 +28,8 @@ import { isDemoSlug, type DemoSlug } from "./demos";
 import { resetDemoData } from "./reset-demo-data";
 import { getServicesForDemo } from "./services";
 import { themeCookieName } from "./theme-cookie";
+import { InvalidColorSelectionError, InvalidPicksError, priceLine, type LineInput } from "@mercatus-liber/customization";
+import type { AddToCartResult, QuoteResult } from "@mercatus-liber/storefront-ui";
 
 /**
  * demo-routing-04: every one of this file's "use server" actions is bound
@@ -183,10 +185,11 @@ export async function updateCartItemQuantityAction(formData: FormData): Promise<
   const demoSlug = requireDemoSlug(formData);
   const skuId = String(formData.get("skuId"));
   const quantity = Number(formData.get("quantity") ?? 1);
+  const lineId = formData.get("lineId");
   const cartId = await readCartId(demoSlug);
   if (!cartId) throw new Error("Cannot update quantity -- no cart exists yet.");
   const { cart } = await getServicesForDemo(demoSlug);
-  await cart.updateQuantity(cartId, skuId, quantity);
+  await cart.updateQuantity(cartId, skuId, quantity, typeof lineId === "string" && lineId ? lineId : undefined);
   revalidatePath(`/demo/${demoSlug}/cart`);
 }
 
@@ -195,8 +198,9 @@ export async function removeCartItemAction(formData: FormData): Promise<void> {
   const skuId = String(formData.get("skuId"));
   const cartId = await readCartId(demoSlug);
   if (!cartId) throw new Error("Cannot remove item -- no cart exists yet.");
+  const lineId = formData.get("lineId");
   const { cart } = await getServicesForDemo(demoSlug);
-  await cart.removeItem(cartId, skuId);
+  await cart.removeItem(cartId, skuId, typeof lineId === "string" && lineId ? lineId : undefined);
   revalidatePath(`/demo/${demoSlug}/cart`);
 }
 
@@ -1260,4 +1264,80 @@ export async function disableGoalAction(formData: FormData): Promise<void> {
   const { goals } = await getServicesForDemo(demoSlug);
   await goals.disableGoal(String(formData.get("id")));
   revalidatePath(`/demo/${demoSlug}/admin/community-goals`);
+}
+
+function customizationError(error: unknown): string {
+  return error instanceof InvalidPicksError || error instanceof InvalidColorSelectionError ? error.message : "We couldn't price that. Try again.";
+}
+
+/** The live price while a shopper customizes. Always computed here from the saved rules, so the browser can't influence it. */
+export async function quoteCustomizationAction(demoSlug: DemoSlug, customizationId: string, productId: string, input: LineInput): Promise<QuoteResult> {
+  if (!isDemoSlug(demoSlug)) return { ok: false, error: "Unknown store." };
+  const { customization, pricing } = await getServicesForDemo(demoSlug);
+  try {
+    const priced = await priceLine({ customization, pricing }, customizationId, productId, input);
+    return { ok: true, lines: priced.lines, total: priced.unitAmount, quoteRequired: priced.price.quoteRequired };
+  } catch (error) {
+    return { ok: false, error: customizationError(error) };
+  }
+}
+
+/** Re-validates and re-prices from scratch, ignoring anything the browser last saw. A line that needs a quote is refused here as well as at checkout. */
+export async function addCustomizedToCartAction(demoSlug: DemoSlug, customizationId: string, productId: string, skuId: string, input: LineInput, quantity: number): Promise<AddToCartResult> {
+  if (!isDemoSlug(demoSlug)) return { ok: false, error: "Unknown store." };
+  if (!Number.isInteger(quantity) || quantity < 1) return { ok: false, error: "Choose a quantity of at least 1." };
+  const { customization, pricing, cart, catalog } = await getServicesForDemo(demoSlug);
+  const sku = await catalog.getSku(skuId);
+  if (!sku || sku.productId !== productId) return { ok: false, error: "That product isn't available." };
+  let priced;
+  try {
+    priced = await priceLine({ customization, pricing }, customizationId, productId, input);
+  } catch (error) {
+    return { ok: false, error: customizationError(error) };
+  }
+  if (priced.line.quoteRequired) return { ok: false, error: "This combination needs a quote." };
+  const cartId = await getOrCreateCartId(demoSlug);
+  await cart.addItem(cartId, skuId, quantity, undefined, { customization: priced.line, unitPrice: { amount: priced.unitAmount, currency: sku.price.currency } });
+  revalidatePath(`/demo/${demoSlug}/cart`);
+  return { ok: true };
+}
+
+/** Saves an admin's rates. Only changes numbers on charges that already exist, leaving the rest of the product's formula alone. */
+export async function savePricingRatesAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const productId = String(formData.get("productId"));
+  const { pricing } = await getServicesForDemo(demoSlug);
+  const rules = await pricing.getRules(productId);
+  if (!rules) throw new Error(`No pricing rules for product ${productId}.`);
+  const cents = (name: string): number | undefined => {
+    const raw = formData.get(name);
+    if (typeof raw !== "string" || raw.trim() === "") return undefined;
+    const value = Number(raw);
+    if (!Number.isInteger(value)) throw new Error(`${name} must be a whole number of cents.`);
+    return value;
+  };
+  const basePriceCents = { ...rules.basePriceCents };
+  const colorMarkupCents = { ...rules.colorMarkupCents };
+  for (const key of formData.keys()) {
+    // The form also carries the store, the product, and Next's own action id.
+    if (key.startsWith("base:")) {
+      const value = cents(key);
+      if (value === undefined) continue;
+      if (value < 0) throw new Error("A base price can't be negative.");
+      basePriceCents[key.slice("base:".length)] = value;
+    } else if (key.startsWith("markup:")) {
+      const value = cents(key);
+      if (value === undefined) continue;
+      const id = key.slice("markup:".length);
+      if (value === 0) delete colorMarkupCents[id];
+      else colorMarkupCents[id] = value;
+    }
+  }
+  const attributes = rules.attributes.map((attribute) => {
+    const value = attribute.quoteOnly ? undefined : cents(`attr:${attribute.id}`);
+    return value === undefined ? attribute : { ...attribute, perUnitCents: value };
+  });
+  await pricing.saveRules(productId, { ...rules, basePriceCents, attributes, colorMarkupCents });
+  revalidatePath(`/demo/${demoSlug}/admin/customization`);
 }

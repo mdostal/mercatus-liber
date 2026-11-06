@@ -169,7 +169,7 @@ export function CartSpecTable({
               <span />
             </div>
             {lines.map((line) => (
-              <div className="ds-cart-row" key={line.skuId}>
+              <div className="ds-cart-row" key={line.lineId ?? line.skuId}>
                 <div className="ds-cart-prod">
                   {line.imageUrl && <img className="ds-cart-prod-thumb" src={line.imageUrl} alt={line.imageAlt ?? ""} />}
                   <div className="ds-cart-prod-text">
@@ -180,6 +180,7 @@ export function CartSpecTable({
                 <form action={updateCartItemQuantityAction} className="ds-qty">
                   <input type="hidden" name="demoSlug" value={demoSlug} />
                   <input type="hidden" name="skuId" value={line.skuId} />
+                  {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
                   {/* a11y-audit: same unlabeled-quantity-input pattern found live via
                       axe-core (see cart-standard.tsx's own doc comment for the full
                       writeup) -- per-line aria-label disambiguates multiple cart rows. */}
@@ -200,6 +201,7 @@ export function CartSpecTable({
                 <form action={removeCartItemAction}>
                   <input type="hidden" name="demoSlug" value={demoSlug} />
                   <input type="hidden" name="skuId" value={line.skuId} />
+                  {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
                   <button type="submit">&times;</button>
                 </form>
               </div>

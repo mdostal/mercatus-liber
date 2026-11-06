@@ -54,6 +54,7 @@ describe("resolveLine and priceLine", () => {
     expect(priced.unitAmount).toBe(8500 + 100 + 300 + 300);
     expect(priced.lines.map((l) => l.id)).toEqual(["base", "changes", "longName", "color:pink"]);
     expect(priced.line.quoteRequired).toBeUndefined();
+    expect(priced.lines.at(-1)!.label).toBe("Pink");
   });
 
   it("🔍 captures every request-only choice for fulfillment", async () => {

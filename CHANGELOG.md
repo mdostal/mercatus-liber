@@ -1052,3 +1052,17 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 
 - Checkout priced by SKU, so two lines of one SKU at different prices would both have charged the same amount. It now prices by line position.
 
+## [0.49.0] - 2026-11-05
+
+### Added
+
+- `@mercatus-liber/storefront-ui`, the start of the common component package: `Customizer`, with live server-side pricing, and `PriceBreakdown`, an itemized price with a chart.
+- The Print Shop's Embroidered Dad Cap now has a working customizer through cart, checkout, and the admin orders page, as a public example.
+- Admin > Customization edits base prices, charges, and color markups.
+- `@mercatus-liber/customization/client` exports the pure logic for browsers. Adds `normalizePicks`, `isOptionVisible`, and `isChoiceAvailable`.
+
+### Changed
+
+- `priceLine` labels a color markup with the color's name instead of its id.
+- Cart templates keep customized lines of one SKU separate when changing quantity or removing.
+

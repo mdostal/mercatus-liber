@@ -11,6 +11,7 @@ import { resolveProductImageAlt, resolveProductImageUrl } from "../../../../lib/
 import { resolvePageTemplateOverride } from "../../../../lib/resolve-page-template";
 import { getServicesForDemo } from "../../../../lib/services";
 import { readActiveThemeBundle } from "../../../../lib/theme-cookie";
+import { describeCustomization } from "../../../../lib/describe-customization";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,8 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
         priceSnapshot: item.priceSnapshot,
         // print-shop-02: additive/optional (design-discussion.md §1b) --
         // absent for every non-customized line, same as before this field existed.
-        customizationNote: item.customizationNote,
+        customizationNote: item.customizationNote ?? (item.customization ? describeCustomization(item.customization) : undefined),
+        lineId: item.lineId,
         // image-cdn epic: a small real thumbnail per line, resolved through
         // the same shared helper as the PDP -- null for a product with no
         // `images` yet (or no resolvable product at all), never a
@@ -101,8 +103,9 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
     <>
       <Template
         demoSlug={demoSlug}
-        lines={lines.map(({ skuId, title, quantity, priceSnapshot, customizationNote, imageUrl, imageAlt }) => ({
+        lines={lines.map(({ skuId, lineId, title, quantity, priceSnapshot, customizationNote, imageUrl, imageAlt }) => ({
           skuId,
+          ...(lineId ? { lineId } : {}),
           title,
           quantity,
           priceSnapshot,

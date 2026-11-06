@@ -92,3 +92,7 @@ own header comment for why, and what the natural follow-up (a live Playwright E2
 like once a key exists. `test/marketing-catalog-search.test.ts` proves the seeded demo data
 exercises many-to-many category assignment and that search stays in sync via events, with no
 manual reindex call.
+
+## Customization example
+
+The Print Shop's Embroidered Dad Cap uses the customizer from `@mercatus-liber/storefront-ui`, with its prices editable at `/demo/print-shop/admin/customization`. See `lib/customization-seed.ts`.

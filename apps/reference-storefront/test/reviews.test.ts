@@ -84,6 +84,8 @@ const reviews = createReviewsService({ repository: createInMemoryReviewRepositor
 
 vi.mock("../lib/services.js", () => ({
   getServicesForDemo: vi.fn(async () => ({
+    customization: { getProductCustomizationByProductId: async () => null },
+    pricing: { getRules: async () => null },
     adminAuth: mockAdminAuth,
     catalog,
     marketingCatalog,

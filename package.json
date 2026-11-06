@@ -1,7 +1,7 @@
 {
   "name": "mercatus-liber",
   "private": true,
-  "version": "0.48.0",
+  "version": "0.49.0",
   "description": "Mercatus Liber -- the 100% free, open-source, headless, AI-agent-accessible e-commerce kit built from decoupled subsystems.",
   "license": "MIT",
   "engines": {

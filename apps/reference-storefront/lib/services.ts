@@ -22,6 +22,11 @@ import {
   createPostgresServiceAreaProductRepository,
   createPostgresBiEventLogRepository,
   createPostgresFulfillmentRoutingRepository,
+  createPostgresArtStyleRepository,
+  createPostgresFinishTierRepository,
+  createPostgresPaletteRepository,
+  createPostgresPricingRulesRepository,
+  createPostgresProductCustomizationRepository,
 } from "@mercatus-liber/adapter-postgres";
 import { createPaypalPaymentAdapter } from "@mercatus-liber/adapter-paypal";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER } from "@mercatus-liber/adapter-printful";
@@ -53,6 +58,18 @@ import {
   type AnalyticsInsightsAdapter,
 } from "@mercatus-liber/analytics";
 import { createBundlesService, createInMemoryBundleRepository, type BundlesService } from "@mercatus-liber/bundles";
+import {
+  createCustomizationService,
+  createInMemoryArtStyleRepository,
+  createInMemoryFinishTierRepository,
+  createInMemoryPaletteRepository,
+  createInMemoryPricingRulesRepository,
+  createInMemoryProductCustomizationRepository,
+  createPricingService,
+  type CustomizationService,
+  type PricingService,
+} from "@mercatus-liber/customization";
+import { seedCustomizationExample } from "./customization-seed";
 import { createGoalsService, createInMemoryGoalRepository, createInMemoryGoalVoteRepository, type GoalsService } from "@mercatus-liber/community-goals";
 import { createCartService, createInMemoryCartRepository, type CartService } from "@mercatus-liber/cart";
 import {
@@ -202,6 +219,8 @@ export interface Services {
   storefrontViews: StorefrontViewsService;
   bundles: BundlesService;
   goals: GoalsService;
+  customization: CustomizationService;
+  pricing: PricingService;
   recommendations: RecommendationsService;
   advertising: AdvertisingService;
   bi: BiMetricsAdapter;
@@ -768,6 +787,19 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     events,
   });
 
+  // Durable on Postgres when this store has it, otherwise in-memory like the
+  // other subsystems here. adapter-convex and adapter-mongodb also implement
+  // these repositories, but the stores on them don't use a customizer.
+  const customization = createCustomizationService({
+    palette: pgPool ? createPostgresPaletteRepository(pgPool) : createInMemoryPaletteRepository(),
+    finishTiers: pgPool ? createPostgresFinishTierRepository(pgPool) : createInMemoryFinishTierRepository(),
+    artStyles: pgPool ? createPostgresArtStyleRepository(pgPool) : createInMemoryArtStyleRepository(),
+    productCustomizations: pgPool ? createPostgresProductCustomizationRepository(pgPool) : createInMemoryProductCustomizationRepository(),
+  });
+  const pricing = createPricingService({
+    rules: pgPool ? createPostgresPricingRulesRepository(pgPool) : createInMemoryPricingRulesRepository(),
+  });
+
   // Core-only dependency, mirroring promotions/bundles exactly (see
   // design-discussion.md §3 for upsell-cross-sell) -- never imports catalog,
   // cart, or analytics. The same-category fallback used when a product has
@@ -1170,6 +1202,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     reviews,
     storefrontViews,
   });
+  if (demoSlug === "print-shop") await seedCustomizationExample({ catalog, customization, pricing });
 
   return {
     events,
@@ -1193,6 +1226,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     storefrontViews,
     bundles,
     goals,
+    customization,
+    pricing,
     recommendations,
     advertising,
     bi,
