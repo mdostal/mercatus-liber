@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS cart_items (
   price_currency TEXT NOT NULL,
   customization_note TEXT
 );
+ALTER TABLE cart_items ADD COLUMN IF NOT EXISTS customization JSONB;
+ALTER TABLE cart_items ADD COLUMN IF NOT EXISTS line_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_cart_items_cart_id ON cart_items(cart_id);
 `;
 
@@ -43,6 +45,8 @@ interface CartItemRow {
   price_amount: number;
   price_currency: string;
   customization_note: string | null;
+  customization: CartItem["customization"] | null; // JSONB
+  line_id: string | null;
 }
 
 function rowToCartItem(row: CartItemRow): CartItem {
@@ -57,6 +61,8 @@ function rowToCartItem(row: CartItemRow): CartItem {
     // this spread-or-omit the correct way to satisfy that, same technique
     // index.ts's rowToProduct already uses for `images`.
     ...(row.customization_note !== null ? { customizationNote: row.customization_note } : {}),
+    ...(row.customization ? { customization: row.customization } : {}),
+    ...(row.line_id ? { lineId: row.line_id } : {}),
   };
 }
 
@@ -141,8 +147,8 @@ export function createPostgresCartRepository(pool: Pool): CartRepository {
         await client.query("DELETE FROM cart_items WHERE cart_id = $1", [cart.id]);
         for (const item of cart.items) {
           await client.query(
-            `INSERT INTO cart_items (cart_id, sku_id, quantity, price_amount, price_currency, customization_note)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
+            `INSERT INTO cart_items (cart_id, sku_id, quantity, price_amount, price_currency, customization_note, customization, line_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
             [
               cart.id,
               item.skuId,
@@ -150,6 +156,8 @@ export function createPostgresCartRepository(pool: Pool): CartRepository {
               item.priceSnapshot.amount,
               item.priceSnapshot.currency,
               item.customizationNote ?? null,
+              item.customization ? JSON.stringify(item.customization) : null,
+              item.lineId ?? null,
             ],
           );
         }

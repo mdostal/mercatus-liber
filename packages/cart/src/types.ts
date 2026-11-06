@@ -1,4 +1,4 @@
-import type { Money, Sku } from "@mercatus-liber/core";
+import type { LineCustomization, Money, Sku } from "@mercatus-liber/core";
 
 export interface CartItem {
   skuId: string;
@@ -20,6 +20,10 @@ export interface CartItem {
    * personalizations into one quantity would silently lose one of them.
    */
   customizationNote?: string;
+  /** What the shopper chose, for a made-to-order line. `priceSnapshot` is then the customized price, computed on the server. */
+  customization?: LineCustomization;
+  /** Identifies a customized line, since one SKU can have several. Pass it to removeItem and updateQuantity. Absent on other lines. */
+  lineId?: string;
 }
 
 export interface Cart {
@@ -53,5 +57,13 @@ export class CartNotFoundError extends Error {
   constructor(id: string) {
     super(`Cart not found: ${id}`);
     this.name = "CartNotFoundError";
+  }
+}
+
+/** Thrown when a customized line's unit price can't be right. See AddItemOptions. */
+export class InvalidUnitPriceError extends Error {
+  constructor(reason: string) {
+    super(`Invalid unit price: ${reason}`);
+    this.name = "InvalidUnitPriceError";
   }
 }

@@ -169,6 +169,43 @@ export interface Money {
  * both this map and a product's identifyingAttributeKeys; the two concepts are
  * independent even when they share a namespace.
  */
+/** One choice on a customized line that isn't stocked normally, so fulfillment must handle it by hand before the line can ship. */
+export interface LineCustomizationRequest {
+  kind: "option" | "color" | "finish" | "artStyle";
+  /** The choice id, palette color id, finish id, or art style id requested. */
+  id: string;
+  /** Where it applies: the option id or region id. Absent for a finish or art style. */
+  at?: string;
+}
+
+/**
+ * What a shopper chose for one made-to-order cart or order line, as data rather
+ * than display text, so an order can become a print job without parsing a note.
+ * A snapshot: it stays correct if the product's options or palette change later.
+ * Produced by @mercatus-liber/customization and carried by cart and
+ * checkout-orders, which is why it lives here.
+ */
+export interface LineCustomization {
+  finish: string;
+  /** The finish's color mode when ordered, which decides how `colors` becomes a print job. */
+  colorMode: "single" | "palette" | "any";
+  /** Region id -> effective color: a palette id, or a lowercase hex for a free-picked color. Only regions this version has. */
+  colors: Record<string, string>;
+  /** The picks that applied, with inapplicable ones already removed. */
+  picks?: Record<string, string>;
+  variant?: string;
+  artStyle?: string;
+  /** The shopper's personalization text. */
+  name?: string;
+  font?: string;
+  /** Lettering sizes, passed through to the print job, which validates them. */
+  lettering?: Record<string, unknown>;
+  /** Choices to handle by hand. See LineCustomizationRequest. */
+  requests?: LineCustomizationRequest[];
+  /** This line needs a quote, so checkout refuses it at its listed price. */
+  quoteRequired?: boolean;
+}
+
 export interface ProductAttribute {
   productId: string;
   key: string;

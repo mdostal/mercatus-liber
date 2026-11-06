@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { EventBus, Money } from "@mercatus-liber/core";
-import { CartNotFoundForCheckoutError, EmptyCartError } from "./types.js";
+import { CartNotFoundForCheckoutError, EmptyCartError, QuoteRequiredError } from "./types.js";
 import type {
   CartLookup,
   Order,
@@ -108,22 +108,30 @@ export function createCheckoutOrdersService(deps: {
       if (!shopperCart) throw new CartNotFoundForCheckoutError(input.cartId);
       if (shopperCart.items.length === 0) throw new EmptyCartError(input.cartId);
 
+      const needQuote = shopperCart.items.filter((item) => item.customization?.quoteRequired).map((item) => item.skuId);
+      if (needQuote.length > 0) throw new QuoteRequiredError(needQuote);
+
       const adjustment = await computeAdjustment(shopperCart.items, input.couponCode);
-      const unitAmountBySku = new Map(adjustment.items.map((item) => [item.skuId, item.unitAmount]));
+      // By position, not SKU: two lines of one SKU can have different customized prices.
+      const unitAmountOf = (index: number, skuId: string, fallback: Money): Money => {
+        const adjusted = adjustment.items[index];
+        return adjusted?.skuId === skuId ? adjusted.unitAmount : fallback;
+      };
 
       const orderId = randomUUID();
       const order: Order = {
         id: orderId,
         cartId: input.cartId,
         idempotencyKey: input.idempotencyKey,
-        items: shopperCart.items.map((item) => ({
+        items: shopperCart.items.map((item, index) => ({
           skuId: item.skuId,
           quantity: item.quantity,
-          priceAtPurchase: unitAmountBySku.get(item.skuId) ?? item.priceSnapshot,
+          priceAtPurchase: unitAmountOf(index, item.skuId, item.priceSnapshot),
           // Additive passthrough (see OrderLineItem's doc comment) -- pricing
           // is keyed by skuId only and doesn't carry customizationNote, so
           // it's read straight off the cart line here, not off `adjustment`.
           ...(item.customizationNote ? { customizationNote: item.customizationNote } : {}),
+          ...(item.customization ? { customization: item.customization } : {}),
         })),
         status: "pending_payment",
         shippingInfo: input.shippingInfo,
@@ -148,9 +156,9 @@ export function createCheckoutOrdersService(deps: {
 
       const session = await payments.createPaymentSession({
         orderRef: orderId,
-        lineItems: shopperCart.items.map((item) => ({
+        lineItems: shopperCart.items.map((item, index) => ({
           name: `SKU ${item.skuId}`,
-          unitAmount: unitAmountBySku.get(item.skuId) ?? item.priceSnapshot,
+          unitAmount: unitAmountOf(index, item.skuId, item.priceSnapshot),
           quantity: item.quantity,
         })),
         successUrl: input.successUrl,

@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { activeRegions, resolvePicks, validateOptions } from "./options.js";
 import { canonicalColor, resolveColorCount, resolveEffectiveColor, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
+import type { LineCustomization, LineCustomizationRequest } from "@mercatus-liber/core";
 import type {
   ColorRegion,
+  LineInput,
+  PriceBuild,
+  ResolvedLine,
   ResolvedPicks,
   ArtStyle,
   ArtStyleRepository,
@@ -98,6 +102,13 @@ export interface CustomizationService {
    * pricing opinion of its own.
    */
   getColorCount(productCustomizationId: string, finishId: string, selection: CustomizationSelection, picks?: Record<string, string>): Promise<number>;
+
+  /**
+   * Everything about one shopper's choices that a cart line and a price need,
+   * fully validated: picks, finish, art style, and colors. Lists any request-only
+   * choices. Pass `build` to PricingService.priceOf, or use priceLine to do both.
+   */
+  resolveLine(productCustomizationId: string, input: LineInput): Promise<ResolvedLine>;
 
   /** A product's picks resolved against its own options and variants -- see resolvePicks. A product with variants needs picks in the three methods above too, because they decide which regions exist; without them those methods throw InvalidPicksError rather than price the wrong version. */
   resolvePicks(productCustomizationId: string, picks: Record<string, string>): Promise<ResolvedPicks>;
@@ -260,6 +271,53 @@ export function createCustomizationService(deps: {
       const regions = regionsFor(customization, picks);
       validateSelection(customization, regions, finish, paletteColors, selection);
       return resolveColorCount(paletteColors, regions, finish, selection, customization.regions);
+    },
+
+    async resolveLine(productCustomizationId, input): Promise<ResolvedLine> {
+      const customization = await productCustomizations.get(productCustomizationId);
+      if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
+      const finish = await requireFinish(customization, input.finish);
+      const artStyle = input.artStyle ? await requireArtStyle(customization, input.artStyle) : undefined;
+      const paletteColors = await palette.list();
+      const resolved = resolvePicks(customization, input.picks);
+      const regions = activeRegions(customization, resolved.variantId);
+      validateSelection(customization, regions, finish, paletteColors, input.selection);
+
+      const colors: Record<string, string> = {};
+      for (const region of regions) {
+        colors[region.id] = canonicalColor(paletteColors, resolveEffectiveColor(customization.regions, finish, input.selection, region.id));
+      }
+
+      const requests: LineCustomizationRequest[] = resolved.requests.map((r) => ({ kind: "option", id: r.choiceId, at: r.optionId }));
+      if (finish.status === "request") requests.push({ kind: "finish", id: finish.id });
+      if (artStyle?.status === "request") requests.push({ kind: "artStyle", id: artStyle.id });
+      for (const [regionId, value] of Object.entries(colors)) {
+        if (paletteColors.find((p) => p.id === value)?.status === "request") requests.push({ kind: "color", id: value, at: regionId });
+      }
+
+      const name = input.name?.trim() || undefined;
+      const line: LineCustomization = {
+        finish: finish.id,
+        colorMode: finish.colors,
+        colors,
+        ...(Object.keys(resolved.picks).length > 0 ? { picks: resolved.picks } : {}),
+        ...(resolved.variantId ? { variant: resolved.variantId } : {}),
+        ...(artStyle ? { artStyle: artStyle.id } : {}),
+        ...(name ? { name } : {}),
+        ...(input.font ? { font: input.font } : {}),
+        ...(input.lettering ? { lettering: input.lettering } : {}),
+        ...(requests.length > 0 ? { requests } : {}),
+      };
+      const attributeCounts = { ...input.attributeCounts };
+      for (const [id, count] of Object.entries(resolved.attributeCounts)) attributeCounts[id] = (attributeCounts[id] ?? 0) + count;
+      const build: PriceBuild = {
+        finish: finish.id,
+        colors,
+        ...(Object.keys(attributeCounts).length > 0 ? { attributeCounts } : {}),
+        ...(resolved.variantId ? { variant: resolved.variantId } : {}),
+        ...(name ? { nameLength: name.length } : {}),
+      };
+      return { line, build };
     },
 
     async resolvePicks(productCustomizationId, picks): Promise<ResolvedPicks> {

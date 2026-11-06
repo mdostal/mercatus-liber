@@ -5,8 +5,10 @@ import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createInMemoryOrderRepository } from "../src/in-memory-repository.js";
 import { createCheckoutOrdersService, type CheckoutOrdersService } from "../src/service.js";
-import { CartNotFoundForCheckoutError, EmptyCartError } from "../src/types.js";
+import { CartNotFoundForCheckoutError, EmptyCartError, QuoteRequiredError } from "../src/types.js";
 import type { OrderRepository, PaymentSessionCreator, PricingAdjuster, PricingAdjustment } from "../src/types.js";
+
+const SHIPPING = { name: "A", email: "a@example.com", address: { line1: "1 Main", city: "X", state: "Y", postalCode: "1", country: "US" } };
 
 describe("checkout-orders service", () => {
   let events: EventBus;
@@ -294,6 +296,46 @@ describe("checkout-orders service", () => {
     const pendingOnly = await checkout.listOrders({ status: "pending_payment" });
     expect(pendingOnly.map((o) => o.id)).toContain(guestOrder.id);
     expect(pendingOnly.map((o) => o.id)).not.toContain(custOrder.id);
+  });
+
+  describe("customized lines", () => {
+    const START = { cartId: "", idempotencyKey: "k", shippingInfo: SHIPPING as never, successUrl: "https://s", cancelUrl: "https://c" };
+    const RED = { finish: "ams", colorMode: "palette" as const, colors: { body: "red" }, requests: [{ kind: "color" as const, id: "pink", at: "body" }] };
+    const BLUE = { finish: "ams", colorMode: "palette" as const, colors: { body: "blue" } };
+
+    it("🔍 charges two lines of one SKU their own prices, and carries each customization onto the order", async () => {
+      await cartService.addItem(cartId, activeSkuId, 1, undefined, { customization: RED, unitPrice: { amount: 8000, currency: "USD" } });
+      await cartService.addItem(cartId, activeSkuId, 2, undefined, { customization: BLUE, unitPrice: { amount: 9000, currency: "USD" } });
+      const { order } = await checkout.startCheckout({ ...START, cartId });
+      expect(order.items.map((i) => i.priceAtPurchase.amount)).toEqual([8000, 9000]);
+      expect(order.items[0]!.customization).toEqual(RED);
+      expect(order.items[1]!.customization).toEqual(BLUE);
+      const { lineItems } = createPaymentSession.mock.calls[0]![0] as { lineItems: { unitAmount: { amount: number }; quantity: number }[] };
+      expect(lineItems.map((l) => [l.unitAmount.amount, l.quantity])).toEqual([[8000, 1], [9000, 2]]);
+    });
+
+    it("🔍 refuses a line that needs a quote, creating no order or payment", async () => {
+      await cartService.addItem(cartId, activeSkuId, 1, undefined, { customization: { ...RED, quoteRequired: true } });
+      await expect(checkout.startCheckout({ ...START, cartId })).rejects.toThrow(QuoteRequiredError);
+      expect(createPaymentSession).not.toHaveBeenCalled();
+      expect(await checkout.listOrders()).toEqual([]);
+    });
+
+    it("🔍 applies a promotion's per-line price by position, not by SKU", async () => {
+      const pricing: PricingAdjuster = {
+        computeAdjustment: async ({ items }) => ({
+          items: items.map((item) => ({ skuId: item.skuId, quantity: item.quantity, unitAmount: { amount: item.priceSnapshot.amount - 100, currency: "USD" } })),
+          discountTotal: { amount: 200, currency: "USD" },
+          total: { amount: 0, currency: "USD" },
+          appliedCode: null,
+        }),
+      };
+      const discounted = createCheckoutOrdersService({ repository: orderRepository, cart: cartService, payments: { createPaymentSession }, events, pricing });
+      await cartService.addItem(cartId, activeSkuId, 1, undefined, { customization: RED, unitPrice: { amount: 8000, currency: "USD" } });
+      await cartService.addItem(cartId, activeSkuId, 1, undefined, { customization: BLUE, unitPrice: { amount: 9000, currency: "USD" } });
+      const { order } = await discounted.startCheckout({ ...START, cartId });
+      expect(order.items.map((i) => i.priceAtPurchase.amount)).toEqual([7900, 8900]);
+    });
   });
 });
 

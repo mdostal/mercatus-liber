@@ -64,6 +64,20 @@ Selections, effective colors, and `PriceBuild.colors` all use palette ids, such 
 
 Which 3D model a variant loads stays with the storefront, keyed by variant id.
 
+## Cart and orders
+
+```ts
+const { line, unitAmount } = await priceLine({ customization, pricing }, customizationId, productId, {
+  finish: "ams",
+  selection: { body: "red", lid: "black" },
+  picks: { lock_position: "none" },
+  name: "Your Name",
+});
+await cart.addItem(cartId, skuId, 1, undefined, { customization: line, unitPrice: { amount: unitAmount, currency: "USD" } });
+```
+
+Run this on the server, and never accept a price from the browser. The line reaches the order as `OrderLineItem.customization`, and `toPrintOrder` turns it into a `print-order/1` job. Checkout refuses a line that needs a quote.
+
 ## Storage
 
 The in-memory repositories are the default and lose everything on restart. For durable storage, use the repositories in `adapter-postgres`, `adapter-sqlite`, `adapter-mongodb`, or `adapter-convex`. All of them pass the same contract in `test/repository-contract.ts`.

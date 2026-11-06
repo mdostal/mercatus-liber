@@ -160,11 +160,6 @@ sku-availability-status epic, reused here verbatim for `PaletteColor.status` and
 - **build.json / 3D-asset-build tooling.** Part placement, pivots, glTF animations, and STL
   assembly are the 3D-printing/model-forge tooling side's domain, never commerce data — this
   package only names region ids that must match a product's own GLB material names.
-- **Cart/order capture of a shopper's selection or a `request`-status choice.** `CartItem`
-  gaining a structured `{finishId, colors: Record<regionId, paletteId>}` field (replacing/
-  supplementing the free-text `customizationNote`), plus a flag/note on the order when a
-  `request`-status option was chosen so fulfillment sees it needs special handling, is a
-  clearly-scoped, separate follow-up epic — not started as of this subsystem's initial ship.
 - **Cost-estimation tooling** (deriving a good `perUnitCents` from real wastage/print-time/
   reprint-risk data). dostal-3d-printing's own `pricing.js`/`suggested-levers.json` are a real,
   validated reference a human can read when deciding what rate to set, but this package
@@ -189,6 +184,21 @@ A choice's `attributeId` charges one unit of a `PricingAttribute`, so rates stay
 `quoteOnly` attribute makes it a quote. `PricingRules.variantOverrides` replaces the base price or
 estimated minutes per variant and finish; pass the variant as `PriceBuild.variant`.
 
+## From cart to print job
+`CustomizationService.resolveLine` validates a shopper's finish, colors, picks, art style, and name
+and returns a `LineCustomization` (defined in `@mercatus-liber/core`, because cart and checkout carry
+it) plus a `PriceBuild`. `priceLine` also prices it. Call it on the server, then pass the result to
+`CartService.addItem` as `customization` and `unitPrice`. A browser must never supply the price.
+
+The line goes onto the order unchanged, with `requests` listing request-only choices for fulfillment
+to handle by hand. Checkout refuses a line marked `quoteRequired`, rather than charging its listed
+price. `toPrintOrder` turns a line into `print-order/1`. For a painted finish, the caller supplies the
+print color, which is a shop decision.
+
+Sixty orders generated this way, across every valid option combination except metal hardware for each
+buildable finish on the six products with print plates, passed `core.js`'s `validate`. That check used a stub font, so glyphs and fit weren't
+tested, and no job was sliced.
+
 ## Color values
 Selections, effective colors, and `PriceBuild.colors` all carry palette ids, matching the `colors`
 field of `print-order/1`. A `#rrggbb` hex is accepted only where `RegionColorChoices.freeColor` is
@@ -206,6 +216,9 @@ moved to palette ids yet.
 
 ## Known limitations
 Verified against the built package, 2026-11-05:
+- `removeItem` and `updateQuantity` only target one line on customized lines. Two lines of one SKU
+  that differ by free-text note alone still can't be told apart.
+- The reference storefront doesn't call `priceLine` yet.
 - `resolvePrice` charges for distinct colors beyond the first, not for each color differing from a
   region's default. A per-region "differs from base" charge exists only through `ContrastRule`.
 - `estimatedMinutes` is one constant per finish and optional variant, so the excess-time charge does
@@ -214,8 +227,4 @@ Verified against the built package, 2026-11-05:
 - `PricingDocument` is exported but unused by the repository or service.
 
 ## Open questions
-1. Structured cart/order customization-selection field — not started. See "Explicitly NOT"
-   above; the real target shape is the `print-order/1` shape: finish, raw option picks, art style,
-   name, and `colors` as region id to **palette id**.
-2. Request-status order-capture flagging (a note/flag fulfillment sees) — not started, folded
-   into the same follow-up epic as (1) above.
+1. A quote flow. Checkout refuses a `quoteRequired` line, but nothing yet lets a shopper request the quote.
