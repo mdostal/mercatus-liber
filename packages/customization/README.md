@@ -58,9 +58,12 @@ Selections, effective colors, and `PriceBuild.colors` all use palette ids, such 
 - Pure functions: `validateRegions`, `resolveEffectiveColor`, `availableColorChoices`, `validateSelectedColor`, `canonicalColor`, `resolveColorHex`, `defaultSelection`, `resolveColorCount`, `resolvePrice`.
 - `createInMemoryPaletteRepository`, `createInMemoryFinishTierRepository`, `createInMemoryArtStyleRepository`, `createInMemoryProductCustomizationRepository`, `createInMemoryPricingRulesRepository`.
 
+## Storage
+
+The in-memory repositories are the default and lose everything on restart. For durable storage, use the repositories in `adapter-postgres`, `adapter-sqlite`, `adapter-mongodb`, or `adapter-convex`. All of them pass the same contract in `test/repository-contract.ts`.
+
 ## Known limitations
 
-- Durable repositories exist for Postgres only (`createPostgres*Repository` in `@mercatus-liber/adapter-postgres`). SQLite, Convex, and MongoDB are not built yet.
 - There is no options or variants support yet.
 
 See [docs/subsystems/27-customization.md](../../docs/subsystems/27-customization.md).

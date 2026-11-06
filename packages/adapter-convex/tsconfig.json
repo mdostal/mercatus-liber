@@ -5,5 +5,5 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [{ "path": "../core" }, { "path": "../marketing-catalog" }]
+  "references": [{ "path": "../core" }, { "path": "../customization" }, { "path": "../marketing-catalog" }]
 }

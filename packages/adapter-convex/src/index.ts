@@ -1,3 +1,4 @@
+import { createConvexCustomizationRepositories, type ConvexCustomizationRepositories } from "./customization.js";
 import type {
   CatalogPersistenceAdapter,
   Product,
@@ -260,4 +261,18 @@ export async function connectConvexCategoryRepository(convexUrl: string): Promis
 
 export async function connectConvexProductCategoryRepository(convexUrl: string): Promise<ProductCategoryRepository> {
   return createConvexProductCategoryRepository(await connectConvexClient(convexUrl));
+}
+
+export {
+  createConvexArtStyleRepository,
+  createConvexCustomizationRepositories,
+  createConvexFinishTierRepository,
+  createConvexPaletteRepository,
+  createConvexPricingRulesRepository,
+  createConvexProductCustomizationRepository,
+  type ConvexCustomizationRepositories,
+} from "./customization.js";
+
+export async function connectConvexCustomizationRepositories(convexUrl: string): Promise<ConvexCustomizationRepositories> {
+  return createConvexCustomizationRepositories(await connectConvexClient(convexUrl));
 }

@@ -22,6 +22,7 @@ If you already hold a database handle, use `createMongoAdapter(db)`, which accep
 - `connectMongoAdapter(connectionString)`: returns `{ adapter, close }`.
 - `createMongoAdapter(db)`.
 - `createMongoCategoryRepository`, `createMongoProductCategoryRepository`.
+- Customization: `createMongoPaletteRepository`, `createMongoFinishTierRepository`, `createMongoArtStyleRepository`, `createMongoProductCustomizationRepository`, `createMongoPricingRulesRepository`.
 - `DbLike`, `CollectionLike`: the minimal driver surface used, which is what makes it testable with a fake.
 
 See [docs/subsystems/00-core-schema.md](../../docs/subsystems/00-core-schema.md) and [integrations.md](../../apps/docs/content-src/integrations.md).

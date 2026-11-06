@@ -16,6 +16,13 @@ import type {
 import { SCHEMA_SQL } from "./schema.js";
 
 export {
+  createSqliteArtStyleRepository,
+  createSqliteFinishTierRepository,
+  createSqlitePaletteRepository,
+  createSqlitePricingRulesRepository,
+  createSqliteProductCustomizationRepository,
+} from "./customization.js";
+export {
   createSqliteCategoryRepository,
   createSqliteProductCategoryRepository,
   type Category,

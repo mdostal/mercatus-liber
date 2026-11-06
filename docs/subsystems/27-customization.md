@@ -58,10 +58,10 @@ rendering/animation code of its own (see "Explicitly NOT this subsystem's job").
   live data a 3D viewer paints with), `getRegionChoices` (every region's current swatch-row
   choices), `getColorCount`, `validateArtStyleChoice` (server-side discontinued/not-offered
   enforcement, same discipline as `requireFinish`).
-- In-memory repositories by default, plus Postgres repositories for all five
-  (`createPostgres*Repository` in `@mercatus-liber/adapter-postgres`), so palette, finish, art
-  style, product, and pricing data can survive a restart. SQLite, Convex, and MongoDB are not built.
-  The reference storefront doesn't use any of them yet.
+- In-memory repositories by default, plus durable repositories for all five on Postgres, SQLite,
+  MongoDB, and Convex, each in its own adapter package. All of them run the same contract,
+  `packages/customization/test/repository-contract.ts`. The reference storefront doesn't use any of
+  them yet, and the Convex functions aren't deployed to the Broadleaf project.
 
 ## Pricing — a generic, fully admin-defined rules engine
 **Replaced an earlier fixed-field design** (`FinishTier.priceDelta`/`finishPriceDeltas`,
@@ -207,4 +207,3 @@ Verified against the built package, 2026-11-05:
    name, and `colors` as region id to **palette id**.
 2. Request-status order-capture flagging (a note/flag fulfillment sees) — not started, folded
    into the same follow-up epic as (1) above.
-3. Durable repositories on SQLite, Convex, and MongoDB — not started. Postgres is done.

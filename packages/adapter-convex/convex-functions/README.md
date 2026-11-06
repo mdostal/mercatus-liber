@@ -13,7 +13,7 @@ oversight.
 So this directory ships the actual, real, correct Convex function source
 `@mercatus-liber/adapter-convex`'s client (`createConvexAdapter`,
 `createConvexCategoryRepository`, `createConvexProductCategoryRepository`)
-calls by name -- copy these 6 files verbatim into your own Convex project's
+calls by name -- copy these 7 files verbatim into your own Convex project's
 `convex/` directory, then run `npx convex dev` (or `npx convex deploy` for
 production) to deploy them. Once deployed, `createConvexAdapter` (given
 your deployment's real `CONVEX_URL`) works against them with zero further
@@ -27,11 +27,11 @@ code changes.
    you can do, same as this repo's published Provider Setup Checklist
    discloses for Supabase/Clerk/Sanity).
 2. Copy `schema.ts`, `products.ts`, `skus.ts`, `attributes.ts`,
-   `categories.ts`, `productCategories.ts` from this directory into your
-   project's `convex/` folder.
+   `categories.ts`, `productCategories.ts`, `customization.ts` from this
+   directory into your project's `convex/` folder.
 3. `npx convex dev` (development) or `npx convex deploy` (production) --
    Convex's own CLI generates `convex/_generated/server.ts`/`api.ts` against
-   these files at that point; they do not exist, and these 6 files will not
+   these files at that point; they do not exist, and these 7 files will not
    typecheck, until you do this.
 4. Set `CONVEX_URL` to your deployment's real HTTP API URL (shown by the
    CLI after deploying, and in your Convex dashboard -- looks like

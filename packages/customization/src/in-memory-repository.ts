@@ -18,7 +18,7 @@ export function createInMemoryFinishTierRepository(): FinishTierRepository {
   const tiers = new Map<string, FinishTier>();
   return {
     async list(): Promise<FinishTier[]> {
-      return Array.from(tiers.values()).map((t) => structuredClone(t));
+      return Array.from(tiers.values()).map((t) => structuredClone(t)).sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id));
     },
     async save(tier: FinishTier): Promise<void> {
       tiers.set(tier.id, structuredClone(tier));

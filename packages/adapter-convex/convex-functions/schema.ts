@@ -75,4 +75,15 @@ export default defineSchema({
   })
     .index("by_product_and_category", ["productId", "categoryId"])
     .index("by_category_id", ["categoryId"]),
+
+  // Every @mercatus-liber/customization record, as a JSON string. See customization.ts.
+  customizationRecords: defineTable({
+    kind: v.string(),
+    externalId: v.string(),
+    productId: v.optional(v.string()),
+    value: v.string(),
+  })
+    .index("by_kind", ["kind"])
+    .index("by_kind_and_external_id", ["kind", "externalId"])
+    .index("by_kind_and_product_id", ["kind", "productId"]),
 });

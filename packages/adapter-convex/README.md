@@ -25,6 +25,7 @@ Deploy the functions in `convex-functions/` to your Convex project first; the ad
 - `connectConvexCategoryRepository(url)`, `createConvexCategoryRepository(client)`.
 - `connectConvexProductCategoryRepository(url)`, `createConvexProductCategoryRepository(client)`.
 - The `connect*` functions are async; the `create*` functions take a client you already hold.
+- `connectConvexCustomizationRepositories(url)`, `createConvexCustomizationRepositories(client)`: all five customization repositories.
 - `ConvexClientLike`: `{ query, mutation }`.
 
 ## Environment
