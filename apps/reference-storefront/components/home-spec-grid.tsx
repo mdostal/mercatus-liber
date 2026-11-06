@@ -1,6 +1,6 @@
 import type { ComponentInstance } from "@mercatus-liber/cms";
 import { CmsSection } from "./cms-sections";
-import { DS_ATOMS_CSS } from "./datasheet-styles";
+import { DS_ATOMS_CSS } from "@mercatus-liber/storefront-ui";
 import type { DemoSlug } from "../lib/demos";
 
 /**

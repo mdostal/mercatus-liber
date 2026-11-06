@@ -1,24 +1,24 @@
 import type { Money } from "@mercatus-liber/core";
-import { applyCouponAction, removeCartItemAction, startCheckoutAction, updateCartItemQuantityAction } from "../lib/actions";
-import type { DemoSlug } from "../lib/demos";
+import { StoreFields, type CartActions, type StoreContext } from "../store-context.js";
 
 /** One cart line's display shape -- the app-layer view of a CartItem plus the product title cart/page.tsx already resolves via catalog. */
 export interface CartTemplateLine {
   skuId: string;
   /** Set on a customized line, so changing one line of a SKU leaves its others alone. */
-  lineId?: string;
+  lineId?: string | undefined;
   title: string;
   quantity: number;
   priceSnapshot: Money;
   /** print-shop-02: the personalization text captured on the PDP at add-to-cart time, if any (design-discussion.md §1b). Additive/optional -- absent for every non-customized line, same as before this field existed. */
-  customizationNote?: string;
+  customizationNote?: string | undefined;
   /** image-cdn epic: a small real thumbnail for this line's product, resolved through @mercatus-liber/media's ImageAdapter by cart/page.tsx -- see lib/product-image.ts. `null`/undefined (no `images` yet, or no resolvable product) renders nothing extra, byte-for-byte what each cart template rendered before this field existed. */
-  imageUrl?: string | null;
-  imageAlt?: string | null;
+  imageUrl?: string | null | undefined;
+  imageAlt?: string | null | undefined;
 }
 
 export interface CartTemplateProps {
-  demoSlug: DemoSlug;
+  store: StoreContext;
+  actions: CartActions;
   lines: CartTemplateLine[];
   couponCode: string | null;
   couponEnteredButInvalid: boolean;
@@ -36,7 +36,7 @@ export interface CartTemplateProps {
    * both of which render byte-for-byte what this template rendered before
    * this field existed.
    */
-  themeKey?: string;
+  themeKey?: string | undefined;
   /**
    * sandbox-checkout epic: "sandbox" whenever this deployment has no real
    * STRIPE_SECRET_KEY configured (see lib/services.ts's payments branch) --
@@ -48,7 +48,7 @@ export interface CartTemplateProps {
    * updated to read it yet (none currently) still renders, defaulting to
    * the pre-existing "Stripe" copy.
    */
-  paymentsMode?: "sandbox" | "stripe";
+  paymentsMode?: "sandbox" | "stripe" | undefined;
 }
 
 /**
@@ -64,7 +64,8 @@ export interface CartTemplateProps {
  * and checkout forms below are unchanged, same actions as before.
  */
 export function CartStandard({
-  demoSlug,
+  store,
+  actions,
   lines,
   couponCode,
   couponEnteredButInvalid,
@@ -132,10 +133,10 @@ export function CartStandard({
               </span>
             </span>
             <form
-              action={updateCartItemQuantityAction}
+              action={actions.updateCartItemQuantity}
               style={{ display: "flex", alignItems: "center", gap: "var(--space-xs, 8px)" }}
             >
-              <input type="hidden" name="demoSlug" value={demoSlug} />
+              <StoreFields store={store} />
               <input type="hidden" name="skuId" value={line.skuId} />
               {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
               {/* a11y-audit: confirmed live via axe-core (northline PDP's own add-to-cart
@@ -154,8 +155,8 @@ export function CartStandard({
               />
               <button type="submit">Update</button>
             </form>
-            <form action={removeCartItemAction}>
-              <input type="hidden" name="demoSlug" value={demoSlug} />
+            <form action={actions.removeCartItem}>
+              <StoreFields store={store} />
               <input type="hidden" name="skuId" value={line.skuId} />
               {line.lineId && <input type="hidden" name="lineId" value={line.lineId} />}
               <button type="submit">Remove</button>
@@ -167,8 +168,8 @@ export function CartStandard({
         ))}
       </ul>
 
-      <form action={applyCouponAction} style={{ marginTop: "var(--space-md, 32px)" }}>
-        <input type="hidden" name="demoSlug" value={demoSlug} />
+      <form action={actions.applyCoupon} style={{ marginTop: "var(--space-md, 32px)" }}>
+        <StoreFields store={store} />
         <input type="text" name="code" placeholder="Coupon code" defaultValue={couponCode ?? ""} />
         <button type="submit">Apply coupon</button>
       </form>
@@ -200,8 +201,8 @@ export function CartStandard({
         </p>
       </section>
 
-      <form action={startCheckoutAction} style={{ marginTop: "var(--space-sm, 16px)" }}>
-        <input type="hidden" name="demoSlug" value={demoSlug} />
+      <form action={actions.startCheckout} style={{ marginTop: "var(--space-sm, 16px)" }}>
+        <StoreFields store={store} />
         <button type="submit">{checkoutLabel}</button>
       </form>
     </main>

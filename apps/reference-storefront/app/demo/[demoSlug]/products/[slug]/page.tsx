@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { TierPricing } from "@mercatus-liber/bundles";
-import { PdpLongScroll } from "../../../../../components/pdp-long-scroll";
-import { PdpSpecSheet } from "../../../../../components/pdp-spec-sheet";
-import { PdpTabbedDetail } from "../../../../../components/pdp-tabbed-detail";
+import { PdpLongScroll, PdpSpecSheet, PdpTabbedDetail, type PdpActions } from "@mercatus-liber/storefront-ui";
 import { BundleTierSelector } from "../../../../../components/bundle-tier-selector";
 import { InteractionTracker } from "../../../../../components/interaction-tracker";
 import { RecommendationShelf, resolvePdpRecommendations } from "../../../../../components/recommendation-shelf";
 import { PdpCustomizable } from "../../../../../components/pdp-customizable";
-import { addCustomizedToCartAction, quoteCustomizationAction } from "../../../../../lib/actions";
+import { addCustomizedToCartAction, addToCartAction, quoteCustomizationAction, submitReviewAction } from "../../../../../lib/actions";
 import { isDemoSlug } from "../../../../../lib/demos";
 import { breadcrumbList, JsonLd, type BreadcrumbItem } from "../../../../../lib/json-ld";
 import { resolvePageTemplateOverride } from "../../../../../lib/resolve-page-template";
@@ -120,6 +118,8 @@ export async function generateMetadata({
  * (theming resolves WHICH key; this map decides what that key renders as).
  * Adding a new registered template requires one more entry here.
  */
+const PDP_ACTIONS: PdpActions = { addToCart: addToCartAction, submitReview: submitReviewAction };
+
 const TEMPLATE_COMPONENTS = {
   "pdp.tabbed-detail": PdpTabbedDetail,
   "pdp.long-scroll": PdpLongScroll,
@@ -362,7 +362,8 @@ export default async function ProductPage({
         />
       ) : null}
       <Component
-        demoSlug={demoSlug}
+        store={{ basePath: `/demo/${demoSlug}`, formFields: { demoSlug } }}
+        actions={PDP_ACTIONS}
         viewModel={viewModel}
         stockBySkuId={stockBySkuId}
         // print-shop-02: isCustomizableProduct is print-shop-specific seed
@@ -370,11 +371,7 @@ export default async function ProductPage({
         // it returns false for a slug it doesn't recognize (e.g. a northline
         // product), so this call never needs a demoSlug guard.
         customizable={isCustomizableProduct(viewModel.product.slug)}
-        // visual-fidelity-maximalist: additive -- see pdp-tabbed-detail.tsx's
-        // themeKey doc comment. PdpLongScroll doesn't accept this prop
-        // (TypeScript's excess-property check only fires for object
-        // literals, not for a value passed through a union-typed
-        // ComponentType, so this is safe for both branches).
+        // Every template takes the active theme, for theme-specific layouts and CSS.
         themeKey={activeTheme.key}
         // image-cdn epic: additive/optional, see pdp-tabbed-detail.tsx's
         // imageUrl doc comment -- null for any product without `images`,

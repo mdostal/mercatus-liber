@@ -55,8 +55,8 @@ docs/
 ```
 
 **Where UI lives.** Sample stores in `apps/reference-storefront` are public examples meant to be
-copied. Themes live in `packages/theming`. Common components are moving to `packages/storefront-ui`, which holds the customizer and price
-breakdown so far. The rest still live inside the app at `apps/reference-storefront/components`, and
+copied. Themes live in `packages/theming`. Common components are moving to `packages/storefront-ui`, which holds the customizer, price
+breakdown, and the cart and product page templates so far. The rest still live inside the app at `apps/reference-storefront/components`, and
 a default UI built on the package is planned, not built.
 
 `shop.mdostal.com` (separate repo) consumes these packages, vendored as `pnpm pack` tarballs until

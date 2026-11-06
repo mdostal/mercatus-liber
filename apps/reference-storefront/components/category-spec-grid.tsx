@@ -1,6 +1,6 @@
 import type { ImageAdapter } from "@mercatus-liber/media";
 import type { Product } from "@mercatus-liber/core";
-import { DS_ATOMS_CSS, DS_FONT_MONO } from "./datasheet-styles";
+import { DS_ATOMS_CSS, DS_FONT_MONO } from "@mercatus-liber/storefront-ui";
 import type { DemoSlug } from "../lib/demos";
 import { resolveProductImageAlt, resolveProductImageUrl } from "../lib/product-image";
 

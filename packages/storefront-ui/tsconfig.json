@@ -7,5 +7,5 @@
     "jsx": "react-jsx"
   },
   "include": ["src"],
-  "references": [{ "path": "../customization" }]
+  "references": [{ "path": "../core" }, { "path": "../customization" }, { "path": "../pdp" }]
 }

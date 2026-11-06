@@ -36,7 +36,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { createPdpService } from "@mercatus-liber/pdp";
 import { createThemingService } from "@mercatus-liber/theming";
-import { VariantPicker } from "../components/variant-picker.js";
+import { VariantPicker } from "@mercatus-liber/storefront-ui";
 import { seedCatalog } from "../lib/seed.js";
 import { buildTestCatalogServices } from "./helpers.js";
 

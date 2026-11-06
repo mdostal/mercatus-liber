@@ -22,7 +22,9 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@mercatus-liber/customization": "workspace:*"
+    "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/customization": "workspace:*",
+    "@mercatus-liber/pdp": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.0.0"

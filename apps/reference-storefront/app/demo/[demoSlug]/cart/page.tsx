@@ -1,8 +1,7 @@
 import type { ComponentType } from "react";
 import { notFound } from "next/navigation";
-import { CartReceiptStyle } from "../../../../components/cart-receipt-style";
-import { CartSpecTable } from "../../../../components/cart-spec-table";
-import { CartStandard, type CartTemplateProps } from "../../../../components/cart-standard";
+import { CartReceiptStyle, CartSpecTable, CartStandard, type CartActions, type CartTemplateProps } from "@mercatus-liber/storefront-ui";
+import { applyCouponAction, removeCartItemAction, startCheckoutAction, updateCartItemQuantityAction } from "../../../../lib/actions";
 import { RecommendationShelf, resolveCartRecommendations } from "../../../../components/recommendation-shelf";
 import { readCartId } from "../../../../lib/cart-cookie";
 import { readCouponCode } from "../../../../lib/coupon-cookie";
@@ -25,6 +24,13 @@ const CART_TEMPLATES = {
   "cart.receipt-style": CartReceiptStyle,
   "cart.spec-table": CartSpecTable,
 } as const;
+
+const CART_ACTIONS: CartActions = {
+  updateCartItemQuantity: updateCartItemQuantityAction,
+  removeCartItem: removeCartItemAction,
+  applyCoupon: applyCouponAction,
+  startCheckout: startCheckoutAction,
+};
 
 export default async function CartPage({ params }: { params: Promise<{ demoSlug: string }> }) {
   const { demoSlug } = await params;
@@ -102,7 +108,8 @@ export default async function CartPage({ params }: { params: Promise<{ demoSlug:
   return (
     <>
       <Template
-        demoSlug={demoSlug}
+        store={{ basePath: `/demo/${demoSlug}`, formFields: { demoSlug } }}
+        actions={CART_ACTIONS}
         lines={lines.map(({ skuId, lineId, title, quantity, priceSnapshot, customizationNote, imageUrl, imageAlt }) => ({
           skuId,
           ...(lineId ? { lineId } : {}),

@@ -1,9 +1,8 @@
 import type { Sku } from "@mercatus-liber/core";
 import type { PdpViewModel } from "@mercatus-liber/pdp";
-import { addToCartAction, submitReviewAction } from "../lib/actions";
-import type { DemoSlug } from "../lib/demos";
-import { DS_ATOMS_CSS, DS_FONT_MONO } from "./datasheet-styles";
-import { VariantPicker } from "./variant-picker";
+import { DS_ATOMS_CSS, DS_FONT_MONO } from "./datasheet-styles.js";
+import { VariantPicker } from "./variant-picker.js";
+import { StoreFields, type PdpActions, type StoreContext } from "../store-context.js";
 
 /** "★★★★☆"-style rendering of a rating (rounded to the nearest whole star), same convention as pdp-tabbed-detail.tsx's own ratingStars. */
 function ratingStars(value: number): string {
@@ -42,7 +41,8 @@ function ratingStars(value: number): string {
  * picker chrome, byte-identical to before this story.
  */
 export function PdpSpecSheet({
-  demoSlug,
+  store,
+  actions,
   viewModel,
   stockBySkuId = {},
   customizable = false,
@@ -53,24 +53,25 @@ export function PdpSpecSheet({
   activeSku,
   optionSelection,
 }: {
-  demoSlug: DemoSlug;
+  store: StoreContext;
+  actions: PdpActions;
   viewModel: PdpViewModel;
   /** `null` means not inventory-tracked (always available, e.g. a bookable service) -- distinct from a real tracked 0. */
   stockBySkuId?: Record<string, number | null>;
   customizable?: boolean;
   /** image-cdn epic: same additive/optional resolved-photo props as pdp-tabbed-detail.tsx -- see that component's doc comment. */
-  imageUrl?: string | null;
-  imageAlt?: string | null;
+  imageUrl?: string | null | undefined;
+  imageAlt?: string | null | undefined;
   /** bare-basics epic: same additive/optional rating-summary prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   ratingSummary?: { average: number; count: number; distribution: Record<number, number> } | null;
   /** bare-basics epic: same additive/optional published-reviews prop as pdp-tabbed-detail.tsx -- see that component's doc comment. */
   reviews?: { id: string; rating: number; authorName: string; title: string; body: string; createdAt: string }[];
   /** pc-01: same additive/optional resolved-SKU/selection props as pdp-tabbed-detail.tsx -- see that component's doc comment. */
-  activeSku?: Sku;
-  optionSelection?: Record<string, string>;
+  activeSku?: Sku | undefined;
+  optionSelection?: Record<string, string> | undefined;
 }) {
   const { product, skus, optionValues } = viewModel;
-  const basePath = `/demo/${demoSlug}/products/${product.slug}`;
+  const basePath = `${store.basePath}/products/${product.slug}`;
 
   const amounts = skus.map((sku) => sku.price.amount);
   const currency = skus[0]?.price.currency ?? "USD";
@@ -274,8 +275,8 @@ export function PdpSpecSheet({
           {skus.length > 1 && activeSku ? (
             <>
               <VariantPicker basePath={basePath} optionValues={optionValues} selection={optionSelection ?? {}} />
-              <form action={addToCartAction} className="ds-sku-row">
-                <input type="hidden" name="demoSlug" value={demoSlug} />
+              <form action={actions.addToCart} className="ds-sku-row">
+                <StoreFields store={store} />
                 <input type="hidden" name="skuId" value={activeSku.id} />
                 <div className="ds-sku-attrs">
                   {activeSku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(" · ")}
@@ -308,8 +309,8 @@ export function PdpSpecSheet({
             </>
           ) : (
             skus.map((sku) => (
-              <form action={addToCartAction} key={sku.id} className="ds-sku-row">
-                <input type="hidden" name="demoSlug" value={demoSlug} />
+              <form action={actions.addToCart} key={sku.id} className="ds-sku-row">
+                <StoreFields store={store} />
                 <input type="hidden" name="skuId" value={sku.id} />
                 <div className="ds-sku-attrs">
                   {sku.identifyingAttributes.map((a) => `${a.key}: ${String(a.value)}`).join(" · ")}
@@ -365,8 +366,8 @@ export function PdpSpecSheet({
             Write a review
           </div>
           <p className="ds-review-meta">Reviews are moderated before appearing publicly.</p>
-          <form action={submitReviewAction}>
-            <input type="hidden" name="demoSlug" value={demoSlug} />
+          <form action={actions.submitReview}>
+            <StoreFields store={store} />
             <input type="hidden" name="productId" value={product.id} />
             <label htmlFor="review-rating">Rating</label>
             <select id="review-rating" name="rating" defaultValue={5}>

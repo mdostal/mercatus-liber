@@ -137,8 +137,8 @@ sync, and more are listed in [VISION.md's community frontier](VISION.md#wanted-n
 |---|---|---|
 | Sample stores | `apps/reference-storefront` | Live, public, and meant to be copied |
 | Theme tokens and bundles | `packages/theming` | Live, 10 bundles |
-| Storefront components | `apps/reference-storefront/components` | Live, but most are still inside the app, so they can't be imported as a package |
-| Common components | `packages/storefront-ui` | Started: the customizer and price breakdown, live on The Print Shop's [dad cap](https://commerce.mdostal.com/demo/print-shop/products/embroidered-dad-cap) |
+| Other storefront components | `apps/reference-storefront/components` | Live, but navigation, home, category, and CMS components are still inside the app |
+| Common components | `packages/storefront-ui` | Partial: cart and product page templates, plus the customizer and price breakdown, live on The Print Shop's [dad cap](https://commerce.mdostal.com/demo/print-shop/products/embroidered-dad-cap) |
 | Customizer Web Component | `packages/customization-ui` | Framework-free, but still on hex colors and not used by a sample store |
 | Default UI | Not built | Planned: move the remaining app components into `storefront-ui` as a default storefront |
 

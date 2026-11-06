@@ -1066,3 +1066,9 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 - `priceLine` labels a color markup with the color's name instead of its id.
 - Cart templates keep customized lines of one SKU separate when changing quantity or removing.
 
+## [0.50.0] - 2026-11-05
+
+### Changed
+
+- Moved the three cart templates, three product page templates, and the variant picker from the reference storefront into `@mercatus-liber/storefront-ui`. They now take a `store` and `actions` prop instead of importing the app's routes and server actions.
+

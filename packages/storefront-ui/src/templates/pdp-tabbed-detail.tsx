@@ -1,8 +1,7 @@
 import type { Sku } from "@mercatus-liber/core";
 import type { PdpViewModel } from "@mercatus-liber/pdp";
-import { addToCartAction, submitReviewAction } from "../lib/actions";
-import type { DemoSlug } from "../lib/demos";
-import { VariantPicker } from "./variant-picker";
+import { VariantPicker } from "./variant-picker.js";
+import { StoreFields, type PdpActions, type StoreContext } from "../store-context.js";
 
 /** "★★★★☆"-style rendering of a rating (rounded to the nearest whole star -- ratings/averages are never fractional stars, only a real computed nearest-integer glyph count). */
 function ratingStars(value: number): string {
@@ -20,7 +19,8 @@ function ratingStars(value: number): string {
  * more branch in app/products/[slug]/page.tsx -- no other package changes.
  */
 export function PdpTabbedDetail({
-  demoSlug,
+  store,
+  actions,
   viewModel,
   stockBySkuId = {},
   customizable = false,
@@ -32,7 +32,8 @@ export function PdpTabbedDetail({
   activeSku,
   optionSelection,
 }: {
-  demoSlug: DemoSlug;
+  store: StoreContext;
+  actions: PdpActions;
   viewModel: PdpViewModel;
   /** `null` means not inventory-tracked (always available, e.g. a bookable service) -- distinct from a real tracked 0. */
   stockBySkuId?: Record<string, number | null>;
@@ -47,7 +48,7 @@ export function PdpTabbedDetail({
    * passes a different key, both of which render byte-for-byte what this
    * template rendered before this field existed.
    */
-  themeKey?: string;
+  themeKey?: string | undefined;
   /**
    * image-cdn epic: additive/optional -- the product's primary photo,
    * already resolved through @mercatus-liber/media's ImageAdapter by the
@@ -56,8 +57,8 @@ export function PdpTabbedDetail({
    * broken-image icon -- byte-for-byte what this template rendered before
    * this field existed.
    */
-  imageUrl?: string | null;
-  imageAlt?: string | null;
+  imageUrl?: string | null | undefined;
+  imageAlt?: string | null | undefined;
   /** bare-basics epic: additive/optional -- computed fresh by the page via ReviewsService.getRatingSummary. `null`/undefined or a 0 count renders nothing (never a fake "0 reviews" line) -- byte-for-byte what this template rendered before this field existed. */
   ratingSummary?: { average: number; count: number; distribution: Record<number, number> } | null;
   /** bare-basics epic: additive/optional -- the product's real published reviews (ReviewsService.listPublishedReviewsForProduct). An empty array renders the "no reviews yet" empty state, never a fabricated review. */
@@ -71,12 +72,12 @@ export function PdpTabbedDetail({
    * receives either prop as non-undefined (see the `skus.length > 1` guard
    * below), so its rendering is untouched by this story.
    */
-  activeSku?: Sku;
-  optionSelection?: Record<string, string>;
+  activeSku?: Sku | undefined;
+  optionSelection?: Record<string, string> | undefined;
 }) {
   const { product, skus, optionValues } = viewModel;
   const isMaximalist = themeKey === "maximalist";
-  const basePath = `/demo/${demoSlug}/products/${product.slug}`;
+  const basePath = `${store.basePath}/products/${product.slug}`;
 
   return (
     <main className={isMaximalist ? "mx-pdp" : undefined}>
@@ -113,8 +114,8 @@ export function PdpTabbedDetail({
         {skus.length > 1 && activeSku ? (
           <>
             <VariantPicker basePath={basePath} optionValues={optionValues} selection={optionSelection ?? {}} />
-            <form action={addToCartAction} style={{ marginBottom: "var(--space-sm, 16px)" }}>
-              <input type="hidden" name="demoSlug" value={demoSlug} />
+            <form action={actions.addToCart} style={{ marginBottom: "var(--space-sm, 16px)" }}>
+              <StoreFields store={store} />
               <input type="hidden" name="skuId" value={activeSku.id} />
               <span
                 className={isMaximalist ? "mx-pdp-price" : undefined}
@@ -175,8 +176,8 @@ export function PdpTabbedDetail({
           </>
         ) : (
           skus.map((sku) => (
-            <form action={addToCartAction} key={sku.id} style={{ marginBottom: "var(--space-sm, 16px)" }}>
-              <input type="hidden" name="demoSlug" value={demoSlug} />
+            <form action={actions.addToCart} key={sku.id} style={{ marginBottom: "var(--space-sm, 16px)" }}>
+              <StoreFields store={store} />
               <input type="hidden" name="skuId" value={sku.id} />
               <span
                 className={isMaximalist ? "mx-pdp-price" : undefined}
@@ -270,8 +271,8 @@ export function PdpTabbedDetail({
         <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>
           Reviews are moderated before appearing publicly.
         </p>
-        <form action={submitReviewAction}>
-          <input type="hidden" name="demoSlug" value={demoSlug} />
+        <form action={actions.submitReview}>
+          <StoreFields store={store} />
           <input type="hidden" name="productId" value={product.id} />
           <div style={{ marginBottom: "var(--space-xs, 8px)" }}>
             <label htmlFor="review-rating" style={{ fontSize: "var(--font-size-body, 1rem)" }}>

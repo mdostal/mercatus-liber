@@ -1190,9 +1190,15 @@ importers:
 
   packages/storefront-ui:
     dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
       '@mercatus-liber/customization':
         specifier: workspace:*
         version: link:../customization
+      '@mercatus-liber/pdp':
+        specifier: workspace:*
+        version: link:../pdp
     devDependencies:
       '@types/react':
         specifier: ^19.0.0

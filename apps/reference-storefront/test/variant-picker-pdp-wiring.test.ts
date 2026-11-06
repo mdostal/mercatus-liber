@@ -45,7 +45,7 @@ import { createPdpService } from "@mercatus-liber/pdp";
 import { createInMemoryRecommendationRepository, createRecommendationsService } from "@mercatus-liber/recommendations";
 import { createInMemoryReviewRepository, createReviewsService } from "@mercatus-liber/reviews";
 import { createThemingService } from "@mercatus-liber/theming";
-import { VariantPicker } from "../components/variant-picker.js";
+import { VariantPicker } from "@mercatus-liber/storefront-ui";
 import { seedCatalog } from "../lib/seed.js";
 import { buildTestCatalogServices } from "./helpers.js";
 
