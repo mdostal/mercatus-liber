@@ -1,4 +1,4 @@
-import type { AvailabilityStatus } from "@mercatus-liber/core";
+import type { AvailabilityStatus, LineCustomization } from "@mercatus-liber/core";
 
 /**
  * One filament/paint color offered for customization -- a shared palette
@@ -182,6 +182,25 @@ export interface ProductVariants {
   /** The name ColorRegion.when conditions use for the variant id -- e.g. "lock". */
   key: string;
   rows: ProductVariantRow[];
+}
+
+/** What a shopper chose for one line, before validation. See CustomizationService.resolveLine. */
+export interface LineInput {
+  finish: string;
+  selection: CustomizationSelection;
+  picks?: Record<string, string>;
+  artStyle?: string;
+  name?: string;
+  font?: string;
+  lettering?: Record<string, unknown>;
+  /** Counts for cost drivers only the caller knows, such as "a name was entered". */
+  attributeCounts?: Record<string, number>;
+}
+
+/** A validated line, ready for a cart and for pricing. */
+export interface ResolvedLine {
+  line: LineCustomization;
+  build: PriceBuild;
 }
 
 /** The result of resolvePicks. */

@@ -1034,3 +1034,21 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 - A product with variants now throws `InvalidPicksError` from those three service methods when picks are missing or don't match a variant.
 - Postgres adds `options`, `variants`, and `variant_overrides` columns on first use.
 
+## [0.48.0] - 2026-11-05
+
+### Added
+
+- `LineCustomization` in `@mercatus-liber/core`: a shopper's choices as structured data, carried by `CartItem` and `OrderLineItem`.
+- `CustomizationService.resolveLine`, `priceLine`, and `toPrintOrder` in `@mercatus-liber/customization`.
+- `CartService.addItem` takes `customization` and a server-computed `unitPrice`. Customized lines get a `lineId`, which `removeItem` and `updateQuantity` accept.
+- Request-only choices are listed on the line, so they reach the order for fulfillment.
+
+### Changed
+
+- `startCheckout` refuses a line marked `quoteRequired`, throwing `QuoteRequiredError`.
+- Postgres adds `customization` and `line_id` columns to `cart_items` on first use.
+
+### Fixed
+
+- Checkout priced by SKU, so two lines of one SKU at different prices would both have charged the same amount. It now prices by line position.
+

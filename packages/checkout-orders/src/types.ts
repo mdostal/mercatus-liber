@@ -1,4 +1,4 @@
-import type { Money } from "@mercatus-liber/core";
+import type { LineCustomization, Money } from "@mercatus-liber/core";
 
 export interface OrderLineItem {
   skuId: string;
@@ -12,6 +12,8 @@ export interface OrderLineItem {
    * data, never computed here.
    */
   customizationNote?: string;
+  /** What the shopper chose for a made-to-order line, including any choices to handle by hand. See LineCustomization. */
+  customization?: LineCustomization;
 }
 
 export type OrderStatus = "pending_payment" | "paid" | "fulfilled" | "cancelled";
@@ -101,7 +103,7 @@ export interface OrderRepository {
 export interface CartLookup {
   getCart(
     id: string,
-  ): Promise<{ items: { skuId: string; quantity: number; priceSnapshot: Money; customizationNote?: string }[] } | null>;
+  ): Promise<{ items: { skuId: string; quantity: number; priceSnapshot: Money; customizationNote?: string; customization?: LineCustomization }[] } | null>;
 }
 
 /**
@@ -122,7 +124,7 @@ export interface PaymentSessionCreator {
 
 /** Post-adjustment cart pricing, computed by a PricingAdjuster from a set of pre-discount line items plus an optional coupon code. */
 export interface PricingAdjustment {
-  /** post-discount unit price */
+  /** post-discount unit price, one entry per input line in the same order: one SKU can have several lines at different prices */
   items: { skuId: string; quantity: number; unitAmount: Money }[];
   discountTotal: Money;
   /** sum(items[].unitAmount * quantity) */
@@ -174,5 +176,13 @@ export class OrderNotFoundError extends Error {
   constructor(id: string) {
     super(`Order not found: ${id}`);
     this.name = "OrderNotFoundError";
+  }
+}
+
+/** Thrown when a cart holds a line that needs a quote, which can't be paid for at its listed price. */
+export class QuoteRequiredError extends Error {
+  constructor(readonly skuIds: string[]) {
+    super(`These items need a quote before they can be purchased: ${skuIds.join(", ")}`);
+    this.name = "QuoteRequiredError";
   }
 }

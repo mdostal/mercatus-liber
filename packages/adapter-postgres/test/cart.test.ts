@@ -74,12 +74,14 @@ function createFakeCartPool(): FakePool {
     }
 
     if (sql.startsWith("INSERT INTO cart_items")) {
-      const [cartId, skuId, quantity, priceAmount, priceCurrency, customizationNote] = values as [
+      const [cartId, skuId, quantity, priceAmount, priceCurrency, customizationNote, customization, lineId] = values as [
         string,
         string,
         number,
         number,
         string,
+        string | null,
+        string | null,
         string | null,
       ];
       if (skuId === POISON_SKU_ID) {
@@ -94,6 +96,8 @@ function createFakeCartPool(): FakePool {
         price_amount: priceAmount,
         price_currency: priceCurrency,
         customization_note: customizationNote,
+        customization: customization ? JSON.parse(customization) : null,
+        line_id: lineId,
       });
       return { rows: [] };
     }
