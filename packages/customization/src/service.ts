@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { resolveColorCount, resolveEffectiveColor, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
+import { canonicalColor, resolveColorCount, resolveEffectiveColor, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
 import type {
   ArtStyle,
   ArtStyleRepository,
@@ -65,8 +65,9 @@ export interface CustomizationService {
 
   /**
    * The effective color for EVERY region of a product's customization,
-   * under one finish and one shopper selection -- what a storefront's 3D
-   * viewer actually paints each region. Throws if finishId isn't one of
+   * under one finish and one shopper selection, as canonical values (see
+   * canonicalColor): pass them straight to PriceBuild.colors, and through
+   * resolveColorHex to paint a 3D viewer. Throws if finishId isn't one of
    * this product's offered finishIds, or if a region's `selection` entry
    * is missing where required (see resolveEffectiveColor's own doc
    * comment) -- a storefront should only ever call this with a complete
@@ -217,7 +218,7 @@ export function createCustomizationService(deps: {
 
       const result: Record<string, string> = {};
       for (const region of customization.regions) {
-        result[region.id] = resolveEffectiveColor(customization.regions, finish, selection, region.id);
+        result[region.id] = canonicalColor(paletteColors, resolveEffectiveColor(customization.regions, finish, selection, region.id));
       }
       return result;
     },

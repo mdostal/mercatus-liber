@@ -48,17 +48,18 @@ const price = resolvePrice(rules, {
 - `discontinued`: rejected server-side with `InvalidColorSelectionError`, `DiscontinuedFinishError`, or `DiscontinuedArtStyleError`.
 - `request`: selectable; the host app decides how to capture the request.
 
+## Color values
+
+Selections, effective colors, and `PriceBuild.colors` all use palette ids, such as `black`. A `#rrggbb` hex is accepted only in a region that offers a free color. `resolveEffectiveColors` returns values you can pass straight to `PriceBuild.colors`; use `resolveColorHex` to get the hex for painting a 3D viewer.
+
 ## Key exports
 
 - `createCustomizationService(deps)`: palette, finish, art style, and product customization CRUD, plus `resolveEffectiveColors`, `getRegionChoices`, `getColorCount`, `validateArtStyleChoice`.
-- Pure functions: `validateRegions`, `resolveEffectiveColor`, `availableColorChoices`, `validateSelectedColor`, `resolveColorCount`, `resolvePrice`.
+- Pure functions: `validateRegions`, `resolveEffectiveColor`, `availableColorChoices`, `validateSelectedColor`, `canonicalColor`, `resolveColorHex`, `defaultSelection`, `resolveColorCount`, `resolvePrice`.
 - `createInMemoryPaletteRepository`, `createInMemoryFinishTierRepository`, `createInMemoryArtStyleRepository`, `createInMemoryProductCustomizationRepository`, `createInMemoryPricingRulesRepository`.
 
 ## Known limitations
 
-- Palette identity is matched by hex, so two palette entries sharing a hex count as one color.
-- The selection and `resolveEffectiveColors` output are hex values, while `colorMarkupCents` is keyed by palette id. Markups only apply if the caller passes palette ids in `PriceBuild.colors`.
-- A `colorChanges` rule compares raw strings, so use one consistent form and casing in `PriceBuild.colors`.
 - Repositories for customization are in-memory only.
 - There is no options or variants support yet.
 

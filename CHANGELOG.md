@@ -985,3 +985,20 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 ### Chores
 
 - Ignored local Hive runtime state and committed the storefront's generated agent files.
+
+## [0.44.0] - 2026-11-05
+
+### Changed
+
+- **Breaking, `@mercatus-liber/customization`:** palette ids are now the canonical color value in selections, effective colors, and `PriceBuild.colors`, matching `print-order/1`. `validateSelectedColor` rejects a hex in a region without a free color, even one matching a palette entry, and rejects a malformed free hex.
+
+### Added
+
+- `canonicalColor`, `resolveColorHex`, and `defaultSelection` in `@mercatus-liber/customization`.
+
+### Fixed
+
+- `colorMarkupCents` now charges when fed `resolveEffectiveColors` output; it silently charged nothing before.
+- Two palette entries sharing a hex count as two colors in `resolveColorCount`.
+- `colorChanges` no longer counts hexes differing only by case as two colors.
+

@@ -112,6 +112,16 @@ describe("resolvePrice", () => {
     expect(result.lines.filter((l) => l.id === "color:dawn-radiance")).toHaveLength(1);
   });
 
+  it("🔍 counts hexes differing only by case as one color change", () => {
+    const rules: PricingRules = {
+      basePriceCents: { painted: 1000 },
+      attributes: [{ id: "changes", label: "Changes", perUnitCents: 100 }],
+      excessUnitRules: [{ attributeId: "changes", source: "colorChanges", freeUnits: 0 }],
+    };
+    expect(resolvePrice(rules, { finish: "painted", colors: { a: "#ABCDEF", b: "#abcdef" } }).total).toBe(1000);
+    expect(resolvePrice(rules, { finish: "painted", colors: { a: "#ABCDEF", b: "#abcdee" } }).total).toBe(1100);
+  });
+
   it("omits a zero-amount line entirely rather than showing a $0 line", () => {
     const rules: PricingRules = { basePriceCents: { solid: 1000 }, attributes: [{ id: "noop", label: "No-op", perUnitCents: 0 }] };
     const result = resolvePrice(rules, { finish: "solid", attributeCounts: { noop: 1 } });

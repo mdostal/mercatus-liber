@@ -69,72 +69,103 @@ export function availableColorChoices(palette: PaletteColor[], regions: ColorReg
   return { palette: list, freeColor, locked };
 }
 
+/** A free-picked color's only accepted form. */
+const FREE_COLOR_HEX = /^#[0-9a-f]{6}$/i;
+
 /**
- * Thrown when a submitted selection tries to use a palette color this
- * region's current choices don't actually allow -- either a color id that
- * doesn't exist in this region's offered palette at all, or one that's
- * discontinued (never selectable, regardless of what a client-side UI
- * shows or omits to show). "request"-status colors ARE allowed through --
- * per AvailabilityStatus's own contract, they're explicitly selectable on
- * request, the caller is responsible for capturing that request with the
- * order (see this package's own README/service doc comments). Never
- * trust client-side greying-out alone -- a shopper (or a script) could
- * submit any hex directly.
+ * Thrown when a submitted selection isn't one this region's current choices
+ * allow: a palette id it doesn't offer, a discontinued color, a hex in a
+ * region without a free color picker, or a malformed hex. "request"-status
+ * colors are allowed through: per AvailabilityStatus, they're selectable on
+ * request and the caller captures that request with the order. Never trust
+ * client-side greying-out alone, since a script can submit anything.
  */
 export class InvalidColorSelectionError extends Error {
-  constructor(regionId: string, hex: string, reason: "discontinued" | "not-offered") {
-    super(reason === "discontinued" ? `Region "${regionId}": color ${hex} is discontinued and cannot be selected` : `Region "${regionId}": color ${hex} is not one of this region's offered choices`);
+  constructor(regionId: string, value: string, reason: "discontinued" | "not-offered") {
+    super(reason === "discontinued" ? `Region "${regionId}": color ${value} is discontinued and cannot be selected` : `Region "${regionId}": color ${value} is not one of this region's offered choices`);
     this.name = "InvalidColorSelectionError";
   }
 }
 
 /**
- * Validates one region's selected hex against its own current choices
- * (the output of availableColorChoices for that region) -- throws
- * InvalidColorSelectionError if it's discontinued or not actually
- * offered. A hex that doesn't match any palette entry is valid ONLY when
- * `choices.freeColor` is true (an "any"-mode region's free color picker);
- * otherwise it must match a non-discontinued palette entry by hex.
- * Call this for every region before persisting a shopper's selection
- * (e.g. onto a cart line) -- resolveEffectiveColor/availableColorChoices
- * alone don't enforce this, they just compute, matching this package's
- * own "pure derivation, caller decides when to enforce" discipline.
+ * The one form a color value is compared, priced, and stored in: a palette id,
+ * or a lowercase `#rrggbb` for a free-picked color. A hex that exactly matches
+ * one solid palette entry becomes that entry's id, so a painted region picked
+ * as `#141414` and a region picked as `black` are one color. A multi-color
+ * entry never matches by hex (its hex is only representative), and a hex
+ * shared by two solid entries stays a hex rather than guessing between them.
  */
-export function validateSelectedColor(choices: RegionColorChoices, regionId: string, hex: string): void {
-  const match = choices.palette.find((p) => p.hex.toLowerCase() === hex.toLowerCase());
-  if (match) {
-    if (match.status === "discontinued") throw new InvalidColorSelectionError(regionId, hex, "discontinued");
-    return;
+export function canonicalColor(palette: PaletteColor[], value: string): string {
+  if (!value.startsWith("#")) return value;
+  const hex = value.toLowerCase();
+  const matches = palette.filter((p) => p.kind !== "multi" && p.hex.toLowerCase() === hex);
+  return matches.length === 1 ? matches[0]!.id : hex;
+}
+
+/** The hex to paint for a canonical color value: a multi-color entry returns its representative hex. Throws on a palette id that doesn't exist. */
+export function resolveColorHex(palette: PaletteColor[], value: string): string {
+  if (value.startsWith("#")) return value.toLowerCase();
+  const match = palette.find((p) => p.id === value);
+  if (!match) throw new Error(`Unknown palette color: ${value}`);
+  return match.hex;
+}
+
+/**
+ * Validates one region's selected color against its own current choices (the
+ * output of availableColorChoices for that region). A palette id must be
+ * offered and not discontinued. A `#rrggbb` hex is valid only when
+ * `choices.freeColor` is true, and is still refused if it resolves to a
+ * discontinued palette entry. Call this for every region before persisting a
+ * selection: resolveEffectiveColor and availableColorChoices only compute.
+ */
+export function validateSelectedColor(choices: RegionColorChoices, regionId: string, value: string): void {
+  if (value.startsWith("#") && (!choices.freeColor || !FREE_COLOR_HEX.test(value))) {
+    throw new InvalidColorSelectionError(regionId, value, "not-offered");
   }
-  if (!choices.freeColor) throw new InvalidColorSelectionError(regionId, hex, "not-offered");
+  const canonical = canonicalColor(choices.palette, value);
+  const match = choices.palette.find((p) => p.id === canonical);
+  if (match?.status === "discontinued") throw new InvalidColorSelectionError(regionId, value, "discontinued");
+  if (!match && !canonical.startsWith("#")) throw new InvalidColorSelectionError(regionId, value, "not-offered");
+}
+
+/** The starting color for one slot: its default when that's still normally offered, else the first active color offered, else nothing. */
+function defaultColor(palette: PaletteColor[], choices: RegionColorChoices, defaultHex: string): string | undefined {
+  const canonical = canonicalColor(palette, defaultHex);
+  const isActive = (p: PaletteColor): boolean => (p.status ?? "active") === "active";
+  const entry = choices.palette.find((p) => p.id === canonical);
+  if (entry ? isActive(entry) : choices.freeColor && FREE_COLOR_HEX.test(canonical)) return canonical;
+  return choices.palette.find(isActive)?.id;
+}
+
+/** A starting selection for a finish, built from each region's `defaultHex`. Holds `__all` under ColorMode "single" (from the first region's default), else one entry per region that takes its own choice. */
+export function defaultSelection(palette: PaletteColor[], regions: ColorRegion[], finish: FinishTier): CustomizationSelection {
+  const selection: CustomizationSelection = {};
+  if (finish.colors === "single") {
+    const color = regions[0] && defaultColor(palette, availableColorChoices(palette, regions, finish, "__all"), regions[0].defaultHex);
+    if (color) selection.__all = color;
+    return selection;
+  }
+  for (const region of regions) {
+    const choices = availableColorChoices(palette, regions, finish, region.id);
+    if (choices.locked) continue;
+    const color = defaultColor(palette, choices, region.defaultHex);
+    if (color) selection[region.id] = color;
+  }
+  return selection;
 }
 
 /**
- * A resolved hex's identity for counting: the first palette entry with
- * that hex, else the lowercased hex for a free-picked color. Known
- * limitation: selections are hex values, so two palette entries sharing a
- * hex (e.g. a multi-color filament whose representative hex matches a
- * solid) resolve to the same identity and count as one color.
- */
-function colorIdentity(palette: PaletteColor[], hex: string): string {
-  const match = palette.find((p) => p.hex.toLowerCase() === hex.toLowerCase());
-  return match ? match.id : hex.toLowerCase();
-}
-
-/**
- * The number of DISTINCT colors a build actually resolves to, after
- * finish rules are applied -- reported by the reference editor as `colorCount`. ColorMode
- * "single" always resolves to exactly 1 (the whole piece shares one
- * color); otherwise every region's resolveEffectiveColor result is
- * counted by colorIdentity, so parent-follows regions correctly collapse
- * into their parent's one color instead of each counting separately.
+ * The number of DISTINCT colors a build actually resolves to, after finish
+ * rules are applied. ColorMode "single" always resolves to exactly 1;
+ * otherwise every region's effective color is counted by canonicalColor, so
+ * parent-follows regions collapse into their parent's one color, and two
+ * palette entries that happen to share a hex stay two colors.
  */
 export function resolveColorCount(palette: PaletteColor[], regions: ColorRegion[], finish: FinishTier, selection: CustomizationSelection): number {
   if (finish.colors === "single") return 1;
-  const identities = new Set<string>();
+  const colors = new Set<string>();
   for (const region of regions) {
-    const hex = resolveEffectiveColor(regions, finish, selection, region.id);
-    identities.add(colorIdentity(palette, hex));
+    colors.add(canonicalColor(palette, resolveEffectiveColor(regions, finish, selection, region.id)));
   }
-  return identities.size;
+  return colors.size;
 }

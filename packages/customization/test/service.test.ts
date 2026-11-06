@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createInMemoryArtStyleRepository, createInMemoryFinishTierRepository, createInMemoryPaletteRepository, createInMemoryProductCustomizationRepository } from "../src/in-memory-repository.js";
 import { InvalidColorSelectionError } from "../src/resolution.js";
 import { DiscontinuedArtStyleError, DiscontinuedFinishError, UnknownArtStyleError, UnknownFinishTierError, createCustomizationService, type CustomizationService } from "../src/service.js";
-import { MissingParentRegionError } from "../src/types.js";
+import { resolvePrice } from "../src/pricing.js";
+import { MissingParentRegionError, type PricingRules } from "../src/types.js";
 import { REAL_ART_STYLES, REAL_FINISHES, REAL_PALETTE, STOVETOP_GLOW_CUSTOMIZATION, STOVETOP_GLOW_REGIONS, TREASURE_CHEST_CUSTOMIZATION, TREASURE_CHEST_REGIONS } from "./fixtures.js";
 // NOTE: pricing-related service tests (getFinishPriceDelta/getArtStylePriceDelta/getCustomizationPriceDelta)
 // were removed along with those methods -- pricing now lives entirely in PricingService (test/pricing.test.ts
@@ -72,15 +73,15 @@ describe("CustomizationService", () => {
   describe("resolveEffectiveColors", () => {
     it("resolves every region of treasure-chest under 'solid' (ColorMode single) from selection.__all", async () => {
       const created = await service.createProductCustomization({ productId: TREASURE_CHEST_CUSTOMIZATION.productId, finishIds: TREASURE_CHEST_CUSTOMIZATION.finishIds, regions: TREASURE_CHEST_REGIONS });
-      const result = await service.resolveEffectiveColors(created.id, "solid", { __all: "#7A4A24" });
-      expect(result).toEqual({ body: "#7A4A24", straps: "#7A4A24", name: "#7A4A24", "plate-border": "#7A4A24", plate: "#7A4A24", lock: "#7A4A24" });
+      const result = await service.resolveEffectiveColors(created.id, "solid", { __all: "brown" });
+      expect(result).toEqual({ body: "brown", straps: "brown", name: "brown", "plate-border": "brown", plate: "brown", lock: "brown" });
     });
 
     it("resolves stovetop-glow under 'separate': coils/knob-pointers follow their parents", async () => {
       const created = await service.createProductCustomization({ productId: STOVETOP_GLOW_CUSTOMIZATION.productId, finishIds: STOVETOP_GLOW_CUSTOMIZATION.finishIds, regions: STOVETOP_GLOW_REGIONS });
-      const result = await service.resolveEffectiveColors(created.id, "separate", { body: "#141414", glass: "#1F5FD0", knobs: "#C12E1F" });
-      expect(result.coils).toBe("#1F5FD0");
-      expect(result["knob-pointers"]).toBe("#C12E1F");
+      const result = await service.resolveEffectiveColors(created.id, "separate", { body: "black", glass: "blue", knobs: "red" });
+      expect(result.coils).toBe("blue");
+      expect(result["knob-pointers"]).toBe("red");
     });
 
     it("throws UnknownFinishTierError when finishId isn't in this product's own finishIds", async () => {
@@ -98,22 +99,22 @@ describe("CustomizationService", () => {
       await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "red")!, status: "discontinued" });
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["ams"], regions: TREASURE_CHEST_REGIONS });
       await expect(
-        service.resolveEffectiveColors(created.id, "ams", { body: "#C12E1F", straps: "#141414", name: "#141414", "plate-border": "#141414", plate: "#F4D21F", lock: "#F4D21F" }),
+        service.resolveEffectiveColors(created.id, "ams", { body: "red", straps: "black", name: "black", "plate-border": "black", plate: "yellow", lock: "yellow" }),
       ).rejects.toThrow(InvalidColorSelectionError);
     });
 
     it("accepts a submitted 'request'-status palette color -- selectable on request, per AvailabilityStatus's contract", async () => {
       await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "red")!, status: "request" });
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["ams"], regions: TREASURE_CHEST_REGIONS });
-      const result = await service.resolveEffectiveColors(created.id, "ams", { body: "#C12E1F", straps: "#141414", name: "#141414", "plate-border": "#141414", plate: "#F4D21F", lock: "#F4D21F" });
-      expect(result.body).toBe("#C12E1F");
+      const result = await service.resolveEffectiveColors(created.id, "ams", { body: "red", straps: "black", name: "black", "plate-border": "black", plate: "yellow", lock: "yellow" });
+      expect(result.body).toBe("red");
     });
 
     it("🔍 doesn't validate a LOCKED region's own missing selection entry (it has none -- it inherits), only the parent's", async () => {
       const created = await service.createProductCustomization({ productId: STOVETOP_GLOW_CUSTOMIZATION.productId, finishIds: STOVETOP_GLOW_CUSTOMIZATION.finishIds, regions: STOVETOP_GLOW_REGIONS });
       // No "coils" key at all in the selection -- only its parent "glass" is set.
-      const result = await service.resolveEffectiveColors(created.id, "separate", { body: "#141414", glass: "#1F5FD0", knobs: "#C12E1F" });
-      expect(result.coils).toBe("#1F5FD0");
+      const result = await service.resolveEffectiveColors(created.id, "separate", { body: "black", glass: "blue", knobs: "red" });
+      expect(result.coils).toBe("blue");
     });
   });
 
@@ -137,14 +138,14 @@ describe("CustomizationService", () => {
   describe("getColorCount", () => {
     it("counts distinct colors across treasure-chest's real regions under 'separate', collapsing parent-follows regions", async () => {
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
-      const count = await service.getColorCount(created.id, "separate", { body: "#C12E1F", straps: "#00AE42", plate: "#1F5FD0", lock: "#1F5FD0" });
+      const count = await service.getColorCount(created.id, "separate", { body: "red", straps: "green", plate: "blue", lock: "blue" });
       expect(count).toBe(3);
     });
 
     it("rejects a submitted discontinued color before counting it -- same validation as resolveEffectiveColors", async () => {
       await service.setPaletteColor({ ...REAL_PALETTE.find((c) => c.id === "red")!, status: "discontinued" });
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["separate"], regions: TREASURE_CHEST_REGIONS });
-      await expect(service.getColorCount(created.id, "separate", { body: "#C12E1F", straps: "#141414", plate: "#F4D21F", lock: "#F4D21F" })).rejects.toThrow(InvalidColorSelectionError);
+      await expect(service.getColorCount(created.id, "separate", { body: "red", straps: "black", plate: "yellow", lock: "yellow" })).rejects.toThrow(InvalidColorSelectionError);
     });
   });
 
@@ -168,6 +169,23 @@ describe("CustomizationService", () => {
       await service.setArtStyle({ ...REAL_ART_STYLES.find((s) => s.id === "raised")!, status: "discontinued" });
       const created = await service.createProductCustomization({ productId: "chest", finishIds: ["solid"], regions: [], artStyleIds: ["flush", "raised"] });
       await expect(service.validateArtStyleChoice(created.id, "raised")).rejects.toThrow(DiscontinuedArtStyleError);
+    });
+  });
+
+  describe("palette ids end to end", () => {
+    it("🔍 charges a color markup from resolveEffectiveColors' own output", async () => {
+      const created = await service.createProductCustomization(TREASURE_CHEST_CUSTOMIZATION);
+      const selection = Object.fromEntries(TREASURE_CHEST_REGIONS.map((r) => [r.id, r.id === "body" ? "red" : "black"]));
+      const colors = await service.resolveEffectiveColors(created.id, "ams", selection);
+      expect(colors.body).toBe("red");
+      const rules: PricingRules = { basePriceCents: { ams: 1000 }, attributes: [], colorMarkupCents: { red: 500 } };
+      expect(resolvePrice(rules, { finish: "ams", colors }).total).toBe(1500);
+    });
+
+    it("🔍 rejects a hex selection in a palette-only finish", async () => {
+      const created = await service.createProductCustomization(TREASURE_CHEST_CUSTOMIZATION);
+      const selection = Object.fromEntries(TREASURE_CHEST_REGIONS.map((r) => [r.id, "#141414"]));
+      await expect(service.resolveEffectiveColors(created.id, "ams", selection)).rejects.toThrow(InvalidColorSelectionError);
     });
   });
 });

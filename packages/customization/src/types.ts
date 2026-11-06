@@ -179,7 +179,7 @@ export interface ProductCustomization {
 
 export type NewProductCustomizationInput = Omit<ProductCustomization, "id">;
 
-/** A shopper's in-progress or submitted color choice -- regionId -> hex value. Palette colors are selected by their `hex`; validateSelectedColor rejects a palette id. A hex outside the palette is valid only where availableColorChoices offers a free color. The special key `__all` holds the single whole-piece color under a ColorMode "single" finish. */
+/** A shopper's in-progress or submitted color choice -- regionId -> palette id. A `#rrggbb` hex is valid only where availableColorChoices offers a free color; validateSelectedColor rejects one anywhere else, even if it matches a palette entry's hex. The special key `__all` holds the single whole-piece color under a ColorMode "single" finish. */
 export type CustomizationSelection = Record<string, string>;
 
 /** What a region can be colored under the CURRENT finish selection -- the live result of availableColorChoices, driving a storefront's swatch row. */
@@ -299,8 +299,8 @@ export interface PricingAttribute {
  * print time). Not specific to one product or one region pair -- a
  * product can define as many of these as it has real contrast-sensitive
  * region groups, each naming whichever `attributeId` the admin wants to
- * rate. Compares PriceBuild.colors values case-insensitively; those must
- * be effective colors, see PriceBuild.colors.
+ * rate. PriceBuild.colors values must be effective colors, see
+ * PriceBuild.colors.
  */
 export interface ContrastRule {
   attributeId: string;
@@ -405,11 +405,9 @@ export interface PriceBuild {
    * regionId -> each region's EFFECTIVE color, never the raw selection:
    * a locked region's raw value can differ from a sibling's while both
    * resolve to the same color, which falsely fires a contrast rule.
-   * Drives contrastRules, colorMarkupCents, and a "colorChanges"
-   * ExcessUnitRule. Known limitations: colorMarkupCents is keyed by
-   * palette id while resolveEffectiveColors returns hex, so convert hex
-   * to palette ids or markups never apply; "colorChanges" compares raw
-   * strings, so use one consistent form and casing.
+   * Pass resolveEffectiveColors' output as is: palette ids, plus lowercase
+   * hexes for free-picked colors. Drives contrastRules, colorMarkupCents,
+   * and a "colorChanges" ExcessUnitRule.
    */
   colors?: Record<string, string>;
   /**

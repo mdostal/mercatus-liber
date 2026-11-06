@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InvalidColorSelectionError, availableColorChoices, resolveColorCount, resolveEffectiveColor, validateRegions, validateSelectedColor } from "../src/resolution.js";
+import { InvalidColorSelectionError, availableColorChoices, canonicalColor, defaultSelection, resolveColorCount, resolveColorHex, resolveEffectiveColor, validateRegions, validateSelectedColor } from "../src/resolution.js";
 import { MissingParentRegionError, UnknownParentRegionError, type ColorRegion } from "../src/types.js";
 import { REAL_PALETTE, STOVETOP_GLOW_REGIONS, TREASURE_CHEST_REGIONS, findFinish } from "./fixtures.js";
 
@@ -26,9 +26,9 @@ describe("validateRegions", () => {
 describe("resolveEffectiveColor", () => {
   it("ColorMode 'single': every region shares selection.__all, regardless of the region itself", () => {
     const finish = findFinish("solid");
-    const selection = { __all: "#7A4A24" };
+    const selection = { __all: "brown" };
     for (const region of TREASURE_CHEST_REGIONS) {
-      expect(resolveEffectiveColor(TREASURE_CHEST_REGIONS, finish, selection, region.id)).toBe("#7A4A24");
+      expect(resolveEffectiveColor(TREASURE_CHEST_REGIONS, finish, selection, region.id)).toBe("brown");
     }
   });
 
@@ -39,22 +39,22 @@ describe("resolveEffectiveColor", () => {
 
   it("every region picks its own color under 'ams' (producesSeparateParts: false), even non-separable ones -- the reference's own rule: only separate/finished force the parent fallback", () => {
     const finish = findFinish("ams");
-    const selection = { body: "#141414", glass: "#141414", coils: "#F4F4F2", knobs: "#141414", "knob-pointers": "#F4F4F2" };
-    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "coils")).toBe("#F4F4F2");
-    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "knob-pointers")).toBe("#F4F4F2");
+    const selection = { body: "black", glass: "black", coils: "white", knobs: "black", "knob-pointers": "white" };
+    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "coils")).toBe("white");
+    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "knob-pointers")).toBe("white");
   });
 
   it("a non-separable region follows its parent's effective color under 'separate' (producesSeparateParts: true)", () => {
     const finish = findFinish("separate");
-    const selection = { body: "#141414", glass: "#1F5FD0", knobs: "#C12E1F" };
-    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "coils")).toBe("#1F5FD0");
-    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "knob-pointers")).toBe("#C12E1F");
+    const selection = { body: "black", glass: "blue", knobs: "red" };
+    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "coils")).toBe("blue");
+    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "knob-pointers")).toBe("red");
   });
 
   it("🔍 a separable region keeps its own color under 'separate' even when siblings are locked", () => {
     const finish = findFinish("separate");
-    const selection = { body: "#00AE42", glass: "#1F5FD0", knobs: "#C12E1F" };
-    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "body")).toBe("#00AE42");
+    const selection = { body: "green", glass: "blue", knobs: "red" };
+    expect(resolveEffectiveColor(STOVETOP_GLOW_REGIONS, finish, selection, "body")).toBe("green");
   });
 
   it("throws on an unknown region id", () => {
@@ -99,26 +99,44 @@ describe("availableColorChoices", () => {
 });
 
 describe("validateSelectedColor", () => {
-  it("passes a hex that matches an active palette entry", () => {
+  it("passes the id of an active palette entry", () => {
     const choices = availableColorChoices(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("ams"), "body");
-    expect(() => validateSelectedColor(choices, "body", "#C12E1F")).not.toThrow();
+    expect(() => validateSelectedColor(choices, "body", "red")).not.toThrow();
   });
 
-  it("is case-insensitive on hex comparison", () => {
+  it("🔍 rejects a hex in a palette-only region, even one matching a palette entry", () => {
     const choices = availableColorChoices(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("ams"), "body");
-    expect(() => validateSelectedColor(choices, "body", "#c12e1f")).not.toThrow();
+    expect(() => validateSelectedColor(choices, "body", "#C12E1F")).toThrow(InvalidColorSelectionError);
+  });
+
+  it("rejects a palette id this region doesn't offer", () => {
+    const choices = availableColorChoices(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("ams"), "body");
+    expect(() => validateSelectedColor(choices, "body", "no-such-color")).toThrow(InvalidColorSelectionError);
+  });
+
+  it("🔍 rejects a malformed free color", () => {
+    const choices = availableColorChoices(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("painted"), "body");
+    for (const bad of ["#FFF", "#GGGGGG", "#12345678", "#"]) {
+      expect(() => validateSelectedColor(choices, "body", bad)).toThrow(InvalidColorSelectionError);
+    }
+  });
+
+  it("🔍 rejects a free hex that resolves to a discontinued palette color", () => {
+    const palette = REAL_PALETTE.map((c) => (c.id === "red" ? { ...c, status: "discontinued" as const } : c));
+    const choices = availableColorChoices(palette, TREASURE_CHEST_REGIONS, findFinish("painted"), "body");
+    expect(() => validateSelectedColor(choices, "body", "#c12e1f")).toThrow(InvalidColorSelectionError);
   });
 
   it("throws InvalidColorSelectionError('discontinued') for a discontinued palette color, never silently accepted", () => {
     const palette = REAL_PALETTE.map((c) => (c.id === "red" ? { ...c, status: "discontinued" as const } : c));
     const choices = availableColorChoices(palette, TREASURE_CHEST_REGIONS, findFinish("ams"), "body");
-    expect(() => validateSelectedColor(choices, "body", "#C12E1F")).toThrow(InvalidColorSelectionError);
+    expect(() => validateSelectedColor(choices, "body", "red")).toThrow(InvalidColorSelectionError);
   });
 
   it("allows a 'request'-status palette color through -- explicitly selectable on request", () => {
     const palette = REAL_PALETTE.map((c) => (c.id === "red" ? { ...c, status: "request" as const } : c));
     const choices = availableColorChoices(palette, TREASURE_CHEST_REGIONS, findFinish("ams"), "body");
-    expect(() => validateSelectedColor(choices, "body", "#C12E1F")).not.toThrow();
+    expect(() => validateSelectedColor(choices, "body", "red")).not.toThrow();
   });
 
   it("throws InvalidColorSelectionError('not-offered') for a hex outside the palette when freeColor is false", () => {
@@ -138,12 +156,29 @@ describe("validateSelectedColor", () => {
 });
 
 describe("resolveColorCount", () => {
+  it("🔍 counts two palette entries sharing a hex as two colors", () => {
+    const palette = [...REAL_PALETTE, { id: "dawn", label: "Dawn silk", hex: "#141414", kind: "multi" as const }];
+    const regions: ColorRegion[] = [
+      { id: "a", label: "A", defaultHex: "#141414", separable: true },
+      { id: "b", label: "B", defaultHex: "#141414", separable: true },
+    ];
+    expect(resolveColorCount(palette, regions, findFinish("ams"), { a: "black", b: "dawn" })).toBe(2);
+  });
+
+  it("🔍 counts a free hex and the palette id it matches as one color", () => {
+    const regions: ColorRegion[] = [
+      { id: "a", label: "A", defaultHex: "#141414", separable: true },
+      { id: "b", label: "B", defaultHex: "#141414", separable: true },
+    ];
+    expect(resolveColorCount(REAL_PALETTE, regions, findFinish("painted"), { a: "black", b: "#141414" })).toBe(1);
+  });
+
   it("ColorMode 'single' always resolves to exactly 1, regardless of region count", () => {
-    expect(resolveColorCount(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("solid"), { __all: "#7A4A24" })).toBe(1);
+    expect(resolveColorCount(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("solid"), { __all: "brown" })).toBe(1);
   });
 
   it("counts 1 when every region ends up the same color under 'separate'", () => {
-    const selection = { body: "#141414", straps: "#141414", plate: "#141414", lock: "#141414" };
+    const selection = { body: "black", straps: "black", plate: "black", lock: "black" };
     expect(resolveColorCount(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("separate"), selection)).toBe(1);
   });
 
@@ -151,18 +186,87 @@ describe("resolveColorCount", () => {
     // Under "separate": name/plate-border inherit "plate"'s color -- 3 distinct
     // colors chosen (body, straps, plate), not 4, even though plate's color
     // is also what name and plate-border resolve to.
-    const selection = { body: "#C12E1F", straps: "#00AE42", plate: "#1F5FD0", lock: "#1F5FD0" };
+    const selection = { body: "red", straps: "green", plate: "blue", lock: "blue" };
     expect(resolveColorCount(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("separate"), selection)).toBe(3);
   });
 
   it("dedups by palette id, not literal selection string casing", () => {
-    const selection = { body: "#c12e1f", straps: "#C12E1F", plate: "#1F5FD0", lock: "#1F5FD0" };
+    const selection = { body: "#c12e1f", straps: "red", plate: "blue", lock: "blue" };
     expect(resolveColorCount(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("separate"), selection)).toBe(2);
   });
 
   it("🔍 a free-picked hex not in the palette still dedups correctly by its own raw value when reused across regions", () => {
     // Under "painted" (producesSeparateParts: false) every region takes its own selection entry, including non-separable ones.
-    const selection = { body: "#ABCDEF", straps: "#ABCDEF", name: "#1F5FD0", "plate-border": "#1F5FD0", plate: "#1F5FD0", lock: "#1F5FD0" };
+    const selection = { body: "#ABCDEF", straps: "#ABCDEF", name: "blue", "plate-border": "blue", plate: "blue", lock: "blue" };
     expect(resolveColorCount(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("painted"), selection)).toBe(2);
+  });
+});
+
+describe("canonicalColor", () => {
+  const SHARED_HEX = [...REAL_PALETTE, { id: "dawn", label: "Dawn silk", hex: "#141414", kind: "multi" as const }];
+
+  it("leaves a palette id alone", () => {
+    expect(canonicalColor(REAL_PALETTE, "black")).toBe("black");
+  });
+
+  it("turns a hex matching one solid entry into that id, ignoring case", () => {
+    expect(canonicalColor(REAL_PALETTE, "#c12e1f")).toBe("red");
+  });
+
+  it("lowercases a hex outside the palette", () => {
+    expect(canonicalColor(REAL_PALETTE, "#ABCDEF")).toBe("#abcdef");
+  });
+
+  it("🔍 never matches a multi-color entry by its representative hex", () => {
+    expect(canonicalColor([{ id: "dawn", label: "Dawn silk", hex: "#C98FB0", kind: "multi" }], "#C98FB0")).toBe("#c98fb0");
+    expect(canonicalColor(SHARED_HEX, "#141414")).toBe("black");
+  });
+
+  it("🔍 keeps a hex shared by two solid entries as a hex rather than guessing", () => {
+    const palette = [...REAL_PALETTE, { id: "charcoal", label: "Charcoal", hex: "#141414" }];
+    expect(canonicalColor(palette, "#141414")).toBe("#141414");
+  });
+});
+
+describe("resolveColorHex", () => {
+  it("returns a palette entry's hex, including a multi-color entry's representative hex", () => {
+    expect(resolveColorHex(REAL_PALETTE, "red")).toBe("#C12E1F");
+    expect(resolveColorHex([{ id: "dawn", label: "Dawn silk", hex: "#C98FB0", kind: "multi" }], "dawn")).toBe("#C98FB0");
+  });
+
+  it("returns a free color lowercased, and throws on an unknown id", () => {
+    expect(resolveColorHex(REAL_PALETTE, "#ABCDEF")).toBe("#abcdef");
+    expect(() => resolveColorHex(REAL_PALETTE, "no-such-color")).toThrow(/no-such-color/);
+  });
+});
+
+describe("defaultSelection", () => {
+  it("holds only __all under ColorMode 'single'", () => {
+    const selection = defaultSelection(REAL_PALETTE, TREASURE_CHEST_REGIONS, findFinish("solid"));
+    expect(Object.keys(selection)).toEqual(["__all"]);
+    expect(REAL_PALETTE.some((c) => c.id === selection.__all)).toBe(true);
+  });
+
+  it("skips locked regions and produces a selection the validator accepts", () => {
+    const finish = findFinish("separate");
+    const selection = defaultSelection(REAL_PALETTE, STOVETOP_GLOW_REGIONS, finish);
+    expect(selection.coils).toBeUndefined();
+    for (const [regionId, value] of Object.entries(selection)) {
+      expect(() => validateSelectedColor(availableColorChoices(REAL_PALETTE, STOVETOP_GLOW_REGIONS, finish, regionId), regionId, value)).not.toThrow();
+    }
+  });
+
+  it("🔍 falls back to the first active color when a default is discontinued, request-only, or outside the palette", () => {
+    const finish = findFinish("ams");
+    const region = (defaultHex: string): ColorRegion[] => [{ id: "body", label: "Body", defaultHex, separable: true }];
+    const gone = REAL_PALETTE.map((c) => (c.id === "red" ? { ...c, status: "discontinued" as const } : c));
+    expect(defaultSelection(gone, region("#C12E1F"), finish).body).toBe("black");
+    expect(defaultSelection(REAL_PALETTE, region("#F55A74"), finish).body).toBe("black");
+    expect(defaultSelection(REAL_PALETTE, region("#ABCDEF"), finish).body).toBe("black");
+  });
+
+  it("keeps an out-of-palette default where a free color is offered", () => {
+    const regions: ColorRegion[] = [{ id: "body", label: "Body", defaultHex: "#ABCDEF", separable: true }];
+    expect(defaultSelection(REAL_PALETTE, regions, findFinish("painted")).body).toBe("#abcdef");
   });
 });

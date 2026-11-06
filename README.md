@@ -143,9 +143,9 @@ sync, and more are listed in [VISION.md's community frontier](VISION.md#wanted-n
 
 ## What's being worked on
 
-- **Customization:** making palette ids the canonical color value, which fixes the
-  [known limitations](packages/customization/README.md#known-limitations); durable storage across
-  databases; lock and hardware options; structured order data from cart through to print job.
+- **Customization:** durable storage across databases; lock and hardware options; structured order
+  data from cart through to print job. See its
+  [known limitations](packages/customization/README.md#known-limitations).
 - **UI:** extracting the common component package and default UI, and rendering the customizer in
   the sample stores.
 - **Release:** npm publishing, after dogfooding on a real store.

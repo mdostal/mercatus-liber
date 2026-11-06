@@ -1,16 +1,20 @@
 import type { ContrastRule, ExcessUnitRule, PriceBuild, PriceLine, PriceResult, PricingRules } from "./types.js";
 
-/** Distinct palette color ids (or raw hexes) actually used across `build.colors` -- shared by the colorMarkupCents block and the "colorChanges" ExcessUnitRule source so it's computed once per resolvePrice call. */
+/** Hex casing never distinguishes colors; palette ids are compared exactly, because they key `colorMarkupCents`. */
+function colorKey(value: string): string {
+  return value.startsWith("#") ? value.toLowerCase() : value;
+}
+
+/** Distinct colors actually used across `build.colors` -- shared by the colorMarkupCents block and the "colorChanges" ExcessUnitRule source. */
 function distinctColorIds(build: PriceBuild): Set<string> {
-  return new Set(Object.values(build.colors ?? {}));
+  return new Set(Object.values(build.colors ?? {}).map(colorKey));
 }
 
 /**
  * Every attribute count a build actually carries, after folding in
  * `rules.contrastRules` and `rules.excessUnitRules` -- the only counting
  * this package does itself. Each contrast rule that fires (any of its
- * `regions` has a color that doesn't match any of its `core`'s colors,
- * compared case-insensitively) contributes exactly 1 unit to its own
+ * `regions` has a color that doesn't match any of its `core`'s colors) contributes exactly 1 unit to its own
  * `attributeId`; each excess-unit rule contributes its own derived count
  * (see resolveExcessUnitCount) to its own `attributeId`. Both are added
  * on top of whatever `build.attributeCounts` the caller already supplied
@@ -32,8 +36,8 @@ function resolveAttributeCounts(rules: PricingRules, build: PriceBuild): Record<
 }
 
 function contrastFires(rule: ContrastRule, colors: Record<string, string>): boolean {
-  const coreColors = new Set(rule.core.map((regionId) => (colors[regionId] ?? "").toLowerCase()));
-  return rule.regions.some((regionId) => colors[regionId] && !coreColors.has(colors[regionId]!.toLowerCase()));
+  const coreColors = new Set(rule.core.map((regionId) => colorKey(colors[regionId] ?? "")));
+  return rule.regions.some((regionId) => colors[regionId] && !coreColors.has(colorKey(colors[regionId]!)));
 }
 
 /** The raw, un-thresholded value of an ExcessUnitRule's named source for this build -- see ExcessUnitRule's own doc comment for exactly what each source means and where it comes from. */
