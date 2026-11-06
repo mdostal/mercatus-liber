@@ -1,11 +1,13 @@
 import type { FulfillmentAdapter, FulfillmentLineRecord, FulfillmentProviderKey, SubmitFulfillmentOrderInput } from "@mercatus-liber/fulfillment";
 import { InvalidCatalogMappingError, requireCatalogTarget, type ProviderCatalogMappingRepository } from "@mercatus-liber/fulfillment";
 import { createPrintfulHttpClient, type PrintfulHttpClient } from "./http-client.js";
-import { findTrackingUrlForItem, mapPrintfulOrderStatus, mapRecipientToPrintfulAddress, type PrintfulCatalogTarget, type PrintfulRecipientAddress } from "./mapping.js";
+import { assertShippableRecipient, findTrackingUrlForItem, mapPrintfulOrderStatus, mapRecipientToPrintfulAddress, type PrintfulCatalogTarget, type PrintfulRecipientAddress } from "./mapping.js";
 import type { PrintfulCatalogOrderItemInput, PrintfulOrderResponse, PrintfulShipmentResponse } from "./printful-types.js";
 import { parsePrintfulWebhookPayload, PrintfulWebhookSignatureInvalidError, PrintfulWebhookSignatureUnconfirmedError, verifyPrintfulSignature, type PrintfulWebhookEvent } from "./webhook.js";
 
 export * from "./printful-types.js";
+export * from "./catalog.js";
+export * from "./products.js";
 export * from "./mapping.js";
 export { PrintfulApiError, type PrintfulHttpClient } from "./http-client.js";
 export {
@@ -18,7 +20,8 @@ export {
 } from "./webhook.js";
 
 /** The provider key this adapter registers itself under in a FulfillmentService's `adapters` map (see design-discussion.md and fulfillment's own test suite, which already uses this exact string as its example third-party provider key). */
-export const PRINTFUL_PROVIDER: FulfillmentProviderKey = "printful";
+import { PRINTFUL_PROVIDER } from "./provider.js";
+export { PRINTFUL_PROVIDER };
 
 export interface PrintfulFulfillmentAdapterConfig {
   apiToken: string;
@@ -161,6 +164,8 @@ export function createPrintfulFulfillmentAdapter(config: PrintfulFulfillmentAdap
       // supplied one -- see mapRecipientToPrintfulAddress's doc comment
       // (mapping.ts) and this config's resolveRecipient doc comment above.
       const recipient = input.recipient ? mapRecipientToPrintfulAddress(input.recipient) : await config.resolveRecipient(input.orderId);
+
+      assertShippableRecipient(recipient);
 
       const targets = new Map<string, PrintfulCatalogTarget>();
       for (const item of input.items) {

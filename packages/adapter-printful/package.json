@@ -22,6 +22,7 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@mercatus-liber/core": "workspace:*",
     "@mercatus-liber/fulfillment": "workspace:*"
   },
   "devDependencies": {
