@@ -177,6 +177,18 @@ sku-availability-status epic, reused here verbatim for `PaletteColor.status` and
 this package's own `src`; it's consumed only by `apps/reference-storefront` (if/when wired) and
 downstream by whichever storefront UI builds on top of it.
 
+## Options and variants
+`ProductCustomization.options` holds what a shopper picks beyond colors, `variants` maps picks to a
+version of the product, and `ColorRegion.when` limits a region to some versions. `resolvePicks`
+matches the 3D side's `resolveVariant` (`dostal-3d-printing/shop-assets/customizer/core.js`), checked
+over all 200 pick combinations for the two real products with options, with one deliberate
+difference: `hardware: metal` resolves here with a `requests` entry, because a shop has to be able to
+take the quote request, while the print tool refuses it. Keep such an order away from the print tool.
+
+A choice's `attributeId` charges one unit of a `PricingAttribute`, so rates stay admin-defined, and a
+`quoteOnly` attribute makes it a quote. `PricingRules.variantOverrides` replaces the base price or
+estimated minutes per variant and finish; pass the variant as `PriceBuild.variant`.
+
 ## Color values
 Selections, effective colors, and `PriceBuild.colors` all carry palette ids, matching the `colors`
 field of `print-order/1`. A `#rrggbb` hex is accepted only where `RegionColorChoices.freeColor` is
@@ -196,8 +208,8 @@ moved to palette ids yet.
 Verified against the built package, 2026-11-05:
 - `resolvePrice` charges for distinct colors beyond the first, not for each color differing from a
   region's default. A per-region "differs from base" charge exists only through `ContrastRule`.
-- `estimatedMinutes` is one constant per finish, so the excess-time charge does not change with the
-  shopper's color choices.
+- `estimatedMinutes` is one constant per finish and optional variant, so the excess-time charge does
+  not change with the shopper's color choices.
 - Test files are not typechecked: `tsconfig.json` includes only `src`.
 - `PricingDocument` is exported but unused by the repository or service.
 

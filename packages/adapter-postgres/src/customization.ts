@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS product_customizations (
   art_style_ids JSONB,
   why TEXT
 );
+ALTER TABLE product_customizations ADD COLUMN IF NOT EXISTS options JSONB;
+ALTER TABLE product_customizations ADD COLUMN IF NOT EXISTS variants JSONB;
 CREATE INDEX IF NOT EXISTS idx_product_customizations_product_id ON product_customizations(product_id);
 
 CREATE TABLE IF NOT EXISTS pricing_rules (
@@ -88,6 +90,7 @@ CREATE TABLE IF NOT EXISTS pricing_rules (
   estimated_minutes JSONB,
   excess_unit_rules JSONB
 );
+ALTER TABLE pricing_rules ADD COLUMN IF NOT EXISTS variant_overrides JSONB;
 `;
 
 const schemaByPool = new WeakMap<Pool, Promise<void>>();
@@ -259,6 +262,8 @@ interface ProductCustomizationRow {
   bundled_product_ids: string[] | null; // JSONB
   art_style_ids: string[] | null; // JSONB
   why: string | null;
+  options: ProductCustomization["options"] | null; // JSONB
+  variants: ProductCustomization["variants"] | null; // JSONB
 }
 
 function rowToProductCustomization(row: ProductCustomizationRow): ProductCustomization {
@@ -270,6 +275,8 @@ function rowToProductCustomization(row: ProductCustomizationRow): ProductCustomi
     ...(row.bundled_product_ids ? { bundledProductIds: row.bundled_product_ids } : {}),
     ...(row.art_style_ids ? { artStyleIds: row.art_style_ids } : {}),
     ...(row.why ? { why: row.why } : {}),
+    ...(row.options ? { options: row.options } : {}),
+    ...(row.variants ? { variants: row.variants } : {}),
   };
 }
 
@@ -294,15 +301,17 @@ export function createPostgresProductCustomizationRepository(pool: Pool): Produc
     async save(customization: ProductCustomization): Promise<void> {
       await ensureSchema(pool);
       await pool.query(
-        `INSERT INTO product_customizations (id, product_id, finish_ids, regions, bundled_product_ids, art_style_ids, why)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO product_customizations (id, product_id, finish_ids, regions, bundled_product_ids, art_style_ids, why, options, variants)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (id) DO UPDATE SET
            product_id = EXCLUDED.product_id,
            finish_ids = EXCLUDED.finish_ids,
            regions = EXCLUDED.regions,
            bundled_product_ids = EXCLUDED.bundled_product_ids,
            art_style_ids = EXCLUDED.art_style_ids,
-           why = EXCLUDED.why`,
+           why = EXCLUDED.why,
+           options = EXCLUDED.options,
+           variants = EXCLUDED.variants`,
         [
           customization.id,
           customization.productId,
@@ -311,6 +320,8 @@ export function createPostgresProductCustomizationRepository(pool: Pool): Produc
           customization.bundledProductIds ? JSON.stringify(customization.bundledProductIds) : null,
           customization.artStyleIds ? JSON.stringify(customization.artStyleIds) : null,
           customization.why ?? null,
+          customization.options ? JSON.stringify(customization.options) : null,
+          customization.variants ? JSON.stringify(customization.variants) : null,
         ],
       );
     },
@@ -325,6 +336,7 @@ interface PricingRulesRow {
   color_markup_cents: Record<string, number> | null; // JSONB
   estimated_minutes: Record<string, number> | null; // JSONB
   excess_unit_rules: PricingRules["excessUnitRules"] | null; // JSONB
+  variant_overrides: PricingRules["variantOverrides"] | null; // JSONB
 }
 
 function rowToPricingRules(row: PricingRulesRow): PricingRules {
@@ -335,6 +347,7 @@ function rowToPricingRules(row: PricingRulesRow): PricingRules {
     ...(row.color_markup_cents ? { colorMarkupCents: row.color_markup_cents } : {}),
     ...(row.estimated_minutes ? { estimatedMinutes: row.estimated_minutes } : {}),
     ...(row.excess_unit_rules ? { excessUnitRules: row.excess_unit_rules } : {}),
+    ...(row.variant_overrides ? { variantOverrides: row.variant_overrides } : {}),
   };
 }
 
@@ -355,15 +368,16 @@ export function createPostgresPricingRulesRepository(pool: Pool): PricingRulesRe
     async save(productId: string, rules: PricingRules): Promise<void> {
       await ensureSchema(pool);
       await pool.query(
-        `INSERT INTO pricing_rules (product_id, base_price_cents, attributes, contrast_rules, color_markup_cents, estimated_minutes, excess_unit_rules)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO pricing_rules (product_id, base_price_cents, attributes, contrast_rules, color_markup_cents, estimated_minutes, excess_unit_rules, variant_overrides)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (product_id) DO UPDATE SET
            base_price_cents = EXCLUDED.base_price_cents,
            attributes = EXCLUDED.attributes,
            contrast_rules = EXCLUDED.contrast_rules,
            color_markup_cents = EXCLUDED.color_markup_cents,
            estimated_minutes = EXCLUDED.estimated_minutes,
-           excess_unit_rules = EXCLUDED.excess_unit_rules`,
+           excess_unit_rules = EXCLUDED.excess_unit_rules,
+           variant_overrides = EXCLUDED.variant_overrides`,
         [
           productId,
           JSON.stringify(rules.basePriceCents),
@@ -372,6 +386,7 @@ export function createPostgresPricingRulesRepository(pool: Pool): PricingRulesRe
           rules.colorMarkupCents ? JSON.stringify(rules.colorMarkupCents) : null,
           rules.estimatedMinutes ? JSON.stringify(rules.estimatedMinutes) : null,
           rules.excessUnitRules ? JSON.stringify(rules.excessUnitRules) : null,
+          rules.variantOverrides ? JSON.stringify(rules.variantOverrides) : null,
         ],
       );
     },

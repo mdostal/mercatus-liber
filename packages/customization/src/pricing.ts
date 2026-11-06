@@ -44,7 +44,7 @@ function contrastFires(rule: ContrastRule, colors: Record<string, string>): bool
 function sourceValue(rules: PricingRules, build: PriceBuild, source: ExcessUnitRule["source"]): number {
   switch (source) {
     case "estimatedMinutes":
-      return rules.estimatedMinutes?.[build.finish] ?? 0;
+      return (build.variant ? rules.variantOverrides?.[build.variant]?.estimatedMinutes?.[build.finish] : undefined) ?? rules.estimatedMinutes?.[build.finish] ?? 0;
     case "colorChanges":
       return Math.max(0, distinctColorIds(build).size - 1);
     case "nameLength":
@@ -67,7 +67,8 @@ function resolveExcessUnitCount(rules: PricingRules, build: PriceBuild, rule: Ex
  * `rules.colorMarkupCents`, all admin-defined.
  *
  * Steps:
- * 1. "base": `rules.basePriceCents[build.finish]` (0 if missing -- a
+ * 1. "base": the variant's override if it has one, else
+ *    `rules.basePriceCents[build.finish]` (0 if missing -- a
  *    product that hasn't priced a finish yet prices it at $0, which is
  *    visibly wrong rather than silently defaulted to some other finish's
  *    price).
@@ -100,7 +101,7 @@ function resolveExcessUnitCount(rules: PricingRules, build: PriceBuild, rule: Ex
  * has no way to detect on its own (caught in a real integration).
  */
 export function resolvePrice(rules: PricingRules, build: PriceBuild): PriceResult {
-  const base = rules.basePriceCents[build.finish] ?? 0;
+  const base = (build.variant ? rules.variantOverrides?.[build.variant]?.basePriceCents?.[build.finish] : undefined) ?? rules.basePriceCents[build.finish] ?? 0;
   const lines: PriceLine[] = [{ id: "base", label: "Base price", amount: base }];
   const add = (id: string, label: string, amount: number): void => {
     if (amount) lines.push({ id, label, amount });

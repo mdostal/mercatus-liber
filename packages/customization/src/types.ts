@@ -141,6 +141,59 @@ export interface ColorRegion {
   allowedColorIds?: string[];
   /** Shown to the shopper when this region is restricted or locked -- e.g. "The LEDs shine through these, so they stay white." */
   why?: string;
+  /** If set, this region exists only on these variants, keyed by `ProductVariants.key` -- e.g. `{ lock: ["hasp"] }`. See activeRegions. */
+  when?: Record<string, string[]>;
+}
+
+/** Which picks something applies to: option id -> the choice id, or any of the choice ids, it requires. */
+export type PickCondition = Record<string, string | string[]>;
+
+/** One thing a shopper can pick for an option. */
+export interface OptionChoice {
+  id: string;
+  label: string;
+  note?: string;
+  /** This choice is valid only with these other picks -- e.g. a working lock only at the seam. */
+  only?: PickCondition;
+  /** "request" can be picked, is listed in ResolvedPicks.requests, and is usually paired with a quoteOnly attribute. "discontinued" is refused. */
+  status?: AvailabilityStatus;
+  /** A PricingAttribute id this choice charges one unit of. Pricing lives in the attribute, so the rate stays admin-defined. */
+  attributeId?: string;
+}
+
+/** A choice a shopper makes about a product beyond its colors -- e.g. lock position, or hardware. */
+export interface ProductOption {
+  id: string;
+  label: string;
+  /** This option applies only with these other picks; otherwise a pick for it is dropped. */
+  when?: PickCondition;
+  choices: OptionChoice[];
+}
+
+/** One version of a product, chosen by the first row whose `when` matches the picks. */
+export interface ProductVariantRow {
+  id: string;
+  label: string;
+  when: PickCondition;
+}
+
+/** How picks map to versions of a product. Which 3D model each variant loads stays with the storefront, keyed by variant id. */
+export interface ProductVariants {
+  /** The name ColorRegion.when conditions use for the variant id -- e.g. "lock". */
+  key: string;
+  rows: ProductVariantRow[];
+}
+
+/** The result of resolvePicks. */
+export interface ResolvedPicks {
+  /** The picks that actually apply, with any that don't removed. This is what an order should carry. */
+  picks: Record<string, string>;
+  /** The variant these picks resolve to, or null if the product has no variants. */
+  variantId: string | null;
+  /** Live choices with "request" status, to capture with the order. */
+  requests: { optionId: string; choiceId: string }[];
+  /** One unit per live choice naming an attributeId. Pass to PriceBuild.attributeCounts. */
+  attributeCounts: Record<string, number>;
 }
 
 /**
@@ -171,6 +224,10 @@ export interface ProductCustomization {
    * combined product.
    */
   bundledProductIds?: string[];
+  /** What a shopper picks beyond colors, in presentation order. See resolvePicks. */
+  options?: ProductOption[];
+  /** How those picks map to versions of this product. See resolvePicks. */
+  variants?: ProductVariants;
   /** Art style ids this product offers (e.g. "flush", "raised"), in presentation order. Absent means this product doesn't offer a choice of art style at all -- not every product needs one. */
   artStyleIds?: string[];
   /** Shown to the shopper for why this product's offered finishes are limited (e.g. "No one-color option: the coil diffusers must be white for the LEDs to shine through."). */
@@ -370,6 +427,13 @@ export interface PricingRules {
   estimatedMinutes?: Record<string, number>;
   /** This product's excess-unit complexity rules, if it has any -- see ExcessUnitRule's own doc comment. */
   excessUnitRules?: ExcessUnitRule[];
+  /** Per-variant replacements for `basePriceCents` and `estimatedMinutes`, by variant id then finish id, for versions that really cost or print differently. A finish missing here falls back to the product-level value. */
+  variantOverrides?: Record<string, VariantPricingOverride>;
+}
+
+export interface VariantPricingOverride {
+  basePriceCents?: Record<string, number>;
+  estimatedMinutes?: Record<string, number>;
 }
 
 /**
@@ -400,6 +464,8 @@ export interface PricingDocument {
  */
 export interface PriceBuild {
   finish: string;
+  /** ResolvedPicks.variantId, for a product with `variantOverrides`. */
+  variant?: string;
   attributeCounts?: Record<string, number>;
   /**
    * regionId -> each region's EFFECTIVE color, never the raw selection:

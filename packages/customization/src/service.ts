@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { activeRegions, resolvePicks, validateOptions } from "./options.js";
 import { canonicalColor, resolveColorCount, resolveEffectiveColor, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
 import type {
+  ColorRegion,
+  ResolvedPicks,
   ArtStyle,
   ArtStyleRepository,
   CustomizationSelection,
@@ -73,7 +76,7 @@ export interface CustomizationService {
    * comment) -- a storefront should only ever call this with a complete
    * selection built from getRegionChoices' own output.
    */
-  resolveEffectiveColors(productCustomizationId: string, finishId: string, selection: CustomizationSelection): Promise<Record<string, string>>;
+  resolveEffectiveColors(productCustomizationId: string, finishId: string, selection: CustomizationSelection, picks?: Record<string, string>): Promise<Record<string, string>>;
 
   /**
    * What every region of a product's customization can be colored under
@@ -82,7 +85,7 @@ export interface CustomizationService {
    * "single"). Throws if finishId isn't one of this product's offered
    * finishIds.
    */
-  getRegionChoices(productCustomizationId: string, finishId: string): Promise<Record<string, RegionColorChoices>>;
+  getRegionChoices(productCustomizationId: string, finishId: string, picks?: Record<string, string>): Promise<Record<string, RegionColorChoices>>;
 
   /**
    * The number of distinct colors `selection` resolves to under
@@ -94,7 +97,10 @@ export interface CustomizationService {
    * its own caller-supplied attribute counts -- this service has no
    * pricing opinion of its own.
    */
-  getColorCount(productCustomizationId: string, finishId: string, selection: CustomizationSelection): Promise<number>;
+  getColorCount(productCustomizationId: string, finishId: string, selection: CustomizationSelection, picks?: Record<string, string>): Promise<number>;
+
+  /** A product's picks resolved against its own options and variants -- see resolvePicks. A product with variants needs picks in the three methods above too, because they decide which regions exist; without them those methods throw InvalidPicksError rather than price the wrong version. */
+  resolvePicks(productCustomizationId: string, picks: Record<string, string>): Promise<ResolvedPicks>;
 
   /**
    * Validates that `artStyleId` is one of this product's own offered
@@ -141,16 +147,20 @@ export function createCustomizationService(deps: {
   // region's own entry (a locked region has no entry of its own -- it
   // inherits, and its parent's entry is validated when the parent is reached).
   // Shared by every method that resolves a selection into colors or price.
-  function validateSelection(customization: ProductCustomization, finish: FinishTier, paletteColors: PaletteColor[], selection: CustomizationSelection): void {
+  function validateSelection(customization: ProductCustomization, regions: ColorRegion[], finish: FinishTier, paletteColors: PaletteColor[], selection: CustomizationSelection): void {
     if (finish.colors === "single") {
       const allChoices = availableColorChoices(paletteColors, customization.regions, finish, "__all");
       if (selection.__all) validateSelectedColor(allChoices, "__all", selection.__all);
       return;
     }
-    for (const region of customization.regions) {
+    for (const region of regions) {
       const choices = availableColorChoices(paletteColors, customization.regions, finish, region.id);
       if (!choices.locked && selection[region.id]) validateSelectedColor(choices, region.id, selection[region.id]!);
     }
+  }
+
+  function regionsFor(customization: ProductCustomization, picks: Record<string, string> | undefined): ColorRegion[] {
+    return activeRegions(customization, resolvePicks(customization, picks).variantId);
   }
 
   return {
@@ -183,6 +193,7 @@ export function createCustomizationService(deps: {
 
     async createProductCustomization(input: NewProductCustomizationInput): Promise<ProductCustomization> {
       validateRegions(input.regions);
+      validateOptions(input);
       const customization: ProductCustomization = { ...input, id: randomUUID() };
       await productCustomizations.save(customization);
       return customization;
@@ -193,6 +204,7 @@ export function createCustomizationService(deps: {
       if (!existing) return null;
       const updated: ProductCustomization = { ...existing, ...patch, id: existing.id, productId: existing.productId };
       validateRegions(updated.regions);
+      validateOptions(updated);
       await productCustomizations.save(updated);
       return updated;
     },
@@ -209,21 +221,22 @@ export function createCustomizationService(deps: {
       return productCustomizations.list();
     },
 
-    async resolveEffectiveColors(productCustomizationId, finishId, selection): Promise<Record<string, string>> {
+    async resolveEffectiveColors(productCustomizationId, finishId, selection, picks): Promise<Record<string, string>> {
       const customization = await productCustomizations.get(productCustomizationId);
       if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
       const finish = await requireFinish(customization, finishId);
       const paletteColors = await palette.list();
-      validateSelection(customization, finish, paletteColors, selection);
+      const regions = regionsFor(customization, picks);
+      validateSelection(customization, regions, finish, paletteColors, selection);
 
       const result: Record<string, string> = {};
-      for (const region of customization.regions) {
+      for (const region of regions) {
         result[region.id] = canonicalColor(paletteColors, resolveEffectiveColor(customization.regions, finish, selection, region.id));
       }
       return result;
     },
 
-    async getRegionChoices(productCustomizationId, finishId): Promise<Record<string, RegionColorChoices>> {
+    async getRegionChoices(productCustomizationId, finishId, picks): Promise<Record<string, RegionColorChoices>> {
       const customization = await productCustomizations.get(productCustomizationId);
       if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
       const finish = await requireFinish(customization, finishId);
@@ -233,19 +246,26 @@ export function createCustomizationService(deps: {
         result.__all = availableColorChoices(paletteColors, customization.regions, finish, "__all");
         return result;
       }
-      for (const region of customization.regions) {
+      for (const region of regionsFor(customization, picks)) {
         result[region.id] = availableColorChoices(paletteColors, customization.regions, finish, region.id);
       }
       return result;
     },
 
-    async getColorCount(productCustomizationId, finishId, selection): Promise<number> {
+    async getColorCount(productCustomizationId, finishId, selection, picks): Promise<number> {
       const customization = await productCustomizations.get(productCustomizationId);
       if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
       const finish = await requireFinish(customization, finishId);
       const paletteColors = await palette.list();
-      validateSelection(customization, finish, paletteColors, selection);
-      return resolveColorCount(paletteColors, customization.regions, finish, selection);
+      const regions = regionsFor(customization, picks);
+      validateSelection(customization, regions, finish, paletteColors, selection);
+      return resolveColorCount(paletteColors, regions, finish, selection, customization.regions);
+    },
+
+    async resolvePicks(productCustomizationId, picks): Promise<ResolvedPicks> {
+      const customization = await productCustomizations.get(productCustomizationId);
+      if (!customization) throw new Error(`Product customization not found: ${productCustomizationId}`);
+      return resolvePicks(customization, picks);
     },
 
     async validateArtStyleChoice(productCustomizationId, artStyleId): Promise<ArtStyle> {

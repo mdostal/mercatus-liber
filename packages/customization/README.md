@@ -55,8 +55,14 @@ Selections, effective colors, and `PriceBuild.colors` all use palette ids, such 
 ## Key exports
 
 - `createCustomizationService(deps)`: palette, finish, art style, and product customization CRUD, plus `resolveEffectiveColors`, `getRegionChoices`, `getColorCount`, `validateArtStyleChoice`.
-- Pure functions: `validateRegions`, `resolveEffectiveColor`, `availableColorChoices`, `validateSelectedColor`, `canonicalColor`, `resolveColorHex`, `defaultSelection`, `resolveColorCount`, `resolvePrice`.
+- Pure functions: `validateRegions`, `resolveEffectiveColor`, `availableColorChoices`, `validateSelectedColor`, `canonicalColor`, `resolveColorHex`, `defaultSelection`, `resolveColorCount`, `resolvePrice`, `resolvePicks`, `activeRegions`, `defaultPicks`, `validateOptions`.
 - `createInMemoryPaletteRepository`, `createInMemoryFinishTierRepository`, `createInMemoryArtStyleRepository`, `createInMemoryProductCustomizationRepository`, `createInMemoryPricingRulesRepository`.
+
+## Options and variants
+
+`ProductCustomization.options` are what a shopper picks beyond colors, such as lock position. `variants` maps those picks to a version of the product, and a region with `when` exists only on the versions it lists. `resolvePicks` drops picks that don't apply, refuses invalid ones, and returns the variant id, any request-only choices to capture with the order, and attribute counts for pricing. A product with variants needs picks in `resolveEffectiveColors`, `getRegionChoices`, and `getColorCount`.
+
+Which 3D model a variant loads stays with the storefront, keyed by variant id.
 
 ## Storage
 
@@ -64,6 +70,5 @@ The in-memory repositories are the default and lose everything on restart. For d
 
 ## Known limitations
 
-- There is no options or variants support yet.
 
 See [docs/subsystems/27-customization.md](../../docs/subsystems/27-customization.md).

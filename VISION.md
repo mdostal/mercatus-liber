@@ -241,7 +241,7 @@ see "Still open, blocked on something real" below):
 
 **In progress:**
 
-- Customization: lock and hardware options, structured order data from cart through to print job.
+- Customization: structured order data from cart through to print job.
 - A common UI component package and a default UI, extracted from the sample stores'
   in-app components.
 - npm publishing, after dogfooding on a real store. Nothing is on npm yet.

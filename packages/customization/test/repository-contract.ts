@@ -34,11 +34,16 @@ const FULL_CUSTOMIZATION: ProductCustomization = {
   finishIds: ["ams", "solid"],
   regions: [
     { id: "body", label: "Body", defaultHex: "#141414", separable: true },
-    { id: "coils", label: "Coils", defaultHex: "#F4F4F2", separable: false, parentRegionId: "body", allowedColorIds: ["white"], why: "LEDs" },
+    { id: "coils", label: "Coils", defaultHex: "#F4F4F2", separable: false, parentRegionId: "body", allowedColorIds: ["white"], why: "LEDs", when: { lock: ["hasp"] } },
   ],
   bundledProductIds: ["a", "b"],
   artStyleIds: ["flush"],
   why: "Limited",
+  options: [
+    { id: "lock", label: "Lock", choices: [{ id: "none", label: "None", note: "Clean" }, { id: "hasp", label: "Hasp", status: "request", attributeId: "metal", only: { lock: "hasp" } }] },
+    { id: "style", label: "Style", when: { lock: ["hasp"] }, choices: [{ id: "plain", label: "Plain" }] },
+  ],
+  variants: { key: "lock", rows: [{ id: "none", label: "None", when: { lock: "none" } }, { id: "hasp", label: "Hasp", when: { lock: ["hasp"] } }] },
 };
 const FULL_RULES: PricingRules = {
   basePriceCents: { solid: 5900, ams: 8300 },
@@ -51,6 +56,7 @@ const FULL_RULES: PricingRules = {
   colorMarkupCents: { dawn: 500 },
   estimatedMinutes: { solid: 837, ams: 3642 },
   excessUnitRules: [{ attributeId: "contrast", source: "nameLength", freeUnits: 8, unitsPerExcess: 2 }],
+  variantOverrides: { hasp: { basePriceCents: { ams: 9100 }, estimatedMinutes: { ams: 3900 } } },
 };
 
 /**
