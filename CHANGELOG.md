@@ -1022,3 +1022,15 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 
 - The in-memory finish tier repository lists by rank, matching every durable backend.
 
+## [0.47.0] - 2026-11-05
+
+### Added
+
+- Options and variants in `@mercatus-liber/customization`: `ProductCustomization.options` and `variants`, `ColorRegion.when`, `resolvePicks`, `activeRegions`, `defaultPicks`, and `validateOptions`. `resolveEffectiveColors`, `getRegionChoices`, and `getColorCount` take optional picks.
+- A choice's `attributeId` charges through a pricing attribute, and `PricingRules.variantOverrides` with `PriceBuild.variant` prices a variant separately.
+
+### Changed
+
+- A product with variants now throws `InvalidPicksError` from those three service methods when picks are missing or don't match a variant.
+- Postgres adds `options`, `variants`, and `variant_overrides` columns on first use.
+

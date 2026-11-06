@@ -159,13 +159,15 @@ export function defaultSelection(palette: PaletteColor[], regions: ColorRegion[]
  * rules are applied. ColorMode "single" always resolves to exactly 1;
  * otherwise every region's effective color is counted by canonicalColor, so
  * parent-follows regions collapse into their parent's one color, and two
- * palette entries that happen to share a hex stay two colors.
+ * palette entries that happen to share a hex stay two colors. `regions` is what
+ * gets counted; pass `allRegions` when counting only a variant's active regions,
+ * so a parent lookup still finds a parent outside that subset.
  */
-export function resolveColorCount(palette: PaletteColor[], regions: ColorRegion[], finish: FinishTier, selection: CustomizationSelection): number {
+export function resolveColorCount(palette: PaletteColor[], regions: ColorRegion[], finish: FinishTier, selection: CustomizationSelection, allRegions: ColorRegion[] = regions): number {
   if (finish.colors === "single") return 1;
   const colors = new Set<string>();
   for (const region of regions) {
-    colors.add(canonicalColor(palette, resolveEffectiveColor(regions, finish, selection, region.id)));
+    colors.add(canonicalColor(palette, resolveEffectiveColor(allRegions, finish, selection, region.id)));
   }
   return colors.size;
 }
