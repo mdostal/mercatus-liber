@@ -30,6 +30,7 @@ import { getServicesForDemo } from "./services";
 import { themeCookieName } from "./theme-cookie";
 import { InvalidColorSelectionError, InvalidPicksError, priceLine, type LineInput } from "@mercatus-liber/customization";
 import type { AddToCartResult, QuoteResult } from "@mercatus-liber/storefront-ui";
+import { createStoreApiKey, revokeStoreApiKey } from "@mercatus-liber/store-api";
 
 /**
  * demo-routing-04: every one of this file's "use server" actions is bound
@@ -1340,4 +1341,36 @@ export async function savePricingRatesAction(formData: FormData): Promise<void> 
   });
   await pricing.saveRules(productId, { ...rules, basePriceCents, attributes, colorMarkupCents });
   revalidatePath(`/demo/${demoSlug}/admin/customization`);
+}
+
+export type CreateStoreApiKeyResult = { ok: true; secret: string } | { ok: false; error: string };
+
+/** Creates a store API key and returns it once. Only its hash is stored. */
+export async function createStoreApiKeyAction(_previous: CreateStoreApiKeyResult | null, formData: FormData): Promise<CreateStoreApiKeyResult> {
+  const demoSlug = requireDemoSlug(formData);
+  try {
+    await requireAdminPermission(demoSlug, "mutate");
+  } catch {
+    return { ok: false, error: "Sign in as an admin who can make changes." };
+  }
+  const name = String(formData.get("name") ?? "").trim();
+  const scopes = formData.getAll("scopes").map(String);
+  if (!name) return { ok: false, error: "Give the key a name, such as the app that will use it." };
+  if (scopes.length === 0) return { ok: false, error: "Choose at least one scope." };
+  const { storeApiKeys } = await getServicesForDemo(demoSlug);
+  try {
+    const { secret } = await createStoreApiKey(storeApiKeys, { name, scopes });
+    revalidatePath(`/demo/${demoSlug}/admin/store-api`);
+    return { ok: true, secret };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Couldn't create the key." };
+  }
+}
+
+export async function revokeStoreApiKeyAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const { storeApiKeys } = await getServicesForDemo(demoSlug);
+  await revokeStoreApiKey(storeApiKeys, String(formData.get("keyId")));
+  revalidatePath(`/demo/${demoSlug}/admin/store-api`);
 }

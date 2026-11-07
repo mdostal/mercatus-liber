@@ -27,6 +27,7 @@
     "@mercatus-liber/customization": "workspace:*",
     "@mercatus-liber/fulfillment": "workspace:*",
     "@mercatus-liber/marketing-catalog": "workspace:*",
+    "@mercatus-liber/store-api": "workspace:*",
     "convex": "^1.46.0"
   },
   "devDependencies": {

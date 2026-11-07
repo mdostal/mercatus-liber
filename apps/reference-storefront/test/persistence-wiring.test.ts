@@ -90,6 +90,8 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
   const { createInMemoryBundleRepository } = await import("@mercatus-liber/bundles");
   const { createInMemoryGoalRepository, createInMemoryGoalVoteRepository } = await import("@mercatus-liber/community-goals");
   const { createInMemoryProviderCatalogMappingRepository } = await import("@mercatus-liber/fulfillment");
+  const { createInMemoryStoreApiKeyRepository } = await import("@mercatus-liber/store-api");
+  const { createInMemoryWebhookSubscriptionStore, createInMemoryWebhookDeliveryLogStore } = await import("@mercatus-liber/webhooks");
   const { createInMemoryPaletteRepository, createInMemoryFinishTierRepository, createInMemoryArtStyleRepository, createInMemoryProductCustomizationRepository, createInMemoryPricingRulesRepository } = await import("@mercatus-liber/customization");
   const { createInMemoryRecommendationRepository } = await import("@mercatus-liber/recommendations");
   const { createInMemoryCampaignRepository } = await import("@mercatus-liber/advertising");
@@ -148,6 +150,9 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
       return createInMemoryBundleRepository();
     },
     createPostgresProviderCatalogMappingRepository: () => createInMemoryProviderCatalogMappingRepository(),
+    createPostgresStoreApiKeyRepository: () => createInMemoryStoreApiKeyRepository(),
+    createPostgresWebhookSubscriptionStore: () => createInMemoryWebhookSubscriptionStore(),
+    createPostgresWebhookDeliveryLogStore: () => createInMemoryWebhookDeliveryLogStore(),
     createPostgresPaletteRepository: () => createInMemoryPaletteRepository(),
     createPostgresFinishTierRepository: () => createInMemoryFinishTierRepository(),
     createPostgresArtStyleRepository: () => createInMemoryArtStyleRepository(),

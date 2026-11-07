@@ -224,3 +224,4 @@ export {
 } from "./customization.js";
 
 export { createMongoProviderCatalogMappingRepository } from "./provider-catalog-mappings.js";
+export { createMongoStoreApiKeyRepository } from "./store-api-keys.js";

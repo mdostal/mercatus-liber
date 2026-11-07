@@ -28,6 +28,9 @@ import {
   createPostgresPricingRulesRepository,
   createPostgresProductCustomizationRepository,
   createPostgresProviderCatalogMappingRepository,
+  createPostgresStoreApiKeyRepository,
+  createPostgresWebhookSubscriptionStore,
+  createPostgresWebhookDeliveryLogStore,
 } from "@mercatus-liber/adapter-postgres";
 import { createPaypalPaymentAdapter } from "@mercatus-liber/adapter-paypal";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom } from "@mercatus-liber/adapter-printful";
@@ -157,7 +160,10 @@ import { createManualShippingAdapter, type ShippingAdapter } from "@mercatus-lib
 import { createPassthroughImageAdapter, type ImageAdapter } from "@mercatus-liber/media";
 import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
 import { Pool } from "pg";
+import { createInMemoryStoreApiKeyRepository, type StoreApiKeyRepository } from "@mercatus-liber/store-api";
+import { createInMemoryWebhookDeliveryLogStore, createInMemoryWebhookSubscriptionStore, createWebhookDeliveryService } from "@mercatus-liber/webhooks";
 import { DEMO_REGISTRY, isDemoSlug, type DemoSlug } from "./demos";
+import { buildStoreApi, scopeWebhookSubscriptions } from "./store-api";
 
 /**
  * THE ONLY MODULE IN THIS REPO that imports concrete adapter implementations
@@ -220,6 +226,10 @@ export interface Services {
   bundles: BundlesService;
   goals: GoalsService;
   customization: CustomizationService;
+  /** API keys for outside apps such as flayr. See lib/store-api.ts. */
+  storeApiKeys: StoreApiKeyRepository;
+  /** The store API for this demo, mounted at /api/store/v1/<demoSlug>. */
+  storeApi: (request: Request) => Promise<Response>;
   pricing: PricingService;
   recommendations: RecommendationsService;
   advertising: AdvertisingService;
@@ -1194,6 +1204,19 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   });
   if (demoSlug === "print-shop") await seedCustomizationExample({ catalog, customization, pricing });
 
+  // Outbound webhooks for this demo's events, used by the store API's subscribers.
+  const webhookSubscriptions = scopeWebhookSubscriptions(
+    pgPool ? createPostgresWebhookSubscriptionStore(pgPool) : createInMemoryWebhookSubscriptionStore(),
+    demoSlug,
+  );
+  createWebhookDeliveryService({
+    events,
+    subscriptions: webhookSubscriptions,
+    deliveryLog: pgPool ? createPostgresWebhookDeliveryLogStore(pgPool) : createInMemoryWebhookDeliveryLogStore(),
+  });
+  const storeApiKeys = pgPool ? createPostgresStoreApiKeyRepository(pgPool) : createInMemoryStoreApiKeyRepository();
+  const storeApi = buildStoreApi({ demoSlug, displayName: DEMO_REGISTRY[demoSlug].displayName, catalog, marketingCatalog, promotions, webhookSubscriptions, keys: storeApiKeys });
+
   return {
     events,
     analytics,
@@ -1218,6 +1241,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     goals,
     customization,
     pricing,
+    storeApiKeys,
+    storeApi,
     recommendations,
     advertising,
     bi,

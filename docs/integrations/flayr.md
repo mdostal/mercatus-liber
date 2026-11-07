@@ -1,0 +1,72 @@
+# Mercatus Liber in flayr
+
+How a Mercatus Liber store connects to [flayr](https://flayr.social) the way a Shopify store does today: flayr imports the catalog, builds posts, ads and campaigns from real products, and runs promotions for specials and holidays. Mercatus can do one thing Shopify can't in flayr today: create a real discount code for a campaign, instead of the shopper-facing offer being typed in by hand.
+
+Written 2026-11-06 from a read of flayr's `development` branch and this repo's `master`. Paths into flayr are relative to `apps/dashboard/`.
+
+## How Shopify works in flayr today
+
+- **Connection.** One store per workspace, in `shopifyConnections` (`convex/schema.ts`). `installMethod` says who holds credentials: `managed`, `authorization_code`, or `zernio`. Slot and provider rules live in `convex/_lib/shopifyProvider.ts`.
+- **Import.** `runImport` (`convex/shopifySyncActions.ts`) takes a lease and calls `src/app/api/shopify/import/run-import.ts`. That function already branches once, for Zernio (`readZernioRunContext` → `run-import-zernio.ts`). Both branches map products to `ShopifyProductInput` (`convex/lib/shopifySchema.ts`) and write through the same batch mutations in `convex/shopifySyncWrites.ts`. Rows are keyed on the workspace, so downstream code doesn't care who produced them.
+- **Sync.** Shopify webhooks (`convex/shopifyWebhookHttp.ts`) re-read one product; a daily cron reconciles everything.
+- **Content.** Products feed chat (`product-context.ts`), drafts and publish checks, the First Posts sample, BFCM sale banners (which infer a sale from `compareAtPrice`), and the campaign builder (`campaignBuilderSchema.ts`, product `source: "shopify"`).
+- **Promotions.** None. Flayr asks only for `read_products`, and a campaign's offer code is typed in by the user.
+
+The Zernio path is the precedent to copy: `.pHive/epics/shopify-connect-via-zernio/docs/design-discussion.md` §2 and §3.3.
+
+## What Mercatus provides (this repo)
+
+### 1. Store API: `@mercatus-liber/store-api`
+
+A framework-free HTTP handler (`Request` in, `Response` out) that a store mounts at one path, for example `/api/store/v1`. Every request needs an API key in `Authorization: Bearer`. Keys are scoped and stored hashed, on any of the four databases.
+
+| Method and path | Scope | Returns |
+|---|---|---|
+| `GET /store` | any | Name, currency, public URL |
+| `GET /products?limit&cursor&status` | `products:read` | Products with variants, prices, images, categories, product page URL |
+| `GET /products/:id` | `products:read` | One product, same shape |
+| `GET /categories` | `products:read` | Category tree |
+| `GET /promotions` | `promotions:read` | Promotions, with their schedule and targets |
+| `POST /promotions` | `promotions:write` | Creates a discount, such as a holiday code. Starts inactive unless asked otherwise |
+| `PATCH /promotions/:id` | `promotions:write` | Changes or ends one |
+| `POST /webhooks`, `GET /webhooks`, `DELETE /webhooks/:id` | `webhooks:manage` | Subscribe a URL to store events |
+
+Each variant carries `price` and, when an active product promotion applies to it, `salePrice` and the promotion id. That gives flayr's sale banners a real "was/now" without a compare-at field.
+
+Product changes reach subscribers through the existing signed outbound webhooks (`@mercatus-liber/webhooks`): `catalog.product.created`, `catalog.product.updated`, `catalog.product.archived`, `catalog.sku.created`, and `promotions.redeemed`. Mercatus has no per-product timestamps, so a subscriber should also reconcile periodically, the same daily reconcile flayr already runs for Shopify.
+
+### 2. Client: `@mercatus-liber/store-client`
+
+A typed client for the API above plus `verifyMercatusWebhook(rawBody, signatureHeader, secret)`. Flayr imports this instead of hand-writing requests.
+
+### 3. A store to test against
+
+The reference storefront mounts the API at `/api/store/v1/<demo>` for its demo stores, with keys managed under Admin > Store API. Use `print-shop` to build and test the flayr side. It's sandbox data, so a mistaken write can't touch real orders. shop.mdostal.com adds the same mount when its team chooses to.
+
+## What flayr needs to do
+
+Ordered so each step ships on its own, all on feature branches off `development`.
+
+1. **Provider marker.** Add `mercatus` to the commerce providers. The narrowest change mirrors Zernio: a new `installMethod: "mercatus"` on `shopifyConnections`, storing the store's API base URL and an encrypted API key, with the one-store-per-workspace rule unchanged. A rename to `commerceConnections` can come later and shouldn't block this.
+2. **Connect.** A settings form that takes the store URL and API key, calls `GET /store` to prove the key, then writes the connection. Requested scopes: `products:read`, `promotions:read`, and, when the merchant allows it, `promotions:write` and `webhooks:manage`.
+3. **Import.** A third branch in `run-import.ts`, beside the Zernio one: page through `GET /products` and map each product to `ShopifyProductInput` with a mapper like `zernio/map-product.ts`. Use ids of the form `gid://mercatus/Product/<id>`, which needs `GID_PATTERN` (`convex/_lib/shopifySelectionCore.ts`) and the import route's id checks widened to accept the `mercatus` namespace. Map `salePrice` to `compareAtPrice` the other way round: Shopify's compare-at is the old price, so set `price = salePrice` and `compareAtPrice = price`. Images: add the store's image host to the trusted hosts (`src/lib/shopify/trusted-image-host.ts`, `src/lib/safe-image-url.ts`, the CSP in `src/proxy.ts`).
+4. **Sync.** Register a webhook with `POST /webhooks` pointing at a new `/api/webhooks/mercatus` route in `convex/http.ts`, verify with `verifyMercatusWebhook`, and schedule the same single-product re-read. Add Mercatus rows to the daily reconcile.
+5. **Content.** Accept `source: "mercatus"` wherever products are chosen: `selected-product.ts`, `campaignBuilderSchema.ts` (`arcProductValidator`), `ProductSelector.tsx`, `campaignArc.productKey`, and the draft provenance in `shopifyDrafts.ts`. Chat context, grounding, and claims read the imported rows, so they need no change beyond the image host.
+6. **Promotions (new for flayr).** In the campaign builder, when the store is Mercatus and the merchant allowed `promotions:write`, offer "Create this code in the store": `POST /promotions` with the campaign's percent, code, and dates. Keep it as a draft until the merchant approves the campaign, then `PATCH` it active. Read `GET /promotions` so claims grounding can check a post's "20% off" against a real promotion instead of warning.
+7. **Specials and holidays.** The campaign planner (`planArc`) can schedule a promotion per beat: start and end dates come from the arc, and each beat's posts reference the code. This is where Mercatus earns its keep over Shopify in flayr.
+
+Don't copy: Shopify App Store billing, the embedded app shell, install epochs, link tokens, and the GDPR compliance topics. Mercatus has no app store and no billing in the middle.
+
+**Freeze to respect:** the cyber-week campaign builder has a change freeze on 2026-11-20, and the Shopify app is frozen during review. Land steps 1 to 4 before then only if they don't touch the frozen paths.
+
+## Status (2026-11-06)
+
+Built in this repo: `@mercatus-liber/store-api`, `@mercatus-liber/store-client`, API keys on Postgres, SQLite, MongoDB, and Convex, and the reference storefront mount with an admin page. Checked against a local production build: a key created in the admin, then the client read the store and all 30 Print Shop products with categories and images, created a sale that stayed off until activated, saw the sale price once active, and was refused webhooks without that scope. Not yet checked: a webhook delivered to a real https receiver, and the deployed demo.
+
+Known gap: checkout applies one automatic promotion per cart, while `salePrice` is per variant, so run one automatic sale at a time.
+
+## Open questions
+
+1. Where is shop.mdostal.com's catalog read from by flayr: the shop's own deployment, or the demo? The demo is the safe test target; the shop is the real one.
+2. Should flayr's Mercatus connection be behind its own feature flag, like `shopify_zernio`? Recommended yes.
+3. Promotion writes: should flayr be allowed to activate a code, or only create drafts a person activates in the Mercatus admin? Recommended drafts only at first.

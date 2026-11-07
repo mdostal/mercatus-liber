@@ -278,3 +278,4 @@ export async function connectConvexCustomizationRepositories(convexUrl: string):
 }
 
 export { createConvexProviderCatalogMappingRepository } from "./provider-catalog-mappings.js";
+export { createConvexStoreApiKeyRepository } from "./store-api-keys.js";

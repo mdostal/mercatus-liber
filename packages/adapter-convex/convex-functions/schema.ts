@@ -93,4 +93,15 @@ export default defineSchema({
     provider: v.string(),
     target: v.string(),
   }).index("by_sku_and_provider", ["skuId", "provider"]),
+
+  // @mercatus-liber/store-api keys, hashed. See storeApiKeys.ts.
+  storeApiKeys: defineTable({
+    externalId: v.string(),
+    prefix: v.string(),
+    createdAt: v.string(),
+    value: v.string(),
+  })
+    .index("by_external_id", ["externalId"])
+    .index("by_prefix", ["prefix"])
+    .index("by_created_at", ["createdAt"]),
 });
