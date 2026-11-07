@@ -70,6 +70,8 @@ pages, community goals, and made-to-order customization with an admin-defined pr
 **Operations:** role-based admin auth, fulfillment, shipping, webhooks, accounting sync,
 analytics, internal BI, a store scaffolder, auto-update, and a Shopify migration tool.
 
+**Outside apps:** a key-authenticated store API and typed client, so apps such as flayr can import the catalog and run promotions ([`packages/store-api`](packages/store-api/README.md), [flayr plan](docs/integrations/flayr.md)).
+
 **AI access:** MCP server and tool catalog calling the same subsystem interfaces as the admin
 ([`packages/ai-interface`](packages/ai-interface/README.md)).
 
@@ -152,7 +154,7 @@ sync, and more are listed in [VISION.md's community frontier](VISION.md#wanted-n
 ## How it's built
 
 ```
-packages/    50 packages: core types, one package per subsystem, one per adapter
+packages/    52 packages: core types, one package per subsystem, one per adapter
 apps/
   reference-storefront/   the sample stores (Next.js)
   docs/                   the docs site (Nextra)

@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
 import { describeCustomizationRepositoryContract } from "../../customization/test/repository-contract.js";
 import { describeCatalogMappingContract } from "../../fulfillment/test/catalog-mapping-contract.js";
 import { createPostgresProviderCatalogMappingRepository } from "../src/provider-catalog-mappings.js";
+import { describeStoreApiKeyContract } from "../../store-api/test/key-repository-contract.js";
+import { createPostgresStoreApiKeyRepository } from "../src/store-api-keys.js";
 import { createPostgresCartRepository } from "../src/cart.js";
 import { createPostgresOrderRepository } from "../src/orders.js";
 import {
@@ -58,6 +60,15 @@ describeCatalogMappingContract(
   async () => {
     const db = new PGlite();
     return { open: () => createPostgresProviderCatalogMappingRepository(poolFor(db)) };
+  },
+  { timeout: TIMEOUT },
+);
+
+describeStoreApiKeyContract(
+  "Postgres",
+  async () => {
+    const db = new PGlite();
+    return { open: () => createPostgresStoreApiKeyRepository(poolFor(db)) };
   },
   { timeout: TIMEOUT },
 );

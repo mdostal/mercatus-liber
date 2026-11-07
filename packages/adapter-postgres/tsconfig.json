@@ -13,7 +13,7 @@
     { "path": "../community-goals" },
     { "path": "../catalog" },
     { "path": "../checkout-orders" },
-    { "path": "../core" },
+    { "path": "../core" }, { "path": "../store-api" },
     { "path": "../customization" },
     { "path": "../fulfillment" },
     { "path": "../internal-bi" },

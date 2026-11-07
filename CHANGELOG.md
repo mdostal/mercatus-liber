@@ -1104,3 +1104,12 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 - `estimateCosts` on the Printful catalog client: Printful's actual cost for items from an order-estimation task, which creates no order.
 - `planPrintfulProduct` takes exact costs per variant, since Printful's price list can be higher than what it charges.
 
+## [0.54.0] - 2026-11-06
+
+### Added
+
+- `@mercatus-liber/store-api`: a key-authenticated HTTP API for outside apps to read products and categories, read and create promotions, and subscribe to webhooks. Keys are scoped and stored hashed, with repositories for Postgres, SQLite, MongoDB, and Convex.
+- `@mercatus-liber/store-client`: a dependency-free typed client for it, with webhook signature checks.
+- The reference storefront serves the API at `/api/store/v1/<demo>`, delivers outbound webhooks per demo store, and adds Admin > Store API for keys.
+- `docs/integrations/flayr.md`: the plan for connecting a Mercatus store to flayr, for both repos.
+

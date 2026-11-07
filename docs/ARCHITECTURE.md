@@ -46,6 +46,8 @@ packages/
   migrate-shopify/      one-time Shopify import
   customization-ui/     framework-agnostic customizer Web Component
   storefront-ui/        common React storefront components
+  store-api/            key-authenticated API for outside apps
+  store-client/         typed client for that API
 apps/
   reference-storefront/ the sample stores (Next.js)
   docs/                 the docs site (Nextra)

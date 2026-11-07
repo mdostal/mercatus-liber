@@ -253,6 +253,7 @@ vertical-slice invariant), not just "some files exist."_
 | 106 | `pod-catalog-mapping` | **Added 2026-11-06.** Stored SKU-to-provider-product mappings on all four databases, mapping-backed resolvers for Printful and Printify, and a hold mode so a live test can't create a charged order. No live run: no Printify account exists yet. | **done** | 97 |
 | 107 | `printful-catalog-and-products` | **Added 2026-11-06, user ask to nail out the full Printful integration in the library.** Catalog client, product-as-data import with real costs, held status, address check. Verified read-only against the live store, plus draft orders that were deleted: costs match Printful's own draft totals (one placement included). | **done** | 97 |
 | 108 | `printful-estimated-costs` | **Added 2026-11-06.** Exact costs via order-estimation tasks after shop-ce found the price list overstates a hoodie (23.95 listed, 22.63 estimated). Verified live. | **done** | 97 |
+| 109 | `store-api-for-flayr` | **Added 2026-11-06, user ask to fully integrate flayr and Mercatus.** Store API, typed client, keys on all four databases, storefront mount and admin page, and a two-repo plan in docs/integrations/flayr.md. Checked end to end on a local production build; webhook delivery to a real https receiver and the deployed demo not checked. | **done** | 97 |
 
 ## Execution mode
 Driven via a self-pacing loop (`/loop`) cycling `/plugin-hive:plan` (per epic, when not yet

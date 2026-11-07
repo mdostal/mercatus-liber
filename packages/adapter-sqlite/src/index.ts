@@ -324,3 +324,4 @@ export function createSqliteAdapter(path: string): CatalogPersistenceAdapter {
 }
 
 export { createSqliteProviderCatalogMappingRepository } from "./provider-catalog-mappings.js";
+export { createSqliteStoreApiKeyRepository } from "./store-api-keys.js";
