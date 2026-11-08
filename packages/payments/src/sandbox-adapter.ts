@@ -48,7 +48,8 @@ export function createSandboxPaymentAdapter(config: { events: EventBus; checkout
       sessions.set(sessionId, { orderRef: input.orderRef, status: "unpaid" });
 
       const currency = input.lineItems[0]?.unitAmount.currency ?? "USD";
-      const totalAmount = input.lineItems.reduce((sum, item) => sum + item.unitAmount.amount * item.quantity, 0);
+      const shippingAmount = input.shipping?.amount.amount ?? 0;
+      const totalAmount = input.lineItems.reduce((sum, item) => sum + item.unitAmount.amount * item.quantity, 0) + shippingAmount;
       const itemCount = input.lineItems.reduce((sum, item) => sum + item.quantity, 0);
 
       const params = new URLSearchParams({
@@ -56,6 +57,7 @@ export function createSandboxPaymentAdapter(config: { events: EventBus; checkout
         total: String(totalAmount),
         currency,
         items: String(itemCount),
+        ...(input.shipping ? { shipping: String(shippingAmount) } : {}),
         success: input.successUrl,
         cancel: input.cancelUrl,
       });

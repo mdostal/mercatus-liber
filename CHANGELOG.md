@@ -1120,4 +1120,5 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 - Checkout can charge shipping: an optional `ShippingQuoter` prices it per order, the order records `shippingTotal`, and the payment session gets it as a shipping charge. The Stripe adapter sends it as a fixed shipping rate with Stripe Tax's shipping tax code.
 - Checkout can name line items on the payment page (`nameLineItem`) instead of showing "SKU <id>".
 - Postgres orders gain a nullable `shipping_total` column, added in place on existing tables.
+- The sandbox payment page's total includes shipping, and its URL carries the shipping amount.
 
