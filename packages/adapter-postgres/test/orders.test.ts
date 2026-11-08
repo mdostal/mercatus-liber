@@ -72,6 +72,7 @@ function createFakeOrdersPool(): FakePool {
           discountTotal,
           appliedPromotionCode,
           createdAt,
+          shippingTotal,
         ] = values as [
           string,
           string,
@@ -85,6 +86,7 @@ function createFakeOrdersPool(): FakePool {
           string,
           string | null,
           string,
+          string | null,
         ];
 
         // Real UNIQUE (idempotency_key) semantics: reject a conflicting
@@ -109,6 +111,7 @@ function createFakeOrdersPool(): FakePool {
           discount_total: JSON.parse(discountTotal),
           applied_promotion_code: appliedPromotionCode,
           created_at: createdAt,
+          shipping_total: shippingTotal ? JSON.parse(shippingTotal) : null,
         });
         return { rows: [] };
       }
@@ -155,6 +158,13 @@ describe("createPostgresOrderRepository", () => {
   it("saves and retrieves an order by id, round-tripping every field", async () => {
     await orders.save(baseOrder);
     expect(await orders.get("order-1")).toEqual(baseOrder);
+  });
+
+  it("round-trips shippingTotal, and leaves it off orders saved without one", async () => {
+    await orders.save({ ...baseOrder, id: "order-ship", idempotencyKey: "idem-ship", shippingTotal: { amount: 599, currency: "USD" } });
+    expect((await orders.get("order-ship"))?.shippingTotal).toEqual({ amount: 599, currency: "USD" });
+    await orders.save(baseOrder);
+    expect(await orders.get("order-1")).not.toHaveProperty("shippingTotal");
   });
 
   it("returns null for a missing order", async () => {

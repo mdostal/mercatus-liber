@@ -11,6 +11,8 @@ export interface CreatePaymentSessionInput {
   lineItems: PaymentLineItem[];
   successUrl: string;
   cancelUrl: string;
+  /** Charged on top of the line items and shown as shipping. */
+  shipping?: { label: string; amount: Money };
 }
 
 export interface PaymentSession {

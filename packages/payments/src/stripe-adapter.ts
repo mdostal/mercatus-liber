@@ -58,6 +58,22 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter
           },
           quantity: item.quantity,
         })),
+        ...(input.shipping
+          ? {
+              shipping_options: [
+                {
+                  shipping_rate_data: {
+                    type: "fixed_amount" as const,
+                    display_name: input.shipping.label,
+                    fixed_amount: { amount: input.shipping.amount.amount, currency: input.shipping.amount.currency.toLowerCase() },
+                    // Stripe Tax decides whether shipping is taxable where the shopper is (Stripe's "Charge tax for shipping" docs).
+                    tax_behavior: "exclusive" as const,
+                    tax_code: "txcd_92010001",
+                  },
+                },
+              ],
+            }
+          : {}),
         success_url: input.successUrl,
         cancel_url: input.cancelUrl,
         automatic_tax: { enabled: true },

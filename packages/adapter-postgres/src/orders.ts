@@ -43,6 +43,7 @@ const ORDERS_DDL = `
     applied_promotion_code TEXT,
     created_at TEXT NOT NULL
   );
+  ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_total JSONB;
   CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);
   CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 `;
@@ -58,6 +59,7 @@ interface OrderRow {
   payment_redirect_url: string | null;
   customer_id: string | null;
   discount_total: Money; // JSONB
+  shipping_total: Money | null; // JSONB, added later so nullable
   applied_promotion_code: string | null;
   created_at: string;
 }
@@ -75,6 +77,7 @@ function rowToOrder(row: OrderRow): Order {
     customerId: row.customer_id,
     discountTotal: row.discount_total,
     appliedPromotionCode: row.applied_promotion_code,
+    ...(row.shipping_total ? { shippingTotal: row.shipping_total } : {}),
     createdAt: row.created_at,
   };
 }
@@ -130,9 +133,9 @@ export function createPostgresOrderRepository(pool: Pool): OrderRepository {
         `INSERT INTO orders (
            id, cart_id, idempotency_key, items, status, shipping_info,
            payment_session_id, payment_redirect_url, customer_id,
-           discount_total, applied_promotion_code, created_at
+           discount_total, applied_promotion_code, created_at, shipping_total
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (id) DO UPDATE SET
            cart_id = EXCLUDED.cart_id,
            idempotency_key = EXCLUDED.idempotency_key,
@@ -144,7 +147,8 @@ export function createPostgresOrderRepository(pool: Pool): OrderRepository {
            customer_id = EXCLUDED.customer_id,
            discount_total = EXCLUDED.discount_total,
            applied_promotion_code = EXCLUDED.applied_promotion_code,
-           created_at = EXCLUDED.created_at`,
+           created_at = EXCLUDED.created_at,
+           shipping_total = EXCLUDED.shipping_total`,
         [
           order.id,
           order.cartId,
@@ -158,6 +162,7 @@ export function createPostgresOrderRepository(pool: Pool): OrderRepository {
           JSON.stringify(order.discountTotal),
           order.appliedPromotionCode,
           order.createdAt,
+          order.shippingTotal ? JSON.stringify(order.shippingTotal) : null,
         ],
       );
     },

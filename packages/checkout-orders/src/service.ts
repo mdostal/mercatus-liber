@@ -9,7 +9,9 @@ import type {
   PaymentSessionCreator,
   PricingAdjuster,
   PricingAdjustment,
+  LineItemNamer,
   ShippingInfo,
+  ShippingQuoter,
 } from "./types.js";
 
 export interface StartCheckoutInput {
@@ -68,8 +70,12 @@ export function createCheckoutOrdersService(deps: {
   payments: PaymentSessionCreator;
   events: EventBus;
   pricing?: PricingAdjuster;
+  /** Prices shipping at checkout. Without it, no shipping is charged. */
+  shipping?: ShippingQuoter;
+  /** Names line items on the payment page. Without it, lines read "SKU <id>". */
+  nameLineItem?: LineItemNamer;
 }): CheckoutOrdersService {
-  const { repository, cart, payments, events, pricing } = deps;
+  const { repository, cart, payments, events, pricing, shipping, nameLineItem } = deps;
 
   async function computeAdjustment(
     items: { skuId: string; quantity: number; priceSnapshot: Money }[],
@@ -118,6 +124,9 @@ export function createCheckoutOrdersService(deps: {
         return adjusted?.skuId === skuId ? adjusted.unitAmount : fallback;
       };
 
+      const lineItems = shopperCart.items.map((item, index) => ({ skuId: item.skuId, quantity: item.quantity, unitAmount: unitAmountOf(index, item.skuId, item.priceSnapshot) }));
+      const shippingCharge = shipping ? await shipping.quote({ items: lineItems, shippingInfo: input.shippingInfo }) : null;
+
       const orderId = randomUUID();
       const order: Order = {
         id: orderId,
@@ -140,6 +149,7 @@ export function createCheckoutOrdersService(deps: {
         customerId: input.customerId ?? null,
         discountTotal: adjustment.discountTotal,
         appliedPromotionCode: adjustment.appliedCode,
+        ...(shippingCharge ? { shippingTotal: shippingCharge.amount } : {}),
         createdAt: new Date().toISOString(),
       };
       await repository.save(order);
@@ -156,13 +166,16 @@ export function createCheckoutOrdersService(deps: {
 
       const session = await payments.createPaymentSession({
         orderRef: orderId,
-        lineItems: shopperCart.items.map((item, index) => ({
-          name: `SKU ${item.skuId}`,
-          unitAmount: unitAmountOf(index, item.skuId, item.priceSnapshot),
-          quantity: item.quantity,
-        })),
+        lineItems: await Promise.all(
+          lineItems.map(async (item) => ({
+            name: (nameLineItem ? await nameLineItem(item.skuId) : null) ?? `SKU ${item.skuId}`,
+            unitAmount: item.unitAmount,
+            quantity: item.quantity,
+          })),
+        ),
         successUrl: input.successUrl,
         cancelUrl: input.cancelUrl,
+        ...(shippingCharge ? { shipping: shippingCharge } : {}),
       });
 
       const withSession: Order = {
