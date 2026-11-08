@@ -1113,3 +1113,11 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 - The reference storefront serves the API at `/api/store/v1/<demo>`, delivers outbound webhooks per demo store, and adds Admin > Store API for keys.
 - `docs/integrations/flayr.md`: the plan for connecting a Mercatus store to flayr, for both repos.
 
+## [0.55.0] - 2026-11-08
+
+### Added
+
+- Checkout can charge shipping: an optional `ShippingQuoter` prices it per order, the order records `shippingTotal`, and the payment session gets it as a shipping charge. The Stripe adapter sends it as a fixed shipping rate with Stripe Tax's shipping tax code.
+- Checkout can name line items on the payment page (`nameLineItem`) instead of showing "SKU <id>".
+- Postgres orders gain a nullable `shipping_total` column, added in place on existing tables.
+

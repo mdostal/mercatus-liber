@@ -298,6 +298,39 @@ describe("checkout-orders service", () => {
     expect(pendingOnly.map((o) => o.id)).not.toContain(custOrder.id);
   });
 
+  describe("shipping and line names", () => {
+    const START = { cartId: "", idempotencyKey: "k-ship", shippingInfo: SHIPPING as never, successUrl: "https://s", cancelUrl: "https://c" };
+
+    it("charges the quoted shipping, records it on the order, and names lines", async () => {
+      const quote = vi.fn(async () => ({ label: "Standard shipping", amount: { amount: 599, currency: "USD" } }));
+      const withShipping = createCheckoutOrdersService({
+        repository: orderRepository,
+        cart: cartService,
+        payments: { createPaymentSession },
+        events,
+        shipping: { quote },
+        nameLineItem: async (skuId) => (skuId === activeSkuId ? "Organizer (red)" : null),
+      });
+      await cartService.addItem(cartId, activeSkuId, 2);
+      const { order } = await withShipping.startCheckout({ ...START, cartId });
+      expect(order.shippingTotal).toEqual({ amount: 599, currency: "USD" });
+      expect(quote).toHaveBeenCalledWith({ items: [{ skuId: activeSkuId, quantity: 2, unitAmount: { amount: 1500, currency: "USD" } }], shippingInfo: SHIPPING });
+      const session = createPaymentSession.mock.calls[0]![0] as { lineItems: { name: string }[]; shipping?: unknown };
+      expect(session.lineItems[0]!.name).toBe("Organizer (red)");
+      expect(session.shipping).toEqual({ label: "Standard shipping", amount: { amount: 599, currency: "USD" } });
+    });
+
+    it("🔍 charges no shipping when the quoter returns null or none is wired, and falls back to the SKU name", async () => {
+      const free = createCheckoutOrdersService({ repository: orderRepository, cart: cartService, payments: { createPaymentSession }, events, shipping: { quote: async () => null }, nameLineItem: async () => null });
+      await cartService.addItem(cartId, activeSkuId, 1);
+      const { order } = await free.startCheckout({ ...START, cartId });
+      expect(order).not.toHaveProperty("shippingTotal");
+      const session = createPaymentSession.mock.calls[0]![0] as { lineItems: { name: string }[] };
+      expect(session).not.toHaveProperty("shipping");
+      expect(session.lineItems[0]!.name).toBe(`SKU ${activeSkuId}`);
+    });
+  });
+
   describe("customized lines", () => {
     const START = { cartId: "", idempotencyKey: "k", shippingInfo: SHIPPING as never, successUrl: "https://s", cancelUrl: "https://c" };
     const RED = { finish: "ams", colorMode: "palette" as const, colors: { body: "red" }, requests: [{ kind: "color" as const, id: "pink", at: "body" }] };

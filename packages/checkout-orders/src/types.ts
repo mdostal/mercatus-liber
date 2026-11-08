@@ -72,6 +72,12 @@ export interface Order {
   /** The coupon code applied to this order, if any. Added for the promotions subsystem (16) -- see promo-02. Backward compatible: null for every order created before a PricingAdjuster was wired, or when no code was applied. */
   appliedPromotionCode: string | null;
   /**
+   * Shipping charged on this order, from the ShippingQuoter at checkout.
+   * Optional and additive: absent on orders placed before shipping was charged,
+   * or by a deployment with no quoter. The amount paid is the items' total plus this.
+   */
+  shippingTotal?: Money | null;
+  /**
    * ISO 8601 timestamp of when this order was created. Added for the internal-bi
    * subsystem (20) -- see bi-01. Unlike discountTotal/appliedPromotionCode above,
    * this is a REQUIRED field, not nullable/optional with a default: a timestamp has
@@ -119,8 +125,27 @@ export interface PaymentSessionCreator {
     lineItems: { name: string; unitAmount: Money; quantity: number }[];
     successUrl: string;
     cancelUrl: string;
+    /** Charged on top of the line items, shown to the shopper as shipping. */
+    shipping?: ShippingCharge;
   }): Promise<{ sessionId: string; redirectUrl: string }>;
 }
+
+/** A shipping charge: what the shopper sees it called, and how much. */
+export interface ShippingCharge {
+  label: string;
+  amount: Money;
+}
+
+/**
+ * Prices shipping for an order at checkout. Optional: without one, no shipping
+ * is charged (the behavior before this existed). Return null for no charge.
+ */
+export interface ShippingQuoter {
+  quote(input: { items: { skuId: string; quantity: number; unitAmount: Money }[]; shippingInfo: ShippingInfo }): Promise<ShippingCharge | null>;
+}
+
+/** Names a line item for the payment page, e.g. "DT Tee (Black, L)". Return null to fall back to the default. */
+export type LineItemNamer = (skuId: string) => Promise<string | null>;
 
 /** Post-adjustment cart pricing, computed by a PricingAdjuster from a set of pre-discount line items plus an optional coupon code. */
 export interface PricingAdjustment {

@@ -65,6 +65,22 @@ describe("createStripeAdapter", () => {
       expect(result).toEqual({ sessionId: "cs_test_123", redirectUrl: "https://checkout.stripe.com/pay/cs_test_123" });
     });
 
+    it("adds a fixed shipping rate when shipping is given, and none otherwise", async () => {
+      mockCreate.mockResolvedValue({ id: "cs_1", url: "https://checkout.stripe.com/pay/cs_1" });
+      await adapter().createPaymentSession({
+        orderRef: "order-1",
+        lineItems: [{ name: "Tee", unitAmount: { amount: 2800, currency: "USD" }, quantity: 1 }],
+        successUrl: "https://s",
+        cancelUrl: "https://c",
+        shipping: { label: "Standard shipping", amount: { amount: 599, currency: "USD" } },
+      });
+      expect(mockCreate.mock.calls.at(-1)![0].shipping_options).toEqual([
+        { shipping_rate_data: { type: "fixed_amount", display_name: "Standard shipping", fixed_amount: { amount: 599, currency: "usd" }, tax_behavior: "exclusive", tax_code: "txcd_92010001" } },
+      ]);
+      await adapter().createPaymentSession({ orderRef: "order-2", lineItems: [], successUrl: "https://s", cancelUrl: "https://c" });
+      expect(mockCreate.mock.calls.at(-1)![0]).not.toHaveProperty("shipping_options");
+    });
+
     it("throws if Stripe doesn't return a redirect URL", async () => {
       mockCreate.mockResolvedValue({ id: "cs_test_123", url: null });
       await expect(
