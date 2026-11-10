@@ -31,6 +31,8 @@ A framework-free HTTP handler (`Request` in, `Response` out) that a store mounts
 | `PATCH /promotions/:id` | `promotions:write` | Changes or ends one |
 | `POST /webhooks`, `GET /webhooks`, `DELETE /webhooks/:id` | `webhooks:manage` | Subscribe a URL to store events |
 
+A store whose photos sit on another host can set `store.imageUrl` to give out URLs on its own host instead. The reference storefront does: product photos are served, without a key, from `GET /images/<productId>/<skuId|product>/<index>` under the same mount, and only for the store's own products.
+
 Each variant carries `price` and, when an active product promotion applies to it, `salePrice` and the promotion id. That gives flayr's sale banners a real "was/now" without a compare-at field.
 
 Product changes reach subscribers through the existing signed outbound webhooks (`@mercatus-liber/webhooks`): `catalog.product.created`, `catalog.product.updated`, `catalog.product.archived`, `catalog.sku.created`, and `promotions.redeemed`. Mercatus has no per-product timestamps, so a subscriber should also reconcile periodically, the same daily reconcile flayr already runs for Shopify.
@@ -78,6 +80,34 @@ Known gap: checkout applies one automatic promotion per cart, while `salePrice` 
 **Shipped to production, 2026-11-08/09:** release `2026-11-08e` (main `3d0a21bb3`, flayr PR [#3920](https://github.com/firefly-events/flayr/pull/3920)) carried #3799/#3838/#3907 to `flayr.social`, verified live (`/api/health` 200, Convex deploy `pleasant-finch-44` succeeded), and was back-merged to `development` ([#3921](https://github.com/firefly-events/flayr/pull/3921)). That release surfaced one real gap: the webhook receiver (#3838) had no `PUBLIC_ROUTES` entry in flayr's Clerk proxy, so every real webhook delivery 401'd before reaching the route (fail-closed; the daily reconcile covered sync in the meantime, so no data was lost). Fixed and merged as [#3919](https://github.com/firefly-events/flayr/pull/3919). Two self-inflicted red-`development` incidents from the initial merge wave were also fixed forward, as [#3909](https://github.com/firefly-events/flayr/pull/3909) and [#3918](https://github.com/firefly-events/flayr/pull/3918) — a type-narrowing bug Vercel's real build caught but local `tsc` didn't, a schema-edit line-drift in the B03 account-deletion manifest, and a vitest mock-typing bug. All green on `development` as of #3919.
 
 Steps 1–6 are done, merged, shipped to production, and verified end-to-end — nothing further pending on the flayr side. Step 7 remains the one open item, parked on FFE-513 (see below).
+
+## Go-live check (2026-11-10)
+
+Everything in steps 1 to 6 is on flayr's `main`, but no store has ever been connected: the `mercatus_store` feature toggle has no row on flayr prod (`pleasant-finch-44`) or dev (`calm-gnat-491`), and a missing row means off for everyone. Checked with the public `featureToggles:getByKey` query on both deployments.
+
+Checking the deployed print-shop store with a real key, the way flayr calls it, found four store-side problems. All are fixed, deployed, and re-checked on commerce.mdostal.com:
+
+| Found | Fix |
+|---|---|
+| A key made for print-shop also worked on Northline (one shared key table). | Keys are stored per store ([#31](https://github.com/mdostal/mercatus-liber/pull/31)). The print-shop key now gets 401 on Northline. |
+| `GET /products` returned all 92 products of every store, with print-shop URLs that 404. | Products come from the store's own catalog ([#31](https://github.com/mdostal/mercatus-liber/pull/31)). print-shop returns its 30, and another store's product id returns 404. |
+| The promo seed ran on every cold start: 2,751 copies of the three demo codes. `GET /promotions` returned 1,121 rows, more than flayr's 256 KB response limit. | Seed skips an existing code ([#32](https://github.com/mdostal/mercatus-liber/pull/32)); 2,748 unredeemed duplicates deleted, one row per store left. |
+| Every product photo is a `loremflickr.com` URL, a host flayr doesn't trust. | Photos are given out from the store's own host ([#33](https://github.com/mdostal/mercatus-liber/pull/33)). |
+
+Also checked against the live store with flayr's exact request bodies: `GET /store`, paging through `GET /products`, `GET /categories`, and create, duplicate-code refusal, activate, and deactivate on `/promotions`. The product shape matches flayr's mapper field for field, and the webhook body and signature header match flayr's receiver.
+
+**Not working yet:**
+
+- `loremflickr.com` itself is returning HTTP 500 for every image (seen 2026-11-10 05:33 UTC), so product photos are broken on all three live demo stores, and the image route answers 502. The demo needs photos it hosts itself.
+- flayr allows the store's image host in one place (`trusted-image-host.ts`) but not in its page CSP `img-src` (`proxy.ts`, `next.config.ts`), `safe-image-url.ts`, or `next/image` `remotePatterns`. Whether a Mercatus product photo shows in flayr's picker and reaches a published post hasn't been seen in a browser.
+- A webhook from the deployed store to flayr's receiver hasn't been delivered, because there is no connection to deliver to.
+- flayr reads a store error as `body.message`; the store sends `body.error.message`, so flayr shows no reason when a promotion is refused.
+
+**To turn it on** (owner steps, following the Zernio rollout in flayr's `.pHive/epics/shopify-connect-via-zernio/docs/live-proof/RUNBOOK.md`: dev first, then prod):
+
+1. Write the toggle at staff-only access: `npx convex run --deployment calm-gnat-491 --codegen disable --typecheck disable featureToggles:upsert '{"featureKey":"mercatus_store","enabled":true,"comingSoon":false,"access":"admin"}' --identity '{"subject":"<STAFF_CLERK_USER_ID>"}'`. For prod use `--prod` and the prod staff id.
+2. In flayr, Settings > Connections > Mercatus store: base URL `https://commerce.mdostal.com/api/store/v1/print-shop`, and the key stored in Portunus as `mercatus-liber-print-shop-store-api-key-flayr` (all four scopes).
+3. Run the import and expect 30 products. Edit a product in the print-shop admin and check the store's delivery log shows a 200 from flayr.
 
 ## Open questions
 
