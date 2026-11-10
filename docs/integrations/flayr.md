@@ -103,6 +103,8 @@ Also checked against the live store with flayr's exact request bodies: `GET /sto
 - A webhook from the deployed store to flayr's receiver hasn't been delivered, because there is no connection to deliver to.
 - flayr reads a store error as `body.message`; the store sends `body.error.message`, so flayr shows no reason when a promotion is refused.
 
+flayr is tracking its side as FFE-1324: register `mercatus_store` in the feature registry so a super-admin can switch it on at `/super-admin/feature-toggles` (replacing step 1 below), add the store host to the remaining image allowlists and run a dev live proof, and fix the error parsing. It needs a human review before release because it changes security allowlists.
+
 **To turn it on** (owner steps, following the Zernio rollout in flayr's `.pHive/epics/shopify-connect-via-zernio/docs/live-proof/RUNBOOK.md`: dev first, then prod):
 
 1. Write the toggle at staff-only access: `npx convex run --deployment calm-gnat-491 --codegen disable --typecheck disable featureToggles:upsert '{"featureKey":"mercatus_store","enabled":true,"comingSoon":false,"access":"admin"}' --identity '{"subject":"<STAFF_CLERK_USER_ID>"}'`. For prod use `--prod` and the prod staff id.
