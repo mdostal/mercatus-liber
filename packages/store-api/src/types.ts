@@ -50,6 +50,12 @@ export interface StoreApiDeps {
     url: string;
     /** A product page's public path or URL. Defaults to `${url}/products/${slug}`. */
     productUrl?: (product: Product) => string;
+    /**
+     * The public URL to give out for an image. Defaults to the stored URL. A
+     * store whose photos sit on another host can return a URL on its own host
+     * here, so an outside app only has to trust the store's host.
+     */
+    imageUrl?: (image: { url: string; productId: string; skuId: string | null; index: number }) => string;
   };
   catalog: {
     listProducts(filter?: { status?: Product["status"] }): Promise<Product[]>;

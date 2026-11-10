@@ -29,6 +29,7 @@ function salePriceFor(sku: Sku, promotions: StoreApiPromotion[], now: Date): { a
 
 export async function toApiProduct(deps: StoreApiDeps, product: Product, promotions: StoreApiPromotion[]): Promise<ApiProduct> {
   const now = deps.now?.() ?? new Date();
+  const imageUrl = deps.store.imageUrl ?? ((image: { url: string }) => image.url);
   const skus = await deps.catalog.listSkusByProduct(product.id);
   const categories = deps.categories ? await deps.categories.listCategoriesForProduct(product.id) : [];
   const variants: ApiVariant[] = skus.map((sku) => {
@@ -40,7 +41,7 @@ export async function toApiProduct(deps: StoreApiDeps, product: Product, promoti
       ...(sale ? { salePrice: { amount: sale.amount, currency: sku.price.currency }, salePromotionId: sale.id } : {}),
       status: sku.status,
       availability: sku.availabilityStatus ?? "active",
-      images: (sku.images ?? []).map((i) => ({ url: i.url, alt: i.alt })),
+      images: (sku.images ?? []).map((i, index) => ({ url: imageUrl({ url: i.url, productId: product.id, skuId: sku.id, index }), alt: i.alt })),
     };
   });
   const amounts = variants.filter((v) => v.status === "active").map((v) => v.salePrice?.amount ?? v.price.amount);
@@ -52,7 +53,7 @@ export async function toApiProduct(deps: StoreApiDeps, product: Product, promoti
     description: product.description,
     status: product.status,
     url: deps.store.productUrl ? deps.store.productUrl(product) : `${deps.store.url}/products/${product.slug}`,
-    images: (product.images ?? []).map((i) => ({ url: i.url, alt: i.alt })),
+    images: (product.images ?? []).map((i, index) => ({ url: imageUrl({ url: i.url, productId: product.id, skuId: null, index }), alt: i.alt })),
     categories: categories.map((c) => ({ id: c.id, slug: c.slug, title: c.title })),
     variants,
     priceRange: amounts.length > 0 ? { min: { amount: Math.min(...amounts), currency }, max: { amount: Math.max(...amounts), currency } } : null,
