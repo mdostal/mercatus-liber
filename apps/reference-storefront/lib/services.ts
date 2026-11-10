@@ -162,8 +162,8 @@ import { createThemingService, type ThemingService } from "@mercatus-liber/themi
 import { Pool } from "pg";
 import { createInMemoryStoreApiKeyRepository, type StoreApiKeyRepository } from "@mercatus-liber/store-api";
 import { createInMemoryWebhookDeliveryLogStore, createInMemoryWebhookSubscriptionStore, createWebhookDeliveryService } from "@mercatus-liber/webhooks";
-import { DEMO_REGISTRY, isDemoSlug, type DemoSlug } from "./demos";
-import { buildStoreApi, scopeWebhookSubscriptions } from "./store-api";
+import { DEMO_CATALOG_SLUG, DEMO_REGISTRY, isDemoSlug, type DemoSlug } from "./demos";
+import { buildStoreApi, scopeStoreApiKeys, scopeWebhookSubscriptions } from "./store-api";
 
 /**
  * THE ONLY MODULE IN THIS REPO that imports concrete adapter implementations
@@ -1214,8 +1214,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     subscriptions: webhookSubscriptions,
     deliveryLog: pgPool ? createPostgresWebhookDeliveryLogStore(pgPool) : createInMemoryWebhookDeliveryLogStore(),
   });
-  const storeApiKeys = pgPool ? createPostgresStoreApiKeyRepository(pgPool) : createInMemoryStoreApiKeyRepository();
-  const storeApi = buildStoreApi({ demoSlug, displayName: DEMO_REGISTRY[demoSlug].displayName, catalog, marketingCatalog, promotions, webhookSubscriptions, keys: storeApiKeys });
+  const storeApiKeys = scopeStoreApiKeys(pgPool ? createPostgresStoreApiKeyRepository(pgPool) : createInMemoryStoreApiKeyRepository(), demoSlug);
+  const storeApi = buildStoreApi({ demoSlug, displayName: DEMO_REGISTRY[demoSlug].displayName, catalogSlug: DEMO_CATALOG_SLUG[demoSlug], catalog, marketingCatalog, promotions, webhookSubscriptions, keys: storeApiKeys });
 
   return {
     events,
