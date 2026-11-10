@@ -621,6 +621,9 @@ async function seedSubcategories(
  * CreatePromotionInput's real shape from @mercatus-liber/promotions.
  */
 async function seedPromotions(promotions: PromotionsService): Promise<void> {
+  // Seeding runs on every cold start, so only create the code when the store doesn't have it yet.
+  const existing = await promotions.listPromotions({ demoSlug: "broadleaf" });
+  if (existing.some((promotion) => promotion.code === BLOOM_PROMO_CODE)) return;
   await promotions.createPromotion({
     code: BLOOM_PROMO_CODE,
     demoSlug: "broadleaf",

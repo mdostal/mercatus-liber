@@ -1098,6 +1098,9 @@ const PROMO_CODE = "STITCH15";
  * (unlimited redemptions, right for an always-on demo).
  */
 async function seedPromotions(promotions: PromotionsService): Promise<void> {
+  // Seeding runs on every cold start, so only create the code when the store doesn't have it yet.
+  const existing = await promotions.listPromotions({ demoSlug: "print-shop" });
+  if (existing.some((promotion) => promotion.code === PROMO_CODE)) return;
   await promotions.createPromotion({
     code: PROMO_CODE,
     demoSlug: "print-shop",

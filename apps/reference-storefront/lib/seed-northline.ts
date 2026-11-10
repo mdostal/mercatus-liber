@@ -629,6 +629,9 @@ const NORTHLINE_PROMO_CODE = "NORTHLINE15";
  * artificially gated one.
  */
 async function seedPromotions(promotions: PromotionsService): Promise<void> {
+  // Seeding runs on every cold start, so only create the code when the store doesn't have it yet.
+  const existing = await promotions.listPromotions({ demoSlug: "northline" });
+  if (existing.some((promotion) => promotion.code === NORTHLINE_PROMO_CODE)) return;
   await promotions.createPromotion({
     code: NORTHLINE_PROMO_CODE,
     demoSlug: "northline",
