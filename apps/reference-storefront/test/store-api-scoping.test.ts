@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogService } from "@mercatus-liber/catalog";
 import { authenticateStoreApiKey, createInMemoryStoreApiKeyRepository, createStoreApiKey, revokeStoreApiKey } from "@mercatus-liber/store-api";
-import { scopeCatalogToStore, scopeStoreApiKeys } from "../lib/store-api";
+import { resolveStoreImage, scopeCatalogToStore, scopeStoreApiKeys } from "../lib/store-api";
 
 describe("scopeStoreApiKeys", () => {
   it("accepts a key only in the store it was created for", async () => {
@@ -64,5 +64,25 @@ describe("scopeCatalogToStore", () => {
     const scoped = scopeCatalogToStore(catalog, "missing");
     expect(await scoped.listProducts()).toEqual([]);
     expect(await scoped.getProduct("poster")).toBeNull();
+  });
+});
+
+describe("resolveStoreImage", () => {
+  const catalog = {
+    getProduct: async (id: string) => (id === "poster" ? { id: "poster", images: [{ url: "https://img.example/poster.jpg", alt: "" }] } : null),
+    listSkusByProduct: async () => [{ id: "sku-1", images: [{ url: "https://img.example/sku.jpg", alt: "" }] }],
+    listProducts: async () => [],
+  } as unknown as Parameters<typeof resolveStoreImage>[0];
+
+  it("resolves a product image and a variant image", async () => {
+    expect(await resolveStoreImage(catalog, "poster", "product", 0)).toBe("https://img.example/poster.jpg");
+    expect(await resolveStoreImage(catalog, "poster", "sku-1", 0)).toBe("https://img.example/sku.jpg");
+  });
+
+  it("returns null for an unknown product, variant or index", async () => {
+    expect(await resolveStoreImage(catalog, "other-store-product", "product", 0)).toBeNull();
+    expect(await resolveStoreImage(catalog, "poster", "sku-2", 0)).toBeNull();
+    expect(await resolveStoreImage(catalog, "poster", "product", 3)).toBeNull();
+    expect(await resolveStoreImage(catalog, "poster", "product", Number("x"))).toBeNull();
   });
 });

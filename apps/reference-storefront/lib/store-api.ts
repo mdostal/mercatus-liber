@@ -67,6 +67,31 @@ export function scopeCatalogToStore(catalog: CatalogService, catalogSlug: string
   };
 }
 
+const hostOf = (url: string): string | null => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+};
+
+/** Path segment standing in for "the product's own images" in a store image URL. */
+const PRODUCT_IMAGES = "product";
+
+/**
+ * The stored URL behind a store image path (`images/<productId>/<skuId|product>/<index>`),
+ * or null when this store has no such image. Only images of the store's own
+ * products resolve, so the image route can't be used to fetch arbitrary URLs.
+ */
+export async function resolveStoreImage(catalog: StoreApiDeps["catalog"], productId: string, owner: string, index: number): Promise<string | null> {
+  if (!Number.isInteger(index) || index < 0) return null;
+  const product = await catalog.getProduct(productId);
+  if (!product) return null;
+  if (owner === PRODUCT_IMAGES) return product.images?.[index]?.url ?? null;
+  const sku = (await catalog.listSkusByProduct(product.id)).find((candidate) => candidate.id === owner);
+  return sku?.images?.[index]?.url ?? null;
+}
+
 const toApiPromotion = ({ demoSlug: _demoSlug, ...promotion }: StoreApiPromotion & { demoSlug?: string }): StoreApiPromotion => promotion;
 
 /** The store API for one demo store, mounted at /api/store/v1/<demoSlug>. */
@@ -88,7 +113,14 @@ export function buildStoreApi(input: {
     keys: input.keys,
     basePath: `/api/store/v1/${demoSlug}`,
     deps: {
-      store: { name: input.displayName, currency: "USD", url: storeUrl },
+      store: {
+        name: input.displayName,
+        currency: "USD",
+        url: storeUrl,
+        // Photos kept on another host are given out through this store's own image route.
+        imageUrl: ({ url, productId, skuId, index }) =>
+          hostOf(url) === hostOf(storeUrl) ? url : canonicalUrl(`/api/store/v1/${demoSlug}/images/${productId}/${skuId ?? PRODUCT_IMAGES}/${index}`),
+      },
       catalog,
       categories: {
         listCategories: () => marketingCatalog.listCategories({ demoSlug }),
