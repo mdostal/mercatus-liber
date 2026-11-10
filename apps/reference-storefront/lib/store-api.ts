@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { CatalogService } from "@mercatus-liber/catalog";
 import type { MarketingCatalogService } from "@mercatus-liber/marketing-catalog";
 import type { PromotionsService } from "@mercatus-liber/promotions";
-import { createStoreApiHandler, type StoreApiKeyRepository, type StoreApiPromotion } from "@mercatus-liber/store-api";
+import { createStoreApiHandler, type StoreApiDeps, type StoreApiKey, type StoreApiKeyRepository, type StoreApiPromotion } from "@mercatus-liber/store-api";
 import { generateWebhookSecret, type WebhookSubscription, type WebhookSubscriptionStore } from "@mercatus-liber/webhooks";
 import { canonicalUrl } from "./site-url";
 
@@ -28,19 +28,61 @@ export function scopeWebhookSubscriptions(base: WebhookSubscriptionStore, demoSl
   };
 }
 
+/**
+ * API keys live in one table shared by every demo store on the same database,
+ * so each demo only accepts and lists its own: a key's stored id starts with
+ * `${demoSlug}.`. Without this, a key created in one demo's admin would
+ * authenticate against every other demo's store API. A key saved before this
+ * scoping existed has no prefix and is accepted by no store.
+ */
+export function scopeStoreApiKeys(base: StoreApiKeyRepository, demoSlug: string): StoreApiKeyRepository {
+  const prefix = `${demoSlug}.`;
+  const ours = (key: StoreApiKey | null): StoreApiKey | null => (key && key.id.startsWith(prefix) ? key : null);
+  return {
+    get: async (id) => ours(await base.get(id)),
+    getByPrefix: async (keyPrefix) => ours(await base.getByPrefix(keyPrefix)),
+    list: async () => (await base.list()).filter((key) => key.id.startsWith(prefix)),
+    save: (key) => base.save(key.id.startsWith(prefix) ? key : { ...key, id: `${prefix}${key.id}` }),
+  };
+}
+
+/**
+ * The products of one store only. `CatalogService.listProducts()` and
+ * `getProduct()` aren't scoped to a store, so on a database several demos
+ * share they'd hand an outside app every demo's products. A store's own
+ * products are the ones assigned to its catalog (see `listProductsForDemo`).
+ */
+export function scopeCatalogToStore(catalog: CatalogService, catalogSlug: string): StoreApiDeps["catalog"] {
+  const ours = async (): Promise<Awaited<ReturnType<CatalogService["listProducts"]>>> => {
+    const storeCatalog = await catalog.getCatalogBySlug(catalogSlug);
+    return storeCatalog ? catalog.listProductsInCatalog(storeCatalog.id) : [];
+  };
+  return {
+    listProducts: async (filter) => {
+      const products = await ours();
+      return filter?.status ? products.filter((product) => product.status === filter.status) : products;
+    },
+    getProduct: async (id) => (await ours()).find((product) => product.id === id) ?? null,
+    listSkusByProduct: (productId) => catalog.listSkusByProduct(productId),
+  };
+}
+
 const toApiPromotion = ({ demoSlug: _demoSlug, ...promotion }: StoreApiPromotion & { demoSlug?: string }): StoreApiPromotion => promotion;
 
 /** The store API for one demo store, mounted at /api/store/v1/<demoSlug>. */
 export function buildStoreApi(input: {
   demoSlug: string;
   displayName: string;
+  /** Slug of the catalog this store's products are assigned to. */
+  catalogSlug: string;
   catalog: CatalogService;
   marketingCatalog: MarketingCatalogService;
   promotions: PromotionsService;
   webhookSubscriptions: WebhookSubscriptionStore;
   keys: StoreApiKeyRepository;
 }): (request: Request) => Promise<Response> {
-  const { demoSlug, catalog, marketingCatalog, promotions, webhookSubscriptions } = input;
+  const { demoSlug, marketingCatalog, promotions, webhookSubscriptions } = input;
+  const catalog = scopeCatalogToStore(input.catalog, input.catalogSlug);
   const storeUrl = canonicalUrl(`/demo/${demoSlug}`);
   return createStoreApiHandler({
     keys: input.keys,
