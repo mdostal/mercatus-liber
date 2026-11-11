@@ -35,6 +35,8 @@ import {
 import { createPaypalPaymentAdapter } from "@mercatus-liber/adapter-paypal";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, printifyCatalogTargetsFrom, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
+import { createSlant3dFulfillmentAdapter, slant3dCatalogTargetsFrom, SLANT3D_PROVIDER } from "@mercatus-liber/adapter-slant3d";
+import { createDapiFulfillmentAdapter, dapiCatalogTargetsFrom, dapiSkuIdsFrom, DAPI_PROVIDER } from "@mercatus-liber/adapter-3dapi";
 import { createQuickBooksAccountingSyncAdapter, QUICKBOOKS_PROVIDER } from "@mercatus-liber/adapter-quickbooks";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createCloudinaryFetchAdapter } from "@mercatus-liber/adapter-cloudinary";
@@ -1038,7 +1040,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // below close over the same Map instance.
   const printifyExternalOrderIdByOrderId = new Map<string, string>();
 
-  // Which provider product each SKU is made from, for Printful and Printify.
+  // Which provider product each SKU is made from: Printful, Printify, Slant 3D and 3DAPI.
   const providerCatalogMappings = pgPool ? createPostgresProviderCatalogMappingRepository(pgPool) : createInMemoryProviderCatalogMappingRepository();
   const fulfillmentRouting = pgPool
     ? createPostgresFulfillmentRoutingRepository(pgPool)
@@ -1136,6 +1138,36 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
               }),
               printifyExternalOrderIdByOrderId,
             ),
+          }
+        : {}),
+      // 3D print on demand (docs/integrations/3d-print-on-demand.md). Each is
+      // added only when its credentials are set, and a SKU only goes to one
+      // once it is routed there and mapped to a file (Slant 3D) or a quote
+      // (3DAPI) in providerCatalogMappings. Neither has been run against a
+      // live account from this app.
+      ...(process.env.SLANT3D_API_KEY && process.env.SLANT3D_PLATFORM_ID
+        ? {
+            [SLANT3D_PROVIDER]: createSlant3dFulfillmentAdapter({
+              apiKey: process.env.SLANT3D_API_KEY,
+              platformId: process.env.SLANT3D_PLATFORM_ID,
+              resolveCatalogTarget: slant3dCatalogTargetsFrom(providerCatalogMappings),
+              // Slant keeps a held order as an uncharged draft.
+              holdOrders: process.env.SLANT3D_HOLD_ORDERS === "true",
+              ...(process.env.SLANT3D_WEBHOOK_SECRET ? { webhookSecret: process.env.SLANT3D_WEBHOOK_SECRET } : {}),
+            }),
+          }
+        : {}),
+      ...(process.env.DAPI_API_KEY
+        ? {
+            [DAPI_PROVIDER]: createDapiFulfillmentAdapter({
+              apiKey: process.env.DAPI_API_KEY,
+              resolveCatalogTarget: dapiCatalogTargetsFrom(providerCatalogMappings),
+              resolveSkuId: dapiSkuIdsFrom(providerCatalogMappings),
+              // 3DAPI has no draft: a held order is not sent at all.
+              holdOrders: process.env.DAPI_HOLD_ORDERS === "true",
+              useSampleCredit: process.env.DAPI_USE_SAMPLE_CREDIT === "true",
+              ...(process.env.DAPI_WEBHOOK_SECRET ? { webhookSecret: process.env.DAPI_WEBHOOK_SECRET } : {}),
+            }),
           }
         : {}),
     },

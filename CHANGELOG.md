@@ -1135,3 +1135,15 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 - `GET /products` on a demo store's Store API returns only that store's products, not every store's.
 - Each demo's seeded promo code is created once. It used to be re-created on every cold start.
 
+## [0.57.0] - 2026-11-10
+
+### Added
+
+- `@mercatus-liber/adapter-slant3d`: sends orders to Slant 3D's print farms. Uploads and prices model files, drafts and processes orders, can hold orders as uncharged drafts, and checks webhook signatures.
+- `@mercatus-liber/adapter-3dapi`: sends orders to 3DAPI's print network. Quotes model files, orders prints from a prepaid wallet with an idempotency key, estimates shipping, and checks webhook signatures.
+- Both plan a product from a file with each variant's cost and margin (`planSlant3dProduct`, `planDapiProduct`).
+- The reference storefront registers each provider when `SLANT3D_API_KEY` and `SLANT3D_PLATFORM_ID`, or `DAPI_API_KEY`, are set.
+- `docs/integrations/3d-print-on-demand.md`: the providers compared, why these two, and what is left before a live order.
+
+Neither adapter has placed an order with a live account.
+
