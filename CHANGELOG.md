@@ -1122,3 +1122,16 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 - Postgres orders gain a nullable `shipping_total` column, added in place on existing tables.
 - The sandbox payment page's total includes shipping, and its URL carries the shipping amount.
 
+## [0.56.0] - 2026-11-10
+
+### Added
+
+- `store.imageUrl` in `@mercatus-liber/store-api`: an optional hook that rewrites each product and variant image URL the API gives out, so a store can serve photos from its own host.
+- The reference storefront serves product photos at `/api/store/v1/<demo>/images/<productId>/<skuId|product>/<index>` and gives those URLs out through the Store API.
+
+### Fixed
+
+- A Store API key works only in the demo store it was created for. Demo stores share one key table, and a key made in one store used to authenticate in the others.
+- `GET /products` on a demo store's Store API returns only that store's products, not every store's.
+- Each demo's seeded promo code is created once. It used to be re-created on every cold start.
+
