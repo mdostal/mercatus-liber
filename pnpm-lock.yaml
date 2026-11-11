@@ -71,6 +71,9 @@ importers:
       '@mercatus-liber/accounting-sync':
         specifier: workspace:*
         version: link:../../packages/accounting-sync
+      '@mercatus-liber/adapter-3dapi':
+        specifier: workspace:*
+        version: link:../../packages/adapter-3dapi
       '@mercatus-liber/adapter-clerk':
         specifier: workspace:*
         version: link:../../packages/adapter-clerk
@@ -107,6 +110,9 @@ importers:
       '@mercatus-liber/adapter-shippo':
         specifier: workspace:*
         version: link:../../packages/adapter-shippo
+      '@mercatus-liber/adapter-slant3d':
+        specifier: workspace:*
+        version: link:../../packages/adapter-slant3d
       '@mercatus-liber/adapter-sqlite':
         specifier: workspace:*
         version: link:../../packages/adapter-sqlite
@@ -284,6 +290,22 @@ importers:
       '@mercatus-liber/checkout-orders':
         specifier: workspace:*
         version: link:../checkout-orders
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@edge-runtime/vm@5.0.0)(@types/node@22.20.1)(jsdom@30.1.3)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.0))
+
+  packages/adapter-3dapi:
+    dependencies:
+      '@mercatus-liber/fulfillment':
+        specifier: workspace:*
+        version: link:../fulfillment
+    devDependencies:
       '@types/node':
         specifier: ^22.7.5
         version: 22.20.1
@@ -611,6 +633,22 @@ importers:
       '@mercatus-liber/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.20.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.1
+        version: 5.0.1(@edge-runtime/vm@5.0.0)(@types/node@22.20.1)(jsdom@30.1.3)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.0))
+
+  packages/adapter-slant3d:
+    dependencies:
+      '@mercatus-liber/fulfillment':
+        specifier: workspace:*
+        version: link:../fulfillment
     devDependencies:
       '@types/node':
         specifier: ^22.7.5
