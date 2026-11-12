@@ -7,6 +7,7 @@ import BackendAsleepPage from "../../../components/backend-asleep-page";
 import { NavBlueprintBar } from "../../../components/nav-blueprint-bar";
 import { NavRail } from "../../../components/nav-rail";
 import { NavTopBar } from "../../../components/nav-top-bar";
+import { BrokenImageFallback } from "../../../components/broken-image-fallback";
 import { readOrBackendUnreachable } from "../../../lib/backend-unreachable";
 import { DEMO_REGISTRY, DEMO_SLUGS, isDemoSlug, type DemoSlug } from "../../../lib/demos";
 import { resolvePageTemplateOverride } from "../../../lib/resolve-page-template";
@@ -431,6 +432,7 @@ export default async function DemoLayout({
             </span>
           ))}
         </nav>
+        <BrokenImageFallback />
         <NavChrome
           demoSlug={demoSlug}
           displayName={DEMO_REGISTRY[demoSlug].displayName}

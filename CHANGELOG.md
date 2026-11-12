@@ -1147,3 +1147,9 @@ tracked in `.pHive/epics/commerce-gap-audit-2/docs/audit-findings.md`, still out
 
 Neither adapter has placed an order with a live account.
 
+
+## [0.57.1] - 2026-11-11
+
+### Fixed
+
+- A product photo that fails to load shows a plain placeholder in the reference storefront, not the browser's broken-image icon. The demo stores link their photos from loremflickr.com, which has been returning errors.
