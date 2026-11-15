@@ -254,12 +254,13 @@ function fulfillmentInfo(): AdapterInfo {
  * correctness proof against Shippo's actual, current API shape).
  */
 function shippingInfo(): AdapterInfo {
-  if (process.env.SHIPPO_API_TOKEN) {
+  const registered = [process.env.SHIPPO_API_TOKEN ? "Shippo" : null, process.env.SHIPSTATION_API_KEY ? "ShipStation" : null].filter((name): name is string => name !== null);
+  if (registered.length > 0) {
     return {
       subsystem: "Shipping",
-      adapter: "Manual (PirateShip) + Shippo (registered)",
+      adapter: `Manual (PirateShip) + ${registered.map((name) => `${name} (registered)`).join(" + ")}`,
       detail:
-        "SHIPPO_API_TOKEN is set -- createShippoShippingAdapter() (packages/adapter-shippo) is registered " +
+        `${registered.join(" and ")} ${registered.length > 1 ? "are" : "is"} registered (SHIPPO_API_TOKEN / SHIPSTATION_API_KEY) ` +
         "alongside createManualShippingAdapter() (packages/shipping), always registered as the permanent " +
         "documented-manual-workflow default",
       status: "active",
@@ -270,7 +271,7 @@ function shippingInfo(): AdapterInfo {
     subsystem: "Shipping",
     adapter: "Manual (PirateShip)",
     detail:
-      "SHIPPO_API_TOKEN is not set -- only createManualShippingAdapter() (packages/shipping) is registered, " +
+      "Neither SHIPPO_API_TOKEN nor SHIPSTATION_API_KEY is set -- only createManualShippingAdapter() (packages/shipping) is registered, " +
       "a genuinely honest documented-manual-workflow default (PirateShip has no public API, confirmed by " +
       "research), not an error state",
     status: "active",

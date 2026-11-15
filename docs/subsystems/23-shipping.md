@@ -144,6 +144,16 @@ the way a fulfillment provider does. `lib/adapter-info.ts`'s `getAdapterInfo()` 
 `fulfillmentInfo()`'s own row exactly. As with `fulfillmentInfo`, "active" in this row does not
 imply live-verified — see the credential-gap disclosure below.
 
+## The ShipStation adapter (`@mercatus-liber/adapter-shipstation`, added 2026-11-15)
+Built from ShipStation API v2's published OpenAPI spec (see the package README for every source).
+Rates via `POST /v2/rates` (carrier ids from config or `GET /v2/carriers`), labels via
+`POST /v2/labels/rates/{rate_id}`, voids via `PUT /v2/labels/{label_id}/void` (always reported as
+`pending`, since ShipStation may take up to 28 days to refund). v2 can't track a bare tracking number
+without a carrier code, so `getTrackingStatus` reports `unknown` with a carrier link; the extra
+`getTrackingStatusForLabel(labelId)` does the live lookup. The spec requires a phone number on both
+addresses, so rates fail when one is missing. Registered under `"shipstation"` when
+`SHIPSTATION_API_KEY` is set. Tested against fakes only.
+
 ## Labels for self-shipped orders (`createOrderLabelService`, added 2026-11-15)
 For goods a store ships itself (stock it holds, or prints from its own printer), this
 subsystem now provides an order-level flow on top of the adapter contract:

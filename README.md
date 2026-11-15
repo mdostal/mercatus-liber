@@ -95,6 +95,7 @@ never run against a real account.
 | Print on demand | `adapter-printful`, `adapter-printify` | Unverified; activates when credentials are set |
 | 3D print on demand | `adapter-slant3d`, `adapter-3dapi` | Unverified; activates when credentials are set. See `docs/integrations/3d-print-on-demand.md` |
 | Shipping | `adapter-shippo` | Unverified |
+| Shipping | `adapter-shipstation` | Unverified |
 | Images | `adapter-cloudinary` | Unverified |
 | Accounting | `adapter-quickbooks` | Unverified |
 | Analytics | PostHog (in `analytics`) | Live |

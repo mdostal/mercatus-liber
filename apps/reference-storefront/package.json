@@ -33,6 +33,7 @@
     "@mercatus-liber/adapter-quickbooks": "workspace:*",
     "@mercatus-liber/adapter-sanity": "workspace:*",
     "@mercatus-liber/adapter-shippo": "workspace:*",
+    "@mercatus-liber/adapter-shipstation": "workspace:*",
     "@mercatus-liber/adapter-sqlite": "workspace:*",
     "@mercatus-liber/admin-auth": "workspace:*",
     "@mercatus-liber/advertising": "workspace:*",

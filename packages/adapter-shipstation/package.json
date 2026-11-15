@@ -1,0 +1,33 @@
+{
+  "name": "@mercatus-liber/adapter-shipstation",
+  "version": "0.1.0",
+  "description": "ShippingAdapter (@mercatus-liber/shipping) backed by ShipStation API v2 (api.shipstation.com/v2, API-Key header): POST /v2/rates for rates, POST /v2/labels/rates/{rate_id} to buy a label, PUT /v2/labels/{label_id}/void to void one, and GET /v2/labels/{label_id}/track for tracking by label id. Built from ShipStation's published OpenAPI spec, tested against fakes, never called against a live account. Uses global fetch; no HTTP dependency.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mercatus-liber/core": "workspace:*",
+    "@mercatus-liber/shipping": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}
