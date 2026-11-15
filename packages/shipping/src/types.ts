@@ -71,7 +71,17 @@ export interface ShippingLabel {
   trackingNumber: string;
   trackingUrl: string | null;
   carrier: string;
+  /** The provider's own id for this label, passed to `voidLabel()`. Null or absent when the adapter can't void labels. */
+  labelId?: string | null;
 }
+
+/**
+ * voidLabel()'s result. `voided: true` means the provider accepted the void or
+ * refund request; some providers settle the refund later (`pending: true`).
+ */
+export type LabelVoidResult =
+  | { voided: true; pending: boolean }
+  | { voided: false; reason: string };
 
 /** buyLabel()'s result -- same discriminated-union discipline as RateQuoteResult, and for the same reason. */
 export type LabelPurchaseResult =
@@ -129,4 +139,6 @@ export interface ShippingAdapter {
   buyLabel(rateId: string): Promise<LabelPurchaseResult>;
   /** Looks up status for a real tracking number an operator has in hand (e.g. entered by hand into fulfillment's FulfillmentLineRecord.trackingNumber -- see fulfillment/src/types.ts). Never throws for an unrecognized number; reports status "unknown" instead. */
   getTrackingStatus(trackingNumber: string): Promise<TrackingStatus>;
+  /** Voids an unused label bought through this adapter, by `ShippingLabel.labelId`. Optional: adapters that can't void omit it. */
+  voidLabel?(labelId: string): Promise<LabelVoidResult>;
 }

@@ -221,3 +221,20 @@ export interface ShippoTrackingResponse {
   tracking_status: ShippoTrackingStatus | null;
   tracking_history: ShippoTrackingStatus[];
 }
+
+/** `POST /refunds` request (docs.goshippo.com/api-reference/refunds/create-a-refund, checked 2026-11-15). */
+export interface ShippoCreateRefundRequest {
+  /** The transaction's own `object_id`. */
+  transaction: string;
+  async: false;
+}
+
+/** Documented refund status enum (same page). */
+export type ShippoRefundStatus = "QUEUED" | "PENDING" | "SUCCESS" | "ERROR";
+
+export interface ShippoRefundResponse {
+  object_id: string;
+  status: ShippoRefundStatus;
+  transaction: string;
+  test?: boolean;
+}

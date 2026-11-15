@@ -1,6 +1,6 @@
 import type { GetRatesInput, ShippingAddress } from "@mercatus-liber/shipping";
 import { describe, expect, it } from "vitest";
-import { createShippoShippingAdapter, SHIPPO_DASHBOARD_URL } from "../src/index.js";
+import { createShippoShippingAdapter, ShippoApiError, SHIPPO_DASHBOARD_URL } from "../src/index.js";
 import type { ShippoHttpClient } from "../src/http-client.js";
 import { assertShippoAdapterSatisfiesShippingAdapter } from "../src/shipping-adapter-compat.js";
 import type { ShippoShipmentResponse, ShippoTrackingResponse, ShippoTransactionResponse } from "../src/shippo-types.js";
@@ -13,7 +13,7 @@ import type { ShippoShipmentResponse, ShippoTrackingResponse, ShippoTransactionR
  * "Real credential gate", same disclosed pattern as epics 27/42/43/46).
  */
 function fakeClient(overrides: Partial<ShippoHttpClient> = {}): ShippoHttpClient & { calls: Record<string, unknown[]> } {
-  const calls: Record<string, unknown[]> = { createShipment: [], createTransaction: [], getTrackingStatus: [] };
+  const calls: Record<string, unknown[]> = { createShipment: [], createTransaction: [], getTrackingStatus: [], createRefund: [] };
   return {
     calls,
     async createShipment(body) {
@@ -23,6 +23,10 @@ function fakeClient(overrides: Partial<ShippoHttpClient> = {}): ShippoHttpClient
     async createTransaction(body) {
       calls.createTransaction!.push(body);
       return overrides.createTransaction ? overrides.createTransaction(body) : successfulTransaction();
+    },
+    async createRefund(body) {
+      calls.createRefund!.push(body);
+      return overrides.createRefund ? overrides.createRefund(body) : { object_id: "rf1", status: "QUEUED", transaction: body.transaction };
     },
     async getTrackingStatus(carrier, trackingNumber) {
       calls.getTrackingStatus!.push([carrier, trackingNumber]);
@@ -146,6 +150,7 @@ describe("createShippoShippingAdapter", () => {
         trackingNumber: "92701901755477000000000011",
         trackingUrl: "https://tools.usps.com/go/TrackConfirmAction_input?origTrackNum=92701901755477000000000011",
         carrier: "USPS",
+        labelId: successfulTransaction().object_id,
       });
     });
 
@@ -268,6 +273,36 @@ describe("createShippoShippingAdapter", () => {
       expect(typeof adapter.getRates).toBe("function");
       expect(typeof adapter.buyLabel).toBe("function");
       expect(typeof adapter.getTrackingStatus).toBe("function");
+    });
+  });
+
+  describe("voidLabel", () => {
+    it("asks Shippo to refund the label's transaction and reports a queued refund as pending", async () => {
+      const client = fakeClient();
+      const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+      const result = await adapter.voidLabel!("tx-1");
+      expect(client.calls.createRefund![0]).toEqual({ transaction: "tx-1", async: false });
+      expect(result).toEqual({ voided: true, pending: true });
+    });
+
+    it("reports a settled refund as not pending", async () => {
+      const client = fakeClient({ createRefund: async (b) => ({ object_id: "rf2", status: "SUCCESS", transaction: b.transaction }) });
+      const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+      expect(await adapter.voidLabel!("tx-2")).toEqual({ voided: true, pending: false });
+    });
+
+    it("reports an ERROR refund as not voided", async () => {
+      const client = fakeClient({ createRefund: async (b) => ({ object_id: "rf3", status: "ERROR", transaction: b.transaction }) });
+      const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+      const result = await adapter.voidLabel!("tx-3");
+      expect(result.voided).toBe(false);
+    });
+
+    it("turns a 4xx from Shippo into a not-voided result, and rethrows a 5xx", async () => {
+      const refused = fakeClient({ createRefund: async () => { throw new ShippoApiError("POST", "/refunds/", 400, { detail: "already refunded" }); } });
+      expect((await createShippoShippingAdapter({ apiToken: "t", httpClient: refused }).voidLabel!("tx-4")).voided).toBe(false);
+      const down = fakeClient({ createRefund: async () => { throw new ShippoApiError("POST", "/refunds/", 503, null); } });
+      await expect(createShippoShippingAdapter({ apiToken: "t", httpClient: down }).voidLabel!("tx-5")).rejects.toThrow(ShippoApiError);
     });
   });
 });

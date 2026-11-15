@@ -1,6 +1,6 @@
 import { detectCarrierFromTrackingNumber } from "@mercatus-liber/shipping";
-import type { GetRatesInput, LabelPurchaseResult, RateQuoteResult, ShippingAdapter, TrackingStatus } from "@mercatus-liber/shipping";
-import { createShippoHttpClient, type ShippoHttpClient } from "./http-client.js";
+import type { GetRatesInput, LabelPurchaseResult, LabelVoidResult, RateQuoteResult, ShippingAdapter, TrackingStatus } from "@mercatus-liber/shipping";
+import { createShippoHttpClient, ShippoApiError, type ShippoHttpClient } from "./http-client.js";
 import { mapRate, mapTrackingEvent, mapTrackingStatusState, toShippoAddress, toShippoCarrierToken, toShippoParcel } from "./mapping.js";
 import type { ShippoApiMessage } from "./shippo-types.js";
 
@@ -124,8 +124,25 @@ export function createShippoShippingAdapter(config: ShippoShippingAdapterConfig)
           trackingNumber: transaction.tracking_number,
           trackingUrl: transaction.tracking_url_provider ?? null,
           carrier: transaction.rate.provider,
+          labelId: transaction.object_id,
         },
       };
+    },
+
+    async voidLabel(labelId: string): Promise<LabelVoidResult> {
+      let refund;
+      try {
+        refund = await client.createRefund({ transaction: labelId, async: false });
+      } catch (err) {
+        if (err instanceof ShippoApiError && err.status >= 400 && err.status < 500) {
+          return { voided: false, reason: `Shippo refused the refund for transaction ${labelId} (HTTP ${err.status}).` };
+        }
+        throw err;
+      }
+      if (refund.status === "ERROR") {
+        return { voided: false, reason: `Shippo refund ${refund.object_id} for transaction ${labelId} failed (status: ERROR).` };
+      }
+      return { voided: true, pending: refund.status !== "SUCCESS" };
     },
 
     async getTrackingStatus(trackingNumber: string): Promise<TrackingStatus> {

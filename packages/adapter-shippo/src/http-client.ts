@@ -1,6 +1,8 @@
 import type {
+  ShippoCreateRefundRequest,
   ShippoCreateShipmentRequest,
   ShippoCreateTransactionRequest,
+  ShippoRefundResponse,
   ShippoShipmentResponse,
   ShippoTrackingResponse,
   ShippoTransactionResponse,
@@ -45,6 +47,8 @@ export interface ShippoHttpClient {
   createTransaction(body: ShippoCreateTransactionRequest): Promise<ShippoTransactionResponse>;
   /** `GET /tracks/{carrier}/{tracking_number}` -- confirmed path (shippo-types.ts). Returns `null` on a 404 (unrecognized tracking number), never throws for that case. */
   getTrackingStatus(carrier: string, trackingNumber: string): Promise<ShippoTrackingResponse | null>;
+  /** `POST /refunds` -- asks Shippo to refund (void) an unused label's transaction. */
+  createRefund(body: ShippoCreateRefundRequest): Promise<ShippoRefundResponse>;
 }
 
 export function createShippoHttpClient(config: ShippoHttpClientConfig): ShippoHttpClient {
@@ -82,6 +86,13 @@ export function createShippoHttpClient(config: ShippoHttpClientConfig): ShippoHt
     async createTransaction(body: ShippoCreateTransactionRequest): Promise<ShippoTransactionResponse> {
       const path = "/transactions/";
       const result = await request<ShippoTransactionResponse>("POST", path, body);
+      if (!result) throw new ShippoApiError("POST", path, 404, null);
+      return result;
+    },
+
+    async createRefund(body: ShippoCreateRefundRequest): Promise<ShippoRefundResponse> {
+      const path = "/refunds/";
+      const result = await request<ShippoRefundResponse>("POST", path, body);
       if (!result) throw new ShippoApiError("POST", path, 404, null);
       return result;
     },
