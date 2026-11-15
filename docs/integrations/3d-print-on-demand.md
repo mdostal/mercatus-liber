@@ -83,11 +83,11 @@ The reference storefront registers each one when its credentials are set:
 |---|---|
 | `SLANT3D_API_KEY`, `SLANT3D_PLATFORM_ID` | Turns on Slant 3D. Both are needed. |
 | `SLANT3D_HOLD_ORDERS=true` | Leaves orders as drafts. |
-| `SLANT3D_WEBHOOK_SECRET` | The platform's webhook secret. |
+| `SLANT3D_WEBHOOK_SECRET` | The platform's webhook secret. Turns on the webhook route for `slant3d`. |
 | `DAPI_API_KEY` | Turns on 3DAPI. |
 | `DAPI_HOLD_ORDERS=true` | Stops orders being sent. |
 | `DAPI_USE_SAMPLE_CREDIT=true` | Spends the $15 sample credit first. |
-| `DAPI_WEBHOOK_SECRET` | The webhook endpoint's secret. |
+| `DAPI_WEBHOOK_SECRET` | The webhook endpoint's secret. Turns on the webhook route for `3dapi`. |
 
 A SKU goes to a provider only after it is routed there and mapped in the provider catalog mappings. Every other SKU stays on manual fulfilment.
 
@@ -95,7 +95,7 @@ A SKU goes to a provider only after it is routed there and mapped in the provide
 
 - No order has been placed with either provider. The first live draft at Slant is the check that matters: the adapter sends a `SKU` and `metadata` on each order, which Slant's documentation lists but its API specification does not.
 - Slant cannot look an order up by the store's order id. The adapter takes a `resolveExternalOrderId` callback for that; the storefront does not supply one yet, so it remembers Slant order ids only until it restarts.
-- The storefront has no webhook route for either provider yet, so status comes from reading the order back, not from pushes.
+- Status webhooks: the reference storefront receives both providers at `POST /api/demo/<demoSlug>/fulfillment/<provider>/webhook` (`slant3d` or `3dapi`) once the provider's webhook secret is set. A verified event is published on the store's event bus as `fulfillment.provider_event` with `{ provider, event }`. Nothing subscribes to it yet, so the order's status shown in the admin still comes from reading the order back. Tested with a locally signed Slant delivery, not a real one.
 - The demo stores have no 3D-printed products mapped to either provider.
 - 3DAPI webhook endpoints, billing details and cards can only be set up in its dashboard, not through the API.
 

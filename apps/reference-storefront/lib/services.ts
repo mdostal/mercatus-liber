@@ -37,6 +37,7 @@ import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTar
 import { createPrintifyFulfillmentAdapter, printifyCatalogTargetsFrom, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSlant3dFulfillmentAdapter, slant3dCatalogTargetsFrom, SLANT3D_PROVIDER } from "@mercatus-liber/adapter-slant3d";
 import { createDapiFulfillmentAdapter, dapiCatalogTargetsFrom, dapiSkuIdsFrom, DAPI_PROVIDER } from "@mercatus-liber/adapter-3dapi";
+import { dapiSignatureFrom, FULFILLMENT_PROVIDER_EVENT, slant3dSignatureFrom, type FulfillmentProviderEvent, type FulfillmentWebhookReceivers } from "./fulfillment-webhooks";
 import { createQuickBooksAccountingSyncAdapter, QUICKBOOKS_PROVIDER } from "@mercatus-liber/adapter-quickbooks";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createCloudinaryFetchAdapter } from "@mercatus-liber/adapter-cloudinary";
@@ -238,6 +239,8 @@ export interface Services {
   bi: BiMetricsAdapter;
   adminAuth: AdminAuthAdapter;
   fulfillment: FulfillmentService;
+  /** Print-on-demand providers whose webhook secret is set, by provider key. See lib/fulfillment-webhooks.ts. */
+  fulfillmentWebhooks: FulfillmentWebhookReceivers;
   /**
    * Exposed alongside `fulfillment` (not just wrapped inside it) so the
    * admin fulfillment surface can show a line's routed provider (defaulting
@@ -1045,6 +1048,44 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   const fulfillmentRouting = pgPool
     ? createPostgresFulfillmentRoutingRepository(pgPool)
     : createInMemoryFulfillmentRoutingRepository();
+  // Slant 3D and 3DAPI: built here, not inline, so their webhook receivers
+  // (lib/fulfillment-webhooks.ts) use the same adapter instance. A verified
+  // webhook event goes onto the event bus as `fulfillment.provider_event`.
+  const publishProviderEvent = (provider: string) => async (event: unknown) => {
+    await events.publish<FulfillmentProviderEvent>(FULFILLMENT_PROVIDER_EVENT, { provider, event });
+  };
+  const slant3dAdapter =
+    process.env.SLANT3D_API_KEY && process.env.SLANT3D_PLATFORM_ID
+      ? createSlant3dFulfillmentAdapter({
+          apiKey: process.env.SLANT3D_API_KEY,
+          platformId: process.env.SLANT3D_PLATFORM_ID,
+          resolveCatalogTarget: slant3dCatalogTargetsFrom(providerCatalogMappings),
+          // Slant keeps a held order as an uncharged draft.
+          holdOrders: process.env.SLANT3D_HOLD_ORDERS === "true",
+          ...(process.env.SLANT3D_WEBHOOK_SECRET ? { webhookSecret: process.env.SLANT3D_WEBHOOK_SECRET } : {}),
+          onWebhookEvent: publishProviderEvent(SLANT3D_PROVIDER),
+        })
+      : null;
+  const dapiAdapter = process.env.DAPI_API_KEY
+    ? createDapiFulfillmentAdapter({
+        apiKey: process.env.DAPI_API_KEY,
+        resolveCatalogTarget: dapiCatalogTargetsFrom(providerCatalogMappings),
+        resolveSkuId: dapiSkuIdsFrom(providerCatalogMappings),
+        // 3DAPI has no draft: a held order is not sent at all.
+        holdOrders: process.env.DAPI_HOLD_ORDERS === "true",
+        useSampleCredit: process.env.DAPI_USE_SAMPLE_CREDIT === "true",
+        ...(process.env.DAPI_WEBHOOK_SECRET ? { webhookSecret: process.env.DAPI_WEBHOOK_SECRET } : {}),
+        onWebhookEvent: publishProviderEvent(DAPI_PROVIDER),
+      })
+    : null;
+  const fulfillmentWebhooks: FulfillmentWebhookReceivers = {
+    ...(slant3dAdapter && process.env.SLANT3D_WEBHOOK_SECRET
+      ? { [SLANT3D_PROVIDER]: { signatureFrom: slant3dSignatureFrom, handle: (body, sig) => slant3dAdapter.handleWebhookEvent(body, sig) } }
+      : {}),
+    ...(dapiAdapter?.handleWebhookEvent && process.env.DAPI_WEBHOOK_SECRET
+      ? { [DAPI_PROVIDER]: { signatureFrom: dapiSignatureFrom, handle: dapiAdapter.handleWebhookEvent.bind(dapiAdapter) } }
+      : {}),
+  };
   const fulfillment = createFulfillmentService({
     orders: checkout,
     routing: fulfillmentRouting,
@@ -1145,31 +1186,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       // once it is routed there and mapped to a file (Slant 3D) or a quote
       // (3DAPI) in providerCatalogMappings. Neither has been run against a
       // live account from this app.
-      ...(process.env.SLANT3D_API_KEY && process.env.SLANT3D_PLATFORM_ID
-        ? {
-            [SLANT3D_PROVIDER]: createSlant3dFulfillmentAdapter({
-              apiKey: process.env.SLANT3D_API_KEY,
-              platformId: process.env.SLANT3D_PLATFORM_ID,
-              resolveCatalogTarget: slant3dCatalogTargetsFrom(providerCatalogMappings),
-              // Slant keeps a held order as an uncharged draft.
-              holdOrders: process.env.SLANT3D_HOLD_ORDERS === "true",
-              ...(process.env.SLANT3D_WEBHOOK_SECRET ? { webhookSecret: process.env.SLANT3D_WEBHOOK_SECRET } : {}),
-            }),
-          }
-        : {}),
-      ...(process.env.DAPI_API_KEY
-        ? {
-            [DAPI_PROVIDER]: createDapiFulfillmentAdapter({
-              apiKey: process.env.DAPI_API_KEY,
-              resolveCatalogTarget: dapiCatalogTargetsFrom(providerCatalogMappings),
-              resolveSkuId: dapiSkuIdsFrom(providerCatalogMappings),
-              // 3DAPI has no draft: a held order is not sent at all.
-              holdOrders: process.env.DAPI_HOLD_ORDERS === "true",
-              useSampleCredit: process.env.DAPI_USE_SAMPLE_CREDIT === "true",
-              ...(process.env.DAPI_WEBHOOK_SECRET ? { webhookSecret: process.env.DAPI_WEBHOOK_SECRET } : {}),
-            }),
-          }
-        : {}),
+      ...(slant3dAdapter ? { [SLANT3D_PROVIDER]: slant3dAdapter } : {}),
+      ...(dapiAdapter ? { [DAPI_PROVIDER]: dapiAdapter } : {}),
     },
   });
 
@@ -1280,6 +1298,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     bi,
     adminAuth,
     fulfillment,
+    fulfillmentWebhooks,
     fulfillmentRouting,
     shipping,
     media,
