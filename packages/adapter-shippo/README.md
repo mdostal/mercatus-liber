@@ -20,6 +20,8 @@ await shipping.voidLabel(bought.label.labelId);                 // POST /refunds
 
 `baseUrl`, `fetchImpl`, `httpClient`, and `labelFileType` are optional config.
 
+**Parcels need a box size.** `getRates` refuses a parcel without all three of `lengthIn`, `widthIn` and `heightIn` (it throws before calling Shippo), because Shippo quotes on dimensions and this adapter won't invent them. Collect the box as well as the weight.
+
 ## Key exports
 
 - `createShippoShippingAdapter(config)`, `ShippoShippingAdapterConfig`.
