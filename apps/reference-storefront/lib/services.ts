@@ -41,6 +41,7 @@ import { createQuickBooksAccountingSyncAdapter, QUICKBOOKS_PROVIDER } from "@mer
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createCloudinaryFetchAdapter } from "@mercatus-liber/adapter-cloudinary";
 import { createShippoShippingAdapter } from "@mercatus-liber/adapter-shippo";
+import { createShipStationShippingAdapter } from "@mercatus-liber/adapter-shipstation";
 import {
   createSqliteAdapterFromDb,
   createSqliteCategoryRepository,
@@ -1191,6 +1192,10 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     manual: createManualShippingAdapter(),
     ...(process.env.SHIPPO_API_TOKEN
       ? { shippo: createShippoShippingAdapter({ apiToken: process.env.SHIPPO_API_TOKEN }) }
+      : {}),
+    // ShipStation API v2 (packages/adapter-shipstation); not run against a live account.
+    ...(process.env.SHIPSTATION_API_KEY
+      ? { shipstation: createShipStationShippingAdapter({ apiKey: process.env.SHIPSTATION_API_KEY }) }
       : {}),
   };
 

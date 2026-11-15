@@ -110,6 +110,9 @@ importers:
       '@mercatus-liber/adapter-shippo':
         specifier: workspace:*
         version: link:../../packages/adapter-shippo
+      '@mercatus-liber/adapter-shipstation':
+        specifier: workspace:*
+        version: link:../../packages/adapter-shipstation
       '@mercatus-liber/adapter-slant3d':
         specifier: workspace:*
         version: link:../../packages/adapter-slant3d

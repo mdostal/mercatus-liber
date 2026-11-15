@@ -82,6 +82,7 @@ place of it.
 | `adapter-printful` | Printful's real v2 order API (draft-then-confirm) + v2 webhooks | **Built, tested** (21 unit tests), wired additively into `services.ts`. **Credential-gated** — no `PRINTFUL_API_TOKEN` exists in this environment; no live Printful account call has been made. | `PRINTFUL_API_TOKEN` (+ optional `PRINTFUL_STORE_ID`) |
 | `adapter-printify` | Printify's real v1 order API (create-then-send-to-production) + HMAC-SHA256-verified webhooks | **Built, tested** (30 unit tests), a second, independent POD provider that can run alongside Printful. **Credential-gated** — `PRINTIFY_API_TOKEN`/`PRINTIFY_SHOP_ID` are both unset here. | `PRINTIFY_API_TOKEN` + `PRINTIFY_SHOP_ID` (both required — Printify accounts can have multiple shops with no auto-discovery) |
 | `adapter-shippo` | Shippo's real REST API — rate shopping, label purchase, tracking lookup | **Built, tested** (20 unit tests). **Credential-gated** — no `SHIPPO_API_TOKEN` is set. | `SHIPPO_API_TOKEN` |
+| `adapter-shipstation` | ShipStation API v2 — rate shopping, label purchase, void, tracking by label | **Built, tested** (24 unit tests, against fakes). **Credential-gated** — no `SHIPSTATION_API_KEY` is set. The ShipStation API Free plan covers rates, labels and voids; the ShipStation app needs Standard or above for API access. | `SHIPSTATION_API_KEY` |
 
 ## Image / media
 
