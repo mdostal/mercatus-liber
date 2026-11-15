@@ -144,6 +144,24 @@ the way a fulfillment provider does. `lib/adapter-info.ts`'s `getAdapterInfo()` 
 `fulfillmentInfo()`'s own row exactly. As with `fulfillmentInfo`, "active" in this row does not
 imply live-verified — see the credential-gap disclosure below.
 
+## Labels for self-shipped orders (`createOrderLabelService`, added 2026-11-15)
+For goods a store ships itself (stock it holds, or prints from its own printer), this
+subsystem now provides an order-level flow on top of the adapter contract:
+`quote(orderId, parcel)`, then `buy(orderId, skuIds, rateId)`, then `void(labelId)`. It takes two
+narrow, structural dependencies instead of importing `@mercatus-liber/fulfillment`:
+`OrderShipToLookup` (fulfillment's `OrderLookup` fits) and `ShipmentRecorder` (fulfillment's
+`markLineShipped` fits). The tracking number is written onto each named line, so the existing
+fulfillment views and shipped emails pick it up.
+- **Address**: only a complete structured ship-to address is used. An order with only the
+  free-text `address` gets `available: false` and a list of the missing fields.
+- **Partial failure**: a bought label that is recorded nowhere is the worst outcome. If
+  recording fails before any line was written, `buy` voids the label (when the adapter can) and
+  throws `LabelRecordedPartiallyError` carrying the label and the void result. If some lines
+  were written, it keeps the label and the error lists those lines.
+- **Voiding**: `ShippingAdapter.voidLabel` is optional and `ShippingLabel.labelId` carries the
+  provider's own id. Shippo implements it with `POST /refunds` (a refund request that Shippo may
+  settle later, so the result reports `pending`). The manual adapter has no `voidLabel`.
+
 ## Honest credential-gap disclosure
 **No real Shippo account or API token exists in this environment**, checked directly: no
 `SHIPPO_API_TOKEN` in the shell environment (`env | grep -i shippo` — no output) or in
@@ -184,7 +202,8 @@ What *is* genuinely verified without a live credential:
   (or a future admin action) explicitly calls `getRates`/`buyLabel` for now; wiring this to
   `checkout.order.paid` automatically is a reasonable later addition, not required for this
   epic's scope.
-- **An admin UI for rate shopping/label purchase** — this epic ships the subsystem and the
+- **An admin UI for rate shopping/label purchase** — `createOrderLabelService` (above) is the
+  order-level API such a page calls; the reference storefront has no such page yet. This epic ships the subsystem and the
   Shippo adapter with real, verified wiring into `services.ts` and `/admin/settings`'s adapter
   visibility, but no `/admin/orders` (or dedicated) page yet calls `getRates`/`buyLabel`
   directly the way `fulfillment`'s admin actions call `submitOrder`/`markShipped` — a reasonable

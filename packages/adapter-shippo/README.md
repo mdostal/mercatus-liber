@@ -14,6 +14,8 @@ const shipping = createShippoShippingAdapter({
 });
 
 const rates = await shipping.getRates(input);
+const bought = await shipping.buyLabel(rates.rates[0].rateId); // label.labelId is the Shippo transaction id
+await shipping.voidLabel(bought.label.labelId);                 // POST /refunds; Shippo may settle it later
 ```
 
 `baseUrl`, `fetchImpl`, `httpClient`, and `labelFileType` are optional config.
