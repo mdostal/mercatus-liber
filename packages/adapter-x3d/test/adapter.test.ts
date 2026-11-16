@@ -15,6 +15,7 @@ import {
   createX3dHttpClient,
   createX3dStatusPoller,
   estimateX3dSlicedOrderCost,
+  x3dColourSurchargeCentsPerGram,
   isX3dMulticolourTarget,
   mapX3dOrderStatus,
   parseX3dCatalogTarget,
@@ -563,15 +564,24 @@ describe("estimateX3dSlicedOrderCost", () => {
     // Weights from a real slice of the product: base 260 g, lid 166 g.
     const base = estimateX3dSlicedOrderCost({ grams: 260, filaments: 4 });
     const lid = estimateX3dSlicedOrderCost({ grams: 166, filaments: 4 });
-    expect(base).toEqual({ print: 32, secondAmsFee: 0, shipping: 7, total: 39 });
-    expect(lid).toEqual({ print: 20, secondAmsFee: 0, shipping: 7, total: 27 });
+    // Four colours is $0.19/g for PLA. The base clears the free-postage line; the lid does not.
+    expect(base).toEqual({ print: 50, secondAmsFee: 0, shipping: 0, total: 50 });
+    expect(lid).toEqual({ print: 32, secondAmsFee: 0, shipping: 7, total: 39 });
+  });
+
+  it("raises the rate per gram by $0.03 at two colours and $0.02 for each colour after", () => {
+    expect([1, 2, 3, 4, 5, 8].map(x3dColourSurchargeCentsPerGram)).toEqual([0, 3, 5, 7, 9, 15]);
+    expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 1 }).print).toBe(12);
+    expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 2 }).print).toBe(15);
+    expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 3 }).print).toBe(17);
+    expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 2, material: "asa" }).print).toBe(18);
   });
 
   it("adds the second-AMS fee at five filaments and drops postage at a $49.50 print", () => {
-    expect(estimateX3dSlicedOrderCost({ grams: 120, filaments: 5 })).toEqual({ print: 15, secondAmsFee: 25, shipping: 7, total: 47 });
-    expect(estimateX3dSlicedOrderCost({ grams: 420, filaments: 2 })).toEqual({ print: 51, secondAmsFee: 0, shipping: 0, total: 51 });
+    expect(estimateX3dSlicedOrderCost({ grams: 120, filaments: 5 })).toEqual({ print: 26, secondAmsFee: 25, shipping: 7, total: 58 });
+    expect(estimateX3dSlicedOrderCost({ grams: 420, filaments: 2 })).toEqual({ print: 63, secondAmsFee: 0, shipping: 0, total: 63 });
     // The fee is assumed not to count toward free postage.
-    expect(estimateX3dSlicedOrderCost({ grams: 300, filaments: 6 }).shipping).toBe(7);
+    expect(estimateX3dSlicedOrderCost({ grams: 150, filaments: 6 })).toEqual({ print: 35, secondAmsFee: 25, shipping: 7, total: 67 });
   });
 
   it("applies the bulk discount, the $1 minimum, other materials and other destinations", () => {
