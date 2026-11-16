@@ -18,6 +18,7 @@ Point 4 rules out most of the market. Many services only connect through a marke
 | Provider | Order API a store can use | Where it prints | Materials | Fees stated | Lead time stated |
 |---|---|---|---|---|---|
 | **Slant 3D** | Yes. Public OpenAPI spec, self-serve key. | US print farms | PLA, PETG, OPM (a PCTG) | Print cost plus shipping per order. No per-order fee found. Prices come from the estimate endpoint, not a price list. | 95% of orders ship in 1 to 3 days |
+| **X3D Studios** | Yes. Public OpenAPI spec, self-serve key. Added 2026-11-15. | Its own Bambu Lab machines in Austin, Texas | PLA, PETG, ABS, ASA, TPU. Multicolour from a sliced `.gcode.3mf`, up to 8 colours on its website calculator | $0.12 to $0.20 per gram, $1 minimum per part, no order fee. $25 once per order for five or more colours. US postage $7, free from $49.50. | 4 to 5 business days through the API |
 | **3DAPI** | Yes. Public OpenAPI spec, webhooks, idempotent writes. | 30+ centres in 10+ regions, routed to the one nearest the buyer | FDM plastics | Production price plus shipping from a prepaid wallet. No monthly fee, no minimum. Platform fee of up to 10% applies only when 3DAPI hosts the checkout. | Not stated |
 | **Shapeways** | Documented (`/orders/v1`), but not confirmed live. The company was relaunched after its 2024 bankruptcy and I found no 2026 source saying the API is back. | Eindhoven, Netherlands | Industrial: SLS nylon, resins, metals | Not checked | Not checked |
 | **JLC3DP** | Yes, by application. Reviewed case by case. | China | FDM, resin, SLS, metal | Not public | Not stated |
@@ -35,6 +36,12 @@ Point 4 rules out most of the market. Many services only connect through a marke
 - **Benefit.** The shortest path to a real order. A key is self-serve. An order is created as a draft with its print and shipping cost, and only charged when it is processed, so a store can hold orders for review at no risk. Webhooks are signed. US production suits a US store.
 - **Cost.** The API specification accepts STL only (the documentation page also names OBJ and 3MF). Parts are limited to 220 mm per side. Only three material families. Production is in the US, so orders abroad ship from the US. Prices are not published, so margin has to be worked out per file from the estimate endpoint, and shipping is only known once an order is drafted. A payment method has to be connected to the Slant account before an order can be drafted. Limits: 100 requests a minute, 5 platforms, 3 keys.
 - **Build cost.** Small. One adapter package.
+
+### X3D Studios
+
+- **Benefit.** The only provider found with both an order API a store can use and a documented multicolour path. One farm with its own machines, a person checks each part before packing, and prices are published per gram. A key is self-serve.
+- **Cost.** One model per order, so each printed line of a store order is its own X3D order with its own postage. No draft, no sandbox, no idempotency key and no cancel endpoint: an order sent is an order charged. No webhooks, so status is polled. Multicolour needs a file already sliced with its colours; the documents do not say which printer profile to slice for. Ships from the US to 24 countries.
+- **Build cost.** Small. One adapter package, built.
 
 ### 3DAPI
 
@@ -58,13 +65,15 @@ Point 4 rules out most of the market. Many services only connect through a marke
 
 Build adapters for **Slant 3D** and **3DAPI** now. Together they cover US orders with a hold-for-review step (Slant) and orders outside the US made locally (3DAPI), and both can be built and tested against public specifications.
 
-Ask **Printie** and **Shop3D** whether they will give API access. Printie's multicolour printing is the one capability neither chosen provider has.
+Use **X3D Studios** for multicolour prints (decided 2026-11-15). It costs more per order than a single-colour farm once the $25 fee for five or more colours applies, which the store covers in its price.
+
+Ask **Printie** and **Shop3D** whether they will give API access. Printie has the wider material range.
 
 Leave **Shapeways** until its API is confirmed working, and the application-only services until a store needs nylon, resin or metal.
 
 ## What is built
 
-Two packages, usable by any Mercatus store. Both were built from the providers' published API documents and tested against a fake of each API. **Neither has placed an order with a live account yet.**
+Three packages, usable by any Mercatus store. All were built from the providers' published API documents and tested against a fake of each API. **None has placed an order with a live account yet.** `@mercatus-liber/adapter-x3d` (provider key `x3d`) is described in its own README; the table below compares the other two.
 
 | | `@mercatus-liber/adapter-slant3d` | `@mercatus-liber/adapter-3dapi` |
 |---|---|---|
@@ -88,6 +97,11 @@ The reference storefront registers each one when its credentials are set:
 | `DAPI_HOLD_ORDERS=true` | Stops orders being sent. |
 | `DAPI_USE_SAMPLE_CREDIT=true` | Spends the $15 sample credit first. |
 | `DAPI_WEBHOOK_SECRET` | The webhook endpoint's secret. Turns on the webhook route for `3dapi`. |
+| `X3D_API_KEY` | Turns on X3D Studios. Every order placed bills the card on that X3D account. |
+| `X3D_HOLD_ORDERS=true` | Stops orders being sent. |
+| `X3D_SYNC_SECRET` | Turns on `POST /api/demo/<demoSlug>/fulfillment/x3d/sync`, which a scheduler calls with `Authorization: Bearer <secret>` to read order status. X3D sends no webhooks. |
+| `X3D_SHIPPING_SPEED=express` | US express postage ($15) instead of standard. |
+| `X3D_EMAIL_CUSTOMER=true`, `X3D_NOTIFY_EMAILS` | Who gets X3D's own order emails. By default only the X3D account owner. |
 
 A SKU goes to a provider only after it is routed there and mapped in the provider catalog mappings. Every other SKU stays on manual fulfilment.
 
@@ -98,6 +112,15 @@ A SKU goes to a provider only after it is routed there and mapped in the provide
 - Status webhooks: the reference storefront receives both providers at `POST /api/demo/<demoSlug>/fulfillment/<provider>/webhook` (`slant3d` or `3dapi`) once the provider's webhook secret is set. A verified event is published on the store's event bus as `fulfillment.provider_event` with `{ provider, event }`. When the event says something about an order the store placed, the store also publishes `fulfillment.order.status_changed` with its own order id, the new status, the tracking number and the carrier (see `docs/subsystems/22-fulfillment.md`). It publishes once per change, however often the provider retries. A Store API webhook subscription can receive that event. The storefront does not email the customer on it, and the admin still shows status by reading the order back. Tested with a locally signed Slant delivery, not a real one.
 - The demo stores have no 3D-printed products mapped to either provider.
 - 3DAPI webhook endpoints, billing details and cards can only be set up in its dashboard, not through the API.
+
+### To go live with X3D Studios
+
+1. Sign in at <https://x3dstudios.com/profile>, put a card on file, and generate a key.
+2. Ask X3D (contact@x3dstudios.com) which printer profile a multicolour `.gcode.3mf` should be sliced for, and how it wants stock colours assigned in the slice.
+3. Slice each multicolour model, host the file where the store can fetch it, and save a mapping `{ fileUrl, material }` for the SKU under provider `x3d`. Route the SKU to `x3d`.
+4. Price each part on X3D's website calculator and set the retail price.
+5. Set `X3D_API_KEY` and `X3D_HOLD_ORDERS=true`, place a test order, then unset the hold and submit it again to send one real order to yourself.
+6. Set `X3D_SYNC_SECRET` and have a scheduler call the sync route every 5 to 15 minutes.
 
 ### To go live with Slant 3D
 

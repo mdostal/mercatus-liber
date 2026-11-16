@@ -37,6 +37,7 @@ import { createPaypalPaymentAdapter } from "@mercatus-liber/adapter-paypal";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, printifyCatalogTargetsFrom, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSlant3dFulfillmentAdapter, slant3dCatalogTargetsFrom, slant3dOrderStatusUpdateFrom, SLANT3D_PROVIDER } from "@mercatus-liber/adapter-slant3d";
+import { createX3dFulfillmentAdapter, createX3dStatusPoller, x3dCatalogTargetsFrom, x3dOrderStoreFrom, X3D_PROVIDER, type X3dPollResult } from "@mercatus-liber/adapter-x3d";
 import { createDapiFulfillmentAdapter, dapiCatalogTargetsFrom, dapiOrderStatusUpdateFrom, dapiSkuIdsFrom, DAPI_PROVIDER } from "@mercatus-liber/adapter-3dapi";
 import { dapiSignatureFrom, FULFILLMENT_PROVIDER_EVENT, slant3dSignatureFrom, type FulfillmentProviderEvent, type FulfillmentWebhookReceivers } from "./fulfillment-webhooks";
 import { createQuickBooksAccountingSyncAdapter, QUICKBOOKS_PROVIDER } from "@mercatus-liber/adapter-quickbooks";
@@ -250,6 +251,8 @@ export interface Services {
   fulfillment: FulfillmentService;
   /** Print-on-demand providers whose webhook secret is set, by provider key. See lib/fulfillment-webhooks.ts. */
   fulfillmentWebhooks: FulfillmentWebhookReceivers;
+  /** Set when X3D Studios is configured. X3D sends no webhooks, so this reads its open orders and publishes what changed. */
+  pollX3dOrders: (() => Promise<X3dPollResult>) | null;
   /**
    * Exposed alongside `fulfillment` (not just wrapped inside it) so the
    * admin fulfillment surface can show a line's routed provider (defaulting
@@ -1065,6 +1068,23 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
         onWebhookEvent: publishProviderEvent(DAPI_PROVIDER, dapiOrderStatusUpdateFrom),
       })
     : null;
+  // X3D Studios (packages/adapter-x3d): the multicolour option. It has no
+  // draft and no idempotency key, so placed orders are remembered in
+  // providerOrderLinks as soon as X3D accepts them. Not run against a live account.
+  const x3dAdapter = process.env.X3D_API_KEY
+    ? createX3dFulfillmentAdapter({
+        apiKey: process.env.X3D_API_KEY,
+        resolveCatalogTarget: x3dCatalogTargetsFrom(providerCatalogMappings),
+        orderStore: x3dOrderStoreFrom(providerOrderLinks),
+        holdOrders: process.env.X3D_HOLD_ORDERS === "true",
+        ...(process.env.X3D_SHIPPING_SPEED === "express" ? { shippingSpeed: "express" as const } : {}),
+        emailCustomer: process.env.X3D_EMAIL_CUSTOMER === "true",
+        ...(process.env.X3D_NOTIFY_EMAILS ? { notifyEmails: process.env.X3D_NOTIFY_EMAILS.split(",").map((email) => email.trim()).filter(Boolean) } : {}),
+      })
+    : null;
+  const pollX3dOrders = x3dAdapter
+    ? createX3dStatusPoller({ getOrder: x3dAdapter.getX3dOrder, links: providerOrderLinks, record: (update) => providerOrderStatus.record(X3D_PROVIDER, update) }).poll
+    : null;
   const fulfillmentWebhooks: FulfillmentWebhookReceivers = {
     ...(slant3dAdapter && process.env.SLANT3D_WEBHOOK_SECRET
       ? { [SLANT3D_PROVIDER]: { signatureFrom: slant3dSignatureFrom, handle: (body, sig) => slant3dAdapter.handleWebhookEvent(body, sig) } }
@@ -1173,6 +1193,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       // live account from this app.
       ...(slant3dAdapter ? { [SLANT3D_PROVIDER]: linked(slant3dAdapter, SLANT3D_PROVIDER) } : {}),
       ...(dapiAdapter ? { [DAPI_PROVIDER]: linked(dapiAdapter, DAPI_PROVIDER) } : {}),
+      // Not wrapped in `linked`: the adapter stores each X3D order itself, the moment it is placed.
+      ...(x3dAdapter ? { [X3D_PROVIDER]: x3dAdapter } : {}),
     },
   });
 
@@ -1288,6 +1310,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     adminAuth,
     fulfillment,
     fulfillmentWebhooks,
+    pollX3dOrders,
     fulfillmentRouting,
     shipping,
     media,
