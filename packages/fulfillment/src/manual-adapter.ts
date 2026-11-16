@@ -37,45 +37,86 @@ export interface ManualFulfillmentAdapter extends FulfillmentAdapter {
  * "sent to an external system" (there is nothing external to submit to).
  * getOrderStatus reads back exactly what submitOrder created/markShipped
  * last updated for that order -- this adapter is its own source of truth,
- * an in-memory store scoped to this created instance's lifetime (mirrors
- * internal-bi's in-memory-repository.ts structuredClone-in/out discipline
- * so callers can never mutate stored state through a returned reference).
+ * kept in a ManualFulfillmentRecordStore (in memory unless one is passed).
  * No handleWebhookEvent -- no external system sends webhooks to a manual
  * adapter.
  */
-export function createManualFulfillmentAdapter(): ManualFulfillmentAdapter {
+/**
+ * Where the manual adapter keeps its line records. They are the only place a
+ * self-shipped line's status and tracking number live, so a store on
+ * serverless hosting needs a durable one (see adapter-postgres's
+ * createPostgresManualFulfillmentRecordStore): the default is in memory and
+ * is lost on a restart and not shared between instances.
+ */
+export interface ManualFulfillmentRecordStore {
+  /** An order's records, in the order they were first saved. */
+  list(orderId: string): Promise<FulfillmentLineRecord[]>;
+  /** Inserts each record, or replaces the one with the same orderId and skuId. */
+  save(records: FulfillmentLineRecord[]): Promise<void>;
+}
+
+export function createInMemoryManualFulfillmentRecordStore(): ManualFulfillmentRecordStore {
   const recordsByOrder = new Map<string, FulfillmentLineRecord[]>();
+  return {
+    async list(orderId) {
+      return (recordsByOrder.get(orderId) ?? []).map((record) => structuredClone(record));
+    },
+    async save(records) {
+      for (const record of records) {
+        const existing = recordsByOrder.get(record.orderId) ?? [];
+        const index = existing.findIndex((candidate) => candidate.skuId === record.skuId);
+        if (index === -1) existing.push(structuredClone(record));
+        else existing[index] = structuredClone(record);
+        recordsByOrder.set(record.orderId, existing);
+      }
+    },
+  };
+}
+
+export function createManualFulfillmentAdapter(options: { store?: ManualFulfillmentRecordStore } = {}): ManualFulfillmentAdapter {
+  const store = options.store ?? createInMemoryManualFulfillmentRecordStore();
 
   return {
     // `input.recipient` (dp-01, epic 82) is deliberately still ignored here,
     // same as today: an operator fulfilling by hand reads the real address
     // from the order itself (checkout-orders' own admin view), not from
-    // this adapter's in-memory record -- there is nothing external for this
+    // this adapter's record -- there is nothing external for this
     // zero-infra default to ship a structured address to.
+    //
+    // A line that already has a record keeps it: submitting an order again
+    // returns the existing record and does not put a shipped line back to
+    // "submitted" or add a second record for it.
     async submitOrder(input: SubmitFulfillmentOrderInput): Promise<FulfillmentLineRecord[]> {
-      const created: FulfillmentLineRecord[] = input.items.map((item) => ({
-        orderId: input.orderId,
-        skuId: item.skuId,
-        provider: MANUAL_FULFILLMENT_PROVIDER,
-        externalOrderId: null,
-        // "submitted" here means "created and awaiting manual fulfillment" --
-        // an operator marks it "shipped" by hand via markShipped below.
-        status: "submitted",
-        trackingNumber: null,
-        trackingUrl: null,
-      }));
-
-      const existing = recordsByOrder.get(input.orderId) ?? [];
-      recordsByOrder.set(
-        input.orderId,
-        [...existing, ...created].map((record) => structuredClone(record)),
-      );
-
-      return created.map((record) => structuredClone(record));
+      const existing = new Map((await store.list(input.orderId)).map((record) => [record.skuId, record]));
+      const created: FulfillmentLineRecord[] = [];
+      const result: FulfillmentLineRecord[] = [];
+      for (const item of input.items) {
+        const known = existing.get(item.skuId);
+        if (known) {
+          result.push(known);
+          continue;
+        }
+        const record: FulfillmentLineRecord = {
+          orderId: input.orderId,
+          skuId: item.skuId,
+          provider: MANUAL_FULFILLMENT_PROVIDER,
+          externalOrderId: null,
+          // "submitted" here means "created and awaiting manual fulfillment" --
+          // an operator marks it "shipped" by hand via markShipped below.
+          status: "submitted",
+          trackingNumber: null,
+          trackingUrl: null,
+        };
+        existing.set(item.skuId, record);
+        created.push(record);
+        result.push(record);
+      }
+      if (created.length > 0) await store.save(created);
+      return result.map((record) => structuredClone(record));
     },
 
     async getOrderStatus(orderId: string): Promise<FulfillmentLineRecord[]> {
-      return (recordsByOrder.get(orderId) ?? []).map((record) => structuredClone(record));
+      return store.list(orderId);
     },
 
     async markShipped(
@@ -83,9 +124,8 @@ export function createManualFulfillmentAdapter(): ManualFulfillmentAdapter {
       skuId: string,
       tracking?: { trackingNumber?: string | null; trackingUrl?: string | null },
     ): Promise<FulfillmentLineRecord> {
-      const records = recordsByOrder.get(orderId);
-      const existing = records?.find((record) => record.skuId === skuId);
-      if (!records || !existing) {
+      const existing = (await store.list(orderId)).find((record) => record.skuId === skuId);
+      if (!existing) {
         throw new FulfillmentLineNotFoundError(orderId, skuId);
       }
 
@@ -95,12 +135,7 @@ export function createManualFulfillmentAdapter(): ManualFulfillmentAdapter {
         trackingNumber: tracking?.trackingNumber ?? existing.trackingNumber,
         trackingUrl: tracking?.trackingUrl ?? existing.trackingUrl,
       };
-
-      recordsByOrder.set(
-        orderId,
-        records.map((record) => (record.skuId === skuId ? structuredClone(updated) : record)),
-      );
-
+      await store.save([updated]);
       return structuredClone(updated);
     },
   };

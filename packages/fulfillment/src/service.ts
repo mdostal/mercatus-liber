@@ -13,6 +13,26 @@ export class OrderNotFoundForFulfillmentError extends Error {
   }
 }
 
+/**
+ * Thrown by `submitOrder` when one or more providers could not be submitted.
+ * Every provider was still tried. `records` are the lines that are placed
+ * (now or earlier); `failures` name each provider that failed and why.
+ * Submitting the order again sends only the lines that have no record yet.
+ */
+export class PartialFulfillmentSubmitError extends Error {
+  constructor(
+    readonly orderId: string,
+    readonly records: FulfillmentLineRecord[],
+    readonly failures: { provider: FulfillmentProviderKey; error: unknown }[],
+  ) {
+    super(
+      `Order ${orderId}: could not submit to ${failures.map((failure) => `"${failure.provider}"`).join(", ")}. ${records.length} line(s) are placed. First error: ${failures[0]!.error instanceof Error ? failures[0]!.error.message : String(failures[0]!.error)}`,
+      { cause: failures[0]!.error },
+    );
+    this.name = "PartialFulfillmentSubmitError";
+  }
+}
+
 export class NoAdapterForProviderError extends Error {
   constructor(provider: FulfillmentProviderKey) {
     super(`No FulfillmentAdapter configured for provider '${provider}'`);
@@ -58,7 +78,11 @@ function supportsMarkShipped(adapter: FulfillmentAdapter): adapter is Fulfillmen
 export interface FulfillmentService {
   /** Every provider's current records for an order's lines, aggregated across whichever adapters those lines are routed to. */
   listForOrder(orderId: string): Promise<FulfillmentLineRecord[]>;
-  /** Groups an order's lines by their routed provider and submits each group to that provider's adapter. */
+  /**
+   * Groups an order's lines by their routed provider and submits each group to that provider's adapter.
+   * A line the provider already has a live record for is not sent again. If any provider fails, the rest
+   * are still submitted and a PartialFulfillmentSubmitError is thrown at the end.
+   */
   submitOrder(orderId: string): Promise<FulfillmentLineRecord[]>;
   /** The operator-driven "mark shipped by hand" action -- only supported by adapters that expose it (see ManualFulfillmentAdapter). */
   markLineShipped(
@@ -122,11 +146,29 @@ export function createFulfillmentService(deps: {
       // absence rather than a present-but-empty object.
       const recipient = order.shippingInfo;
 
+      // Every provider's adapter must exist before anything is sent.
+      for (const provider of itemsByProvider.keys()) resolveAdapter(provider);
+
       const records: FulfillmentLineRecord[] = [];
+      const failures: { provider: FulfillmentProviderKey; error: unknown }[] = [];
       for (const [provider, items] of itemsByProvider) {
         const adapter = resolveAdapter(provider);
-        records.push(...(await adapter.submitOrder({ orderId, items, ...(recipient ? { recipient } : {}) })));
+        try {
+          // A line this provider already has a record for is not sent again,
+          // so an order whose submit half-failed can be submitted again
+          // safely. A line the provider gave up on ("unfulfilled": cancelled
+          // or rejected) is sent again.
+          const placed = new Map<string, FulfillmentLineRecord>();
+          for (const record of await adapter.getOrderStatus(orderId)) if (record.status !== "unfulfilled") placed.set(record.skuId, record);
+          const missing = items.filter((item) => !placed.has(item.skuId));
+          records.push(...items.filter((item) => placed.has(item.skuId)).map((item) => placed.get(item.skuId)!));
+          if (missing.length > 0) records.push(...(await adapter.submitOrder({ orderId, items: missing, ...(recipient ? { recipient } : {}) })));
+        } catch (error) {
+          // One provider failing does not stop the others being submitted.
+          failures.push({ provider, error });
+        }
       }
+      if (failures.length > 0) throw new PartialFulfillmentSubmitError(orderId, records, failures);
       return records;
     },
 

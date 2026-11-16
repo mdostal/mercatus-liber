@@ -129,3 +129,41 @@ export function assertShippableRecipient(address: PrintfulRecipientAddress): voi
   const missing = (["address1", "city", "country_code", "zip"] as const).filter((key) => !address[key]?.trim());
   if (missing.length > 0) throw new IncompleteRecipientError(missing);
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UNDASHED_UUID = /^[0-9a-f]{32}$/i;
+
+/** Printful's limit on an order's `external_id`, as its API reports it: "Maximum external_id string length is 32". */
+export const PRINTFUL_EXTERNAL_ID_MAX_LENGTH = 32;
+
+/** Thrown before calling Printful when an order id cannot be made to fit its `external_id`. */
+export class PrintfulExternalIdTooLongError extends Error {
+  constructor(readonly orderId: string) {
+    super(`Order id "${orderId}" is ${orderId.length} characters and is not a UUID. Printful accepts an external_id of at most ${PRINTFUL_EXTERNAL_ID_MAX_LENGTH}.`);
+    this.name = "PrintfulExternalIdTooLongError";
+  }
+}
+
+/**
+ * The `external_id` Printful is given for a store order. Printful refuses
+ * anything over 32 characters, and a UUID with dashes is 36, so a UUID is sent
+ * without its dashes. Any id of 32 characters or fewer is sent as it is.
+ */
+export function printfulExternalIdFor(orderId: string): string {
+  if (orderId.length <= PRINTFUL_EXTERNAL_ID_MAX_LENGTH) return orderId;
+  if (UUID.test(orderId)) return orderId.replace(/-/g, "");
+  throw new PrintfulExternalIdTooLongError(orderId);
+}
+
+/**
+ * The store order id for an `external_id` read back from Printful: 32 hex
+ * characters are taken to be a UUID sent by printfulExternalIdFor and get
+ * their dashes back (8-4-4-4-12); anything else is returned unchanged.
+ *
+ * A store whose own order ids are 32 hex characters with no dashes would have
+ * dashes added here that it never had. Such a store should not use this.
+ */
+export function orderIdFromPrintfulExternalId(externalId: string): string {
+  if (!UNDASHED_UUID.test(externalId)) return externalId;
+  return `${externalId.slice(0, 8)}-${externalId.slice(8, 12)}-${externalId.slice(12, 16)}-${externalId.slice(16, 20)}-${externalId.slice(20)}`;
+}

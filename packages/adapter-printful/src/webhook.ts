@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ProviderOrderStatusUpdate } from "@mercatus-liber/fulfillment";
+import { orderIdFromPrintfulExternalId } from "./mapping.js";
 import { PRINTFUL_WEBHOOK_EVENT_TYPES, type PrintfulWebhookEventType } from "./printful-types.js";
 
 /**
@@ -196,10 +197,13 @@ export function printfulOrderStatusUpdateFrom(event: PrintfulWebhookEvent): Prov
   const externalOrderId = textOrNull(order?.id);
   if (!externalOrderId) return null;
   const shipment = isObject(data.shipment) ? data.shipment : {};
+  // A UUID order id was sent without its dashes (Printful caps external_id at 32 characters); put them back.
+  const rawExternalId = textOrNull(order?.external_id);
+  const storeOrderId = rawExternalId ? orderIdFromPrintfulExternalId(rawExternalId) : null;
 
   const update = (status: ProviderOrderStatusUpdate["status"], withTracking: boolean): ProviderOrderStatusUpdate => ({
     externalOrderId,
-    orderId: textOrNull(order?.external_id),
+    orderId: storeOrderId,
     status,
     trackingNumber: withTracking ? textOrNull(shipment.tracking_number) : null,
     carrier: withTracking ? textOrNull(shipment.carrier) : null,

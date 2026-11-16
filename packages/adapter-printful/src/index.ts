@@ -1,7 +1,7 @@
 import type { FulfillmentAdapter, FulfillmentLineRecord, FulfillmentProviderKey, SubmitFulfillmentOrderInput } from "@mercatus-liber/fulfillment";
 import { InvalidCatalogMappingError, requireCatalogTarget, type ProviderCatalogMappingRepository } from "@mercatus-liber/fulfillment";
 import { createPrintfulHttpClient, type PrintfulHttpClient } from "./http-client.js";
-import { assertShippableRecipient, findTrackingUrlForItem, mapPrintfulOrderStatus, mapRecipientToPrintfulAddress, type PrintfulCatalogTarget, type PrintfulRecipientAddress } from "./mapping.js";
+import { assertShippableRecipient, findTrackingUrlForItem, mapPrintfulOrderStatus, mapRecipientToPrintfulAddress, printfulExternalIdFor, type PrintfulCatalogTarget, type PrintfulRecipientAddress } from "./mapping.js";
 import type { PrintfulCatalogOrderItemInput, PrintfulOrderResponse, PrintfulShipmentResponse } from "./printful-types.js";
 import { parsePrintfulWebhookPayload, PrintfulWebhookSignatureInvalidError, PrintfulWebhookSignatureUnconfirmedError, verifyPrintfulSignature, type PrintfulWebhookEvent } from "./webhook.js";
 
@@ -175,7 +175,7 @@ export function createPrintfulFulfillmentAdapter(config: PrintfulFulfillmentAdap
       }
 
       const draft = await client.createOrder({
-        external_id: input.orderId,
+        external_id: printfulExternalIdFor(input.orderId),
         recipient,
         order_items: toPrintfulOrderItems(input.items, targets),
       });
@@ -187,10 +187,10 @@ export function createPrintfulFulfillmentAdapter(config: PrintfulFulfillmentAdap
     },
 
     async getOrderStatus(orderId: string): Promise<FulfillmentLineRecord[]> {
-      const orderEnvelope = await client.getOrder(`@${orderId}`);
+      const orderEnvelope = await client.getOrder(`@${printfulExternalIdFor(orderId)}`);
       if (!orderEnvelope) return [];
 
-      const shipmentsEnvelope = await client.getShipments(`@${orderId}`);
+      const shipmentsEnvelope = await client.getShipments(`@${printfulExternalIdFor(orderId)}`);
       return buildRecordsFromOrder(orderId, orderEnvelope.data, shipmentsEnvelope.data);
     },
 

@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { createInMemoryEventBus } from "@mercatus-liber/core";
 import { createInMemoryProviderOrderLinkRepository, createProviderOrderStatusRecorder, FULFILLMENT_ORDER_STATUS_CHANGED, type FulfillmentOrderStatusChanged } from "@mercatus-liber/fulfillment";
 import { describe, expect, it } from "vitest";
+import { orderIdFromPrintfulExternalId, PRINTFUL_EXTERNAL_ID_MAX_LENGTH, PrintfulExternalIdTooLongError, printfulExternalIdFor } from "../src/index.js";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, parsePrintfulWebhookPayload, printfulOrderStatusUpdateFrom, printfulWebhookSignatureFrom, type PrintfulHttpClient } from "../src/index.js";
 import { PRINTFUL_WEBHOOK_FIXTURES as FIXTURES } from "./webhook-fixtures.js";
 
@@ -110,5 +111,66 @@ describe("a signed Printful webhook through the adapter and the status recorder"
     const raw = JSON.stringify(FIXTURES.shipment_sent);
     await expect(adapter.handleWebhookEvent!(raw, printfulWebhookSignatureFrom(new Headers()))).rejects.toThrow(/signature verification failed/);
     expect(published).toHaveLength(0);
+  });
+});
+
+describe("order ids longer than Printful's 32-character external_id", () => {
+  // Printful's real API answered a 36-character UUID with HTTP 400: "Maximum external_id string length is 32".
+  const UUID_ORDER = "3f2b8c1e-9a4d-4e6f-8b1a-0c2d3e4f5a6b";
+  const UNDASHED = "3f2b8c1e9a4d4e6f8b1a0c2d3e4f5a6b";
+
+  it("sends a UUID without its dashes and leaves shorter ids alone", () => {
+    expect(printfulExternalIdFor(UUID_ORDER)).toBe(UNDASHED);
+    expect(printfulExternalIdFor(UUID_ORDER).length).toBeLessThanOrEqual(PRINTFUL_EXTERNAL_ID_MAX_LENGTH);
+    expect(printfulExternalIdFor("order-1001")).toBe("order-1001");
+    expect(printfulExternalIdFor("x".repeat(32))).toBe("x".repeat(32));
+  });
+
+  it("refuses a long id that is not a UUID, before anything is sent", () => {
+    expect(() => printfulExternalIdFor("order-" + "9".repeat(40))).toThrow(PrintfulExternalIdTooLongError);
+  });
+
+  it("puts the dashes back on 32 hex characters only", () => {
+    expect(orderIdFromPrintfulExternalId(UNDASHED)).toBe(UUID_ORDER);
+    expect(orderIdFromPrintfulExternalId("order-1001")).toBe("order-1001");
+    expect(orderIdFromPrintfulExternalId("z".repeat(32))).toBe("z".repeat(32));
+  });
+
+  it("gives the status event the store's own order id back", () => {
+    const body = structuredClone(FIXTURES.shipment_sent) as { data: { order: { external_id: string } } };
+    body.data.order.external_id = UNDASHED;
+    expect(updateFrom(body)).toMatchObject({ orderId: UUID_ORDER, status: "shipped" });
+  });
+
+  it("submits and reads back a UUID order under the short id, reporting the store's id on its records", async () => {
+    const seen: string[] = [];
+    const order = (external_id: string) => ({ id: 555, external_id, store_id: 1, shipping: "STANDARD", status: "draft", created_at: "", updated_at: "", recipient: {}, order_items: [{ id: 1, type: "order_item", source: "catalog", catalog_variant_id: 4011, external_id: "sku-tee", quantity: 1 }] });
+    const adapter = createPrintfulFulfillmentAdapter({
+      apiToken: "made-up",
+      holdOrders: true,
+      resolveRecipient: async () => ({ name: "Ada Example", address1: "1 Main St", city: "Austin", state_code: "TX", country_code: "US", zip: "78701" }),
+      resolveCatalogTarget: async () => ({ catalogVariantId: 4011 }),
+      httpClient: {
+        createOrder: async (body: { external_id?: string }) => {
+          seen.push(`create ${body.external_id}`);
+          return { data: order(body.external_id!) };
+        },
+        confirmOrder: async () => ({ data: order(UNDASHED) }),
+        getOrder: async (ref: string) => {
+          seen.push(`get ${ref}`);
+          return { data: order(UNDASHED) };
+        },
+        getShipments: async (ref: string) => {
+          seen.push(`shipments ${ref}`);
+          return { data: [] };
+        },
+      } as never,
+    } as never);
+
+    const records = await adapter.submitOrder({ orderId: UUID_ORDER, items: [{ skuId: "sku-tee", quantity: 1 }] });
+    const status = await adapter.getOrderStatus(UUID_ORDER);
+    expect(seen).toEqual([`create ${UNDASHED}`, `get @${UNDASHED}`, `shipments @${UNDASHED}`]);
+    expect(records[0]!.orderId).toBe(UUID_ORDER);
+    expect(status[0]!.orderId).toBe(UUID_ORDER);
   });
 });
