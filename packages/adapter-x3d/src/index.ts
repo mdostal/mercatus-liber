@@ -10,7 +10,7 @@ import {
   type SubmitFulfillmentOrderInput,
 } from "@mercatus-liber/fulfillment";
 import { createX3dHttpClient, X3dApiError, type X3dHttpClient } from "./http-client.js";
-import { buildX3dLineRecords, isSlicedX3dFile, mapRecipientToX3d, mapX3dOrderStatus, parseX3dCatalogTarget, x3dFileNameFor, x3dOrderStatusUpdateFrom, type X3dCatalogTarget } from "./mapping.js";
+import { aggregateX3dParts, isSlicedX3dFile, mapRecipientToX3d, parseX3dCatalogTarget, x3dFileNameFor, x3dOrderStatusUpdateFrom, x3dPartStateOf, type X3dCatalogTarget, type X3dPartState } from "./mapping.js";
 import { X3D_PROVIDER } from "./provider.js";
 import type { X3dCreateOrderResponse, X3dModelSource, X3dOrder, X3dShippingSpeed } from "./x3d-types.js";
 
@@ -19,11 +19,27 @@ export * from "./x3d-types.js";
 export * from "./http-client.js";
 export * from "./mapping.js";
 
-/** Which X3D order was placed for which line of which store order. */
+/** One X3D order the store placed: which line it is for, and which part of that line when the product prints as several. */
+export interface X3dStoredOrder {
+  code: string;
+  skuIds: string[];
+  lineIds?: string[];
+  /** Set for a product that prints as several parts. */
+  partId?: string;
+  /** How many parts the line has in all, so a line with a part still missing can be told from a complete one. */
+  partCount?: number;
+  /** The last status stored for this order, when the store keeps one. Lets a poller skip reading orders that are finished. */
+  status?: FulfillmentLineRecord["status"] | null;
+  trackingNumber?: string | null;
+  carrier?: string | null;
+}
+
+/** Which X3D order was placed for which line (and part) of which store order. */
 export interface X3dOrderStore {
-  list(orderId: string): Promise<{ code: string; skuIds: string[]; lineIds?: string[] }[]>;
-  /** Called straight after X3D accepts an order, before anything else is sent. `lineId` is given when the order's lines have ids. */
-  remember(orderId: string, skuId: string, code: string, lineId?: string): Promise<void>;
+  /** A store order's X3D orders, oldest first. */
+  list(orderId: string): Promise<X3dStoredOrder[]>;
+  /** Called straight after X3D accepts an order, before anything else is sent. `lineId` is given when the order's lines have ids, `part` when the line prints as several parts. */
+  remember(orderId: string, skuId: string, code: string, lineId?: string, part?: { partId: string; partCount: number }): Promise<void>;
 }
 
 /**
@@ -40,15 +56,36 @@ export interface X3dLineContext {
   quantity: number;
 }
 
+/** One part of a product that prints as several: its own file, and a name that stays the same every time the line is resolved ("base", "lid"). */
+export type X3dPartTarget = X3dCatalogTarget & { partId: string };
+
 export function createInMemoryX3dOrderStore(): X3dOrderStore {
-  const byOrder = new Map<string, { code: string; skuIds: string[]; lineIds?: string[] }[]>();
+  const byOrder = new Map<string, X3dStoredOrder[]>();
   return {
     async list(orderId) {
-      return (byOrder.get(orderId) ?? []).map((entry) => ({ code: entry.code, skuIds: [...entry.skuIds], ...(entry.lineIds ? { lineIds: [...entry.lineIds] } : {}) }));
+      return (byOrder.get(orderId) ?? []).map((entry) => ({ ...entry, skuIds: [...entry.skuIds], ...(entry.lineIds ? { lineIds: [...entry.lineIds] } : {}) }));
     },
-    async remember(orderId, skuId, code, lineId) {
-      byOrder.set(orderId, [...(byOrder.get(orderId) ?? []), { code, skuIds: [skuId], ...(lineId !== undefined ? { lineIds: [lineId] } : {}) }]);
+    async remember(orderId, skuId, code, lineId, part) {
+      byOrder.set(orderId, [...(byOrder.get(orderId) ?? []), { code, skuIds: [skuId], ...(lineId !== undefined ? { lineIds: [lineId] } : {}), ...(part ? { partId: part.partId, partCount: part.partCount } : {}) }]);
     },
+  };
+}
+
+// A several-part line has one extra link of its own, under this made-up id. It
+// holds the line's combined status, so the line's "shipped" is published once.
+const LINE_LINK_PREFIX = "X3D-LINE:";
+const isLineLink = (externalOrderId: string): boolean => externalOrderId.startsWith(LINE_LINK_PREFIX);
+
+function storedOrderFrom(link: { externalOrderId: string; skuIds: string[]; lineIds?: string[]; meta?: Record<string, string>; status: FulfillmentLineRecord["status"] | null; trackingNumber: string | null; carrier: string | null }): X3dStoredOrder {
+  const partCount = Number(link.meta?.partCount);
+  return {
+    code: link.externalOrderId,
+    skuIds: link.skuIds,
+    ...(link.lineIds ? { lineIds: link.lineIds } : {}),
+    ...(link.meta?.partId !== undefined ? { partId: link.meta.partId, partCount: Number.isInteger(partCount) && partCount > 0 ? partCount : 1 } : {}),
+    status: link.status,
+    trackingNumber: link.trackingNumber,
+    carrier: link.carrier,
   };
 }
 
@@ -56,10 +93,17 @@ export function createInMemoryX3dOrderStore(): X3dOrderStore {
 export function x3dOrderStoreFrom(links: ProviderOrderLinkRepository): X3dOrderStore {
   return {
     async list(orderId) {
-      return (await links.listForOrder(orderId, X3D_PROVIDER)).map((link) => ({ code: link.externalOrderId, skuIds: link.skuIds, ...(link.lineIds ? { lineIds: link.lineIds } : {}) }));
+      return (await links.listForOrder(orderId, X3D_PROVIDER)).filter((link) => !isLineLink(link.externalOrderId)).map(storedOrderFrom);
     },
-    async remember(orderId, skuId, code, lineId) {
-      await links.link({ orderId, provider: X3D_PROVIDER, externalOrderId: code, skuIds: [skuId], ...(lineId !== undefined ? { lineIds: [lineId] } : {}) });
+    async remember(orderId, skuId, code, lineId, part) {
+      await links.link({
+        orderId,
+        provider: X3D_PROVIDER,
+        externalOrderId: code,
+        skuIds: [skuId],
+        ...(lineId !== undefined ? { lineIds: [lineId] } : {}),
+        ...(part ? { meta: { partId: part.partId, partCount: String(part.partCount) } } : {}),
+      });
     },
   };
 }
@@ -74,12 +118,17 @@ export interface X3dFulfillmentAdapterConfig {
    * look it up by SKU (see x3dCatalogTargetsFrom). For a personalised product,
    * use `line` to find that order line's own file.
    *
+   * Return one target, or a list of parts for a product that prints as
+   * several plates (a box and its lid). X3D prints one model per order, so
+   * each part becomes its own X3D order, charged and posted separately. Give
+   * each part a `partId` that is the same every time the line is resolved.
+   *
    * Throw when there is nothing to print yet (no mapping, or a personalised
-   * line whose file has not been sliced). Every line is resolved before
-   * anything is sent, so one line throwing stops the whole submit with nothing
-   * ordered or charged.
+   * line whose file has not been sliced). Every part of every line is
+   * resolved before anything is sent, so one throwing stops the whole submit
+   * with nothing ordered or charged.
    */
-  resolveCatalogTarget(skuId: string, line: X3dLineContext): Promise<X3dCatalogTarget>;
+  resolveCatalogTarget(skuId: string, line: X3dLineContext): Promise<X3dCatalogTarget | X3dPartTarget[]>;
   /**
    * Fetches a `fileUrl` target's bytes at order time. The default does a plain
    * GET of the URL. Supply this when the model sits behind authentication.
@@ -163,7 +212,12 @@ export interface X3dFulfillmentAdapter extends FulfillmentAdapter {
  *
  * One X3D order prints one model, so a store order with three printed lines
  * becomes three X3D orders, each charged and shipped on its own (and each
- * paying postage unless it reaches X3D's free-shipping amount).
+ * paying postage unless it reaches X3D's free-shipping amount). A line whose
+ * product prints as several parts becomes one X3D order per part, and still
+ * reports as one line: "submitted" once every part is placed, "shipped" once
+ * every part has shipped. A line with a part cancelled, rejected or never
+ * placed reports "unfulfilled", so submitting the order again places just the
+ * missing part.
  *
  * `submitOrder` checks the address and every line's mapping before sending
  * anything. It then places the lines one at a time and remembers each as soon
@@ -195,19 +249,56 @@ export function createX3dFulfillmentAdapter(config: X3dFulfillmentAdapterConfig)
   // A line is known by its id when it has one, otherwise by its SKU. The two are
   // kept apart so a line id can never be mistaken for a SKU.
   const lineKey = (skuId: string, lineId: string | undefined): string => (lineId !== undefined ? `line:${lineId}` : `sku:${skuId}`);
+  const unitKey = (skuId: string, lineId: string | undefined, partId: string | undefined): string => `${lineKey(skuId, lineId)}${partId !== undefined ? `|part:${partId}` : ""}`;
 
-  /** The newest live X3D order for each line, read back from X3D. A cancelled, rejected or vanished order does not count. */
-  async function liveOrders(orderId: string): Promise<Map<string, X3dOrder>> {
-    const live = new Map<string, X3dOrder>();
+  /** The newest X3D order for each line part, read back from X3D. An order X3D no longer returns is left out. */
+  async function newestOrders(orderId: string): Promise<{ byUnit: Map<string, X3dPartState>; lines: Map<string, { skuId: string; lineId?: string; partIds: Set<string>; partCount: number }> }> {
+    const byUnit = new Map<string, X3dPartState>();
+    const lines = new Map<string, { skuId: string; lineId?: string; partIds: Set<string>; partCount: number }>();
     for (const entry of await store.list(orderId)) {
       const order = await client.getOrder(entry.code);
       entry.skuIds.forEach((skuId, index) => {
-        const key = lineKey(skuId, entry.lineIds?.[index]);
-        if (order && mapX3dOrderStatus(order.status) !== "unfulfilled") live.set(key, order);
-        else live.delete(key);
+        const lineId = entry.lineIds?.[index];
+        const key = lineKey(skuId, lineId);
+        const line = lines.get(key) ?? { skuId, ...(lineId !== undefined ? { lineId } : {}), partIds: new Set<string>(), partCount: 1 };
+        if (entry.partId !== undefined) {
+          line.partIds.add(entry.partId);
+          line.partCount = Math.max(line.partCount, entry.partCount ?? 1);
+        }
+        lines.set(key, line);
+        const unit = unitKey(skuId, lineId, entry.partId);
+        if (order) byUnit.set(unit, x3dPartStateOf(order));
+        else byUnit.delete(unit);
       });
     }
-    return live;
+    return { byUnit, lines };
+  }
+
+  function lineRecord(orderId: string, skuId: string, lineId: string | undefined, parts: (X3dPartState | null)[]): FulfillmentLineRecord {
+    const combined = aggregateX3dParts(parts);
+    return {
+      orderId,
+      skuId,
+      ...(lineId !== undefined ? { lineId } : {}),
+      provider: X3D_PROVIDER,
+      // A several-part line names every X3D order it has, comma-separated.
+      externalOrderId: combined.codes.length > 0 ? combined.codes.join(",") : null,
+      status: combined.status,
+      trackingNumber: combined.trackingNumber,
+      trackingUrl: null,
+    };
+  }
+
+  function partsOf(skuId: string, resolved: X3dCatalogTarget | X3dPartTarget[]): { partId?: string; target: X3dCatalogTarget }[] {
+    if (!Array.isArray(resolved)) return [{ target: resolved }];
+    if (resolved.length === 0) throw new Error(`SKU ${skuId} resolved to an empty list of parts; there is nothing to print.`);
+    const seen = new Set<string>();
+    return resolved.map((part) => {
+      if (typeof part.partId !== "string" || !part.partId) throw new Error(`SKU ${skuId}: every part needs a non-empty partId.`);
+      if (seen.has(part.partId)) throw new Error(`SKU ${skuId}: partId "${part.partId}" is used twice.`);
+      seen.add(part.partId);
+      return { partId: part.partId, target: part };
+    });
   }
 
   return {
@@ -216,80 +307,94 @@ export function createX3dFulfillmentAdapter(config: X3dFulfillmentAdapterConfig)
       const address = mapRecipientToX3d(input.recipient);
       const lines = input.items.map((item, lineIndex): X3dLineContext => ({ orderId: input.orderId, ...(item.lineId !== undefined ? { lineId: item.lineId } : {}), lineIndex, quantity: item.quantity }));
       // Resolved per line, not per SKU: two lines of one SKU can be different prints.
-      const targets: X3dCatalogTarget[] = [];
-      for (const [index, item] of input.items.entries()) targets.push(await config.resolveCatalogTarget(item.skuId, lines[index]!));
+      const resolved: { partId?: string; target: X3dCatalogTarget }[][] = [];
+      for (const [index, item] of input.items.entries()) resolved.push(partsOf(item.skuId, await config.resolveCatalogTarget(item.skuId, lines[index]!)));
 
-      const held = (skuId: string, lineId: string | undefined): FulfillmentLineRecord => ({ orderId: input.orderId, skuId, ...(lineId !== undefined ? { lineId } : {}), provider: X3D_PROVIDER, externalOrderId: null, status: "held", trackingNumber: null, trackingUrl: null });
-      const live = await liveOrders(input.orderId);
+      const { byUnit } = await newestOrders(input.orderId);
       const records: FulfillmentLineRecord[] = [];
       const emails = [...(config.emailCustomer && input.recipient.email ? [input.recipient.email] : []), ...(config.notifyEmails ?? [])].slice(0, 5);
       // Express is a US service; X3D refuses it for any other country.
       const shippingSpeed = config.shippingSpeed === "express" && address.country === "US" ? "express" : "standard";
 
       for (const [index, item] of input.items.entries()) {
-        const lineIds = item.lineId !== undefined ? [item.lineId] : undefined;
-        const existing = live.get(lineKey(item.skuId, item.lineId));
-        if (existing) {
-          records.push(...buildX3dLineRecords(input.orderId, [item.skuId], existing, lineIds));
-          continue;
-        }
-        if (config.holdOrders) {
-          records.push(held(item.skuId, item.lineId));
-          continue;
-        }
+        const parts = resolved[index]!;
+        const states: (X3dPartState | null)[] = [];
+        // What is placed so far, including the parts of this line placed before one failed.
+        const placedSoFar = (): FulfillmentLineRecord[] => [...records, ...(states.some((state) => state !== null) ? [lineRecord(input.orderId, item.skuId, item.lineId, states)] : [])].filter((record) => record.externalOrderId);
 
-        const target = targets[index]!;
-        const alreadyPlaced = (): FulfillmentLineRecord[] => records.filter((record) => record.externalOrderId);
-        let source: X3dModelSource;
-        try {
-          source = await loadSource(target, item.skuId, lines[index]!);
-        } catch (err) {
-          // Nothing was sent to X3D.
-          throw new X3dSubmitError(input.orderId, item.skuId, alreadyPlaced(), false, { cause: err });
-        }
-        let response: X3dCreateOrderResponse;
-        try {
-          response = await client.createOrder(
-            {
-              ...address,
-              quantity: item.quantity,
-              shippingSpeed,
-              ...(target.material ? { material: target.material } : {}),
-              ...(target.color ? { color: target.color } : {}),
-              ...(target.quality ? { quality: target.quality } : {}),
-              ...(target.infill !== undefined ? { infill: target.infill } : {}),
-              ...(target.nozzleDiameter !== undefined ? { nozzleDiameter: target.nozzleDiameter } : {}),
-              ...(target.layerHeight !== undefined ? { layerHeight: target.layerHeight } : {}),
-              ...(target.note ? { note: target.note } : {}),
-              ...(emails.length > 0 ? { emails } : {}),
-            },
-            source,
-          );
-        } catch (err) {
-          // An error status means X3D answered and made no order. Anything else is a request with no answer.
-          throw new X3dSubmitError(input.orderId, item.skuId, alreadyPlaced(), !(err instanceof X3dApiError), { cause: err });
-        }
+        for (const part of parts) {
+          const existing = byUnit.get(unitKey(item.skuId, item.lineId, part.partId));
+          // A live order for this part is kept. One X3D cancelled or rejected is placed again.
+          if (existing && existing.status !== "unfulfilled") {
+            states.push(existing);
+            continue;
+          }
+          if (config.holdOrders) {
+            states.push(null);
+            continue;
+          }
 
-        placedDetails.set(response.code, response);
-        try {
-          await store.remember(input.orderId, item.skuId, response.code, item.lineId);
-        } catch (err) {
-          throw new X3dOrderNotRememberedError(input.orderId, item.skuId, response.code, { cause: err });
+          const target = part.target;
+          let source: X3dModelSource;
+          try {
+            source = await loadSource(target, item.skuId, lines[index]!);
+          } catch (err) {
+            // Nothing was sent to X3D for this part.
+            throw new X3dSubmitError(input.orderId, item.skuId, placedSoFar(), false, { cause: err });
+          }
+          let response: X3dCreateOrderResponse;
+          try {
+            response = await client.createOrder(
+              {
+                ...address,
+                quantity: item.quantity,
+                shippingSpeed,
+                ...(target.material ? { material: target.material } : {}),
+                ...(target.color ? { color: target.color } : {}),
+                ...(target.quality ? { quality: target.quality } : {}),
+                ...(target.infill !== undefined ? { infill: target.infill } : {}),
+                ...(target.nozzleDiameter !== undefined ? { nozzleDiameter: target.nozzleDiameter } : {}),
+                ...(target.layerHeight !== undefined ? { layerHeight: target.layerHeight } : {}),
+                ...(target.note ? { note: target.note } : {}),
+                ...(emails.length > 0 ? { emails } : {}),
+              },
+              source,
+            );
+          } catch (err) {
+            // An error status means X3D answered and made no order. Anything else is a request with no answer.
+            throw new X3dSubmitError(input.orderId, item.skuId, placedSoFar(), !(err instanceof X3dApiError), { cause: err });
+          }
+
+          placedDetails.set(response.code, response);
+          try {
+            await store.remember(input.orderId, item.skuId, response.code, item.lineId, part.partId !== undefined ? { partId: part.partId, partCount: parts.length } : undefined);
+          } catch (err) {
+            throw new X3dOrderNotRememberedError(input.orderId, item.skuId, response.code, { cause: err });
+          }
+          states.push(x3dPartStateOf({ code: response.code, status: response.status }));
         }
-        records.push(...buildX3dLineRecords(input.orderId, [item.skuId], { code: response.code, status: response.status }, lineIds));
+        records.push(lineRecord(input.orderId, item.skuId, item.lineId, states));
       }
       return records;
     },
 
     async getOrderStatus(orderId: string): Promise<FulfillmentLineRecord[]> {
-      // The newest order for a line wins, whatever its status, so a cancelled line reads as unfulfilled.
-      const byLine = new Map<string, FulfillmentLineRecord>();
-      for (const entry of await store.list(orderId)) {
-        const order = await client.getOrder(entry.code);
-        if (!order) continue;
-        for (const record of buildX3dLineRecords(orderId, entry.skuIds, order, entry.lineIds)) byLine.set(lineKey(record.skuId, record.lineId), record);
+      // The newest order for a part wins, whatever its status, so a cancelled one reads as unfulfilled.
+      const { byUnit, lines } = await newestOrders(orderId);
+      const records: FulfillmentLineRecord[] = [];
+      for (const line of lines.values()) {
+        if (line.partIds.size === 0) {
+          const state = byUnit.get(unitKey(line.skuId, line.lineId, undefined));
+          if (state) records.push(lineRecord(orderId, line.skuId, line.lineId, [state]));
+          continue;
+        }
+        const states = [...line.partIds].map((partId) => byUnit.get(unitKey(line.skuId, line.lineId, partId))).filter((state): state is X3dPartState => state !== undefined);
+        if (states.length === 0) continue;
+        const record = lineRecord(orderId, line.skuId, line.lineId, states);
+        // A part that was never placed leaves the line incomplete. It reads "unfulfilled" so the order is submitted again, which places only that part.
+        records.push(states.length < line.partCount ? { ...record, status: "unfulfilled", trackingNumber: null } : record);
       }
-      return [...byLine.values()];
+      return records;
     },
 
     getX3dOrder: (code) => client.getOrder(code),
@@ -319,7 +424,7 @@ export function isX3dMulticolourTarget(target: X3dCatalogTarget): boolean {
 export interface X3dPollResult {
   /** Open X3D orders read. */
   checked: number;
-  /** Of those, how many had a new status or tracking number published. */
+  /** How many status changes were published: one per single-order line that changed, one per several-part line whose combined status changed. */
   published: number;
   /** Orders that could not be read or recorded. The rest were still processed. */
   failed: { code: string; error: unknown }[];
@@ -332,26 +437,69 @@ export interface X3dPollResult {
  * createProviderOrderStatusRecorder's `record`, bound to this provider), which
  * publishes `fulfillment.order.status_changed` when something changed.
  *
+ * A line made of several X3D orders is published as one line, under a link of
+ * its own: its parts' statuses are stored quietly, and the line's change goes
+ * out only when the combined status changes. So the buyer of a box and lid
+ * hears "shipped" once, when the last of the two is in the post, with both
+ * tracking numbers. A line with a part not yet placed publishes nothing.
+ *
  * X3D suggests every five minutes while an order is in flight, and says
  * fifteen is fine once it is printing. Its order endpoints are not rate
  * limited.
  */
 export function createX3dStatusPoller(deps: {
   getOrder(code: string): Promise<X3dOrder | null>;
-  links: Pick<ProviderOrderLinkRepository, "listOpen">;
+  links: ProviderOrderLinkRepository;
   record(update: ProviderOrderStatusUpdate): Promise<ProviderOrderStatusOutcome>;
 }): { poll(): Promise<X3dPollResult> } {
+  const { links } = deps;
   return {
     async poll() {
       const result: X3dPollResult = { checked: 0, published: 0, failed: [] };
-      for (const link of await deps.links.listOpen(X3D_PROVIDER)) {
+      // Several-part lines to work out once every open part has been read: "orderId, line" -> its order and line.
+      const partLines = new Map<string, { orderId: string; skuId: string; lineId?: string }>();
+
+      for (const link of await links.listOpen(X3D_PROVIDER)) {
+        if (isLineLink(link.externalOrderId)) continue;
         try {
           const order = await deps.getOrder(link.externalOrderId);
           if (!order) continue;
           result.checked += 1;
-          if ((await deps.record(x3dOrderStatusUpdateFrom(order))) === "published") result.published += 1;
+          if (link.meta?.partId === undefined) {
+            if ((await deps.record(x3dOrderStatusUpdateFrom(order))) === "published") result.published += 1;
+            continue;
+          }
+          // A part: store what X3D says without publishing, and settle its line below.
+          const state = x3dPartStateOf(order);
+          await links.saveStatus(X3D_PROVIDER, link.externalOrderId, { status: state.status, trackingNumber: state.trackingNumber, carrier: state.carrier });
+          const skuId = link.skuIds[0]!;
+          const lineId = link.lineIds?.[0];
+          partLines.set(JSON.stringify([link.orderId, skuId, lineId ?? null]), { orderId: link.orderId, skuId, ...(lineId !== undefined ? { lineId } : {}) });
         } catch (error) {
           result.failed.push({ code: link.externalOrderId, error });
+        }
+      }
+
+      for (const line of partLines.values()) {
+        const lineLinkId = `${LINE_LINK_PREFIX}${line.orderId}:${line.lineId ?? line.skuId}`;
+        try {
+          // The newest order per part, from what is stored (the open ones were refreshed just above).
+          const newest = new Map<string, X3dStoredOrder>();
+          let partCount = 1;
+          for (const link of await links.listForOrder(line.orderId, X3D_PROVIDER)) {
+            if (isLineLink(link.externalOrderId) || link.meta?.partId === undefined) continue;
+            if (link.skuIds[0] !== line.skuId || link.lineIds?.[0] !== line.lineId) continue;
+            const stored = storedOrderFrom(link);
+            newest.set(stored.partId!, stored);
+            partCount = Math.max(partCount, stored.partCount ?? 1);
+          }
+          // Not every part is placed, or one has no status yet: nothing to say about the line.
+          if (newest.size < partCount || [...newest.values()].some((part) => !part.status)) continue;
+          const combined = aggregateX3dParts([...newest.values()].map((part) => ({ code: part.code, status: part.status!, trackingNumber: part.trackingNumber ?? null, carrier: part.carrier ?? null })));
+          await links.link({ orderId: line.orderId, provider: X3D_PROVIDER, externalOrderId: lineLinkId, skuIds: [line.skuId], ...(line.lineId !== undefined ? { lineIds: [line.lineId] } : {}) });
+          if ((await deps.record({ externalOrderId: lineLinkId, status: combined.status, trackingNumber: combined.trackingNumber, carrier: combined.carrier })) === "published") result.published += 1;
+        } catch (error) {
+          result.failed.push({ code: lineLinkId, error });
         }
       }
       return result;

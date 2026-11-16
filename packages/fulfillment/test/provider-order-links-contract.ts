@@ -77,6 +77,16 @@ export function describeProviderOrderLinkContract(
       expect((await repo.findByExternalOrderId("x3d", "X3D-A"))!.lineIds).toEqual(["line-1"]);
     });
 
+    it("keeps an adapter's own notes on a link", async () => {
+      const repo = (await setup()).open();
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-A", skuIds: ["art-box"], meta: { partId: "lid", partCount: "2" } });
+      expect((await repo.findByExternalOrderId("x3d", "X3D-A"))!.meta).toEqual({ partId: "lid", partCount: "2" });
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-A" });
+      expect((await repo.listForOrder("order-1", "x3d"))[0]!.meta).toEqual({ partId: "lid", partCount: "2" });
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-B" });
+      expect((await repo.findByExternalOrderId("x3d", "X3D-B"))!.meta).toBeUndefined();
+    });
+
     it("lists a provider's open orders: everything not delivered or unfulfilled", async () => {
       const repo = (await setup()).open();
       for (const id of ["new", "printing", "shipped", "done", "cancelled"]) await repo.link({ orderId: `o-${id}`, provider: "x3d", externalOrderId: id });
