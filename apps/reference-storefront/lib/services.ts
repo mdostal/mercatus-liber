@@ -29,6 +29,7 @@ import {
   createPostgresProductCustomizationRepository,
   createPostgresProviderCatalogMappingRepository,
   createPostgresProviderOrderLinkRepository,
+  createPostgresManualFulfillmentRecordStore,
   createPostgresStoreApiKeyRepository,
   createPostgresWebhookSubscriptionStore,
   createPostgresWebhookDeliveryLogStore,
@@ -1130,7 +1131,9 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     orders: checkout,
     routing: fulfillmentRouting,
     adapters: {
-      [MANUAL_FULFILLMENT_PROVIDER]: createManualFulfillmentAdapter(),
+      // On Postgres the manual lines' status and tracking are stored, so a label bought on one
+      // serverless instance is still there on the next. Other backends keep them in memory.
+      [MANUAL_FULFILLMENT_PROVIDER]: createManualFulfillmentAdapter(pgPool ? { store: createPostgresManualFulfillmentRecordStore(pgPool) } : {}),
       ...(printfulAdapter ? { [PRINTFUL_PROVIDER]: linked(printfulAdapter, PRINTFUL_PROVIDER) } : {}),
       // `PRINTIFY_API_TOKEN` and `PRINTIFY_SHOP_ID` both required and truthy
       // (unlike Printful's single-token gate) -- real Printify accounts can

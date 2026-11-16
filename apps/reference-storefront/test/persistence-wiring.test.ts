@@ -89,7 +89,7 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
   const { createInMemoryStorefrontViewRepository } = await import("@mercatus-liber/storefront-views");
   const { createInMemoryBundleRepository } = await import("@mercatus-liber/bundles");
   const { createInMemoryGoalRepository, createInMemoryGoalVoteRepository } = await import("@mercatus-liber/community-goals");
-  const { createInMemoryProviderCatalogMappingRepository, createInMemoryProviderOrderLinkRepository } = await import("@mercatus-liber/fulfillment");
+  const { createInMemoryManualFulfillmentRecordStore, createInMemoryProviderCatalogMappingRepository, createInMemoryProviderOrderLinkRepository } = await import("@mercatus-liber/fulfillment");
   const { createInMemoryStoreApiKeyRepository } = await import("@mercatus-liber/store-api");
   const { createInMemoryWebhookSubscriptionStore, createInMemoryWebhookDeliveryLogStore } = await import("@mercatus-liber/webhooks");
   const { createInMemoryPaletteRepository, createInMemoryFinishTierRepository, createInMemoryArtStyleRepository, createInMemoryProductCustomizationRepository, createInMemoryPricingRulesRepository } = await import("@mercatus-liber/customization");
@@ -151,6 +151,7 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
     },
     createPostgresProviderCatalogMappingRepository: () => createInMemoryProviderCatalogMappingRepository(),
     createPostgresProviderOrderLinkRepository: () => createInMemoryProviderOrderLinkRepository(),
+    createPostgresManualFulfillmentRecordStore: () => createInMemoryManualFulfillmentRecordStore(),
     createPostgresStoreApiKeyRepository: () => createInMemoryStoreApiKeyRepository(),
     createPostgresWebhookSubscriptionStore: () => createInMemoryWebhookSubscriptionStore(),
     createPostgresWebhookDeliveryLogStore: () => createInMemoryWebhookDeliveryLogStore(),

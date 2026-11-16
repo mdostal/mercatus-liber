@@ -78,3 +78,6 @@ Planned costs come from Printful's price list: a variant's price covers one prin
 
 `submitOrder` refuses an address without a street line, city, country, or postal code before calling Printful. A draft left by `holdOrders` reports the status `"held"`.
 
+## Order ids and Printful's 32-character limit
+
+Printful refuses an order whose `external_id` is longer than 32 characters. A real `POST /v2/orders` with a 36-character UUID was answered with HTTP 400, "Maximum external_id string length is 32". So the adapter sends a UUID order id without its dashes (`printfulExternalIdFor`) and reads it back with them (`orderIdFromPrintfulExternalId`), in `submitOrder`, `getOrderStatus` and `printfulOrderStatusUpdateFrom`. Ids of 32 characters or fewer are sent unchanged. A longer id that is not a UUID throws `PrintfulExternalIdTooLongError` before anything is sent.

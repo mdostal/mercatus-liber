@@ -371,3 +371,9 @@ are field names taken from the providers' published docs on 2026-11-15 (the fixt
 say exactly which pages); every value in them is made up. Two things in particular are unconfirmed:
 which bytes Printful signs (the adapter signs the raw body), and whether Shippo's `track_updated`
 body carries the `transaction` id for labels bought through the API.
+
+## Submitting again, and what survives a restart
+
+- **`submitOrder` is safe to call again.** Before sending a provider its lines, the service reads that provider's existing records for the order and leaves out any line that has one, unless its status is `unfulfilled` (the provider cancelled or rejected it). If one provider fails, the others are still submitted and `PartialFulfillmentSubmitError` is thrown at the end with the placed `records` and the `failures` by provider. A provider whose existing records cannot be read is not submitted to.
+- **Self-shipped lines are stored.** `createManualFulfillmentAdapter({ store })` keeps its line records, including the tracking number written when a label is bought, in a `ManualFulfillmentRecordStore`. The default is in memory. `createPostgresManualFulfillmentRecordStore` (table `manual_fulfillment_records`, created on first use) is the durable one; the reference storefront uses it whenever it runs on Postgres. SQLite, MongoDB and Convex do not have one yet.
+- **Printful order ids.** Printful refuses an `external_id` over 32 characters (confirmed by a real `POST /v2/orders` from a store on 2026-11-15: HTTP 400). A UUID order id is therefore sent without its dashes, and 32 hex characters read back from Printful, in an order or a webhook, get their dashes back. A longer id that is not a UUID is refused before anything is sent.
