@@ -193,8 +193,14 @@ export interface ShippoTransactionResponse {
   tracking_url_provider?: string | null;
   label_url?: string | null;
   messages?: ShippoApiMessage[];
-  /** Present on a real transaction response; carries the carrier (`provider`) purchased -- this adapter's only source for `ShippingLabel.carrier`, since `buyLabel(rateId)` itself receives no carrier context. */
-  rate?: ShippoTransactionRateSummary;
+  /**
+   * The rate that was bought. A real `POST /transactions/` answers with the
+   * rate's id as a plain string here (seen on a test-mode purchase,
+   * 2026-11-16), not the object with `provider` that Shippo's reference shows.
+   * Both are accepted; for the string form the carrier is read from what
+   * getRates quoted, or from `GET /rates/{id}`.
+   */
+  rate?: ShippoTransactionRateSummary | string;
 }
 
 export interface ShippoTrackingLocation {

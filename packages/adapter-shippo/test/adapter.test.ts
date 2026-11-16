@@ -24,6 +24,10 @@ function fakeClient(overrides: Partial<ShippoHttpClient> = {}): ShippoHttpClient
       calls.createTransaction!.push(body);
       return overrides.createTransaction ? overrides.createTransaction(body) : successfulTransaction();
     },
+    async getRate(rateId) {
+      (calls.getRate ??= []).push(rateId);
+      return overrides.getRate ? overrides.getRate(rateId) : { provider: "USPS" };
+    },
     async createRefund(body) {
       calls.createRefund!.push(body);
       return overrides.createRefund ? overrides.createRefund(body) : { object_id: "rf1", status: "QUEUED", transaction: body.transaction };
@@ -77,6 +81,15 @@ const sampleInput: GetRatesInput = { fromAddress, toAddress, parcel: { weightOz:
 
 describe("createShippoShippingAdapter", () => {
   describe("getRates", () => {
+    it("sends the sender's email and phone when the address has them", async () => {
+      // USPS refuses a label without address_from.email: seen on a real test-mode purchase.
+      const client = fakeClient();
+      const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+      await adapter.getRates({ ...sampleInput, fromAddress: { ...fromAddress, email: "ship@store.example", phone: "+1 555 0100" } });
+      expect((client.calls.createShipment![0] as { address_from: unknown }).address_from).toEqual({ name: "Mr. Hippo", street1: "215 Clayton St.", city: "San Francisco", state: "CA", zip: "94117", country: "US", phone: "+1 555 0100", email: "ship@store.example" });
+      expect((client.calls.createShipment![0] as { address_to: Record<string, unknown> }).address_to).not.toHaveProperty("email");
+    });
+
     it("creates a real Shipment (address_from/address_to/parcels/async:false) and maps real rates into ShippingRate[]", async () => {
       const client = fakeClient();
       const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
@@ -186,17 +199,39 @@ describe("createShippoShippingAdapter", () => {
       await expect(adapter.buyLabel("rate-1")).rejects.toThrow(/label_url|tracking_number/);
     });
 
-    it("throws rather than fabricate a carrier when a SUCCESS transaction is missing rate.provider", async () => {
+    it("still returns the bought label when the transaction names no carrier and none can be found", async () => {
+      // It used to throw here. By this point the label is paid for, so losing it is worse than an unnamed carrier.
       const client = fakeClient({
         createTransaction: async () => ({ object_id: "t3", status: "SUCCESS", label_url: "https://x/y.pdf", tracking_number: "123" }),
+        getRate: async () => null,
       });
       const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
 
-      await expect(adapter.buyLabel("rate-1")).rejects.toThrow(/rate\.provider/);
+      expect(await adapter.buyLabel("rate-1")).toEqual({ purchased: true, label: { labelUrl: "https://x/y.pdf", trackingNumber: "123", trackingUrl: null, carrier: "unknown", labelId: "t3" } });
     });
   });
 
   describe("getTrackingStatus", () => {
+    it("reports unknown when Shippo refuses the lookup, as a test token does for real carriers", async () => {
+      const client = fakeClient({
+        getTrackingStatus: async () => {
+          throw new ShippoApiError("GET", "/tracks/usps/9400111899223197428490", 400, { detail: "usps is not a valid test tracking carrier. Please use 'shippo'" });
+        },
+      });
+      const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+      expect(await adapter.getTrackingStatus("9400111899223197428490")).toMatchObject({ status: "unknown", detectedCarrier: "USPS" });
+    });
+
+    it("still throws when Shippo itself is failing", async () => {
+      const client = fakeClient({
+        getTrackingStatus: async () => {
+          throw new ShippoApiError("GET", "/tracks/usps/9400111899223197428490", 503, null);
+        },
+      });
+      const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+      await expect(adapter.getTrackingStatus("9400111899223197428490")).rejects.toThrow();
+    });
+
     it("detects a UPS-shaped number, calls Shippo's real /tracks/ups/{number} endpoint, and maps a real DELIVERED response", async () => {
       const response: ShippoTrackingResponse = {
         carrier: "ups",
@@ -304,5 +339,37 @@ describe("createShippoShippingAdapter", () => {
       const down = fakeClient({ createRefund: async () => { throw new ShippoApiError("POST", "/refunds/", 503, null); } });
       await expect(createShippoShippingAdapter({ apiToken: "t", httpClient: down }).voidLabel!("tx-5")).rejects.toThrow(ShippoApiError);
     });
+  });
+});
+
+describe("buyLabel against Shippo's real transaction response", () => {
+  // A real POST /transactions/ returns `rate` as the rate's id, a plain string (seen in test mode, 2026-11-16).
+  const realShape = (): ShippoTransactionResponse => ({ ...successfulTransaction(), rate: "eab0f0c5689347439a9b87f2380710e5" });
+
+  it("names the carrier from the rates it quoted, without another request", async () => {
+    const client = fakeClient({ createTransaction: async () => realShape() });
+    const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+    await adapter.getRates(sampleInput);
+    const result = await adapter.buyLabel("eab0f0c5689347439a9b87f2380710e5");
+    expect(result).toMatchObject({ purchased: true, label: { carrier: "USPS", labelId: "2db03e1bc677420a8c56dc77a60e9386" } });
+    expect(client.calls.getRate ?? []).toHaveLength(0);
+  });
+
+  it("asks Shippo for the rate when this instance did not quote it", async () => {
+    const client = fakeClient({ createTransaction: async () => realShape(), getRate: async () => ({ provider: "UPS" }) });
+    const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+    expect(await adapter.buyLabel("some-rate")).toMatchObject({ purchased: true, label: { carrier: "UPS" } });
+    expect(client.calls.getRate).toEqual(["some-rate"]);
+  });
+
+  it("🔒 never loses a bought label because the carrier could not be named", async () => {
+    const client = fakeClient({ createTransaction: async () => realShape(), getRate: async () => { throw new Error("Shippo is down"); } });
+    const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+    const result = await adapter.buyLabel("some-rate");
+    expect(result.purchased).toBe(true);
+    if (!result.purchased) throw new Error("unreachable");
+    expect(result.label.trackingNumber).toBe("92701901755477000000000011");
+    expect(typeof result.label.carrier).toBe("string");
+    expect(result.label.carrier.length).toBeGreaterThan(0);
   });
 });

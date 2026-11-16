@@ -45,6 +45,8 @@ export interface ShippoHttpClient {
   createShipment(body: ShippoCreateShipmentRequest): Promise<ShippoShipmentResponse>;
   /** `POST /transactions/` -- confirmed path/body shape (shippo-types.ts). Purchases the label for a previously-quoted rate. */
   createTransaction(body: ShippoCreateTransactionRequest): Promise<ShippoTransactionResponse>;
+  /** `GET /rates/{rate_id}`. Returns the rate's carrier (`provider`), or null on a 404. Optional so an existing injected client still fits; the adapter copes without it. */
+  getRate?(rateId: string): Promise<{ provider?: string } | null>;
   /** `GET /tracks/{carrier}/{tracking_number}` -- confirmed path (shippo-types.ts). Returns `null` on a 404 (unrecognized tracking number), never throws for that case. */
   getTrackingStatus(carrier: string, trackingNumber: string): Promise<ShippoTrackingResponse | null>;
   /** `POST /refunds` -- asks Shippo to refund (void) an unused label's transaction. */
@@ -88,6 +90,10 @@ export function createShippoHttpClient(config: ShippoHttpClientConfig): ShippoHt
       const result = await request<ShippoTransactionResponse>("POST", path, body);
       if (!result) throw new ShippoApiError("POST", path, 404, null);
       return result;
+    },
+
+    async getRate(rateId: string): Promise<{ provider?: string } | null> {
+      return request<{ provider?: string }>("GET", `/rates/${encodeURIComponent(rateId)}`);
     },
 
     async createRefund(body: ShippoCreateRefundRequest): Promise<ShippoRefundResponse> {

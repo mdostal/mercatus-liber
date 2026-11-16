@@ -188,8 +188,10 @@ fulfillment views and shipped emails pick it up.
 Printful/Printify fulfillment adapters (epics 42/43), and the PostHog/GA4 insights adapters
 (epic 46). `@mercatus-liber/adapter-shippo` is built and unit-tested for real correctness
 against Shippo's actual, current API shape (grounded in `docs.goshippo.com`, not training-data
-recall), not exercised against a live Shippo API in this environment; no live rate/label/
-tracking call against a real Shippo account was made or is claimed.
+recall). That was true until 2026-11-16, when rates, a label purchase and a void were run
+against Shippo's real API with a test token; three differences from Shippo's reference pages
+turned up and were fixed (see the adapter's README, "What the test-mode run showed"). No label
+has been bought with a live token.
 
 What *is* genuinely verified without a live credential:
 - **The `services.ts` env-var branch itself, in both states** — manual-only when
