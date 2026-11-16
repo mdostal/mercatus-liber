@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS provider_order_links (
   PRIMARY KEY (provider, external_order_id)
 );
 ALTER TABLE provider_order_links ADD COLUMN IF NOT EXISTS sku_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE provider_order_links ADD COLUMN IF NOT EXISTS tracking_url TEXT;
 CREATE INDEX IF NOT EXISTS provider_order_links_order_idx ON provider_order_links (order_id, provider);
 `;
 
@@ -25,6 +26,7 @@ interface Row {
   status: string | null;
   tracking_number: string | null;
   carrier: string | null;
+  tracking_url: string | null;
   sku_ids: string[];
 }
 
@@ -36,6 +38,7 @@ const toLink = (row: Row): ProviderOrderLink => ({
   status: row.status as FulfillmentLineStatus | null,
   trackingNumber: row.tracking_number,
   carrier: row.carrier,
+  trackingUrl: row.tracking_url ?? null,
 });
 
 /** Postgres-backed ProviderOrderLinkRepository. The schema runs once, on first use, and is retried if that fails. */
@@ -80,12 +83,13 @@ export function createPostgresProviderOrderLinkRepository(pool: Pool): ProviderO
     },
     async saveStatus(provider, externalOrderId, status) {
       await ensure();
-      await pool.query("UPDATE provider_order_links SET status = $3, tracking_number = $4, carrier = $5 WHERE provider = $1 AND external_order_id = $2", [
+      await pool.query("UPDATE provider_order_links SET status = $3, tracking_number = $4, carrier = $5, tracking_url = $6 WHERE provider = $1 AND external_order_id = $2", [
         provider,
         externalOrderId,
         status.status,
         status.trackingNumber,
         status.carrier,
+        status.trackingUrl ?? null,
       ]);
     },
   };

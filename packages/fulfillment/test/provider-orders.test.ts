@@ -32,9 +32,25 @@ describe("createProviderOrderStatusRecorder", () => {
     await links.link({ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1" });
     expect(await recorder.record("slant3d", { externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null })).toBe("published");
     expect(published).toEqual([
-      { changeId: '["slant3d","SL-1","shipped","TRK1",null]', orderId: "order-1", skuIds: [], provider: "slant3d", externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null, previousStatus: null },
+      { changeId: '["slant3d","SL-1","shipped","TRK1",null]', orderId: "order-1", skuIds: [], provider: "slant3d", externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null, trackingUrl: null, previousStatus: null },
     ]);
     expect((await links.findByExternalOrderId("slant3d", "SL-1"))!.status).toBe("shipped");
+  });
+
+  it("carries the tracking page, keeps one learned late, and does not announce a page on its own", async () => {
+    const { links, recorder, published } = setup();
+    await links.link({ orderId: "order-1", provider: "printful", externalOrderId: "880011" });
+    const shipped = { externalOrderId: "880011", status: "shipped" as const, trackingNumber: "TRK1", carrier: null };
+    await recorder.record("printful", shipped);
+    expect(published[0]!.trackingUrl).toBeNull();
+
+    // The same status again, now with a page: nothing to announce, but it is kept.
+    expect(await recorder.record("printful", { ...shipped, trackingUrl: "https://track.example/TRK1" })).toBe("unchanged");
+    expect(published).toHaveLength(1);
+    await recorder.record("printful", { ...shipped, status: "delivered" });
+    expect(published[1]).toMatchObject({ status: "delivered", trackingUrl: "https://track.example/TRK1" });
+    // The page is not part of the change id.
+    expect(published[1]!.changeId).toBe('["printful","880011","delivered","TRK1",null]');
   });
 
   it("publishes once when the provider repeats itself", async () => {

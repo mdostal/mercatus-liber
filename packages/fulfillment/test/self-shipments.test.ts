@@ -24,10 +24,11 @@ describe("selfShipmentLinkId", () => {
 describe("recordSelfShipment", () => {
   it("publishes shipped for the manual provider with the parcel's lines, tracking and carrier", async () => {
     const { links, recorder, published } = setup();
-    expect(await recordSelfShipment({ links, recorder, orderId: "o1", skuIds: ["sunglasses-blue", "print-dragon"], trackingNumber: "TRK1", carrier: "USPS", labelId: "tx-1" })).toBe("published");
+    expect(await recordSelfShipment({ links, recorder, orderId: "o1", skuIds: ["sunglasses-blue", "print-dragon"], trackingNumber: "TRK1", trackingUrl: "https://track.example/TRK1", carrier: "USPS", labelId: "tx-1" })).toBe("published");
     expect(published).toEqual([
       {
         changeId: '["manual","tx-1","shipped","TRK1","USPS"]',
+        trackingUrl: "https://track.example/TRK1",
         orderId: "o1",
         skuIds: ["sunglasses-blue", "print-dragon"],
         provider: "manual",

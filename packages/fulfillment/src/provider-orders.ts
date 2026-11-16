@@ -21,12 +21,16 @@ export interface ProviderOrderLink {
   trackingNumber: string | null;
   /** A plain carrier name such as "DHL", when the provider gives one. */
   carrier: string | null;
+  /** The carrier's or provider's tracking page, when one was reported. */
+  trackingUrl?: string | null;
 }
 
 export interface ProviderOrderStatus {
   status: FulfillmentLineStatus;
   trackingNumber: string | null;
   carrier: string | null;
+  /** A page where the parcel can be followed. Optional: several providers give a number only. */
+  trackingUrl?: string | null;
 }
 
 export interface ProviderOrderLinkRepository {
@@ -82,7 +86,7 @@ export function createInMemoryProviderOrderLinkRepository(): ProviderOrderLinkRe
     },
     async saveStatus(provider, externalOrderId, status) {
       const link = links.get(key(provider, externalOrderId));
-      if (link) Object.assign(link, { status: status.status, trackingNumber: status.trackingNumber, carrier: status.carrier });
+      if (link) Object.assign(link, { status: status.status, trackingNumber: status.trackingNumber, carrier: status.carrier, trackingUrl: status.trackingUrl ?? null });
     },
   };
 }
@@ -137,8 +141,14 @@ export interface FulfillmentOrderStatusChanged extends ProviderOrderStatus {
    * different one: provider, provider order, status, tracking number and
    * carrier. A subscriber that must act once (sending an email) keys on this,
    * because a change is published again if a subscriber failed the first time.
+   *
+   * It is a JSON array as a string, so it contains quotes and brackets. Use it
+   * as it is for a database key; hash it before putting it in an HTTP header
+   * such as an email service's Idempotency-Key.
    */
   changeId: string;
+  /** Always present on the event; null when no tracking page is known. It is not part of `changeId`, and a new URL alone publishes nothing. */
+  trackingUrl: string | null;
   orderId: string;
   /** The order lines this provider order makes. Empty means all of the order's lines at this provider. */
   skuIds: string[];
@@ -190,7 +200,12 @@ export function createProviderOrderStatusRecorder(deps: { links: ProviderOrderLi
         trackingNumber: update.trackingNumber ?? link.trackingNumber,
         carrier: update.carrier ?? link.carrier,
       };
-      if (next.status === link.status && next.trackingNumber === link.trackingNumber && next.carrier === link.carrier) return "unchanged";
+      const trackingUrl = update.trackingUrl ?? link.trackingUrl ?? null;
+      if (next.status === link.status && next.trackingNumber === link.trackingNumber && next.carrier === link.carrier) {
+        // Nothing to announce, but a tracking page learned late is kept for the next event.
+        if (trackingUrl !== (link.trackingUrl ?? null) && link.status) await links.saveStatus(provider, update.externalOrderId, { ...next, trackingUrl });
+        return "unchanged";
+      }
 
       await events.publish<FulfillmentOrderStatusChanged>(FULFILLMENT_ORDER_STATUS_CHANGED, {
         changeId: JSON.stringify([provider, link.externalOrderId, next.status, next.trackingNumber, next.carrier]),
@@ -199,9 +214,10 @@ export function createProviderOrderStatusRecorder(deps: { links: ProviderOrderLi
         provider,
         externalOrderId: link.externalOrderId,
         ...next,
+        trackingUrl,
         previousStatus: link.status,
       });
-      await links.saveStatus(provider, update.externalOrderId, next);
+      await links.saveStatus(provider, update.externalOrderId, { ...next, trackingUrl });
       return "published";
     },
   };
