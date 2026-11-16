@@ -131,8 +131,8 @@ The adapter also has `processHeldOrder(publicOrderId)`, to process a held draft,
 - Slant's other order item types (components such as magnets or inserts, and printed cards), slicer options, and requested arrival dates.
 - Charging a shopper's own card through Slant (`publicPaymentServiceId`, Slant's customer and checkout endpoints). Orders are charged to the Slant account's payment method.
 - Listing or searching Slant orders, deleting files, API key management, usage statistics, OpenSCAD conversion, and listing or resending stored webhooks.
-- Storing the Slant order id for you. Persist `externalOrderId` from `submitOrder` and return it from `resolveExternalOrderId`.
-- Acting on webhooks. The adapter verifies and parses them; updating your own records is up to `onWebhookEvent`.
+- Storing the Slant order id for you. Persist `externalOrderId` from `submitOrder` and return it from `resolveExternalOrderId`. `@mercatus-liber/fulfillment`'s `withProviderOrderLinks` and `externalOrderIdsFrom` do both against a `ProviderOrderLinkRepository`.
+- Acting on webhooks. The adapter verifies and parses them; updating your own records is up to `onWebhookEvent`. `slant3dOrderStatusUpdateFrom(event)` turns an order event into the status update `@mercatus-liber/fulfillment`'s `createProviderOrderStatusRecorder` takes.
 
 ## Key exports
 

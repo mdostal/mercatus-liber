@@ -1,5 +1,7 @@
 import { createHmac } from "node:crypto";
-import { createSlant3dFulfillmentAdapter } from "@mercatus-liber/adapter-slant3d";
+import { createSlant3dFulfillmentAdapter, slant3dOrderStatusUpdateFrom } from "@mercatus-liber/adapter-slant3d";
+import { createInMemoryEventBus } from "@mercatus-liber/core";
+import { createInMemoryProviderOrderLinkRepository, createProviderOrderStatusRecorder, FULFILLMENT_ORDER_STATUS_CHANGED } from "@mercatus-liber/fulfillment";
 import { describe, expect, it } from "vitest";
 import { receiveFulfillmentWebhook, slant3dSignatureFrom, type FulfillmentWebhookReceivers } from "../lib/fulfillment-webhooks";
 
@@ -62,5 +64,48 @@ describe("receiveFulfillmentWebhook", () => {
   it("answers 500 when our own handler fails, so the provider retries", async () => {
     const failing: FulfillmentWebhookReceivers = { slant3d: { signatureFrom: slant3dSignatureFrom, handle: async () => { throw new Error("bus down"); } } };
     expect((await receiveFulfillmentWebhook(failing, "slant3d", slantHeaders(BODY), BODY)).status).toBe(500);
+  });
+});
+
+describe("a signed Slant 3D delivery, end to end", () => {
+  // The same chain lib/services.ts builds: adapter -> status mapper -> recorder -> event bus.
+  async function deliver(body: string) {
+    const links = createInMemoryProviderOrderLinkRepository();
+    const events = createInMemoryEventBus();
+    const published: unknown[] = [];
+    events.subscribe(FULFILLMENT_ORDER_STATUS_CHANGED, async (payload) => {
+      published.push(payload);
+    });
+    const recorder = createProviderOrderStatusRecorder({ links, events });
+    await links.link({ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1" });
+    const adapter = createSlant3dFulfillmentAdapter({
+      apiKey: "k",
+      platformId: "p",
+      resolveCatalogTarget: async () => ({ fileId: "f", filamentId: "m" }),
+      webhookSecret: SECRET,
+      now: () => NOW,
+      onWebhookEvent: async (event) => {
+        const update = slant3dOrderStatusUpdateFrom(event);
+        if (update) await recorder.record("slant3d", update);
+      },
+    });
+    const receivers: FulfillmentWebhookReceivers = { slant3d: { signatureFrom: slant3dSignatureFrom, handle: (raw, sig) => adapter.handleWebhookEvent(raw, sig) } };
+    const send = () => receiveFulfillmentWebhook(receivers, "slant3d", slantHeaders(body), body);
+    return { send, published };
+  }
+
+  it("publishes the store order's new status once, however often Slant retries", async () => {
+    const body = JSON.stringify({ event_type: "order.shipped", data: { order: { public_id: "SL-1", status: "SHIPPED", tracking_number: "TRK1" } } });
+    const { send, published } = await deliver(body);
+    expect((await send()).status).toBe(200);
+    expect((await send()).status).toBe(200);
+    expect(published).toEqual([{ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null, previousStatus: null }]);
+  });
+
+  it("accepts a delivery about an order this store never placed, and publishes nothing", async () => {
+    const body = JSON.stringify({ event_type: "order.shipped", data: { order: { public_id: "SL-other", status: "SHIPPED" } } });
+    const { send, published } = await deliver(body);
+    expect((await send()).status).toBe(200);
+    expect(published).toHaveLength(0);
   });
 });

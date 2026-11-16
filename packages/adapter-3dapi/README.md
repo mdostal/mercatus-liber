@@ -57,7 +57,7 @@ const adapters = { [DAPI_PROVIDER]: dapi }; // DAPI_PROVIDER is "3dapi"
 | `verifyWebhookSignature(rawBody, signature)` | Replaces the built-in signature check. |
 | `webhookToleranceSeconds` | Allowed clock difference for a delivery. Default 300. |
 | `webhookEventStore` | Where handled event ids are kept. Default: in memory. |
-| `onWebhookEvent(event)` | Called with each verified event not handled before. |
+| `onWebhookEvent(event)` | Called with each verified event not handled before. `dapiOrderStatusUpdateFrom(event)` turns an order event into the status update `@mercatus-liber/fulfillment`'s `createProviderOrderStatusRecorder` takes. |
 
 ### Mapping SKUs
 

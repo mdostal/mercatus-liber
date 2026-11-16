@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { FulfillmentLineStatus } from "@mercatus-liber/fulfillment";
+import type { FulfillmentLineStatus, ProviderOrderStatusUpdate } from "@mercatus-liber/fulfillment";
 import { DAPI_ORDER_STATUSES, DAPI_WEBHOOK_EVENT_TYPES, type DapiOrderStatus, type DapiWebhookEventType, type DapiWebhookPayload } from "./dapi-types.js";
 import { mapDapiOrderStatus } from "./mapping.js";
 
@@ -187,5 +187,29 @@ export function createInMemoryDapiWebhookEventStore(limit = 5000): DapiWebhookEv
       seen.add(eventId);
       if (seen.size > limit) seen.delete(seen.values().next().value as string);
     },
+  };
+}
+
+const HASHED_REFERENCE = /^ml-[0-9a-f]{40}$/;
+
+/**
+ * What a delivery says about an order's fulfillment, for
+ * @mercatus-liber/fulfillment's createProviderOrderStatusRecorder, or null for
+ * an event that is not about an order.
+ *
+ * `orderId` is the order's `reference` when that is the store order id itself.
+ * A reference in the hashed `ml-` form (see dapiReferenceForOrder) cannot be
+ * turned back into an order id, so it is left out and the stored link is the
+ * only way to the store order.
+ */
+export function dapiOrderStatusUpdateFrom(event: DapiWebhookEvent): ProviderOrderStatusUpdate | null {
+  const order = event.order;
+  if (!order) return null;
+  return {
+    externalOrderId: order.externalOrderId,
+    orderId: order.reference && !HASHED_REFERENCE.test(order.reference) ? order.reference : null,
+    status: order.status,
+    trackingNumber: order.trackingNumber,
+    carrier: order.carrier,
   };
 }

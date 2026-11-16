@@ -1,4 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { ProviderOrderStatusUpdate } from "@mercatus-liber/fulfillment";
+import { mapSlant3dOrderStatus } from "./mapping.js";
 import { SLANT3D_WEBHOOK_EVENT_TYPES, type Slant3dWebhookEventType } from "./slant3d-types.js";
 
 /** How old a webhook's timestamp may be. Slant's verification example rejects anything older than 5 minutes. */
@@ -131,4 +133,33 @@ export function parseSlant3dWebhookPayload(rawBody: string | Buffer): Slant3dWeb
   const type = payload.event_type;
   if ((SLANT3D_WEBHOOK_EVENT_TYPES as readonly string[]).includes(type)) return { ...base, type: type as Slant3dWebhookEventType };
   return { ...base, type: "other", rawType: type };
+}
+
+/**
+ * What a webhook says about an order's fulfillment, for
+ * @mercatus-liber/fulfillment's createProviderOrderStatusRecorder, or null when
+ * it says nothing: the test webhook, an event with no order, a non-order event.
+ *
+ * `order.shipped`, `order.delivered` and `order.cancelled` are taken from the
+ * event type. `order.created` and `order.updated` are taken from the order's
+ * `status` and skipped when it has none. `order.error` is skipped: it has no
+ * line status to map to. Slant gives no carrier name.
+ */
+export function slant3dOrderStatusUpdateFrom(event: Slant3dWebhookEvent): ProviderOrderStatusUpdate | null {
+  if (event.dummy || !event.order) return null;
+  const { publicId, status, trackingNumber } = event.order;
+  const update = (lineStatus: ProviderOrderStatusUpdate["status"]): ProviderOrderStatusUpdate => ({ externalOrderId: publicId, status: lineStatus, trackingNumber: trackingNumber || null, carrier: null });
+  switch (event.type) {
+    case "order.shipped":
+      return update("shipped");
+    case "order.delivered":
+      return update("delivered");
+    case "order.cancelled":
+      return update("unfulfilled");
+    case "order.created":
+    case "order.updated":
+      return status ? update(mapSlant3dOrderStatus(status)) : null;
+    default:
+      return null;
+  }
 }

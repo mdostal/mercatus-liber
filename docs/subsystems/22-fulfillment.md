@@ -187,15 +187,11 @@ own doc comments and this epic's `design-discussion.md`):
   product/variant mapping (e.g. a small config table or a SKU metadata field) before routing any
   SKU to `"printify"`.
 - `resolveExternalOrderId(orderId)`: **Printify-specific — Printful needs no equivalent.**
-  Printify's real, confirmed `GET /v1/shops/{shop_id}/orders/{order_id}.json` addresses an order by
-  PRINTIFY'S OWN id, with no confirmed external_id-based lookup (unlike Printful's confirmed
-  `@external_id` trick). `FulfillmentService.submitOrder` returns each provider's
-  `FulfillmentLineRecord[]` to its caller but does not itself persist them anywhere, so
-  `services.ts` wraps the constructed adapter (`withPrintifyExternalOrderIdCapture`) to capture
-  each `submitOrder` call's real returned `externalOrderId` into a plain in-memory `Map` keyed by
-  our own `orderId`, then `resolveExternalOrderId` reads it back for a later `getOrderStatus` call.
-  Best-effort and lost on restart, same as every other in-memory piece of this reference app's own
-  service graph — a real deployment would persist this durably instead.
+  Printify's `GET /v1/shops/{shop_id}/orders/{order_id}.json` addresses an order by Printify's own
+  id, with no confirmed lookup by external id (unlike Printful's `@external_id`). `services.ts`
+  wraps the adapter with `withProviderOrderLinks`, which stores the `externalOrderId` each
+  `submitOrder` returns, and `resolveExternalOrderId` reads it back (see "Provider order links"
+  below). On Postgres the link survives a restart; on the other backends it is still in memory.
 
 **Tracking only attaches when an order has exactly one shipment** — a real, disclosed limit
 confirmed during research: unlike Printful's real v2 `Shipment` schema (which carries
@@ -290,3 +286,30 @@ one of those must return zero hits; `fulfillment` is consumed only by
    swappability for v1, same posture as `internal-bi`'s external-BI-tool adapter and `admin-auth`'s
    non-Clerk identity providers. Live account verification for either provider is disclosed future
    work, not required for this epic's scope.
+
+## Provider order links and status events
+
+`packages/fulfillment/src/provider-orders.ts` stores which provider order was placed for which
+store order, and turns provider status updates into one store event.
+
+- `ProviderOrderLinkRepository` holds `{ orderId, provider, externalOrderId }` plus the last status,
+  tracking number and carrier the provider reported. In-memory (`createInMemoryProviderOrderLinkRepository`)
+  and Postgres (`createPostgresProviderOrderLinkRepository`, table `provider_order_links`) versions
+  exist; SQLite, MongoDB and Convex do not have one yet.
+- `withProviderOrderLinks(adapter, provider, links)` stores the link after each `submitOrder`.
+  `externalOrderIdsFrom(links, provider)` is a ready-made `resolveExternalOrderId`.
+- `createProviderOrderStatusRecorder({ links, events }).record(provider, update)` finds the store
+  order through the link and publishes `fulfillment.order.status_changed` with
+  `{ orderId, provider, externalOrderId, status, trackingNumber, carrier, previousStatus }`. It
+  publishes only when something changed, so a provider retrying a delivery publishes once. An update
+  for a provider order with no link publishes nothing. A "shipped" that arrives after "delivered"
+  does not move the order back.
+- Each webhook-capable adapter exports a mapper from its own event to that update:
+  `slant3dOrderStatusUpdateFrom` and `dapiOrderStatusUpdateFrom`. Printful and Printify have none yet.
+
+`fulfillment.order.status_changed` is in `@mercatus-liber/webhooks`' `KNOWN_EVENT_TYPES`, so a Store
+API webhook subscription can ask for it. Nothing in the reference storefront sends the customer an
+email on it; that is a subscriber a store adds.
+
+The reference storefront wires all of this for Slant 3D, 3DAPI and Printify. None of it has run
+against a real provider delivery.

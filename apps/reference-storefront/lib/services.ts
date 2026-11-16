@@ -28,6 +28,7 @@ import {
   createPostgresPricingRulesRepository,
   createPostgresProductCustomizationRepository,
   createPostgresProviderCatalogMappingRepository,
+  createPostgresProviderOrderLinkRepository,
   createPostgresStoreApiKeyRepository,
   createPostgresWebhookSubscriptionStore,
   createPostgresWebhookDeliveryLogStore,
@@ -35,8 +36,8 @@ import {
 import { createPaypalPaymentAdapter } from "@mercatus-liber/adapter-paypal";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, printifyCatalogTargetsFrom, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
-import { createSlant3dFulfillmentAdapter, slant3dCatalogTargetsFrom, SLANT3D_PROVIDER } from "@mercatus-liber/adapter-slant3d";
-import { createDapiFulfillmentAdapter, dapiCatalogTargetsFrom, dapiSkuIdsFrom, DAPI_PROVIDER } from "@mercatus-liber/adapter-3dapi";
+import { createSlant3dFulfillmentAdapter, slant3dCatalogTargetsFrom, slant3dOrderStatusUpdateFrom, SLANT3D_PROVIDER } from "@mercatus-liber/adapter-slant3d";
+import { createDapiFulfillmentAdapter, dapiCatalogTargetsFrom, dapiOrderStatusUpdateFrom, dapiSkuIdsFrom, DAPI_PROVIDER } from "@mercatus-liber/adapter-3dapi";
 import { dapiSignatureFrom, FULFILLMENT_PROVIDER_EVENT, slant3dSignatureFrom, type FulfillmentProviderEvent, type FulfillmentWebhookReceivers } from "./fulfillment-webhooks";
 import { createQuickBooksAccountingSyncAdapter, QUICKBOOKS_PROVIDER } from "@mercatus-liber/adapter-quickbooks";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
@@ -111,7 +112,14 @@ import {
   MANUAL_FULFILLMENT_PROVIDER,
   type FulfillmentAdapter,
   type FulfillmentRoutingRepository,
-  type FulfillmentService, createInMemoryProviderCatalogMappingRepository } from "@mercatus-liber/fulfillment";
+  type FulfillmentService,
+  type ProviderOrderStatusUpdate,
+  createInMemoryProviderCatalogMappingRepository,
+  createInMemoryProviderOrderLinkRepository,
+  createProviderOrderStatusRecorder,
+  externalOrderIdsFrom,
+  withProviderOrderLinks,
+} from "@mercatus-liber/fulfillment";
 import {
   createDefaultBiAdapter,
   createInMemoryBiEventLogRepository,
@@ -319,37 +327,6 @@ function createLazyStripeAdapter(config: { secretKey: string; webhookSecret: str
     createPaymentSession: (input) => get().createPaymentSession(input),
     confirmPayment: (sessionId) => get().confirmPayment(sessionId),
     handleWebhookEvent: (rawBody, signature) => get().handleWebhookEvent(rawBody, signature),
-  };
-}
-
-/**
- * Bridges adapter-printify's own `resolveExternalOrderId(orderId)` config
- * callback (see @mercatus-liber/adapter-printify's index.ts doc comment for
- * why this adapter, unlike adapter-printful, needs one at all: Printify's
- * real, confirmed `GET /v1/shops/{shop_id}/orders/{order_id}.json` addresses
- * an order by PRINTIFY'S OWN id, with no confirmed external_id-based lookup
- * equivalent to Printful's `@external_id` trick). `FulfillmentService.
- * submitOrder` (packages/fulfillment/src/service.ts) returns each provider's
- * `FulfillmentLineRecord[]` to its caller but does not itself persist them
- * anywhere, so nothing else in this app's service graph already remembers
- * "our orderId -> Printify's own order id" -- this wrapper captures it at the
- * one point it's genuinely available (the adapter's own submitOrder return
- * value, which already carries `externalOrderId` on every record) into a
- * plain in-memory Map, then getOrderStatus's resolveExternalOrderId reads it
- * back. Best-effort and lost on restart, same as every other in-memory piece
- * of this reference app's own service graph (see this module's header
- * comment) -- a real deployment would persist this durably (e.g. alongside
- * real FulfillmentLineRecord storage) instead.
- */
-function withPrintifyExternalOrderIdCapture(adapter: FulfillmentAdapter, externalOrderIdByOrderId: Map<string, string>): FulfillmentAdapter {
-  return {
-    ...adapter,
-    async submitOrder(input) {
-      const records = await adapter.submitOrder(input);
-      const externalOrderId = records.find((record) => record.externalOrderId)?.externalOrderId;
-      if (externalOrderId) externalOrderIdByOrderId.set(input.orderId, externalOrderId);
-      return records;
-    },
   };
 }
 
@@ -1038,11 +1015,13 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   // @mercatus-liber/adapter-printful's own unit test suite (prior story) plus
   // this file's env-var branch itself being independently verifiable with a
   // fake/test token for wiring purposes only.
-  // Printify's own `resolveExternalOrderId` bridge (see
-  // withPrintifyExternalOrderIdCapture's doc comment above) -- declared
-  // outside the adapters map so both the wrapper and the config callback
-  // below close over the same Map instance.
-  const printifyExternalOrderIdByOrderId = new Map<string, string>();
+  // Which provider order was placed for which store order. Slant 3D and
+  // Printify can only read an order by their own id, and a provider's webhook
+  // names its own order id, so both directions go through this.
+  const providerOrderLinks = pgPool ? createPostgresProviderOrderLinkRepository(pgPool) : createInMemoryProviderOrderLinkRepository();
+  const providerOrderStatus = createProviderOrderStatusRecorder({ links: providerOrderLinks, events });
+  const linked = <A extends FulfillmentAdapter>(adapter: A, provider: string): A =>
+    withProviderOrderLinks(adapter, provider, providerOrderLinks, (err, orderId) => console.error(`[fulfillment] could not store the ${provider} order link for order ${orderId}`, err));
 
   // Which provider product each SKU is made from: Printful, Printify, Slant 3D and 3DAPI.
   const providerCatalogMappings = pgPool ? createPostgresProviderCatalogMappingRepository(pgPool) : createInMemoryProviderCatalogMappingRepository();
@@ -1051,10 +1030,16 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     : createInMemoryFulfillmentRoutingRepository();
   // Slant 3D and 3DAPI: built here, not inline, so their webhook receivers
   // (lib/fulfillment-webhooks.ts) use the same adapter instance. A verified
-  // webhook event goes onto the event bus as `fulfillment.provider_event`.
-  const publishProviderEvent = (provider: string) => async (event: unknown) => {
-    await events.publish<FulfillmentProviderEvent>(FULFILLMENT_PROVIDER_EVENT, { provider, event });
-  };
+  // webhook event goes onto the event bus as `fulfillment.provider_event`, and
+  // when it says something about an order's status, the recorder publishes
+  // `fulfillment.order.status_changed` with the store's own order id.
+  const publishProviderEvent =
+    <E>(provider: string, statusUpdateFrom: (event: E) => ProviderOrderStatusUpdate | null) =>
+    async (event: E) => {
+      await events.publish<FulfillmentProviderEvent>(FULFILLMENT_PROVIDER_EVENT, { provider, event });
+      const update = statusUpdateFrom(event);
+      if (update) await providerOrderStatus.record(provider, update);
+    };
   const slant3dAdapter =
     process.env.SLANT3D_API_KEY && process.env.SLANT3D_PLATFORM_ID
       ? createSlant3dFulfillmentAdapter({
@@ -1064,7 +1049,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
           // Slant keeps a held order as an uncharged draft.
           holdOrders: process.env.SLANT3D_HOLD_ORDERS === "true",
           ...(process.env.SLANT3D_WEBHOOK_SECRET ? { webhookSecret: process.env.SLANT3D_WEBHOOK_SECRET } : {}),
-          onWebhookEvent: publishProviderEvent(SLANT3D_PROVIDER),
+          resolveExternalOrderId: externalOrderIdsFrom(providerOrderLinks, SLANT3D_PROVIDER),
+          onWebhookEvent: publishProviderEvent(SLANT3D_PROVIDER, slant3dOrderStatusUpdateFrom),
         })
       : null;
   const dapiAdapter = process.env.DAPI_API_KEY
@@ -1076,7 +1062,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
         holdOrders: process.env.DAPI_HOLD_ORDERS === "true",
         useSampleCredit: process.env.DAPI_USE_SAMPLE_CREDIT === "true",
         ...(process.env.DAPI_WEBHOOK_SECRET ? { webhookSecret: process.env.DAPI_WEBHOOK_SECRET } : {}),
-        onWebhookEvent: publishProviderEvent(DAPI_PROVIDER),
+        onWebhookEvent: publishProviderEvent(DAPI_PROVIDER, dapiOrderStatusUpdateFrom),
       })
     : null;
   const fulfillmentWebhooks: FulfillmentWebhookReceivers = {
@@ -1144,9 +1130,9 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       //     a clear, honest error instead of inventing one; a real deployment
       //     would add that mapping (e.g. a small config table or a SKU
       //     metadata field) before routing any SKU to "printify".
-      //   - resolveExternalOrderId: Printify-specific bridge (Printful needs
-      //     no equivalent) -- see withPrintifyExternalOrderIdCapture's own doc
-      //     comment above for why.
+      //   - resolveExternalOrderId: Printify reads an order only by its own
+      //     id (Printful needs no equivalent), so it is looked up in
+      //     providerOrderLinks, which `linked` fills in at submit.
       //
       // No real Printify account/API token exists in this environment -- see
       // this story's final report and docs/subsystems/22-fulfillment.md's
@@ -1157,7 +1143,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       // with fake/test credentials for wiring purposes only.
       ...(process.env.PRINTIFY_API_TOKEN && process.env.PRINTIFY_SHOP_ID
         ? {
-            [PRINTIFY_PROVIDER]: withPrintifyExternalOrderIdCapture(
+            [PRINTIFY_PROVIDER]: linked(
               createPrintifyFulfillmentAdapter({
                 apiToken: process.env.PRINTIFY_API_TOKEN,
                 shopId: process.env.PRINTIFY_SHOP_ID,
@@ -1174,11 +1160,9 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
                 },
                 resolveCatalogTarget: printifyCatalogTargetsFrom(providerCatalogMappings),
                 holdOrders: process.env.PRINTIFY_HOLD_ORDERS === "true",
-                async resolveExternalOrderId(orderId) {
-                  return printifyExternalOrderIdByOrderId.get(orderId) ?? null;
-                },
+                resolveExternalOrderId: externalOrderIdsFrom(providerOrderLinks, PRINTIFY_PROVIDER),
               }),
-              printifyExternalOrderIdByOrderId,
+              PRINTIFY_PROVIDER,
             ),
           }
         : {}),
@@ -1187,8 +1171,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       // once it is routed there and mapped to a file (Slant 3D) or a quote
       // (3DAPI) in providerCatalogMappings. Neither has been run against a
       // live account from this app.
-      ...(slant3dAdapter ? { [SLANT3D_PROVIDER]: slant3dAdapter } : {}),
-      ...(dapiAdapter ? { [DAPI_PROVIDER]: dapiAdapter } : {}),
+      ...(slant3dAdapter ? { [SLANT3D_PROVIDER]: linked(slant3dAdapter, SLANT3D_PROVIDER) } : {}),
+      ...(dapiAdapter ? { [DAPI_PROVIDER]: linked(dapiAdapter, DAPI_PROVIDER) } : {}),
     },
   });
 
