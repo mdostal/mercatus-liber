@@ -117,6 +117,69 @@ describe("createOrderLabelService", () => {
     await expect(service.buy("o1", [], "r1")).rejects.toThrow(/at least one/);
   });
 
+  it("tells the recorder about the whole parcel once, after every line is marked", async () => {
+    const { adapter } = fakeAdapter();
+    const rec = recorder();
+    const order: string[] = [];
+    const parcels: unknown[] = [];
+    const service = createOrderLabelService({
+      adapter,
+      fromAddress: FROM,
+      orders,
+      recorder: {
+        markLineShipped: async (orderId, skuId, tracking) => {
+          order.push(`line ${skuId}`);
+          await rec.markLineShipped(orderId, skuId, tracking);
+        },
+        labelRecorded: async (shipment) => {
+          order.push("parcel");
+          parcels.push(shipment);
+        },
+      },
+    });
+    await service.buy("o1", ["a", "b"], "r1");
+    expect(order).toEqual(["line a", "line b", "parcel"]);
+    expect(parcels).toEqual([{ orderId: "o1", skuIds: ["a", "b"], label: LABEL }]);
+  });
+
+  it("does not tell the recorder about a parcel when the provider refused or a line failed", async () => {
+    const parcels: unknown[] = [];
+    const labelRecorded = async (shipment: unknown) => void parcels.push(shipment);
+    const refused = fakeAdapter({ buyLabel: async () => ({ purchased: false, reason: "rate expired", instructionsUrl: "https://x" }) });
+    await createOrderLabelService({ adapter: refused.adapter, fromAddress: FROM, orders, recorder: { ...recorder(), labelRecorded } }).buy("o1", ["a"], "r1");
+    await createOrderLabelService({ adapter: fakeAdapter().adapter, fromAddress: FROM, orders, recorder: { ...recorder("b"), labelRecorded } })
+      .buy("o1", ["a", "b"], "r1")
+      .catch(() => {});
+    expect(parcels).toHaveLength(0);
+  });
+
+  it("still reports the purchase when announcing the parcel fails, and does not void", async () => {
+    const { adapter, calls } = fakeAdapter();
+    const boom = new Error("event bus down");
+    const service = createOrderLabelService({ adapter, fromAddress: FROM, orders, recorder: { ...recorder(), labelRecorded: async () => Promise.reject(boom) } });
+    expect(await service.buy("o1", ["a"], "r1")).toEqual({ purchased: true, label: LABEL, recordedSkuIds: ["a"], labelRecordedError: boom });
+    expect(calls.voidLabel).toHaveLength(0);
+  });
+
+  it("tells the recorder about a void only when the provider accepted it", async () => {
+    const voided: string[] = [];
+    const labelVoided = async (labelId: string) => void voided.push(labelId);
+    const ok = createOrderLabelService({ adapter: fakeAdapter().adapter, fromAddress: FROM, orders, recorder: { ...recorder(), labelVoided } });
+    expect(await ok.void("tx-1")).toEqual({ voided: true, pending: true });
+    expect(voided).toEqual(["tx-1"]);
+
+    const refusing = fakeAdapter({ voidLabel: async () => ({ voided: false, reason: "already used" }) });
+    const no = createOrderLabelService({ adapter: refusing.adapter, fromAddress: FROM, orders, recorder: { ...recorder(), labelVoided } });
+    expect(await no.void("tx-2")).toEqual({ voided: false, reason: "already used" });
+    expect(voided).toEqual(["tx-1"]);
+  });
+
+  it("reports a void whose announcement failed as voided, with the error", async () => {
+    const boom = new Error("event bus down");
+    const service = createOrderLabelService({ adapter: fakeAdapter().adapter, fromAddress: FROM, orders, recorder: { ...recorder(), labelVoided: async () => Promise.reject(boom) } });
+    expect(await service.void("tx-1")).toEqual({ voided: true, pending: true, labelVoidedError: boom });
+  });
+
   it("void says plainly when the adapter can't void", async () => {
     const { adapter } = fakeAdapter({ voidLabel: undefined });
     const service = createOrderLabelService({ adapter, fromAddress: FROM, orders, recorder: recorder() });

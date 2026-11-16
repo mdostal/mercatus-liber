@@ -32,21 +32,40 @@ export interface OrderShipToLookup {
 /** Records that order lines left with a tracking number. Fulfillment's `markLineShipped` fits this, one sku at a time. */
 export interface ShipmentRecorder {
   markLineShipped(orderId: string, skuId: string, tracking: { trackingNumber: string; trackingUrl: string | null }): Promise<unknown>;
+  /**
+   * Called once per bought label, after every line was marked shipped, with
+   * the whole parcel: the place to announce the shipment (fulfillment's
+   * `recordSelfShipment` publishes `fulfillment.order.status_changed` from
+   * here). `markLineShipped` alone can't do that, because it sees one line at
+   * a time and neither the carrier nor the label id.
+   */
+  labelRecorded?(shipment: { orderId: string; skuIds: string[]; label: ShippingLabel }): Promise<unknown>;
+  /** Called after the provider accepted a void, with the voided label's id (fulfillment's `recordSelfShipmentVoided` fits). */
+  labelVoided?(labelId: string): Promise<unknown>;
 }
 
 export type OrderRateQuote = RateQuoteResult | { available: false; reason: string; instructionsUrl: null };
 
 export type OrderLabelPurchase =
-  | { purchased: true; label: ShippingLabel; recordedSkuIds: string[] }
+  | {
+      purchased: true;
+      label: ShippingLabel;
+      recordedSkuIds: string[];
+      /** Set when `recorder.labelRecorded` threw. The label is bought and on the order's lines; only the announcement is missing. */
+      labelRecordedError?: unknown;
+    }
   | Extract<LabelPurchaseResult, { purchased: false }>;
+
+/** `void`'s result. `labelVoidedError` is set when the label was voided but `recorder.labelVoided` threw. */
+export type OrderLabelVoid = LabelVoidResult & { labelVoidedError?: unknown };
 
 export interface OrderLabelService {
   /** Rates from the store's address to the order's ship-to address for one parcel. */
   quote(orderId: string, parcel: Parcel): Promise<OrderRateQuote>;
   /** Buys the quoted rate and records its tracking number on every listed sku of the order. */
   buy(orderId: string, skuIds: string[], rateId: string): Promise<OrderLabelPurchase>;
-  /** Voids an unused label. Not available when the adapter can't void. */
-  void(labelId: string): Promise<LabelVoidResult>;
+  /** Voids an unused label, then tells the recorder. Not available when the adapter can't void. */
+  void(labelId: string): Promise<OrderLabelVoid>;
 }
 
 /** Thrown when a label was bought but recording the tracking failed and the label could not be voided either. */
@@ -123,12 +142,25 @@ export function createOrderLabelService(deps: {
         }
         throw new LabelRecordedPartiallyError(label, recorded, err, voidResult);
       }
+      // The label is paid for and on the order by now. A failed announcement must not look like a failed purchase, or the caller buys a second label.
+      try {
+        await recorder.labelRecorded?.({ orderId, skuIds: recorded, label });
+      } catch (err) {
+        return { purchased: true, label, recordedSkuIds: recorded, labelRecordedError: err };
+      }
       return { purchased: true, label, recordedSkuIds: recorded };
     },
 
     async void(labelId) {
       if (!adapter.voidLabel) return { voided: false, reason: "This shipping provider can't void labels here; void it in the provider's dashboard." };
-      return adapter.voidLabel(labelId);
+      const result = await adapter.voidLabel(labelId);
+      if (!result.voided) return result;
+      try {
+        await recorder.labelVoided?.(labelId);
+      } catch (err) {
+        return { ...result, labelVoidedError: err };
+      }
+      return result;
     },
   };
 }

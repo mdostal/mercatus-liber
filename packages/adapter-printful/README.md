@@ -24,12 +24,32 @@ You supply two callbacks: `resolveRecipient` loads the shipping address for an o
 
 ## Webhooks
 
-Set `webhookSecretKeyHex` to verify incoming webhooks, or `verifyWebhookSignature` to replace the verifier, and `onWebhookEvent` to receive parsed events.
+Set `webhookSecretKeyHex` to verify incoming webhooks, or `verifyWebhookSignature` to replace the verifier, and `onWebhookEvent` to receive parsed events. `printfulWebhookSignatureFrom(headers)` reads the `x-pf-webhook-signature` header to pass as the signature. With neither a secret nor a verifier, every delivery is refused.
+
+`printfulOrderStatusUpdateFrom(event)` turns an event into a status update for `@mercatus-liber/fulfillment`'s `createProviderOrderStatusRecorder`, which publishes `fulfillment.order.status_changed`:
+
+```ts
+onWebhookEvent: async (event) => {
+  const update = printfulOrderStatusUpdateFrom(event);
+  if (update) await recorder.record(PRINTFUL_PROVIDER, update);
+},
+```
+
+- `shipment_sent` (v2) and `package_shipped` (v1) → `shipped`, with the tracking number. Only the v1 shipment names a carrier.
+- `shipment_delivered` → `delivered`.
+- `order_failed`, `order_canceled` → `unfulfilled`.
+- `shipment_returned` (v2) and `package_returned` (v1) → `shipped`, because there is no "returned" status. For an order already recorded as shipped this changes nothing.
+- Everything else, including `order_created` and `order_updated` → `null`.
+
+The update's `orderId` is the Printful order's `external_id` (the store's order id, set at submit) and `externalOrderId` is Printful's own order id.
+
+Not verified live: the payload field names come from Printful's published docs (`test/webhook-fixtures.ts` lists the pages); no delivery from a real Printful account has been run through this code. The default verifier checks the v2 signature. Printful's v1 docs describe no signature, so v1 events need your own `verifyWebhookSignature`.
 
 ## Key exports
 
 - `createPrintfulFulfillmentAdapter(config)`, `PRINTFUL_PROVIDER`, `PrintfulApiError`.
 - `PrintfulCatalogTarget`: `{ catalogVariantId, retailPrice?, name?, placements? }`.
+- `printfulOrderStatusUpdateFrom`, `printfulWebhookSignatureFrom`.
 - `verifyPrintfulSignature`, `parsePrintfulWebhookPayload`, `PrintfulWebhookSignatureInvalidError`, `PrintfulWebhookSignatureUnconfirmedError`, `PrintfulWebhookPayloadParseError`.
 - `mapRecipientToPrintfulAddress`.
 

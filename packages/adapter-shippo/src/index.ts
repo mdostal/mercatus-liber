@@ -7,6 +7,7 @@ import type { ShippoApiMessage } from "./shippo-types.js";
 export * from "./shippo-types.js";
 export { ShippoApiError, type ShippoHttpClient, type ShippoHttpClientConfig } from "./http-client.js";
 export * from "./mapping.js";
+export * from "./webhook.js";
 
 /**
  * Real link to Shippo's real, live web dashboard -- never a placeholder --

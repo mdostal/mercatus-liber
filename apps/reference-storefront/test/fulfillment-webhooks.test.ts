@@ -1,9 +1,10 @@
 import { createHmac } from "node:crypto";
+import { createPrintfulFulfillmentAdapter, printfulOrderStatusUpdateFrom, type PrintfulHttpClient } from "@mercatus-liber/adapter-printful";
 import { createSlant3dFulfillmentAdapter, slant3dOrderStatusUpdateFrom } from "@mercatus-liber/adapter-slant3d";
 import { createInMemoryEventBus } from "@mercatus-liber/core";
 import { createInMemoryProviderOrderLinkRepository, createProviderOrderStatusRecorder, FULFILLMENT_ORDER_STATUS_CHANGED } from "@mercatus-liber/fulfillment";
 import { describe, expect, it } from "vitest";
-import { receiveFulfillmentWebhook, slant3dSignatureFrom, type FulfillmentWebhookReceivers } from "../lib/fulfillment-webhooks";
+import { printfulSignatureFrom, receiveFulfillmentWebhook, slant3dSignatureFrom, type FulfillmentWebhookReceivers } from "../lib/fulfillment-webhooks";
 
 const SECRET = "whsec_test_secret";
 const NOW = 1_763_000_000_000;
@@ -106,6 +107,58 @@ describe("a signed Slant 3D delivery, end to end", () => {
     const body = JSON.stringify({ event_type: "order.shipped", data: { order: { public_id: "SL-other", status: "SHIPPED" } } });
     const { send, published } = await deliver(body);
     expect((await send()).status).toBe(200);
+    expect(published).toHaveLength(0);
+  });
+});
+
+describe("a signed Printful delivery, end to end", () => {
+  // Made-up values in the shape of Printful's v2 `shipment_sent` webhook (see adapter-printful's test/webhook-fixtures.ts).
+  const SHIPPED = JSON.stringify({ type: "shipment_sent", occurred_at: "2026-11-12T15:30:05Z", retries: 0, store_id: 4242, data: { shipment: { id: 5501, tracking_number: "TRACK-0001" }, order: { id: 880011, external_id: "order-1" } } });
+  const SECRET_HEX = Buffer.from("made-up-printful-secret").toString("hex");
+  const printfulHeaders = (body: string, secretHex = SECRET_HEX) => new Headers({ "x-pf-webhook-signature": createHmac("sha256", Buffer.from(secretHex, "hex")).update(body).digest("hex") });
+
+  function setup(webhookSecretKeyHex: string = SECRET_HEX) {
+    const links = createInMemoryProviderOrderLinkRepository();
+    const events = createInMemoryEventBus();
+    const published: unknown[] = [];
+    events.subscribe(FULFILLMENT_ORDER_STATUS_CHANGED, async (payload) => {
+      published.push(payload);
+    });
+    const recorder = createProviderOrderStatusRecorder({ links, events });
+    const adapter = createPrintfulFulfillmentAdapter({
+      apiToken: "t",
+      httpClient: {} as PrintfulHttpClient,
+      resolveRecipient: async () => ({ name: "n", email: "e@example.com" }),
+      resolveCatalogTarget: async () => ({ catalogVariantId: 1 }),
+      ...(webhookSecretKeyHex ? { webhookSecretKeyHex } : {}),
+      onWebhookEvent: async (event) => {
+        const update = printfulOrderStatusUpdateFrom(event);
+        if (update) await recorder.record("printful", update);
+      },
+    });
+    const receivers: FulfillmentWebhookReceivers = { printful: { signatureFrom: printfulSignatureFrom, handle: adapter.handleWebhookEvent!.bind(adapter) } };
+    return { links, published, send: (body: string, headers = printfulHeaders(body)) => receiveFulfillmentWebhook(receivers, "printful", headers, body) };
+  }
+
+  it("publishes shipped for the linked store order once, however often Printful retries", async () => {
+    const { links, published, send } = setup();
+    await links.link({ orderId: "order-1", provider: "printful", externalOrderId: "880011", skuIds: ["tee-black-m"] });
+    expect((await send(SHIPPED)).status).toBe(200);
+    expect((await send(SHIPPED)).status).toBe(200);
+    expect(published).toEqual([expect.objectContaining({ orderId: "order-1", skuIds: ["tee-black-m"], provider: "printful", externalOrderId: "880011", status: "shipped", trackingNumber: "TRACK-0001", previousStatus: null })]);
+  });
+
+  it("answers 401 for a wrong or missing signature and 400 for a signed body that isn't JSON", async () => {
+    const { published, send } = setup();
+    expect((await send(SHIPPED, printfulHeaders(SHIPPED, Buffer.from("other").toString("hex")))).status).toBe(401);
+    expect((await send(SHIPPED, new Headers())).status).toBe(401);
+    expect((await send("not json")).status).toBe(400);
+    expect(published).toHaveLength(0);
+  });
+
+  it("answers 401 when the adapter has no webhook secret, whatever the signature", async () => {
+    const { published, send } = setup("");
+    expect((await send(SHIPPED)).status).toBe(401);
     expect(published).toHaveLength(0);
   });
 });

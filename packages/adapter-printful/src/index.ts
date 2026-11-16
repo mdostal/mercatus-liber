@@ -12,6 +12,8 @@ export * from "./mapping.js";
 export { PrintfulApiError, type PrintfulHttpClient } from "./http-client.js";
 export {
   parsePrintfulWebhookPayload,
+  printfulOrderStatusUpdateFrom,
+  printfulWebhookSignatureFrom,
   verifyPrintfulSignature,
   PrintfulWebhookPayloadParseError,
   PrintfulWebhookSignatureInvalidError,

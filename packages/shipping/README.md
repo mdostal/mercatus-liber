@@ -42,6 +42,23 @@ await labels.void(labelId);          // unused label; adapters without voidLabel
 - If writing the tracking fails before any line is recorded, `buy` voids the label and throws `LabelRecordedPartiallyError`. If some lines were already recorded, it keeps the label and the error lists those lines.
 - Nothing is stored here: the label URL comes back to the caller, and the tracking lives on the fulfillment lines.
 
+### Announcing the shipment
+
+The recorder can have two optional hooks: `labelRecorded({ orderId, skuIds, label })`, called once per bought label after every line is marked, and `labelVoided(labelId)`, called after the provider accepted a void. Point them at `@mercatus-liber/fulfillment` to publish `fulfillment.order.status_changed` for self-shipped lines, the same event a print provider's webhook produces:
+
+```ts
+import { recordSelfShipment, recordSelfShipmentVoided } from "@mercatus-liber/fulfillment";
+
+recorder: {
+  markLineShipped: (orderId, skuId, tracking) => fulfillmentService.markLineShipped(orderId, skuId, tracking),
+  labelRecorded: ({ orderId, skuIds, label }) =>
+    recordSelfShipment({ links, recorder: statusRecorder, orderId, skuIds, trackingNumber: label.trackingNumber, carrier: label.carrier, labelId: label.labelId }),
+  labelVoided: (labelId) => recordSelfShipmentVoided({ recorder: statusRecorder, labelId }),
+},
+```
+
+A hook that throws does not fail the call: the label is already bought (or voided). `buy` returns `purchased: true` with `labelRecordedError` set, and `void` returns `voided: true` with `labelVoidedError` set, so check those fields. This package does not depend on fulfillment; the hooks are plain functions.
+
 ## Key exports
 
 - `ShippingAdapter`: `getRates`, `buyLabel`, `getTrackingStatus`, and optional `voidLabel`.

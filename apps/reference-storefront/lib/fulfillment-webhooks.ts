@@ -1,5 +1,5 @@
 /**
- * Status webhooks from print-on-demand providers (Slant 3D, 3DAPI), received at
+ * Status webhooks from print-on-demand providers (Printful, Slant 3D, 3DAPI), received at
  * POST /api/demo/<demoSlug>/fulfillment/<provider>/webhook.
  *
  * Each provider's adapter verifies the signature and parses the body
@@ -15,6 +15,12 @@ import {
   DapiWebhookTimestampError,
   dapiWebhookSignatureFromHeaders,
 } from "@mercatus-liber/adapter-3dapi";
+import {
+  PrintfulWebhookPayloadParseError,
+  PrintfulWebhookSignatureInvalidError,
+  PrintfulWebhookSignatureUnconfirmedError,
+  printfulWebhookSignatureFrom,
+} from "@mercatus-liber/adapter-printful";
 import {
   Slant3dWebhookPayloadParseError,
   Slant3dWebhookSignatureInvalidError,
@@ -38,9 +44,18 @@ export type FulfillmentWebhookReceivers = Record<string, FulfillmentWebhookRecei
 
 export const slant3dSignatureFrom = (headers: Headers): string => slant3dWebhookSignatureFrom(headers);
 export const dapiSignatureFrom = (headers: Headers): string => dapiWebhookSignatureFromHeaders(headers);
+export const printfulSignatureFrom = (headers: Headers): string => printfulWebhookSignatureFrom(headers);
 
-const UNAUTHORIZED = [Slant3dWebhookSignatureInvalidError, Slant3dWebhookSignatureNotConfiguredError, DapiWebhookSignatureInvalidError, DapiWebhookSignatureNotConfiguredError, DapiWebhookTimestampError];
-const BAD_BODY = [Slant3dWebhookPayloadParseError, DapiWebhookPayloadParseError];
+const UNAUTHORIZED = [
+  PrintfulWebhookSignatureInvalidError,
+  PrintfulWebhookSignatureUnconfirmedError,
+  Slant3dWebhookSignatureInvalidError,
+  Slant3dWebhookSignatureNotConfiguredError,
+  DapiWebhookSignatureInvalidError,
+  DapiWebhookSignatureNotConfiguredError,
+  DapiWebhookTimestampError,
+];
+const BAD_BODY = [PrintfulWebhookPayloadParseError, Slant3dWebhookPayloadParseError, DapiWebhookPayloadParseError];
 
 export interface WebhookOutcome {
   status: number;
