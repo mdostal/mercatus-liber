@@ -179,3 +179,102 @@ export function parseX3dCatalogTarget(target: Record<string, unknown>): { ok: tr
   }
   return { ok: true, target: parsed };
 }
+
+/** What is known about one part's X3D order: read from X3D, or the status stored for it. null for a part that has not been sent. */
+export interface X3dPartState {
+  code: string;
+  status: FulfillmentLineStatus;
+  trackingNumber: string | null;
+  carrier: string | null;
+}
+
+/**
+ * One status for a line made of several X3D orders (a product printed as
+ * several plates, each its own order):
+ *
+ * - any part cancelled or rejected -> "unfulfilled", so the line is submitted
+ *   again and only that part is placed again;
+ * - any part not sent, or unpaid -> "held";
+ * - every part delivered -> "delivered";
+ * - every part shipped or delivered -> "shipped";
+ * - otherwise "submitted".
+ *
+ * Tracking is reported only once the line is shipped: every part's number,
+ * joined with ", " in part order. The carrier is given when all parts share
+ * one. Until then a line with some parts already in the post still reads
+ * "submitted" with no tracking, so the buyer is told once, when everything is
+ * on its way.
+ */
+export function aggregateX3dParts(parts: (X3dPartState | null)[]): { status: FulfillmentLineStatus; codes: string[]; trackingNumber: string | null; carrier: string | null } {
+  const placed = parts.filter((part): part is X3dPartState => part !== null);
+  const codes = placed.map((part) => part.code);
+  let status: FulfillmentLineStatus;
+  if (placed.some((part) => part.status === "unfulfilled")) status = "unfulfilled";
+  else if (placed.length < parts.length || placed.some((part) => part.status === "held")) status = "held";
+  else if (placed.every((part) => part.status === "delivered")) status = "delivered";
+  else if (placed.every((part) => part.status === "shipped" || part.status === "delivered")) status = "shipped";
+  else status = "submitted";
+  if (status !== "shipped" && status !== "delivered") return { status, codes, trackingNumber: null, carrier: null };
+  const numbers = [...new Set(placed.map((part) => part.trackingNumber).filter((number): number is string => !!number))];
+  const carriers = new Set(placed.map((part) => part.carrier));
+  return { status, codes, trackingNumber: numbers.length > 0 ? numbers.join(", ") : null, carrier: carriers.size === 1 ? [...carriers][0]! : null };
+}
+
+/** An X3D order as a part state. */
+export function x3dPartStateOf(order: { code: string; status: string; tracking?: X3dOrder["tracking"] }): X3dPartState {
+  return { code: order.code, status: mapX3dOrderStatus(order.status), trackingNumber: order.tracking?.number ?? null, carrier: order.tracking?.carrier ?? null };
+}
+
+/** X3D's published per-gram rates in USD, read from its API documents on 2026-11-15. */
+export const X3D_RATE_PER_GRAM: Record<X3dMaterial, number> = { pla: 0.12, petg: 0.12, abs: 0.15, asa: 0.15, tpu: 0.2 };
+
+export interface X3dSlicedCostInput {
+  /** Filament weight the slicer reports for the plate, purge included. */
+  grams: number;
+  /** How many filaments the plate uses. Five or more adds the second-AMS fee. */
+  filaments: number;
+  material?: X3dMaterial;
+  quantity?: number;
+  /** Default "US". */
+  country?: string;
+  shippingSpeed?: "standard" | "express";
+}
+
+export interface X3dSlicedCostEstimate {
+  print: number;
+  secondAmsFee: number;
+  shipping: number;
+  total: number;
+}
+
+/**
+ * What one X3D order for an already-sliced plate should cost, worked out from
+ * X3D's published rules. An estimate for pricing a product, not a quote: the
+ * amount actually charged comes back when the order is placed.
+ *
+ * - Print: grams (rounded up) x rate x quantity, 5% off from 5 units and 10%
+ *   from 10, at least $1.00 per unit, rounded up to the whole dollar.
+ * - Second-AMS fee: $25 once per order at five or more filaments.
+ * - Postage: US standard $7, free from a $49.50 print subtotal; US express
+ *   $15; any other country $30, free from $500.
+ *
+ * Not covered: the custom-colour rate for colours off X3D's stock list, the
+ * premium quality factor, and X3D's surcharge for a slice whose print time far
+ * exceeds what its weight implies. Whether the second-AMS fee counts toward
+ * free postage is not documented; this assumes it does not.
+ *
+ * Each part of a several-part product is its own order, so add the estimates
+ * up: each pays its own postage.
+ */
+export function estimateX3dSlicedOrderCost(input: X3dSlicedCostInput): X3dSlicedCostEstimate {
+  const quantity = Math.max(1, Math.round(input.quantity ?? 1));
+  const rate = X3D_RATE_PER_GRAM[input.material ?? "pla"];
+  const discount = quantity >= 10 ? 0.9 : quantity >= 5 ? 0.95 : 1;
+  // Worked in cents so 0.12 x 260 does not pick up a floating-point tail before the round-up.
+  const perUnitCents = Math.max(100, Math.round(Math.ceil(input.grams) * rate * 100));
+  const print = Math.ceil(Math.max(quantity * 100, Math.round(perUnitCents * quantity * discount)) / 100);
+  const secondAmsFee = input.filaments >= 5 ? 25 : 0;
+  const domestic = (input.country ?? "US").toUpperCase() === "US";
+  const shipping = domestic ? (input.shippingSpeed === "express" ? 15 : print >= 49.5 ? 0 : 7) : print >= 500 ? 0 : 30;
+  return { print, secondAmsFee, shipping, total: print + secondAmsFee + shipping };
+}

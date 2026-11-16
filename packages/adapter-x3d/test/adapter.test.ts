@@ -14,6 +14,7 @@ import {
   createX3dFulfillmentAdapter,
   createX3dHttpClient,
   createX3dStatusPoller,
+  estimateX3dSlicedOrderCost,
   isX3dMulticolourTarget,
   mapX3dOrderStatus,
   parseX3dCatalogTarget,
@@ -404,5 +405,181 @@ describe("personalised prints: a file per order line", () => {
     const { adapter } = setup({ resolveCatalogTarget: async () => ({ fileUrl: "https://private.example/a.gcode.3mf" }), loadModel: async (_target, _skuId, line) => { got.push(line); return new Blob(["bytes"]); } }, fake);
     await adapter.submitOrder(order([lines[1]!]));
     expect(got).toEqual([{ orderId: "order-1", lineId: "line-2", lineIndex: 0, quantity: 2 }]);
+  });
+});
+
+describe("a product printed as several parts", () => {
+  // An art box is a base and a lid: two plates, so two X3D orders for one order line.
+  const line = { skuId: "sku-art-box", quantity: 1, lineId: "line-1" };
+  const box = [
+    { partId: "base", fileUrl: "https://cdn.store.example/jobs/line-1/base.gcode.3mf" },
+    { partId: "lid", fileUrl: "https://cdn.store.example/jobs/line-1/lid.gcode.3mf" },
+  ];
+
+  function multi(fake = fakeX3d(), overrides: Partial<X3dFulfillmentAdapterConfig> = {}) {
+    const links = createInMemoryProviderOrderLinkRepository();
+    const events = createInMemoryEventBus();
+    const published: FulfillmentOrderStatusChanged[] = [];
+    events.subscribe<FulfillmentOrderStatusChanged>(FULFILLMENT_ORDER_STATUS_CHANGED, async (payload) => {
+      published.push(payload);
+    });
+    const recorder = createProviderOrderStatusRecorder({ links, events });
+    const { adapter } = setup({ orderStore: x3dOrderStoreFrom(links), resolveCatalogTarget: async () => box, ...overrides }, fake);
+    const poller = createX3dStatusPoller({ getOrder: adapter.getX3dOrder, links, record: (update) => recorder.record(X3D_PROVIDER, update) });
+    return { adapter, fake, links, published, poller };
+  }
+
+  it("places one X3D order per part and reports them as one submitted line", async () => {
+    const { adapter, fake } = multi();
+    const records = await adapter.submitOrder(order([line]));
+    expect(fake.orderPosts().map((call) => (call.form!.file as { name: string }).name)).toEqual(["base.gcode.3mf", "lid.gcode.3mf"]);
+    expect(records).toEqual([{ orderId: "order-1", skuId: "sku-art-box", lineId: "line-1", provider: X3D_PROVIDER, externalOrderId: "X3D-AAAAA1,X3D-AAAAA2", status: "submitted", trackingNumber: null, trackingUrl: null }]);
+  });
+
+  it("🔒 resolves every part before sending anything", async () => {
+    const { adapter, fake } = multi(fakeX3d(), { resolveCatalogTarget: async (skuId) => (skuId === "sku-art-box" ? box : Promise.reject(new Error("no sliced file yet"))) });
+    await expect(adapter.submitOrder(order([line, { skuId: "sku-caddy", quantity: 1, lineId: "line-2" }]))).rejects.toThrow("no sliced file yet");
+    expect(fake.calls).toHaveLength(0);
+  });
+
+  it("refuses parts with no id, a repeated id, or none at all", async () => {
+    for (const bad of [[], [{ partId: "", fileUrl: "https://c.example/a.stl" }], [box[0]!, box[0]!]]) {
+      const { adapter, fake } = multi(fakeX3d(), { resolveCatalogTarget: async () => bad });
+      await expect(adapter.submitOrder(order([line]))).rejects.toThrow();
+      expect(fake.calls).toHaveLength(0);
+    }
+  });
+
+  it("🔒 when the second part fails, a retry places only that part, and the line reads unfulfilled until then", async () => {
+    const fake = fakeX3d();
+    const original = fake.fetchImpl;
+    let posts = 0;
+    const { adapter } = multi(fake, {
+      fetchImpl: (async (input: string | URL | Request, init?: RequestInit) => {
+        if (init?.method === "POST" && String(input).endsWith("/api/print/orders") && ++posts === 2) fake.failNextOrder({ status: 422, error: "Model exceeds the build volume." });
+        return original(input, init);
+      }) as typeof fetch,
+    });
+    const failure = (await adapter.submitOrder(order([line])).catch((err: unknown) => err)) as X3dSubmitError;
+    expect(failure).toBeInstanceOf(X3dSubmitError);
+    expect(failure.placed.map((record) => record.externalOrderId)).toEqual(["X3D-AAAAA1"]);
+    // Half placed: reads unfulfilled, so the fulfillment service submits the line again.
+    expect((await adapter.getOrderStatus("order-1")).map((record) => record.status)).toEqual(["unfulfilled"]);
+
+    const retried = await adapter.submitOrder(order([line]));
+    expect(retried[0]).toMatchObject({ externalOrderId: "X3D-AAAAA1,X3D-AAAAA2", status: "submitted" });
+    expect(fake.orderPosts().map((call) => (call.form!.file as { name: string }).name)).toEqual(["base.gcode.3mf", "lid.gcode.3mf", "lid.gcode.3mf"]);
+    expect((await adapter.getOrderStatus("order-1"))[0]!.status).toBe("submitted");
+  });
+
+  it("places a cancelled part again without touching the other", async () => {
+    const { adapter, fake } = multi();
+    await adapter.submitOrder(order([line]));
+    fake.set("X3D-AAAAA2", { status: "CANCELLED" });
+    expect((await adapter.getOrderStatus("order-1"))[0]!.status).toBe("unfulfilled");
+    const records = await adapter.submitOrder(order([line]));
+    expect(records[0]).toMatchObject({ externalOrderId: "X3D-AAAAA1,X3D-AAAAA3", status: "submitted" });
+    expect(fake.orderPosts()).toHaveLength(3);
+  });
+
+  it("reads held when a part's card was declined", async () => {
+    const { adapter, fake } = multi();
+    await adapter.submitOrder(order([line]));
+    fake.set("X3D-AAAAA2", { status: "PENDING_PAYMENT" });
+    expect((await adapter.getOrderStatus("order-1"))[0]!.status).toBe("held");
+  });
+
+  it("with holdOrders, sends no part and reports the line held", async () => {
+    const { adapter, fake } = multi(fakeX3d(), { holdOrders: true });
+    expect((await adapter.submitOrder(order([line])))[0]).toMatchObject({ status: "held", externalOrderId: null });
+    expect(fake.orderPosts()).toHaveLength(0);
+  });
+
+  it("is shipped only when every part has shipped, with every tracking number", async () => {
+    const { adapter, fake } = multi();
+    await adapter.submitOrder(order([line]));
+    fake.set("X3D-AAAAA1", { status: "SHIPPED", tracking: { number: "TRK-BASE", carrier: "USPS" } });
+    expect((await adapter.getOrderStatus("order-1"))[0]).toMatchObject({ status: "submitted", trackingNumber: null });
+    fake.set("X3D-AAAAA2", { status: "SHIPPED", tracking: { number: "TRK-LID", carrier: "USPS" } });
+    expect((await adapter.getOrderStatus("order-1"))[0]).toMatchObject({ status: "shipped", trackingNumber: "TRK-BASE, TRK-LID" });
+  });
+
+  it("🔒 publishes the line's shipped change once, when the last part ships", async () => {
+    const { adapter, fake, published, poller } = multi();
+    await adapter.submitOrder(order([line]));
+    await poller.poll();
+    expect(published.map((event) => event.status)).toEqual(["submitted"]);
+
+    fake.set("X3D-AAAAA1", { status: "SHIPPED", tracking: { number: "TRK-BASE", carrier: "USPS" } });
+    await poller.poll();
+    await poller.poll();
+    // One part in the post is not news for the buyer yet.
+    expect(published.map((event) => event.status)).toEqual(["submitted"]);
+
+    fake.set("X3D-AAAAA2", { status: "SHIPPED", tracking: { number: "TRK-LID", carrier: "USPS" } });
+    await poller.poll();
+    await poller.poll();
+    expect(published.map((event) => event.status)).toEqual(["submitted", "shipped"]);
+    expect(published[1]).toMatchObject({ orderId: "order-1", skuIds: ["sku-art-box"], lineIds: ["line-1"], trackingNumber: "TRK-BASE, TRK-LID", carrier: "USPS", previousStatus: "submitted" });
+
+    // Delivered the same way: once, after the last part, even though the first was delivered a poll earlier.
+    fake.set("X3D-AAAAA1", { status: "DELIVERED" });
+    await poller.poll();
+    fake.set("X3D-AAAAA2", { status: "DELIVERED" });
+    await poller.poll();
+    await poller.poll();
+    expect(published.map((event) => event.status)).toEqual(["submitted", "shipped", "delivered"]);
+  });
+
+  it("publishes nothing for a line with a part not yet placed", async () => {
+    const fake = fakeX3d();
+    const original = fake.fetchImpl;
+    let posts = 0;
+    const { adapter, published, poller } = multi(fake, {
+      fetchImpl: (async (input: string | URL | Request, init?: RequestInit) => {
+        if (init?.method === "POST" && String(input).endsWith("/api/print/orders") && ++posts === 2) fake.failNextOrder({ status: 422, error: "nope" });
+        return original(input, init);
+      }) as typeof fetch,
+    });
+    await adapter.submitOrder(order([line])).catch(() => undefined);
+    // The base is placed and even ships; the lid was never placed.
+    fake.set("X3D-AAAAA1", { status: "SHIPPED", tracking: { number: "TRK-BASE", carrier: "USPS" } });
+    expect(await poller.poll()).toMatchObject({ checked: 1, published: 0, failed: [] });
+    expect(published).toHaveLength(0);
+  });
+
+  it("does not place the parts again from a second adapter instance on the same links", async () => {
+    const fake = fakeX3d();
+    const first = multi(fake);
+    await first.adapter.submitOrder(order([line]));
+    const { adapter } = setup({ orderStore: x3dOrderStoreFrom(first.links), resolveCatalogTarget: async () => box }, fake);
+    await adapter.submitOrder(order([line]));
+    expect(fake.orderPosts()).toHaveLength(2);
+  });
+});
+
+describe("estimateX3dSlicedOrderCost", () => {
+  it("prices an art box base and lid as two orders, each with its own postage", () => {
+    // Weights from a real slice of the product: base 260 g, lid 166 g.
+    const base = estimateX3dSlicedOrderCost({ grams: 260, filaments: 4 });
+    const lid = estimateX3dSlicedOrderCost({ grams: 166, filaments: 4 });
+    expect(base).toEqual({ print: 32, secondAmsFee: 0, shipping: 7, total: 39 });
+    expect(lid).toEqual({ print: 20, secondAmsFee: 0, shipping: 7, total: 27 });
+  });
+
+  it("adds the second-AMS fee at five filaments and drops postage at a $49.50 print", () => {
+    expect(estimateX3dSlicedOrderCost({ grams: 120, filaments: 5 })).toEqual({ print: 15, secondAmsFee: 25, shipping: 7, total: 47 });
+    expect(estimateX3dSlicedOrderCost({ grams: 420, filaments: 2 })).toEqual({ print: 51, secondAmsFee: 0, shipping: 0, total: 51 });
+    // The fee is assumed not to count toward free postage.
+    expect(estimateX3dSlicedOrderCost({ grams: 300, filaments: 6 }).shipping).toBe(7);
+  });
+
+  it("applies the bulk discount, the $1 minimum, other materials and other destinations", () => {
+    expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 1, quantity: 5 }).print).toBe(57);
+    expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 1, quantity: 10 }).print).toBe(108);
+    expect(estimateX3dSlicedOrderCost({ grams: 2, filaments: 1, quantity: 3 }).print).toBe(3);
+    expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 1, material: "tpu" }).print).toBe(20);
+    expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 1, country: "ca" })).toMatchObject({ shipping: 30, total: 42 });
+    expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 1, shippingSpeed: "express" }).shipping).toBe(15);
   });
 });

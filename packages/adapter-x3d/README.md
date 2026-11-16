@@ -87,6 +87,29 @@ createX3dFulfillmentAdapter({
 - `line.lineId` is set when the order's lines have ids: pass `lineId` on each item of the order your `OrderLookup` returns and `@mercatus-liber/fulfillment` carries it through. Without line ids, lines are told apart by SKU only, so two personalised lines of one SKU in one order cannot be handled; give lines ids if that can happen.
 - Each line's X3D order is remembered under its line id, so a retry places only the line that is missing, and the status event names the line in `lineIds`.
 
+### Products printed as several parts
+
+X3D prints one model per order. A product that is more than one plate (a box and its lid) is therefore several X3D orders for one order line. Return the parts from `resolveCatalogTarget`:
+
+```ts
+resolveCatalogTarget: async (skuId, line) => [
+  { partId: "base", fileUrl: baseUrl, material: "pla" },
+  { partId: "lid", fileUrl: lidUrl, material: "pla" },
+],
+```
+
+- Give each part a `partId` that is the same every time the line is resolved. Each part's X3D order is remembered under the line and that id.
+- Every part of every line is resolved before anything is sent.
+- The line stays one line. Its record lists every X3D order code, comma-separated, and reads:
+  - `submitted` once every part is placed,
+  - `shipped` once every part has shipped, with every tracking number joined by `, `,
+  - `held` if a part is unpaid or was not sent,
+  - `unfulfilled` if a part was cancelled, rejected or never placed. Submitting the order again then places only the missing part.
+- The status poller publishes the line's change once: "shipped" goes out when the last part ships, not once per part.
+- **Each part is charged and posted on its own.** A box and lid are two parcels and two lots of postage unless a part's own print cost reaches $49.50. X3D's documents describe no way to combine them; ask X3D.
+
+`estimateX3dSlicedOrderCost({ grams, filaments, material?, quantity?, country?, shippingSpeed? })` works out what one sliced plate should cost from X3D's published rules (print, the $25 fee at five or more filaments, postage). It is an estimate for pricing, not a quote; add the parts up.
+
 ### Config
 
 | Option | Required | |

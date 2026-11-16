@@ -18,6 +18,12 @@ export interface ProviderOrderLink {
   skuIds: string[];
   /** The ids of those lines, in the same order as `skuIds`, when the order's lines have ids. */
   lineIds?: string[];
+  /**
+   * Small facts an adapter needs to remember about this provider order, as
+   * strings. Nothing outside the adapter reads them. adapter-x3d keeps which
+   * part of a several-part product the order prints.
+   */
+  meta?: Record<string, string>;
   /** null until the provider has reported one. */
   status: FulfillmentLineStatus | null;
   trackingNumber: string | null;
@@ -37,7 +43,7 @@ export interface ProviderOrderStatus {
 
 export interface ProviderOrderLinkRepository {
   /** Records that `externalOrderId` is the provider's order for `orderId`. Linking the same pair again keeps its stored status, and keeps its `skuIds` unless new ones are given. */
-  link(input: { orderId: string; provider: FulfillmentProviderKey; externalOrderId: string; skuIds?: string[]; lineIds?: string[] }): Promise<void>;
+  link(input: { orderId: string; provider: FulfillmentProviderKey; externalOrderId: string; skuIds?: string[]; lineIds?: string[]; meta?: Record<string, string> }): Promise<void>;
   /** The most recently linked provider order for a store order, or null. An order re-placed after a cancellation has more than one. */
   latestForOrder(orderId: string, provider: FulfillmentProviderKey): Promise<ProviderOrderLink | null>;
   /** Every provider order linked to a store order, oldest link first. A provider that takes one item per order has one per line. */
@@ -54,7 +60,7 @@ export function isClosedStatus(status: FulfillmentLineStatus | null): boolean {
   return status === "delivered" || status === "unfulfilled";
 }
 
-const copy = (link: ProviderOrderLink): ProviderOrderLink => ({ ...link, skuIds: [...link.skuIds], ...(link.lineIds ? { lineIds: [...link.lineIds] } : {}) });
+const copy = (link: ProviderOrderLink): ProviderOrderLink => ({ ...link, skuIds: [...link.skuIds], ...(link.lineIds ? { lineIds: [...link.lineIds] } : {}), ...(link.meta ? { meta: { ...link.meta } } : {}) });
 
 export function createInMemoryProviderOrderLinkRepository(): ProviderOrderLinkRepository {
   // Insertion order is link order; re-linking an existing pair leaves it in place.
@@ -62,15 +68,16 @@ export function createInMemoryProviderOrderLinkRepository(): ProviderOrderLinkRe
   const key = (provider: string, externalOrderId: string) => JSON.stringify([provider, externalOrderId]);
 
   return {
-    async link({ orderId, provider, externalOrderId, skuIds, lineIds }) {
+    async link({ orderId, provider, externalOrderId, skuIds, lineIds, meta }) {
       const existing = links.get(key(provider, externalOrderId));
       if (existing) {
         existing.orderId = orderId;
         if (skuIds) existing.skuIds = [...skuIds];
         if (lineIds) existing.lineIds = [...lineIds];
+        if (meta) existing.meta = { ...meta };
         return;
       }
-      links.set(key(provider, externalOrderId), { orderId, provider, externalOrderId, skuIds: [...(skuIds ?? [])], ...(lineIds ? { lineIds: [...lineIds] } : {}), status: null, trackingNumber: null, carrier: null });
+      links.set(key(provider, externalOrderId), { orderId, provider, externalOrderId, skuIds: [...(skuIds ?? [])], ...(lineIds ? { lineIds: [...lineIds] } : {}), ...(meta ? { meta: { ...meta } } : {}), status: null, trackingNumber: null, carrier: null });
     },
     async latestForOrder(orderId, provider) {
       let latest: ProviderOrderLink | null = null;

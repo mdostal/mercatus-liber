@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS provider_order_links (
 ALTER TABLE provider_order_links ADD COLUMN IF NOT EXISTS sku_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE provider_order_links ADD COLUMN IF NOT EXISTS tracking_url TEXT;
 ALTER TABLE provider_order_links ADD COLUMN IF NOT EXISTS line_ids JSONB;
+ALTER TABLE provider_order_links ADD COLUMN IF NOT EXISTS meta JSONB;
 CREATE INDEX IF NOT EXISTS provider_order_links_order_idx ON provider_order_links (order_id, provider);
 `;
 
@@ -30,6 +31,7 @@ interface Row {
   tracking_url: string | null;
   sku_ids: string[];
   line_ids: string[] | null;
+  meta: Record<string, string> | null;
 }
 
 const toLink = (row: Row): ProviderOrderLink => ({
@@ -38,6 +40,7 @@ const toLink = (row: Row): ProviderOrderLink => ({
   externalOrderId: row.external_order_id,
   skuIds: row.sku_ids ?? [],
   ...(row.line_ids ? { lineIds: row.line_ids } : {}),
+  ...(row.meta ? { meta: row.meta } : {}),
   status: row.status as FulfillmentLineStatus | null,
   trackingNumber: row.tracking_number,
   carrier: row.carrier,
@@ -55,13 +58,13 @@ export function createPostgresProviderOrderLinkRepository(pool: Pool): ProviderO
     return ready;
   };
   return {
-    async link({ orderId, provider, externalOrderId, skuIds, lineIds }) {
+    async link({ orderId, provider, externalOrderId, skuIds, lineIds, meta }) {
       await ensure();
       // $4 is null when no skuIds were given, which leaves an existing row's alone.
       await pool.query(
-        `INSERT INTO provider_order_links (provider, external_order_id, order_id, sku_ids, line_ids) VALUES ($1, $2, $3, COALESCE($4::jsonb, '[]'::jsonb), $5::jsonb)
-         ON CONFLICT (provider, external_order_id) DO UPDATE SET order_id = EXCLUDED.order_id, sku_ids = COALESCE($4::jsonb, provider_order_links.sku_ids), line_ids = COALESCE($5::jsonb, provider_order_links.line_ids)`,
-        [provider, externalOrderId, orderId, skuIds ? JSON.stringify(skuIds) : null, lineIds ? JSON.stringify(lineIds) : null],
+        `INSERT INTO provider_order_links (provider, external_order_id, order_id, sku_ids, line_ids, meta) VALUES ($1, $2, $3, COALESCE($4::jsonb, '[]'::jsonb), $5::jsonb, $6::jsonb)
+         ON CONFLICT (provider, external_order_id) DO UPDATE SET order_id = EXCLUDED.order_id, sku_ids = COALESCE($4::jsonb, provider_order_links.sku_ids), line_ids = COALESCE($5::jsonb, provider_order_links.line_ids), meta = COALESCE($6::jsonb, provider_order_links.meta)`,
+        [provider, externalOrderId, orderId, skuIds ? JSON.stringify(skuIds) : null, lineIds ? JSON.stringify(lineIds) : null, meta ? JSON.stringify(meta) : null],
       );
     },
     async listForOrder(orderId, provider) {
