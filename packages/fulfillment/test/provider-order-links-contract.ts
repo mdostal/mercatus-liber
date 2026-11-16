@@ -65,6 +65,18 @@ export function describeProviderOrderLinkContract(
       expect((await repo.findByExternalOrderId("x3d", "X3D-A"))!.skuIds).toEqual(["sku-z"]);
     });
 
+    it("stores line ids alongside the lines, and leaves them out when none were given", async () => {
+      const repo = (await setup()).open();
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-A", skuIds: ["art-box"], lineIds: ["line-1"] });
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-B", skuIds: ["art-box"] });
+      const [a, b] = await repo.listForOrder("order-1", "x3d");
+      expect(a!.lineIds).toEqual(["line-1"]);
+      expect(b!.lineIds).toBeUndefined();
+      // Linking again without line ids keeps them.
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-A" });
+      expect((await repo.findByExternalOrderId("x3d", "X3D-A"))!.lineIds).toEqual(["line-1"]);
+    });
+
     it("lists a provider's open orders: everything not delivered or unfulfilled", async () => {
       const repo = (await setup()).open();
       for (const id of ["new", "printing", "shipped", "done", "cancelled"]) await repo.link({ orderId: `o-${id}`, provider: "x3d", externalOrderId: id });

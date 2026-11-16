@@ -29,10 +29,11 @@ export function mapX3dOrderStatus(status: string): FulfillmentLineStatus {
 }
 
 /** One record per line the X3D order makes. X3D gives a tracking number and carrier, not a tracking URL. */
-export function buildX3dLineRecords(orderId: string, skuIds: string[], order: { code: string; status: string; tracking?: X3dOrder["tracking"] }): FulfillmentLineRecord[] {
-  return skuIds.map((skuId) => ({
+export function buildX3dLineRecords(orderId: string, skuIds: string[], order: { code: string; status: string; tracking?: X3dOrder["tracking"] }, lineIds?: string[]): FulfillmentLineRecord[] {
+  return skuIds.map((skuId, index) => ({
     orderId,
     skuId,
+    ...(lineIds?.[index] !== undefined ? { lineId: lineIds[index] } : {}),
     provider: X3D_PROVIDER,
     externalOrderId: order.code,
     status: mapX3dOrderStatus(order.status),

@@ -32,7 +32,7 @@ describe("createProviderOrderStatusRecorder", () => {
     await links.link({ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1" });
     expect(await recorder.record("slant3d", { externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null })).toBe("published");
     expect(published).toEqual([
-      { changeId: '["slant3d","SL-1","shipped","TRK1",null]', orderId: "order-1", skuIds: [], provider: "slant3d", externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null, trackingUrl: null, previousStatus: null },
+      { changeId: '["slant3d","SL-1","shipped","TRK1",null]', orderId: "order-1", skuIds: [], lineIds: [], provider: "slant3d", externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null, trackingUrl: null, previousStatus: null },
     ]);
     expect((await links.findByExternalOrderId("slant3d", "SL-1"))!.status).toBe("shipped");
   });

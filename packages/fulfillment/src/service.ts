@@ -129,11 +129,11 @@ export function createFulfillmentService(deps: {
       const order = await orders.getOrder(orderId);
       if (!order) throw new OrderNotFoundForFulfillmentError(orderId);
 
-      const itemsByProvider = new Map<FulfillmentProviderKey, { skuId: string; quantity: number }[]>();
+      const itemsByProvider = new Map<FulfillmentProviderKey, { skuId: string; quantity: number; lineId?: string }[]>();
       for (const item of order.items) {
         const provider = await routing.getProviderForSku(item.skuId);
         const bucket = itemsByProvider.get(provider) ?? [];
-        bucket.push({ skuId: item.skuId, quantity: item.quantity });
+        bucket.push({ skuId: item.skuId, quantity: item.quantity, ...(item.lineId !== undefined ? { lineId: item.lineId } : {}) });
         itemsByProvider.set(provider, bucket);
       }
 
@@ -158,10 +158,16 @@ export function createFulfillmentService(deps: {
           // so an order whose submit half-failed can be submitted again
           // safely. A line the provider gave up on ("unfulfilled": cancelled
           // or rejected) is sent again.
-          const placed = new Map<string, FulfillmentLineRecord>();
-          for (const record of await adapter.getOrderStatus(orderId)) if (record.status !== "unfulfilled") placed.set(record.skuId, record);
-          const missing = items.filter((item) => !placed.has(item.skuId));
-          records.push(...items.filter((item) => placed.has(item.skuId)).map((item) => placed.get(item.skuId)!));
+          //
+          // A line is matched to a record by line id when both have one. A
+          // record with no line id (an adapter that does not report them, or
+          // one made before lines had ids) covers every line of its SKU.
+          const live = (await adapter.getOrderStatus(orderId)).filter((record) => record.status !== "unfulfilled");
+          const placedFor = (item: { skuId: string; lineId?: string }): FulfillmentLineRecord | undefined =>
+            (item.lineId !== undefined ? live.find((record) => record.lineId === item.lineId) : undefined) ??
+            live.find((record) => record.skuId === item.skuId && (record.lineId === undefined || item.lineId === undefined));
+          const missing = items.filter((item) => !placedFor(item));
+          records.push(...items.filter((item) => placedFor(item)).map((item) => placedFor(item)!));
           if (missing.length > 0) records.push(...(await adapter.submitOrder({ orderId, items: missing, ...(recipient ? { recipient } : {}) })));
         } catch (error) {
           // One provider failing does not stop the others being submitted.
