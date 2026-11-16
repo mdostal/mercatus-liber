@@ -225,13 +225,23 @@ export function x3dPartStateOf(order: { code: string; status: string; tracking?:
   return { code: order.code, status: mapX3dOrderStatus(order.status), trackingNumber: order.tracking?.number ?? null, carrier: order.tracking?.carrier ?? null };
 }
 
-/** X3D's published per-gram rates in USD, read from its API documents on 2026-11-15. */
+/** X3D's published one-colour per-gram rates in USD, read from its pricing page on 2026-11-16. */
 export const X3D_RATE_PER_GRAM: Record<X3dMaterial, number> = { pla: 0.12, petg: 0.12, abs: 0.15, asa: 0.15, tpu: 0.2 };
+
+/**
+ * What X3D adds per gram for a print in `filaments` colours: $0.03 at two
+ * colours, then $0.02 for each colour after. PLA is $0.12, $0.15, $0.17 and
+ * $0.19 for one to four colours. Read from its pricing page on 2026-11-16.
+ */
+export function x3dColourSurchargeCentsPerGram(filaments: number): number {
+  const colours = Math.floor(filaments);
+  return colours >= 2 ? 3 + 2 * (colours - 2) : 0;
+}
 
 export interface X3dSlicedCostInput {
   /** Filament weight the slicer reports for the plate, purge included. */
   grams: number;
-  /** How many filaments the plate uses. Five or more adds the second-AMS fee. */
+  /** How many filaments the plate prints in. Two or more raise the rate per gram; five or more add the second-AMS fee. */
   filaments: number;
   material?: X3dMaterial;
   quantity?: number;
@@ -253,7 +263,8 @@ export interface X3dSlicedCostEstimate {
  * amount actually charged comes back when the order is placed.
  *
  * - Print: grams (rounded up) x rate x quantity, 5% off from 5 units and 10%
- *   from 10, at least $1.00 per unit, rounded up to the whole dollar.
+ *   from 10, at least $1.00 per unit, rounded up to the whole dollar. The
+ *   rate is the material's one-colour rate plus the colour surcharge.
  * - Second-AMS fee: $25 once per order at five or more filaments.
  * - Postage: US standard $7, free from a $49.50 print subtotal; US express
  *   $15; any other country $30, free from $500.
@@ -268,10 +279,10 @@ export interface X3dSlicedCostEstimate {
  */
 export function estimateX3dSlicedOrderCost(input: X3dSlicedCostInput): X3dSlicedCostEstimate {
   const quantity = Math.max(1, Math.round(input.quantity ?? 1));
-  const rate = X3D_RATE_PER_GRAM[input.material ?? "pla"];
+  // Whole cents per gram, so the colour steps add without a floating-point tail.
+  const rateCents = Math.round(X3D_RATE_PER_GRAM[input.material ?? "pla"] * 100) + x3dColourSurchargeCentsPerGram(input.filaments);
   const discount = quantity >= 10 ? 0.9 : quantity >= 5 ? 0.95 : 1;
-  // Worked in cents so 0.12 x 260 does not pick up a floating-point tail before the round-up.
-  const perUnitCents = Math.max(100, Math.round(Math.ceil(input.grams) * rate * 100));
+  const perUnitCents = Math.max(100, Math.ceil(input.grams) * rateCents);
   const print = Math.ceil(Math.max(quantity * 100, Math.round(perUnitCents * quantity * discount)) / 100);
   const secondAmsFee = input.filaments >= 5 ? 25 : 0;
   const domestic = (input.country ?? "US").toUpperCase() === "US";

@@ -7,7 +7,7 @@ Built from X3D's published API documents (<https://x3dstudios.com/docs/api>, <ht
 ## What X3D does, as its documents state it
 
 - **Materials:** PLA, PETG, ABS, ASA, TPU. Twelve stock colours at the material rate; any other colour is bought in and billed at $0.20/g.
-- **Price:** $0.12/g for PLA and PETG, $0.15/g for ABS and ASA, $0.20/g for TPU. $1.00 minimum per part, each print line rounded up to the whole dollar. 5% off from 5 units, 10% off from 10. No order fee.
+- **Price:** $0.12/g for PLA and PETG, $0.15/g for ABS and ASA, $0.20/g for TPU, in one colour. A print in several colours costs more per gram: +$0.03 at two colours and +$0.02 for each colour after (PLA is $0.15, $0.17 and $0.19 at two, three and four). $1.00 minimum per part, each print line rounded up to the whole dollar. 5% off from 5 units, 10% off from 10. No order fee.
 - **Multicolour:** send a `.gcode.3mf` sliced with the colours assigned. A plate using five or more filaments adds a $25 "second-AMS" fee, once per order. The documents do not say which printer profile to slice for, or whether a painted but unsliced 3MF prints in colour through the API. Ask X3D before relying on either.
 - **Postage:** US standard $7, free from a $49.50 print subtotal; US express $15; 23 other countries at $30, free from $500.
 - **Lead time:** API orders print at normal speed, 4 to 5 business days. Priority printing is not sold through the API.
