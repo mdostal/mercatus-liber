@@ -31,7 +31,9 @@ describe("createProviderOrderStatusRecorder", () => {
     const { links, recorder, published } = setup();
     await links.link({ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1" });
     expect(await recorder.record("slant3d", { externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null })).toBe("published");
-    expect(published).toEqual([{ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null, previousStatus: null }]);
+    expect(published).toEqual([
+      { changeId: '["slant3d","SL-1","shipped","TRK1",null]', orderId: "order-1", skuIds: [], provider: "slant3d", externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null, previousStatus: null },
+    ]);
     expect((await links.findByExternalOrderId("slant3d", "SL-1"))!.status).toBe("shipped");
   });
 
@@ -108,6 +110,41 @@ describe("withProviderOrderLinks", () => {
     await withProviderOrderLinks(adapter("SL-1"), "slant3d", links).submitOrder({ orderId: "order-1", items: [] });
     expect(await externalOrderIdsFrom(links, "slant3d")("order-1")).toBe("SL-1");
     expect(await externalOrderIdsFrom(links, "slant3d")("order-2")).toBeNull();
+  });
+
+  it("links each provider order with its own lines when a provider splits the order", async () => {
+    const links = createInMemoryProviderOrderLinkRepository();
+    const split: FulfillmentAdapter = {
+      submitOrder: async () => [
+        { ...record("X3D-A"), skuId: "sku-a" },
+        { ...record("X3D-B"), skuId: "sku-b" },
+        { ...record("X3D-B"), skuId: "sku-c" },
+      ],
+      getOrderStatus: async () => [],
+    };
+    await withProviderOrderLinks(split, "x3d", links).submitOrder({ orderId: "order-1", items: [] });
+    expect((await links.listForOrder("order-1", "x3d")).map((l) => [l.externalOrderId, l.skuIds])).toEqual([["X3D-A", ["sku-a"]], ["X3D-B", ["sku-b", "sku-c"]]]);
+  });
+
+  it("gives each change its own id, the same on a republish, and names the lines", async () => {
+    const links = createInMemoryProviderOrderLinkRepository();
+    const events = createInMemoryEventBus();
+    const seen: FulfillmentOrderStatusChanged[] = [];
+    let fail = true;
+    events.subscribe<FulfillmentOrderStatusChanged>(FULFILLMENT_ORDER_STATUS_CHANGED, async (payload) => {
+      seen.push(payload);
+      if (fail) throw new Error("down");
+    });
+    const recorder = createProviderOrderStatusRecorder({ links, events });
+    await links.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-A", skuIds: ["sku-a"] });
+    const shipped = { externalOrderId: "X3D-A", status: "shipped" as const, trackingNumber: "T1", carrier: "USPS" };
+    await expect(recorder.record("x3d", shipped)).rejects.toThrow();
+    fail = false;
+    await recorder.record("x3d", shipped);
+    await recorder.record("x3d", { ...shipped, status: "delivered" });
+    expect(seen.map((e) => e.skuIds)).toEqual([["sku-a"], ["sku-a"], ["sku-a"]]);
+    expect(seen[0]!.changeId).toBe(seen[1]!.changeId);
+    expect(seen[2]!.changeId).not.toBe(seen[1]!.changeId);
   });
 
   it("stores nothing when the provider returned no order id", async () => {

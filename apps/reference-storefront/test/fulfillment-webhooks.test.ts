@@ -99,7 +99,7 @@ describe("a signed Slant 3D delivery, end to end", () => {
     const { send, published } = await deliver(body);
     expect((await send()).status).toBe(200);
     expect((await send()).status).toBe(200);
-    expect(published).toEqual([{ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null, previousStatus: null }]);
+    expect(published).toEqual([expect.objectContaining({ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null, previousStatus: null })]);
   });
 
   it("accepts a delivery about an order this store never placed, and publishes nothing", async () => {

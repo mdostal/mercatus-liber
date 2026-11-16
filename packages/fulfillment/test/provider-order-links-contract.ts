@@ -11,7 +11,7 @@ export function describeProviderOrderLinkContract(
     it("finds a link from either side, with no status until one is saved", async () => {
       const repo = (await setup()).open();
       await repo.link({ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1" });
-      const link = { orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1", status: null, trackingNumber: null, carrier: null };
+      const link = { orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1", skuIds: [], status: null, trackingNumber: null, carrier: null };
       expect(await repo.findByExternalOrderId("slant3d", "SL-1")).toEqual(link);
       expect(await repo.latestForOrder("order-1", "slant3d")).toEqual(link);
       expect(await repo.findByExternalOrderId("slant3d", "nope")).toBeNull();
@@ -32,7 +32,7 @@ export function describeProviderOrderLinkContract(
       await repo.link({ orderId: "order-1", provider: "3dapi", externalOrderId: "ord_1" });
       await repo.saveStatus("3dapi", "ord_1", { status: "shipped", trackingNumber: "TRK1", carrier: "DHL" });
       await repo.link({ orderId: "order-1", provider: "3dapi", externalOrderId: "ord_1" });
-      expect(await repo.findByExternalOrderId("3dapi", "ord_1")).toEqual({ orderId: "order-1", provider: "3dapi", externalOrderId: "ord_1", status: "shipped", trackingNumber: "TRK1", carrier: "DHL" });
+      expect(await repo.findByExternalOrderId("3dapi", "ord_1")).toEqual({ orderId: "order-1", provider: "3dapi", externalOrderId: "ord_1", skuIds: [], status: "shipped", trackingNumber: "TRK1", carrier: "DHL" });
     });
 
     it("returns the most recently linked provider order for a store order", async () => {
@@ -42,6 +42,31 @@ export function describeProviderOrderLinkContract(
       // Re-linking the older one does not make it the latest.
       await repo.link({ orderId: "order-1", provider: "3dapi", externalOrderId: "ord_old" });
       expect((await repo.latestForOrder("order-1", "3dapi"))!.externalOrderId).toBe("ord_new");
+    });
+
+    it("lists every provider order of a store order with its lines, oldest first", async () => {
+      const repo = (await setup()).open();
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-A", skuIds: ["sku-a"] });
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-B", skuIds: ["sku-b", "sku-c"] });
+      await repo.link({ orderId: "order-2", provider: "x3d", externalOrderId: "X3D-C" });
+      expect((await repo.listForOrder("order-1", "x3d")).map((l) => [l.externalOrderId, l.skuIds])).toEqual([["X3D-A", ["sku-a"]], ["X3D-B", ["sku-b", "sku-c"]]]);
+      expect(await repo.listForOrder("order-1", "slant3d")).toEqual([]);
+      // Linking again without skuIds keeps them; with skuIds replaces them.
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-A" });
+      expect((await repo.findByExternalOrderId("x3d", "X3D-A"))!.skuIds).toEqual(["sku-a"]);
+      await repo.link({ orderId: "order-1", provider: "x3d", externalOrderId: "X3D-A", skuIds: ["sku-z"] });
+      expect((await repo.findByExternalOrderId("x3d", "X3D-A"))!.skuIds).toEqual(["sku-z"]);
+    });
+
+    it("lists a provider's open orders: everything not delivered or unfulfilled", async () => {
+      const repo = (await setup()).open();
+      for (const id of ["new", "printing", "shipped", "done", "cancelled"]) await repo.link({ orderId: `o-${id}`, provider: "x3d", externalOrderId: id });
+      await repo.link({ orderId: "o-other", provider: "slant3d", externalOrderId: "other" });
+      await repo.saveStatus("x3d", "printing", { status: "submitted", trackingNumber: null, carrier: null });
+      await repo.saveStatus("x3d", "shipped", { status: "shipped", trackingNumber: "T", carrier: null });
+      await repo.saveStatus("x3d", "done", { status: "delivered", trackingNumber: "T", carrier: null });
+      await repo.saveStatus("x3d", "cancelled", { status: "unfulfilled", trackingNumber: null, carrier: null });
+      expect((await repo.listOpen("x3d")).map((l) => l.externalOrderId)).toEqual(["new", "printing", "shipped"]);
     });
 
     it("ignores a status for an order that was never linked", async () => {
