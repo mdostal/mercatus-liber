@@ -6,6 +6,7 @@ import {
   IncompleteRecipientError,
   mapSlant3dOrderStatus,
   parseSlant3dWebhookPayload,
+  slant3dOrderStatusUpdateFrom,
   SLANT3D_ORDER_STATUSES,
   SLANT3D_PROVIDER,
   Slant3dApiError,
@@ -297,5 +298,31 @@ describe("parseSlant3dWebhookPayload", () => {
   it("refuses a body that isn't a Slant event", () => {
     expect(() => parseSlant3dWebhookPayload("not json")).toThrow(Slant3dWebhookPayloadParseError);
     expect(() => parseSlant3dWebhookPayload(JSON.stringify({ data: {} }))).toThrow(Slant3dWebhookPayloadParseError);
+  });
+});
+
+describe("slant3dOrderStatusUpdateFrom", () => {
+  const event = (event_type: string, order: Record<string, unknown> | null, extra: Record<string, unknown> = {}) =>
+    parseSlant3dWebhookPayload(JSON.stringify({ event_type, data: order ? { order } : {}, ...extra }));
+
+  it("reads shipped, delivered and cancelled from the event type", () => {
+    expect(slant3dOrderStatusUpdateFrom(event("order.shipped", { public_id: "SL-1", status: "SHIPPED", tracking_number: "TRK1" }))).toEqual({ externalOrderId: "SL-1", status: "shipped", trackingNumber: "TRK1", carrier: null });
+    // Slant's order status stops at SHIPPED; only the event type says delivered.
+    expect(slant3dOrderStatusUpdateFrom(event("order.delivered", { public_id: "SL-1", status: "SHIPPED" }))).toMatchObject({ status: "delivered", trackingNumber: null });
+    expect(slant3dOrderStatusUpdateFrom(event("order.cancelled", { public_id: "SL-1" }))).toMatchObject({ status: "unfulfilled" });
+  });
+
+  it("reads created and updated from the order's status, and skips them without one", () => {
+    expect(slant3dOrderStatusUpdateFrom(event("order.updated", { public_id: "SL-1", status: "PRINTING" }))).toMatchObject({ status: "submitted" });
+    expect(slant3dOrderStatusUpdateFrom(event("order.created", { public_id: "SL-1", status: "DRAFT" }))).toMatchObject({ status: "held" });
+    expect(slant3dOrderStatusUpdateFrom(event("order.updated", { public_id: "SL-1" }))).toBeNull();
+  });
+
+  it("returns null for the test webhook, events with no order, and non-status events", () => {
+    expect(slant3dOrderStatusUpdateFrom(event("order.shipped", { public_id: "SL-1" }, { dummy: true }))).toBeNull();
+    expect(slant3dOrderStatusUpdateFrom(event("order.shipped", null))).toBeNull();
+    expect(slant3dOrderStatusUpdateFrom(event("order.error", { public_id: "SL-1", status: "ERROR" }))).toBeNull();
+    expect(slant3dOrderStatusUpdateFrom(event("payment.failed", { public_id: "SL-1" }))).toBeNull();
+    expect(slant3dOrderStatusUpdateFrom(event("order.refunded", { public_id: "SL-1" }))).toBeNull();
   });
 });

@@ -9,6 +9,7 @@
  *   - packages/cart/src/service.ts
  *   - packages/checkout-orders/src/service.ts
  *   - packages/reviews/src/service.ts
+ *   - packages/fulfillment/src/provider-orders.ts
  *
  * `EventBus.subscribe` (packages/core/src/event-bus.ts) takes an exact event
  * name, not a wildcard/glob -- there is no "subscribe to everything" primitive
@@ -39,6 +40,7 @@ export const KNOWN_EVENT_TYPES = [
   "checkout.order.placed",
   "reviews.review.submitted",
   "reviews.review.published",
+  "fulfillment.order.status_changed",
 ] as const;
 
 export type KnownEventType = (typeof KNOWN_EVENT_TYPES)[number];

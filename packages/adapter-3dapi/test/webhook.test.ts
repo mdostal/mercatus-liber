@@ -3,11 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createDapiFulfillmentAdapter,
   createInMemoryDapiWebhookEventStore,
+  dapiOrderStatusUpdateFrom,
+  dapiReferenceForOrder,
   dapiWebhookSignatureFromHeaders,
   DapiWebhookPayloadParseError,
   DapiWebhookSignatureInvalidError,
   DapiWebhookSignatureNotConfiguredError,
   DapiWebhookTimestampError,
+  parseDapiWebhookPayload,
   parseDapiWebhookSignature,
   verifyDapiSignature,
   type DapiFulfillmentAdapterConfig,
@@ -167,5 +170,25 @@ describe("verifyDapiSignature", () => {
     expect(verifyDapiSignature(SECRET, body, parts, { nowMs: (NOW_S + 301) * 1000, toleranceSeconds: 600 })).toBe("ok");
     expect(verifyDapiSignature(SECRET, body, { ...parts, signature: parts.signature.replace("sha256=", "") }, { nowMs: NOW_S * 1000 })).toBe("bad_signature");
     expect(parseDapiWebhookSignature("sha256=abc")).toBeNull();
+  });
+});
+
+describe("dapiOrderStatusUpdateFrom", () => {
+  const event = (type: string, object: unknown) => parseDapiWebhookPayload(JSON.stringify({ id: "evt_1", object: "event", type, created_at: "2026-10-12T10:00:00Z", data: { object, previous: null, region: null } }));
+
+  it("reads status, carrier and tracking, and the store order id from a plain reference", () => {
+    const shipped = order({ status: "shipped", reference: "order-42", shipping: { tier: "small", carrier: "DHL", tracking_number: "TRK1", shipped_at: "2026-10-12T09:00:00Z" } });
+    expect(dapiOrderStatusUpdateFrom(event("order.shipped", shipped))).toEqual({ externalOrderId: "ord_1", orderId: "order-42", status: "shipped", trackingNumber: "TRK1", carrier: "DHL" });
+    expect(dapiOrderStatusUpdateFrom(event("order.completed", order({ status: "completed", reference: "order-42" })))).toMatchObject({ status: "delivered" });
+  });
+
+  it("leaves out the order id when the reference is the hashed form", () => {
+    const reference = dapiReferenceForOrder("an order id with spaces");
+    expect(reference).toMatch(/^ml-/);
+    expect(dapiOrderStatusUpdateFrom(event("order.paid", order({ reference })))).toMatchObject({ externalOrderId: "ord_1", orderId: null, status: "submitted" });
+  });
+
+  it("returns null for an event that is not about an order", () => {
+    expect(dapiOrderStatusUpdateFrom(event("quote.ready", quote()))).toBeNull();
   });
 });
