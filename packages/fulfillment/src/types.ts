@@ -23,6 +23,12 @@ export type FulfillmentLineStatus = "unfulfilled" | "held" | "submitted" | "ship
 export interface FulfillmentLineRecord {
   orderId: string;
   skuId: string;
+  /**
+   * The order line this record is for, when the order's lines have ids. Two
+   * lines of one order can share a SKU and still be different things to make
+   * (a personalised print with two different names), and this tells them apart.
+   */
+  lineId?: string;
   provider: FulfillmentProviderKey;
   /** The provider's own id for this order/line, e.g. a Printful order id. null when there's nothing external to submit to (the manual provider). */
   externalOrderId: string | null;
@@ -61,7 +67,7 @@ export interface FulfillmentRecipient {
 export interface SubmitFulfillmentOrderInput {
   orderId: string;
   /** Only the lines this call's target provider is responsible for -- FulfillmentService fans an order's lines out to the right adapter per line, see service.ts. */
-  items: { skuId: string; quantity: number }[];
+  items: { skuId: string; quantity: number; lineId?: string }[];
   /**
    * The real shipping recipient for this order, when known. Added for
    * dp-01 -- optional for backward compatibility: every existing real
@@ -124,7 +130,8 @@ export interface FulfillmentAdapter {
 export interface OrderLookup {
   getOrder(id: string): Promise<{
     id: string;
-    items: { skuId: string; quantity: number }[];
+    /** `lineId` is optional: an order source that has line ids passes them, and they reach each adapter and its records. */
+    items: { skuId: string; quantity: number; lineId?: string }[];
     shippingInfo?: {
       name: string;
       email: string;

@@ -66,14 +66,35 @@ await providerCatalogMappings.save({ skuId, provider: "x3d", target: { fileUrl: 
 | `color` | Stock spool name or hex, for single-colour prints. A sliced file's colours come from the slice. |
 | `quality`, `infill`, `nozzleDiameter`, `layerHeight`, `note` | Passed through. `nozzleDiameter` must be 0.2, 0.4, 0.6 or 0.8; X3D silently prints anything else at 0.4, so the adapter refuses it. |
 
+### Personalised prints: a file per order line
+
+A product printed with the buyer's name or colour choices has a different file for every order line, and two lines of one order can share a SKU. `resolveCatalogTarget` and `loadModel` therefore get the line as well as the SKU:
+
+```ts
+createX3dFulfillmentAdapter({
+  apiKey,
+  orderStore: x3dOrderStoreFrom(providerOrderLinks),
+  // line = { orderId, lineId?, lineIndex, quantity }
+  resolveCatalogTarget: async (skuId, line) => {
+    const job = await printJobs.find(line.orderId, line.lineId);
+    if (!job?.slicedFileUrl) throw new Error(`No sliced file for order ${line.orderId}, line ${line.lineId} yet`);
+    return { fileUrl: job.slicedFileUrl, material: "pla" };
+  },
+});
+```
+
+- Every line is resolved before anything is sent. If one line has no file yet, the resolver throws and nothing is ordered or charged for any line.
+- `line.lineId` is set when the order's lines have ids: pass `lineId` on each item of the order your `OrderLookup` returns and `@mercatus-liber/fulfillment` carries it through. Without line ids, lines are told apart by SKU only, so two personalised lines of one SKU in one order cannot be handled; give lines ids if that can happen.
+- Each line's X3D order is remembered under its line id, so a retry places only the line that is missing, and the status event names the line in `lineIds`.
+
 ### Config
 
 | Option | Required | |
 |---|---|---|
 | `apiKey` | yes | An `x3d_live_...` key from <https://x3dstudios.com/profile>. Needs a card on file. |
-| `resolveCatalogTarget(skuId)` | yes | See `x3dCatalogTargetsFrom`. |
+| `resolveCatalogTarget(skuId, line)` | yes | See `x3dCatalogTargetsFrom` for a per-SKU lookup, or the section above for a per-line one. |
 | `orderStore` | no, but use one | Where placed orders are remembered. The default is in memory. |
-| `loadModel(target, skuId)` | no | Returns the model as a `Blob` when a plain GET of `fileUrl` will not do. |
+| `loadModel(target, skuId, line)` | no | Returns the model as a `Blob` when a plain GET of `fileUrl` will not do. |
 | `holdOrders` | no | Send nothing; report lines `held`. |
 | `shippingSpeed` | no | `"express"` applies to US addresses only. |
 | `emailCustomer`, `notifyEmails` | no | Who gets X3D's order emails (five addresses at most). |

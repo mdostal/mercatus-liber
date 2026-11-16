@@ -16,6 +16,8 @@ export interface ProviderOrderLink {
   externalOrderId: string;
   /** The order lines this provider order makes. Empty when that was not recorded, which means all of the order's lines at this provider. */
   skuIds: string[];
+  /** The ids of those lines, in the same order as `skuIds`, when the order's lines have ids. */
+  lineIds?: string[];
   /** null until the provider has reported one. */
   status: FulfillmentLineStatus | null;
   trackingNumber: string | null;
@@ -35,7 +37,7 @@ export interface ProviderOrderStatus {
 
 export interface ProviderOrderLinkRepository {
   /** Records that `externalOrderId` is the provider's order for `orderId`. Linking the same pair again keeps its stored status, and keeps its `skuIds` unless new ones are given. */
-  link(input: { orderId: string; provider: FulfillmentProviderKey; externalOrderId: string; skuIds?: string[] }): Promise<void>;
+  link(input: { orderId: string; provider: FulfillmentProviderKey; externalOrderId: string; skuIds?: string[]; lineIds?: string[] }): Promise<void>;
   /** The most recently linked provider order for a store order, or null. An order re-placed after a cancellation has more than one. */
   latestForOrder(orderId: string, provider: FulfillmentProviderKey): Promise<ProviderOrderLink | null>;
   /** Every provider order linked to a store order, oldest link first. A provider that takes one item per order has one per line. */
@@ -52,7 +54,7 @@ export function isClosedStatus(status: FulfillmentLineStatus | null): boolean {
   return status === "delivered" || status === "unfulfilled";
 }
 
-const copy = (link: ProviderOrderLink): ProviderOrderLink => ({ ...link, skuIds: [...link.skuIds] });
+const copy = (link: ProviderOrderLink): ProviderOrderLink => ({ ...link, skuIds: [...link.skuIds], ...(link.lineIds ? { lineIds: [...link.lineIds] } : {}) });
 
 export function createInMemoryProviderOrderLinkRepository(): ProviderOrderLinkRepository {
   // Insertion order is link order; re-linking an existing pair leaves it in place.
@@ -60,14 +62,15 @@ export function createInMemoryProviderOrderLinkRepository(): ProviderOrderLinkRe
   const key = (provider: string, externalOrderId: string) => JSON.stringify([provider, externalOrderId]);
 
   return {
-    async link({ orderId, provider, externalOrderId, skuIds }) {
+    async link({ orderId, provider, externalOrderId, skuIds, lineIds }) {
       const existing = links.get(key(provider, externalOrderId));
       if (existing) {
         existing.orderId = orderId;
         if (skuIds) existing.skuIds = [...skuIds];
+        if (lineIds) existing.lineIds = [...lineIds];
         return;
       }
-      links.set(key(provider, externalOrderId), { orderId, provider, externalOrderId, skuIds: [...(skuIds ?? [])], status: null, trackingNumber: null, carrier: null });
+      links.set(key(provider, externalOrderId), { orderId, provider, externalOrderId, skuIds: [...(skuIds ?? [])], ...(lineIds ? { lineIds: [...lineIds] } : {}), status: null, trackingNumber: null, carrier: null });
     },
     async latestForOrder(orderId, provider) {
       let latest: ProviderOrderLink | null = null;
@@ -109,15 +112,19 @@ export function withProviderOrderLinks<A extends FulfillmentAdapter>(
       const records = await adapter.submitOrder(input);
       // One link per provider order, each with the lines it makes: a provider may split a store order into several.
       const skuIdsByExternalOrderId = new Map<string, string[]>();
+      const lineIdsByExternalOrderId = new Map<string, string[]>();
       for (const record of records) {
         if (!record.externalOrderId) continue;
         const skuIds = skuIdsByExternalOrderId.get(record.externalOrderId) ?? [];
         skuIds.push(record.skuId);
         skuIdsByExternalOrderId.set(record.externalOrderId, skuIds);
+        if (record.lineId !== undefined) lineIdsByExternalOrderId.set(record.externalOrderId, [...(lineIdsByExternalOrderId.get(record.externalOrderId) ?? []), record.lineId]);
       }
       for (const [externalOrderId, skuIds] of skuIdsByExternalOrderId) {
         try {
-          await links.link({ orderId: input.orderId, provider, externalOrderId, skuIds });
+          // Line ids are stored only when every line of the provider order has one, so the two lists stay aligned.
+          const lineIds = lineIdsByExternalOrderId.get(externalOrderId);
+          await links.link({ orderId: input.orderId, provider, externalOrderId, skuIds, ...(lineIds && lineIds.length === skuIds.length ? { lineIds } : {}) });
         } catch (err) {
           onLinkError(err, input.orderId);
         }
@@ -152,6 +159,8 @@ export interface FulfillmentOrderStatusChanged extends ProviderOrderStatus {
   orderId: string;
   /** The order lines this provider order makes. Empty means all of the order's lines at this provider. */
   skuIds: string[];
+  /** The ids of those lines, aligned with `skuIds`. Empty when the order's lines have no ids or the provider's adapter does not report them. */
+  lineIds: string[];
   provider: FulfillmentProviderKey;
   externalOrderId: string;
   /** What was stored before this update; null for the first one. */
@@ -211,6 +220,7 @@ export function createProviderOrderStatusRecorder(deps: { links: ProviderOrderLi
         changeId: JSON.stringify([provider, link.externalOrderId, next.status, next.trackingNumber, next.carrier]),
         orderId: link.orderId,
         skuIds: link.skuIds,
+        lineIds: link.lineIds ?? [],
         provider,
         externalOrderId: link.externalOrderId,
         ...next,

@@ -21,19 +21,33 @@ export * from "./mapping.js";
 
 /** Which X3D order was placed for which line of which store order. */
 export interface X3dOrderStore {
-  list(orderId: string): Promise<{ code: string; skuIds: string[] }[]>;
-  /** Called straight after X3D accepts an order, before anything else is sent. */
-  remember(orderId: string, skuId: string, code: string): Promise<void>;
+  list(orderId: string): Promise<{ code: string; skuIds: string[]; lineIds?: string[] }[]>;
+  /** Called straight after X3D accepts an order, before anything else is sent. `lineId` is given when the order's lines have ids. */
+  remember(orderId: string, skuId: string, code: string, lineId?: string): Promise<void>;
+}
+
+/**
+ * The order line a model is being resolved for. A store whose prints are
+ * personalised (a name, the shopper's colour choices) has a different file for
+ * every line, even two lines of the same SKU, and finds it with this.
+ */
+export interface X3dLineContext {
+  orderId: string;
+  /** The line's id, when the order's lines have ids. */
+  lineId?: string;
+  /** The line's position among the lines sent to X3D in this submit, from 0. */
+  lineIndex: number;
+  quantity: number;
 }
 
 export function createInMemoryX3dOrderStore(): X3dOrderStore {
-  const byOrder = new Map<string, { code: string; skuIds: string[] }[]>();
+  const byOrder = new Map<string, { code: string; skuIds: string[]; lineIds?: string[] }[]>();
   return {
     async list(orderId) {
-      return (byOrder.get(orderId) ?? []).map((entry) => ({ code: entry.code, skuIds: [...entry.skuIds] }));
+      return (byOrder.get(orderId) ?? []).map((entry) => ({ code: entry.code, skuIds: [...entry.skuIds], ...(entry.lineIds ? { lineIds: [...entry.lineIds] } : {}) }));
     },
-    async remember(orderId, skuId, code) {
-      byOrder.set(orderId, [...(byOrder.get(orderId) ?? []), { code, skuIds: [skuId] }]);
+    async remember(orderId, skuId, code, lineId) {
+      byOrder.set(orderId, [...(byOrder.get(orderId) ?? []), { code, skuIds: [skuId], ...(lineId !== undefined ? { lineIds: [lineId] } : {}) }]);
     },
   };
 }
@@ -42,10 +56,10 @@ export function createInMemoryX3dOrderStore(): X3dOrderStore {
 export function x3dOrderStoreFrom(links: ProviderOrderLinkRepository): X3dOrderStore {
   return {
     async list(orderId) {
-      return (await links.listForOrder(orderId, X3D_PROVIDER)).map((link) => ({ code: link.externalOrderId, skuIds: link.skuIds }));
+      return (await links.listForOrder(orderId, X3D_PROVIDER)).map((link) => ({ code: link.externalOrderId, skuIds: link.skuIds, ...(link.lineIds ? { lineIds: link.lineIds } : {}) }));
     },
-    async remember(orderId, skuId, code) {
-      await links.link({ orderId, provider: X3D_PROVIDER, externalOrderId: code, skuIds: [skuId] });
+    async remember(orderId, skuId, code, lineId) {
+      await links.link({ orderId, provider: X3D_PROVIDER, externalOrderId: code, skuIds: [skuId], ...(lineId !== undefined ? { lineIds: [lineId] } : {}) });
     },
   };
 }
@@ -55,13 +69,22 @@ export interface X3dFulfillmentAdapterConfig {
   apiKey: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
-  /** What a SKU prints as. Throw when the SKU has no mapping. See x3dCatalogTargetsFrom. */
-  resolveCatalogTarget(skuId: string): Promise<X3dCatalogTarget>;
+  /**
+   * What a line prints as. For a product that is the same for every buyer,
+   * look it up by SKU (see x3dCatalogTargetsFrom). For a personalised product,
+   * use `line` to find that order line's own file.
+   *
+   * Throw when there is nothing to print yet (no mapping, or a personalised
+   * line whose file has not been sliced). Every line is resolved before
+   * anything is sent, so one line throwing stops the whole submit with nothing
+   * ordered or charged.
+   */
+  resolveCatalogTarget(skuId: string, line: X3dLineContext): Promise<X3dCatalogTarget>;
   /**
    * Fetches a `fileUrl` target's bytes at order time. The default does a plain
    * GET of the URL. Supply this when the model sits behind authentication.
    */
-  loadModel?(target: X3dCatalogTarget, skuId: string): Promise<Blob>;
+  loadModel?(target: X3dCatalogTarget, skuId: string, line: X3dLineContext): Promise<Blob>;
   /**
    * Where placed orders are remembered. X3D has no idempotency key and no
    * endpoint to list orders, so this is the only thing that stops a retried
@@ -160,24 +183,29 @@ export function createX3dFulfillmentAdapter(config: X3dFulfillmentAdapterConfig)
   const placedDetails = new Map<string, X3dCreateOrderResponse>();
   const fetchImpl = config.fetchImpl ?? fetch;
 
-  async function loadSource(target: X3dCatalogTarget, skuId: string): Promise<X3dModelSource> {
+  async function loadSource(target: X3dCatalogTarget, skuId: string, line: X3dLineContext): Promise<X3dModelSource> {
     if (target.modelUrl) return { modelUrl: target.modelUrl };
     const fileName = x3dFileNameFor(target)!;
-    if (config.loadModel) return { file: await config.loadModel(target, skuId), fileName };
+    if (config.loadModel) return { file: await config.loadModel(target, skuId, line), fileName };
     const response = await fetchImpl(target.fileUrl!);
     if (!response.ok) throw new Error(`Could not fetch the model for SKU ${skuId}: HTTP ${response.status}`);
     return { file: await response.blob(), fileName };
   }
+
+  // A line is known by its id when it has one, otherwise by its SKU. The two are
+  // kept apart so a line id can never be mistaken for a SKU.
+  const lineKey = (skuId: string, lineId: string | undefined): string => (lineId !== undefined ? `line:${lineId}` : `sku:${skuId}`);
 
   /** The newest live X3D order for each line, read back from X3D. A cancelled, rejected or vanished order does not count. */
   async function liveOrders(orderId: string): Promise<Map<string, X3dOrder>> {
     const live = new Map<string, X3dOrder>();
     for (const entry of await store.list(orderId)) {
       const order = await client.getOrder(entry.code);
-      for (const skuId of entry.skuIds) {
-        if (order && mapX3dOrderStatus(order.status) !== "unfulfilled") live.set(skuId, order);
-        else live.delete(skuId);
-      }
+      entry.skuIds.forEach((skuId, index) => {
+        const key = lineKey(skuId, entry.lineIds?.[index]);
+        if (order && mapX3dOrderStatus(order.status) !== "unfulfilled") live.set(key, order);
+        else live.delete(key);
+      });
     }
     return live;
   }
@@ -186,32 +214,35 @@ export function createX3dFulfillmentAdapter(config: X3dFulfillmentAdapterConfig)
     async submitOrder(input: SubmitFulfillmentOrderInput): Promise<FulfillmentLineRecord[]> {
       if (!input.recipient) throw new Error(`X3D Studios needs a shipping address; order ${input.orderId} has none.`);
       const address = mapRecipientToX3d(input.recipient);
-      const targets = new Map<string, X3dCatalogTarget>();
-      for (const item of input.items) targets.set(item.skuId, await config.resolveCatalogTarget(item.skuId));
+      const lines = input.items.map((item, lineIndex): X3dLineContext => ({ orderId: input.orderId, ...(item.lineId !== undefined ? { lineId: item.lineId } : {}), lineIndex, quantity: item.quantity }));
+      // Resolved per line, not per SKU: two lines of one SKU can be different prints.
+      const targets: X3dCatalogTarget[] = [];
+      for (const [index, item] of input.items.entries()) targets.push(await config.resolveCatalogTarget(item.skuId, lines[index]!));
 
-      const held = (skuId: string): FulfillmentLineRecord => ({ orderId: input.orderId, skuId, provider: X3D_PROVIDER, externalOrderId: null, status: "held", trackingNumber: null, trackingUrl: null });
+      const held = (skuId: string, lineId: string | undefined): FulfillmentLineRecord => ({ orderId: input.orderId, skuId, ...(lineId !== undefined ? { lineId } : {}), provider: X3D_PROVIDER, externalOrderId: null, status: "held", trackingNumber: null, trackingUrl: null });
       const live = await liveOrders(input.orderId);
       const records: FulfillmentLineRecord[] = [];
       const emails = [...(config.emailCustomer && input.recipient.email ? [input.recipient.email] : []), ...(config.notifyEmails ?? [])].slice(0, 5);
       // Express is a US service; X3D refuses it for any other country.
       const shippingSpeed = config.shippingSpeed === "express" && address.country === "US" ? "express" : "standard";
 
-      for (const item of input.items) {
-        const existing = live.get(item.skuId);
+      for (const [index, item] of input.items.entries()) {
+        const lineIds = item.lineId !== undefined ? [item.lineId] : undefined;
+        const existing = live.get(lineKey(item.skuId, item.lineId));
         if (existing) {
-          records.push(...buildX3dLineRecords(input.orderId, [item.skuId], existing));
+          records.push(...buildX3dLineRecords(input.orderId, [item.skuId], existing, lineIds));
           continue;
         }
         if (config.holdOrders) {
-          records.push(held(item.skuId));
+          records.push(held(item.skuId, item.lineId));
           continue;
         }
 
-        const target = targets.get(item.skuId)!;
+        const target = targets[index]!;
         const alreadyPlaced = (): FulfillmentLineRecord[] => records.filter((record) => record.externalOrderId);
         let source: X3dModelSource;
         try {
-          source = await loadSource(target, item.skuId);
+          source = await loadSource(target, item.skuId, lines[index]!);
         } catch (err) {
           // Nothing was sent to X3D.
           throw new X3dSubmitError(input.orderId, item.skuId, alreadyPlaced(), false, { cause: err });
@@ -241,24 +272,24 @@ export function createX3dFulfillmentAdapter(config: X3dFulfillmentAdapterConfig)
 
         placedDetails.set(response.code, response);
         try {
-          await store.remember(input.orderId, item.skuId, response.code);
+          await store.remember(input.orderId, item.skuId, response.code, item.lineId);
         } catch (err) {
           throw new X3dOrderNotRememberedError(input.orderId, item.skuId, response.code, { cause: err });
         }
-        records.push(...buildX3dLineRecords(input.orderId, [item.skuId], { code: response.code, status: response.status }));
+        records.push(...buildX3dLineRecords(input.orderId, [item.skuId], { code: response.code, status: response.status }, lineIds));
       }
       return records;
     },
 
     async getOrderStatus(orderId: string): Promise<FulfillmentLineRecord[]> {
       // The newest order for a line wins, whatever its status, so a cancelled line reads as unfulfilled.
-      const bySku = new Map<string, FulfillmentLineRecord>();
+      const byLine = new Map<string, FulfillmentLineRecord>();
       for (const entry of await store.list(orderId)) {
         const order = await client.getOrder(entry.code);
         if (!order) continue;
-        for (const record of buildX3dLineRecords(orderId, entry.skuIds, order)) bySku.set(record.skuId, record);
+        for (const record of buildX3dLineRecords(orderId, entry.skuIds, order, entry.lineIds)) byLine.set(lineKey(record.skuId, record.lineId), record);
       }
-      return [...bySku.values()];
+      return [...byLine.values()];
     },
 
     getX3dOrder: (code) => client.getOrder(code),

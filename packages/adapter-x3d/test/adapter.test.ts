@@ -327,3 +327,82 @@ describe("createX3dHttpClient", () => {
     await expect(client.createOrder({ quantity: 1, recipientName: "A", street1: "1", city: "C", state: "TX", zip: "1", country: "US" }, { modelUrl: "gs://b/a.stl" })).rejects.toMatchObject({ status: 400, x3dMessage: "Unknown material." });
   });
 });
+
+describe("personalised prints: a file per order line", () => {
+  // Two art boxes in one order, same SKU, each with a different name on it.
+  const lines = [
+    { skuId: "sku-art-box", quantity: 1, lineId: "line-1" },
+    { skuId: "sku-art-box", quantity: 2, lineId: "line-2" },
+  ];
+  const sliced: Record<string, string> = { "line-1": "https://cdn.store.example/jobs/order-1/line-1.gcode.3mf", "line-2": "https://cdn.store.example/jobs/order-1/line-2.gcode.3mf" };
+
+  function personalised(ready: Record<string, string> = sliced, fake = fakeX3d()) {
+    const links = createInMemoryProviderOrderLinkRepository();
+    const seen: unknown[] = [];
+    const { adapter } = setup(
+      {
+        orderStore: x3dOrderStoreFrom(links),
+        resolveCatalogTarget: async (skuId, line) => {
+          seen.push({ skuId, ...line });
+          const fileUrl = line.lineId ? ready[line.lineId] : undefined;
+          if (!fileUrl) throw new Error(`no sliced file for line ${line.lineId} yet`);
+          return { fileUrl };
+        },
+      },
+      fake,
+    );
+    return { adapter, fake, links, seen };
+  }
+
+  it("asks for each line's own file and places them as separate orders", async () => {
+    const { adapter, fake, seen } = personalised();
+    const records = await adapter.submitOrder(order(lines));
+    expect(seen).toEqual([
+      { skuId: "sku-art-box", orderId: "order-1", lineId: "line-1", lineIndex: 0, quantity: 1 },
+      { skuId: "sku-art-box", orderId: "order-1", lineId: "line-2", lineIndex: 1, quantity: 2 },
+    ]);
+    expect(fake.orderPosts().map((call) => [(call.form!.file as { name: string }).name, call.form!.quantity])).toEqual([["line-1.gcode.3mf", "1"], ["line-2.gcode.3mf", "2"]]);
+    expect(records.map((record) => [record.lineId, record.skuId, record.externalOrderId])).toEqual([["line-1", "sku-art-box", "X3D-AAAAA1"], ["line-2", "sku-art-box", "X3D-AAAAA2"]]);
+  });
+
+  it("🔒 sends nothing when one line has no sliced file yet", async () => {
+    const { adapter, fake } = personalised({ "line-1": sliced["line-1"]! });
+    await expect(adapter.submitOrder(order(lines))).rejects.toThrow("no sliced file for line line-2 yet");
+    expect(fake.calls).toHaveLength(0);
+  });
+
+  it("🔒 on a retry, places only the line that is missing, not the other line of the same SKU", async () => {
+    const { adapter, fake } = personalised();
+    await adapter.submitOrder(order([lines[0]!]));
+    const records = await adapter.submitOrder(order(lines));
+    expect(fake.orderPosts()).toHaveLength(2);
+    expect(records.map((record) => record.externalOrderId)).toEqual(["X3D-AAAAA1", "X3D-AAAAA2"]);
+    // A third submit places nothing.
+    await adapter.submitOrder(order(lines));
+    expect(fake.orderPosts()).toHaveLength(2);
+  });
+
+  it("reports each line's status separately and names the line on the status event", async () => {
+    const { adapter, fake, links } = personalised();
+    await adapter.submitOrder(order(lines));
+    fake.set("X3D-AAAAA2", { status: "SHIPPED", tracking: { number: "TRK2", carrier: "USPS" } });
+    expect((await adapter.getOrderStatus("order-1")).map((record) => [record.lineId, record.status])).toEqual([["line-1", "submitted"], ["line-2", "shipped"]]);
+
+    const events = createInMemoryEventBus();
+    const published: FulfillmentOrderStatusChanged[] = [];
+    events.subscribe<FulfillmentOrderStatusChanged>(FULFILLMENT_ORDER_STATUS_CHANGED, async (payload) => {
+      published.push(payload);
+    });
+    const recorder = createProviderOrderStatusRecorder({ links, events });
+    await createX3dStatusPoller({ getOrder: adapter.getX3dOrder, links, record: (update) => recorder.record(X3D_PROVIDER, update) }).poll();
+    expect(published.find((event) => event.status === "shipped")).toMatchObject({ orderId: "order-1", skuIds: ["sku-art-box"], lineIds: ["line-2"], trackingNumber: "TRK2" });
+  });
+
+  it("passes the line to loadModel too", async () => {
+    const got: unknown[] = [];
+    const fake = fakeX3d();
+    const { adapter } = setup({ resolveCatalogTarget: async () => ({ fileUrl: "https://private.example/a.gcode.3mf" }), loadModel: async (_target, _skuId, line) => { got.push(line); return new Blob(["bytes"]); } }, fake);
+    await adapter.submitOrder(order([lines[1]!]));
+    expect(got).toEqual([{ orderId: "order-1", lineId: "line-2", lineIndex: 0, quantity: 2 }]);
+  });
+});

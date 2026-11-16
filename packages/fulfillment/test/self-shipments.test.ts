@@ -31,6 +31,7 @@ describe("recordSelfShipment", () => {
         trackingUrl: "https://track.example/TRK1",
         orderId: "o1",
         skuIds: ["sunglasses-blue", "print-dragon"],
+        lineIds: [],
         provider: "manual",
         externalOrderId: "tx-1",
         status: "shipped",

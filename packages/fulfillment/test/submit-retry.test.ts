@@ -99,3 +99,36 @@ describe("submitOrder across several providers", () => {
     expect(printful.submits.length + x3d.submits.length).toBe(0);
   });
 });
+
+describe("submitOrder with line ids", () => {
+  it("passes line ids to the adapter and tells two lines of one SKU apart on a retry", async () => {
+    const routing = createInMemoryFulfillmentRoutingRepository();
+    await routing.setProviderForSku("art-box", "x3d");
+    const submits: SubmitFulfillmentOrderInput[] = [];
+    const records: FulfillmentLineRecord[] = [];
+    let failSecond = true;
+    const adapter: FulfillmentAdapter = {
+      async submitOrder(input) {
+        submits.push(input);
+        const made: FulfillmentLineRecord[] = [];
+        for (const item of input.items) {
+          if (item.lineId === "line-2" && failSecond) break;
+          made.push({ orderId: input.orderId, skuId: item.skuId, lineId: item.lineId!, provider: "x3d", externalOrderId: `X3D-${item.lineId}`, status: "submitted", trackingNumber: null, trackingUrl: null });
+        }
+        records.push(...made);
+        return made;
+      },
+      getOrderStatus: async () => records,
+    };
+    const order = { id: "order-1", items: [{ skuId: "art-box", quantity: 1, lineId: "line-1" }, { skuId: "art-box", quantity: 1, lineId: "line-2" }] };
+    const service = createFulfillmentService({ orders: { getOrder: async () => order } as never, routing, adapters: { manual: createManualFulfillmentAdapter(), x3d: adapter } });
+
+    await service.submitOrder("order-1");
+    expect(submits[0]!.items).toEqual(order.items);
+    failSecond = false;
+    const second = await service.submitOrder("order-1");
+    // Only the line with no record is sent again, though both lines share a SKU.
+    expect(submits[1]!.items).toEqual([{ skuId: "art-box", quantity: 1, lineId: "line-2" }]);
+    expect(second.map((record) => record.lineId).sort()).toEqual(["line-1", "line-2"]);
+  });
+});
