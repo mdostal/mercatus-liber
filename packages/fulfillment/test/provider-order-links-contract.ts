@@ -12,8 +12,8 @@ export function describeProviderOrderLinkContract(
       const repo = (await setup()).open();
       await repo.link({ orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1" });
       const link = { orderId: "order-1", provider: "slant3d", externalOrderId: "SL-1", skuIds: [], status: null, trackingNumber: null, carrier: null };
-      expect(await repo.findByExternalOrderId("slant3d", "SL-1")).toEqual(link);
-      expect(await repo.latestForOrder("order-1", "slant3d")).toEqual(link);
+      expect(await repo.findByExternalOrderId("slant3d", "SL-1")).toMatchObject(link);
+      expect(await repo.latestForOrder("order-1", "slant3d")).toMatchObject(link);
       expect(await repo.findByExternalOrderId("slant3d", "nope")).toBeNull();
       expect(await repo.latestForOrder("nope", "slant3d")).toBeNull();
     });
@@ -32,7 +32,14 @@ export function describeProviderOrderLinkContract(
       await repo.link({ orderId: "order-1", provider: "3dapi", externalOrderId: "ord_1" });
       await repo.saveStatus("3dapi", "ord_1", { status: "shipped", trackingNumber: "TRK1", carrier: "DHL" });
       await repo.link({ orderId: "order-1", provider: "3dapi", externalOrderId: "ord_1" });
-      expect(await repo.findByExternalOrderId("3dapi", "ord_1")).toEqual({ orderId: "order-1", provider: "3dapi", externalOrderId: "ord_1", skuIds: [], status: "shipped", trackingNumber: "TRK1", carrier: "DHL" });
+      expect(await repo.findByExternalOrderId("3dapi", "ord_1")).toMatchObject({ orderId: "order-1", provider: "3dapi", externalOrderId: "ord_1", skuIds: [], status: "shipped", trackingNumber: "TRK1", carrier: "DHL" });
+    });
+
+    it("stores a tracking page with the status", async () => {
+      const repo = (await setup()).open();
+      await repo.link({ orderId: "order-1", provider: "printful", externalOrderId: "880011" });
+      await repo.saveStatus("printful", "880011", { status: "shipped", trackingNumber: "TRK1", carrier: null, trackingUrl: "https://track.example/TRK1" });
+      expect((await repo.findByExternalOrderId("printful", "880011"))!.trackingUrl).toBe("https://track.example/TRK1");
     });
 
     it("returns the most recently linked provider order for a store order", async () => {

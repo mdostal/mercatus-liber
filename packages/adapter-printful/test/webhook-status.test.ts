@@ -10,11 +10,16 @@ const updateFrom = (body: unknown) => printfulOrderStatusUpdateFrom(parsePrintfu
 
 describe("printfulOrderStatusUpdateFrom", () => {
   it("reads a v2 shipment_sent as shipped, with the tracking number and the store's order id", () => {
-    expect(updateFrom(FIXTURES.shipment_sent)).toEqual({ externalOrderId: "880011", orderId: "order-1001", status: "shipped", trackingNumber: "TRACK-0001", carrier: null });
+    expect(updateFrom(FIXTURES.shipment_sent)).toMatchObject({ externalOrderId: "880011", orderId: "order-1001", status: "shipped", trackingNumber: "TRACK-0001", carrier: null });
   });
 
   it("reads a v1 package_shipped as shipped, with the carrier the v1 shipment names", () => {
-    expect(updateFrom(FIXTURES.package_shipped)).toEqual({ externalOrderId: "880011", orderId: "order-1001", status: "shipped", trackingNumber: "TRACK-0001", carrier: "USPS" });
+    expect(updateFrom(FIXTURES.package_shipped)).toMatchObject({ externalOrderId: "880011", orderId: "order-1001", status: "shipped", trackingNumber: "TRACK-0001", carrier: "USPS" });
+  });
+
+  it("passes on the shipment's tracking page", () => {
+    expect(updateFrom(FIXTURES.shipment_sent)!.trackingUrl).toBe("https://tracking.example/TRACK-0001");
+    expect(updateFrom(FIXTURES.order_failed)!.trackingUrl).toBeNull();
   });
 
   it("reads shipment_delivered as delivered", () => {
@@ -23,7 +28,7 @@ describe("printfulOrderStatusUpdateFrom", () => {
 
   it("reads order_failed and order_canceled as unfulfilled, without tracking", () => {
     for (const body of [FIXTURES.order_failed, FIXTURES.order_canceled]) {
-      expect(updateFrom(body)).toEqual({ externalOrderId: "880011", orderId: "order-1001", status: "unfulfilled", trackingNumber: null, carrier: null });
+      expect(updateFrom(body)).toMatchObject({ externalOrderId: "880011", orderId: "order-1001", status: "unfulfilled", trackingNumber: null, carrier: null });
     }
   });
 
@@ -41,7 +46,7 @@ describe("printfulOrderStatusUpdateFrom", () => {
   });
 
   it("leaves orderId null for an order with no external id, and tracking null when the shipment has none", () => {
-    expect(updateFrom({ type: "shipment_sent", data: { order: { id: 7, external_id: null }, shipment: { id: 1, tracking_number: "" } } })).toEqual({ externalOrderId: "7", orderId: null, status: "shipped", trackingNumber: null, carrier: null });
+    expect(updateFrom({ type: "shipment_sent", data: { order: { id: 7, external_id: null }, shipment: { id: 1, tracking_number: "" } } })).toMatchObject({ externalOrderId: "7", orderId: null, status: "shipped", trackingNumber: null, carrier: null });
   });
 });
 

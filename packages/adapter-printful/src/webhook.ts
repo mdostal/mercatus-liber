@@ -206,6 +206,7 @@ export function printfulOrderStatusUpdateFrom(event: PrintfulWebhookEvent): Prov
     orderId: storeOrderId,
     status,
     trackingNumber: withTracking ? textOrNull(shipment.tracking_number) : null,
+    trackingUrl: withTracking ? textOrNull(shipment.tracking_url) : null,
     carrier: withTracking ? textOrNull(shipment.carrier) : null,
   });
 

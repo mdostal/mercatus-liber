@@ -57,6 +57,15 @@ const UNAUTHORIZED = [
 ];
 const BAD_BODY = [PrintfulWebhookPayloadParseError, Slant3dWebhookPayloadParseError, DapiWebhookPayloadParseError];
 
+/**
+ * True when `err` is one of `classes`. Checked by `instanceof` and by name: in
+ * a production Next build a route can get its own bundled copy of a package,
+ * so the adapter's error is a different class object with the same name, and
+ * `instanceof` alone answered a bad signature with 500 instead of 401.
+ */
+const isOneOf = (err: unknown, classes: readonly (new (...args: never[]) => Error)[]): boolean =>
+  classes.some((cls) => err instanceof cls || (err instanceof Error && err.name === cls.name));
+
 export interface WebhookOutcome {
   status: number;
   body: { received: true } | { error: string };
@@ -78,8 +87,8 @@ export async function receiveFulfillmentWebhook(receivers: FulfillmentWebhookRec
   try {
     await receiver.handle(rawBody, signature);
   } catch (err) {
-    if (UNAUTHORIZED.some((cls) => err instanceof cls)) return { status: 401, body: { error: "invalid_signature" } };
-    if (BAD_BODY.some((cls) => err instanceof cls)) return { status: 400, body: { error: "invalid_body" } };
+    if (isOneOf(err, UNAUTHORIZED)) return { status: 401, body: { error: "invalid_signature" } };
+    if (isOneOf(err, BAD_BODY)) return { status: 400, body: { error: "invalid_body" } };
     // Anything else is ours: a non-2xx makes the provider retry.
     return { status: 500, body: { error: "handler_failed" } };
   }

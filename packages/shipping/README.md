@@ -52,7 +52,7 @@ import { recordSelfShipment, recordSelfShipmentVoided } from "@mercatus-liber/fu
 recorder: {
   markLineShipped: (orderId, skuId, tracking) => fulfillmentService.markLineShipped(orderId, skuId, tracking),
   labelRecorded: ({ orderId, skuIds, label }) =>
-    recordSelfShipment({ links, recorder: statusRecorder, orderId, skuIds, trackingNumber: label.trackingNumber, carrier: label.carrier, labelId: label.labelId }),
+    recordSelfShipment({ links, recorder: statusRecorder, orderId, skuIds, trackingNumber: label.trackingNumber, trackingUrl: label.trackingUrl, carrier: label.carrier, labelId: label.labelId }),
   labelVoided: (labelId) => recordSelfShipmentVoided({ recorder: statusRecorder, labelId }),
 },
 ```

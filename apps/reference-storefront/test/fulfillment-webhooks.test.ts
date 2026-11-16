@@ -62,6 +62,19 @@ describe("receiveFulfillmentWebhook", () => {
     expect(outcome).toEqual({ status: 400, body: { error: "invalid_body" } });
   });
 
+  it("still answers 401 and 400 when the error is another bundled copy of the adapter's class", async () => {
+    // In a production Next build the route can hold its own copy of a package, so `instanceof` is false for the adapter's error.
+    class Slant3dWebhookSignatureInvalidError extends Error {
+      override name = "Slant3dWebhookSignatureInvalidError";
+    }
+    class PrintfulWebhookPayloadParseError extends Error {
+      override name = "PrintfulWebhookPayloadParseError";
+    }
+    const throwing = (error: Error): FulfillmentWebhookReceivers => ({ slant3d: { signatureFrom: slant3dSignatureFrom, handle: async () => { throw error; } } });
+    expect((await receiveFulfillmentWebhook(throwing(new Slant3dWebhookSignatureInvalidError("bad")), "slant3d", slantHeaders(BODY), BODY)).status).toBe(401);
+    expect((await receiveFulfillmentWebhook(throwing(new PrintfulWebhookPayloadParseError("bad")), "slant3d", slantHeaders(BODY), BODY)).status).toBe(400);
+  });
+
   it("answers 500 when our own handler fails, so the provider retries", async () => {
     const failing: FulfillmentWebhookReceivers = { slant3d: { signatureFrom: slant3dSignatureFrom, handle: async () => { throw new Error("bus down"); } } };
     expect((await receiveFulfillmentWebhook(failing, "slant3d", slantHeaders(BODY), BODY)).status).toBe(500);

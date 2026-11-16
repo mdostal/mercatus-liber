@@ -27,6 +27,8 @@ export interface SelfShipment {
   /** The order lines in this parcel. */
   skuIds: string[];
   trackingNumber?: string | null;
+  /** The carrier's tracking page (shipping's `ShippingLabel.trackingUrl`), when known. */
+  trackingUrl?: string | null;
   /** A plain carrier name such as "USPS", when known. */
   carrier?: string | null;
   /** The shipping provider's id for the label (shipping's `ShippingLabel.labelId`), when a label was bought through one. */
@@ -65,7 +67,7 @@ export async function recordSelfShipment(input: SelfShipment & { links: Provider
   const skuIds = existing?.orderId === orderId ? [...new Set([...existing.skuIds, ...input.skuIds])] : [...input.skuIds];
   await links.link({ orderId, provider: MANUAL_FULFILLMENT_PROVIDER, externalOrderId, skuIds });
 
-  return recorder.record(MANUAL_FULFILLMENT_PROVIDER, { externalOrderId, status: "shipped", trackingNumber: input.trackingNumber?.trim() || null, carrier: input.carrier?.trim() || null });
+  return recorder.record(MANUAL_FULFILLMENT_PROVIDER, { externalOrderId, status: "shipped", trackingNumber: input.trackingNumber?.trim() || null, trackingUrl: input.trackingUrl?.trim() || null, carrier: input.carrier?.trim() || null });
 }
 
 /**
