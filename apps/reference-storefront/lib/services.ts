@@ -132,6 +132,7 @@ import {
   createProviderOrderStatusRecorder,
   externalOrderIdsFrom,
   recordSelfShipment,
+  recordSelfShipmentVoided,
   withProviderOrderLinks,
   type ProviderOrderStatusOutcome,
   type SelfShipment,
@@ -184,7 +185,8 @@ import {
   createServiceAreaService,
   type ServiceAreaService,
 } from "@mercatus-liber/service-areas";
-import { createManualShippingAdapter, type ShippingAdapter } from "@mercatus-liber/shipping";
+import { createManualShippingAdapter, createOrderLabelService, type OrderLabelService, type ShippingAdapter } from "@mercatus-liber/shipping";
+import { shipFromAddressFromEnv, voidableLabelIds } from "./shipping-labels";
 import { createPassthroughImageAdapter, type ImageAdapter } from "@mercatus-liber/media";
 import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
 import { Pool } from "pg";
@@ -270,6 +272,10 @@ export interface Services {
   pollX3dOrders: (() => Promise<X3dPollResult>) | null;
   /** Set when SimplyPrint is configured. Reads the store's own print queue, publishes what changed, and publishes `simplyprint.print.finished` for each print that is done. */
   pollSimplyPrintQueue: (() => Promise<SimplyPrintPollResult>) | null;
+  /** Buying and voiding carrier labels for self-shipped lines, or why that is off. See lib/shipping-labels.ts. */
+  orderLabels:
+    | { available: true; provider: string; service: OrderLabelService; /** Labels of this order that can still be voided. */ labelsForOrder(orderId: string): Promise<string[]> }
+    | { available: false; reason: string };
   /** Publishes `fulfillment.order.status_changed` (provider "manual", status "shipped") for lines the store shipped itself. */
   recordSelfShipment(shipment: SelfShipment): Promise<ProviderOrderStatusOutcome>;
   /**
@@ -1175,13 +1181,15 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       ? { [SIMPLYPRINT_PROVIDER]: { signatureFrom: simplyPrintSecretFrom, handle: (body, secret) => simplyPrintAdapter.handleWebhookEvent(body, secret) } }
       : {}),
   };
+  // Built here, not inline, because the label flow needs to put a line back when its label is voided.
+  const manualFulfillment = createManualFulfillmentAdapter(pgPool ? { store: createPostgresManualFulfillmentRecordStore(pgPool) } : {});
   const fulfillment = createFulfillmentService({
     orders: checkout,
     routing: fulfillmentRouting,
     adapters: {
       // On Postgres the manual lines' status and tracking are stored, so a label bought on one
       // serverless instance is still there on the next. Other backends keep them in memory.
-      [MANUAL_FULFILLMENT_PROVIDER]: createManualFulfillmentAdapter(pgPool ? { store: createPostgresManualFulfillmentRecordStore(pgPool) } : {}),
+      [MANUAL_FULFILLMENT_PROVIDER]: manualFulfillment,
       ...(printfulAdapter ? { [PRINTFUL_PROVIDER]: linked(printfulAdapter, PRINTFUL_PROVIDER) } : {}),
       // `PRINTIFY_API_TOKEN` and `PRINTIFY_SHOP_ID` both required and truthy
       // (unlike Printful's single-token gate) -- real Printify accounts can
@@ -1289,6 +1297,35 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       : {}),
   };
 
+  // Buying labels from the order admin (lib/shipping-labels.ts): on when a provider that
+  // sells labels is registered and the store's ship-from address is set.
+  const labelProvider = shipping.shippo ? "shippo" : shipping.shipstation ? "shipstation" : null;
+  const shipFrom = shipFromAddressFromEnv(process.env);
+  const orderLabels: Services["orderLabels"] =
+    labelProvider && "address" in shipFrom
+      ? {
+          available: true,
+          provider: labelProvider,
+          service: createOrderLabelService({
+            adapter: shipping[labelProvider]!,
+            fromAddress: shipFrom.address,
+            orders: checkout,
+            recorder: {
+              markLineShipped: (orderId, skuId, tracking) => fulfillment.markLineShipped(orderId, skuId, tracking),
+              labelRecorded: ({ orderId, skuIds, label }) =>
+                recordSelfShipment({ links: providerOrderLinks, recorder: providerOrderStatus, orderId, skuIds, trackingNumber: label.trackingNumber, trackingUrl: label.trackingUrl, carrier: label.carrier, labelId: label.labelId ?? null }),
+              labelVoided: async (labelId) => {
+                // The parcel never left: put its lines back so they can be labelled again, then say so.
+                const link = await providerOrderLinks.findByExternalOrderId(MANUAL_FULFILLMENT_PROVIDER, labelId);
+                for (const skuId of link?.skuIds ?? []) await manualFulfillment.markNotShipped(link!.orderId, skuId);
+                await recordSelfShipmentVoided({ recorder: providerOrderStatus, labelId });
+              },
+            },
+          }),
+          labelsForOrder: async (orderId) => voidableLabelIds(await providerOrderLinks.listForOrder(orderId, MANUAL_FULFILLMENT_PROVIDER)),
+        }
+      : { available: false, reason: !labelProvider ? "No shipping provider that sells labels is configured (SHIPPO_API_TOKEN or SHIPSTATION_API_KEY)." : `The store's ship-from address is incomplete. Missing: ${"missing" in shipFrom ? shipFrom.missing.join(", ") : ""}.` };
+
   // @mercatus-liber/media (image-cdn epic) -- createPassthroughImageAdapter()
   // (serves whatever URL a product's images carry, unchanged) is always the
   // default; CLOUDINARY_CLOUD_NAME set and truthy additionally swaps in the
@@ -1378,6 +1415,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     fulfillmentWebhooks,
     pollX3dOrders,
     pollSimplyPrintQueue: pollSimplyPrint.run,
+    orderLabels,
     recordSelfShipment: (shipment) => recordSelfShipment({ links: providerOrderLinks, recorder: providerOrderStatus, ...shipment }),
     fulfillmentRouting,
     shipping,

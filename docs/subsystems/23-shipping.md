@@ -269,3 +269,24 @@ zero hits; `shipping` (and `adapter-shippo`) are consumed only by `apps/referenc
    branch verified in both states, stand as the proof of swappability for v1, the same posture
    as `fulfillment`'s Printful/Printify adapters and `internal-bi`'s external-BI-tool adapter.
    Live account verification is disclosed future work, not required for this epic's scope.
+
+## Buying labels from the order admin
+
+The reference storefront's order admin has a label page for each order: `/demo/<demoSlug>/admin/orders/<orderId>/label`, linked from the orders list on any order with a line the store ships itself.
+
+1. Enter the box's weight (oz) and its length, width and height (in). Shippo needs all four.
+2. The page asks the provider for rates and lists them cheapest first.
+3. "Buy this label" buys that rate for every self-shipped line of the order still waiting. Those lines become `shipped` with the label's tracking number, and `fulfillment.order.status_changed` is published with the carrier and tracking link.
+4. The page shows the tracking number and a link to the label to print.
+5. A bought label can be voided from the same page until the carrier has scanned it. Its lines go back to waiting and can be labelled again.
+
+It is on when a provider that sells labels is registered and the store's own address is set:
+
+| Variable | |
+|---|---|
+| `SHIPPO_API_TOKEN` or `SHIPSTATION_API_KEY` | The label provider. Shippo is used when both are set. A Shippo test token (`shippo_test_...`) gives free sample labels. |
+| `SHIP_FROM_NAME`, `SHIP_FROM_STREET1`, `SHIP_FROM_CITY`, `SHIP_FROM_STATE`, `SHIP_FROM_POSTAL_CODE` | The address parcels leave from. |
+| `SHIP_FROM_EMAIL` | Required. USPS will not sell a label without a sender email. |
+| `SHIP_FROM_COUNTRY`, `SHIP_FROM_STREET2`, `SHIP_FROM_COMPANY`, `SHIP_FROM_PHONE` | Optional. Country defaults to `US`. ShipStation needs the phone. |
+
+When something is missing the page says which variable. The wiring is `orderLabels` in `apps/reference-storefront/lib/services.ts`; it is tested end to end against a stand-in Shippo in `test/order-labels-wiring.test.ts`. A carrier that is not activated in the Shippo account still shows rates and is refused at purchase, with Shippo's message shown on the page.

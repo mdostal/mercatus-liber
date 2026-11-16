@@ -65,7 +65,9 @@ export async function recordSelfShipment(input: SelfShipment & { links: Provider
 
   const existing = await links.findByExternalOrderId(MANUAL_FULFILLMENT_PROVIDER, externalOrderId);
   const skuIds = existing?.orderId === orderId ? [...new Set([...existing.skuIds, ...input.skuIds])] : [...input.skuIds];
-  await links.link({ orderId, provider: MANUAL_FULFILLMENT_PROVIDER, externalOrderId, skuIds });
+  // The label id is kept on the link too, so a store can tell a bought label (which can be voided) from a line marked shipped by hand.
+  const labelId = input.labelId?.trim();
+  await links.link({ orderId, provider: MANUAL_FULFILLMENT_PROVIDER, externalOrderId, skuIds, ...(labelId ? { meta: { labelId } } : {}) });
 
   return recorder.record(MANUAL_FULFILLMENT_PROVIDER, { externalOrderId, status: "shipped", trackingNumber: input.trackingNumber?.trim() || null, trackingUrl: input.trackingUrl?.trim() || null, carrier: input.carrier?.trim() || null });
 }

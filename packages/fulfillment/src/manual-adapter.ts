@@ -22,6 +22,12 @@ export interface ManualFulfillmentAdapter extends FulfillmentAdapter {
     skuId: string,
     tracking?: { trackingNumber?: string | null; trackingUrl?: string | null },
   ): Promise<FulfillmentLineRecord>;
+  /**
+   * Puts a shipped line back to "submitted" and clears its tracking, for a
+   * label that was voided before the parcel left. Does nothing to a line that
+   * is not "shipped".
+   */
+  markNotShipped(orderId: string, skuId: string): Promise<FulfillmentLineRecord>;
 }
 
 /**
@@ -135,6 +141,17 @@ export function createManualFulfillmentAdapter(options: { store?: ManualFulfillm
         trackingNumber: tracking?.trackingNumber ?? existing.trackingNumber,
         trackingUrl: tracking?.trackingUrl ?? existing.trackingUrl,
       };
+      await store.save([updated]);
+      return structuredClone(updated);
+    },
+
+    async markNotShipped(orderId: string, skuId: string): Promise<FulfillmentLineRecord> {
+      const existing = (await store.list(orderId)).find((record) => record.skuId === skuId);
+      if (!existing) {
+        throw new FulfillmentLineNotFoundError(orderId, skuId);
+      }
+      if (existing.status !== "shipped") return existing;
+      const updated: FulfillmentLineRecord = { ...existing, status: "submitted", trackingNumber: null, trackingUrl: null };
       await store.save([updated]);
       return structuredClone(updated);
     },
