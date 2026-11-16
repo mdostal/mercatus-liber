@@ -132,3 +132,17 @@ describe("submitOrder with line ids", () => {
     expect(second.map((record) => record.lineId).sort()).toEqual(["line-1", "line-2"]);
   });
 });
+
+describe("markNotShipped", () => {
+  it("puts a shipped line back to submitted without its tracking, and leaves other lines alone", async () => {
+    const adapter = createManualFulfillmentAdapter();
+    await adapter.submitOrder({ orderId: "order-1", items: [{ skuId: "a", quantity: 1 }, { skuId: "b", quantity: 1 }] });
+    await adapter.markShipped("order-1", "a", { trackingNumber: "TRK1", trackingUrl: "https://track.example/TRK1" });
+    await adapter.markShipped("order-1", "b", { trackingNumber: "TRK2" });
+    expect(await adapter.markNotShipped("order-1", "a")).toMatchObject({ status: "submitted", trackingNumber: null, trackingUrl: null });
+    expect((await adapter.getOrderStatus("order-1")).map((r) => [r.skuId, r.status, r.trackingNumber])).toEqual([["a", "submitted", null], ["b", "shipped", "TRK2"]]);
+    // A line that is not shipped is returned as it is.
+    expect(await adapter.markNotShipped("order-1", "a")).toMatchObject({ status: "submitted" });
+    await expect(adapter.markNotShipped("order-1", "nope")).rejects.toThrow();
+  });
+});

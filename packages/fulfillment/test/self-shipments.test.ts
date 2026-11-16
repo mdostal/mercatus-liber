@@ -102,3 +102,15 @@ describe("recordSelfShipmentVoided", () => {
     expect(published).toHaveLength(0);
   });
 });
+
+describe("recordSelfShipment and label ids", () => {
+  it("keeps the label id on the link when a label was bought, and none when the line was marked by hand", async () => {
+    const links = createInMemoryProviderOrderLinkRepository();
+    const recorder = createProviderOrderStatusRecorder({ links, events: createInMemoryEventBus() });
+    await recordSelfShipment({ links, recorder, orderId: "o1", skuIds: ["a"], trackingNumber: "TRK1", labelId: "label-1" });
+    await recordSelfShipment({ links, recorder, orderId: "o1", skuIds: ["b"], trackingNumber: "TRK2" });
+    const [bought, byHand] = await links.listForOrder("o1", "manual");
+    expect(bought!.meta).toEqual({ labelId: "label-1" });
+    expect(byHand!.meta).toBeUndefined();
+  });
+});

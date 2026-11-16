@@ -111,6 +111,12 @@ export default async function AdminOrdersPage({ params }: { params: Promise<{ de
             </tbody>
           </table>
 
+          {lines.some((line) => line.provider === "manual" && line.status !== "unfulfilled") ? (
+            <p style={{ marginTop: 8 }}>
+              <Link href={`/demo/${demoSlug}/admin/orders/${encodeURIComponent(order.id)}/label`}>Shipping label: buy or void</Link>
+            </p>
+          ) : null}
+
           {!submitted ? (
             <form action={submitOrderForFulfillmentAction} style={{ marginTop: 8 }}>
               <input type="hidden" name="demoSlug" value={demoSlug} />

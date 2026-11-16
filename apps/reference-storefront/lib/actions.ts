@@ -3,6 +3,8 @@
 import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { MANUAL_FULFILLMENT_PROVIDER } from "@mercatus-liber/fulfillment";
+import type { LabelRecordedPartiallyError } from "@mercatus-liber/shipping";
 import { revalidatePath } from "next/cache";
 import {
   ADMIN_DEV_SESSION_COOKIE,
@@ -1375,4 +1377,64 @@ export async function revokeStoreApiKeyAction(formData: FormData): Promise<void>
   const { storeApiKeys } = await getServicesForDemo(demoSlug);
   await revokeStoreApiKey(storeApiKeys, String(formData.get("keyId")));
   revalidatePath(`/demo/${demoSlug}/admin/store-api`);
+}
+
+/**
+ * Buys the carrier label an operator picked on the order's label page, for
+ * every line of the order the store ships itself that is not shipped yet.
+ * The lines are worked out here, not taken from the form, so a stale page
+ * cannot label a line that has since shipped.
+ *
+ * Goes back to the label page with what happened in the query string: the
+ * tracking number and the label's URL on success, the provider's reason on a
+ * refusal. A label that was bought but could not be fully recorded is
+ * reported as such, never as a failure, so nobody buys a second one.
+ */
+export async function buyOrderLabelAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const orderId = String(formData.get("orderId") ?? "").trim();
+  const rateId = String(formData.get("rateId") ?? "").trim();
+  const back = `/demo/${demoSlug}/admin/orders/${encodeURIComponent(orderId)}/label`;
+  const to = (params: Record<string, string>): never => redirect(`${back}?${new URLSearchParams(params).toString()}`);
+
+  const { orderLabels, fulfillment } = await getServicesForDemo(demoSlug);
+  if (!orderLabels.available) return to({ error: orderLabels.reason });
+  if (!orderId || !rateId) return to({ error: "Pick a rate first." });
+  const skuIds = (await fulfillment.listForOrder(orderId)).filter((record) => record.provider === MANUAL_FULFILLMENT_PROVIDER && record.status === "submitted").map((record) => record.skuId);
+  if (skuIds.length === 0) return to({ error: "This order has no self-shipped line waiting for a label. Submit it for fulfillment first, or it has already shipped." });
+
+  let outcome: Record<string, string>;
+  try {
+    const result = await orderLabels.service.buy(orderId, [...new Set(skuIds)], rateId);
+    outcome = result.purchased
+      ? { bought: result.label.trackingNumber, carrier: result.label.carrier, label: result.label.labelUrl, ...(result.labelRecordedError ? { warning: "The label is bought and on the order, but the shipped notice could not be published." } : {}) }
+      : { error: result.reason };
+  } catch (err) {
+    // Matched by name, not instanceof: a production build can hold its own copy of the package's class.
+    if (!(err instanceof Error && err.name === "LabelRecordedPartiallyError")) throw err;
+    const partial = err as LabelRecordedPartiallyError;
+    outcome = { bought: partial.label.trackingNumber, carrier: partial.label.carrier, label: partial.label.labelUrl, warning: partial.message };
+  }
+  revalidatePath(`/demo/${demoSlug}/admin/orders`);
+  return to(outcome);
+}
+
+/** Voids a bought label that has not been used, which puts its lines back to waiting for a label. */
+export async function voidOrderLabelAction(formData: FormData): Promise<void> {
+  const demoSlug = requireDemoSlug(formData);
+  await requireAdminPermission(demoSlug, "mutate");
+  const orderId = String(formData.get("orderId") ?? "").trim();
+  const labelId = String(formData.get("labelId") ?? "").trim();
+  const back = `/demo/${demoSlug}/admin/orders/${encodeURIComponent(orderId)}/label`;
+  const to = (params: Record<string, string>): never => redirect(`${back}?${new URLSearchParams(params).toString()}`);
+
+  const { orderLabels } = await getServicesForDemo(demoSlug);
+  if (!orderLabels.available) return to({ error: orderLabels.reason });
+  // Only a label this order actually has can be voided from its page.
+  if (!(await orderLabels.labelsForOrder(orderId)).includes(labelId)) return to({ error: "That label is not on this order, or can no longer be voided." });
+  const result = await orderLabels.service.void(labelId);
+  revalidatePath(`/demo/${demoSlug}/admin/orders`);
+  if (!result.voided) return to({ error: result.reason });
+  return to({ voided: result.pending ? "pending" : "done", ...(result.labelVoidedError ? { warning: "The label is voided, but the order's lines could not be put back. Check the order." } : {}) });
 }
