@@ -35,6 +35,7 @@
     "@mercatus-liber/adapter-shipstation": "workspace:*",
     "@mercatus-liber/adapter-slant3d": "workspace:*",
     "@mercatus-liber/adapter-sqlite": "workspace:*",
+    "@mercatus-liber/adapter-simplyprint": "workspace:*",
     "@mercatus-liber/adapter-x3d": "workspace:*",
     "@mercatus-liber/admin-auth": "workspace:*",
     "@mercatus-liber/advertising": "workspace:*",

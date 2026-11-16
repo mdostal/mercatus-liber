@@ -39,8 +39,19 @@ import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTar
 import { createPrintifyFulfillmentAdapter, printifyCatalogTargetsFrom, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSlant3dFulfillmentAdapter, slant3dCatalogTargetsFrom, slant3dOrderStatusUpdateFrom, SLANT3D_PROVIDER } from "@mercatus-liber/adapter-slant3d";
 import { createX3dFulfillmentAdapter, createX3dStatusPoller, x3dCatalogTargetsFrom, x3dOrderStoreFrom, X3D_PROVIDER, type X3dPollResult } from "@mercatus-liber/adapter-x3d";
+import {
+  createSimplyPrintFulfillmentAdapter,
+  SIMPLYPRINT_PRINT_FINISHED,
+  SIMPLYPRINT_PROVIDER,
+  simplyPrintCatalogTargetsFrom,
+  simplyPrintOrderStoreFrom,
+  simplyPrintPrintLogFrom,
+  simplyPrintStatusUpdateFromWebhookAction,
+  type SimplyPrintPollResult,
+  type SimplyPrintPrintNotice,
+} from "@mercatus-liber/adapter-simplyprint";
 import { createDapiFulfillmentAdapter, dapiCatalogTargetsFrom, dapiOrderStatusUpdateFrom, dapiSkuIdsFrom, DAPI_PROVIDER } from "@mercatus-liber/adapter-3dapi";
-import { dapiSignatureFrom, FULFILLMENT_PROVIDER_EVENT, printfulSignatureFrom, slant3dSignatureFrom, type FulfillmentProviderEvent, type FulfillmentWebhookReceivers } from "./fulfillment-webhooks";
+import { dapiSignatureFrom, FULFILLMENT_PROVIDER_EVENT, printfulSignatureFrom, simplyPrintSecretFrom, slant3dSignatureFrom, type FulfillmentProviderEvent, type FulfillmentWebhookReceivers } from "./fulfillment-webhooks";
 import { createQuickBooksAccountingSyncAdapter, QUICKBOOKS_PROVIDER } from "@mercatus-liber/adapter-quickbooks";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createCloudinaryFetchAdapter } from "@mercatus-liber/adapter-cloudinary";
@@ -257,6 +268,8 @@ export interface Services {
   fulfillmentWebhooks: FulfillmentWebhookReceivers;
   /** Set when X3D Studios is configured. X3D sends no webhooks, so this reads its open orders and publishes what changed. */
   pollX3dOrders: (() => Promise<X3dPollResult>) | null;
+  /** Set when SimplyPrint is configured. Reads the store's own print queue, publishes what changed, and publishes `simplyprint.print.finished` for each print that is done. */
+  pollSimplyPrintQueue: (() => Promise<SimplyPrintPollResult>) | null;
   /** Publishes `fulfillment.order.status_changed` (provider "manual", status "shipped") for lines the store shipped itself. */
   recordSelfShipment(shipment: SelfShipment): Promise<ProviderOrderStatusOutcome>;
   /**
@@ -1091,6 +1104,38 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   const pollX3dOrders = x3dAdapter
     ? createX3dStatusPoller({ getOrder: x3dAdapter.getX3dOrder, links: providerOrderLinks, record: (update) => providerOrderStatus.record(X3D_PROVIDER, update) }).poll
     : null;
+  // SimplyPrint (packages/adapter-simplyprint): the store's own printers. A
+  // paid line becomes an item in the SimplyPrint print queue; the store packs
+  // and ships the part itself, so this adapter never reports "shipped". Queue
+  // items are remembered in providerOrderLinks as soon as SimplyPrint accepts
+  // them. Not run against a live account.
+  const pollSimplyPrint: { run: (() => Promise<SimplyPrintPollResult>) | null } = { run: null };
+  const simplyPrintAdapter =
+    process.env.SIMPLYPRINT_API_KEY && process.env.SIMPLYPRINT_COMPANY_ID
+      ? createSimplyPrintFulfillmentAdapter({
+          apiKey: process.env.SIMPLYPRINT_API_KEY,
+          companyId: process.env.SIMPLYPRINT_COMPANY_ID,
+          resolveCatalogTarget: simplyPrintCatalogTargetsFrom(providerCatalogMappings),
+          orderStore: simplyPrintOrderStoreFrom(providerOrderLinks),
+          printLog: simplyPrintPrintLogFrom(providerOrderLinks),
+          holdOrders: process.env.SIMPLYPRINT_HOLD_ORDERS === "true",
+          ...(process.env.SIMPLYPRINT_WEBHOOK_SECRET ? { webhookSecret: process.env.SIMPLYPRINT_WEBHOOK_SECRET } : {}),
+          // A deleted or denied queue item frees its line. A job event names no queue item, so it only triggers a read of the queue.
+          onWebhookEvent: async (action, event) => {
+            await events.publish<FulfillmentProviderEvent>(FULFILLMENT_PROVIDER_EVENT, { provider: SIMPLYPRINT_PROVIDER, event });
+            const update = simplyPrintStatusUpdateFromWebhookAction(action);
+            if (update) await providerOrderStatus.record(SIMPLYPRINT_PROVIDER, update);
+            if (action.kind === "resync") await pollSimplyPrint.run?.();
+          },
+        })
+      : null;
+  pollSimplyPrint.run = simplyPrintAdapter
+    ? simplyPrintAdapter.createStatusPoller({
+        links: providerOrderLinks,
+        record: (update) => providerOrderStatus.record(SIMPLYPRINT_PROVIDER, update),
+        onPrintFinished: (notice) => events.publish<SimplyPrintPrintNotice>(SIMPLYPRINT_PRINT_FINISHED, notice),
+      }).poll
+    : null;
   // Printful: built here for the same reason. Its webhooks are verified with
   // the hex secret key Printful returned when the webhook was set up
   // (PRINTFUL_WEBHOOK_SECRET_KEY); without it the adapter refuses every
@@ -1125,6 +1170,9 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       : {}),
     ...(dapiAdapter?.handleWebhookEvent && process.env.DAPI_WEBHOOK_SECRET
       ? { [DAPI_PROVIDER]: { signatureFrom: dapiSignatureFrom, handle: dapiAdapter.handleWebhookEvent.bind(dapiAdapter) } }
+      : {}),
+    ...(simplyPrintAdapter && process.env.SIMPLYPRINT_WEBHOOK_SECRET
+      ? { [SIMPLYPRINT_PROVIDER]: { signatureFrom: simplyPrintSecretFrom, handle: (body, secret) => simplyPrintAdapter.handleWebhookEvent(body, secret) } }
       : {}),
   };
   const fulfillment = createFulfillmentService({
@@ -1211,6 +1259,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       ...(dapiAdapter ? { [DAPI_PROVIDER]: linked(dapiAdapter, DAPI_PROVIDER) } : {}),
       // Not wrapped in `linked`: the adapter stores each X3D order itself, the moment it is placed.
       ...(x3dAdapter ? { [X3D_PROVIDER]: x3dAdapter } : {}),
+      // Not wrapped either, for the same reason: each queue item is stored the moment SimplyPrint accepts it.
+      ...(simplyPrintAdapter ? { [SIMPLYPRINT_PROVIDER]: simplyPrintAdapter } : {}),
     },
   });
 
@@ -1327,6 +1377,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     fulfillment,
     fulfillmentWebhooks,
     pollX3dOrders,
+    pollSimplyPrintQueue: pollSimplyPrint.run,
     recordSelfShipment: (shipment) => recordSelfShipment({ links: providerOrderLinks, recorder: providerOrderStatus, ...shipment }),
     fulfillmentRouting,
     shipping,

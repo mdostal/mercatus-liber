@@ -135,6 +135,40 @@ A SKU goes to a provider only after it is routed there and mapped in the provide
 2. Quote files until 10 are approved. Review takes 24 to 48 hours.
 3. Set `DAPI_API_KEY` and `DAPI_USE_SAMPLE_CREDIT=true` and place one order shipped to your own country.
 
+## Printing in-house with SimplyPrint
+
+A store that owns its printers does not need a provider to make the part. `@mercatus-liber/adapter-simplyprint` puts each paid order line into the print queue of the store's own farm, managed in [SimplyPrint](https://simplyprint.io), and tells the store when the print is done. The owner then packs it and buys the label through the store's own shipping flow. This is the in-house route to multicolour prints: the file in the queue is one the owner sliced, with its colours assigned, for his own machines.
+
+Built from SimplyPrint's published API documents (read 2026-11-15) and tested against a fake of that API. **It has not been run against a live SimplyPrint account.** The package README lists what the documents left unknown.
+
+What to know before choosing it:
+
+- **Plan.** Adding to the queue with an API key needs SimplyPrint's Print Farm plan or higher. Pro can read the queue but not add to it. Webhooks also need Print Farm.
+- **Bambu Lab printers.** SimplyPrint controls them through its Bambu Lab Client, a bridge program on a machine on the printers' network, with each printer in LAN-only Mode and Developer Mode. In Bambu's cloud mode SimplyPrint can watch a printer but not start prints on it.
+- **It queues; it does not print or ship.** An item waits in the queue for a person or for SimplyPrint's AutoPrint. The line stays `submitted` from queued to printed. `shipped` comes from the store's own label flow (`recordSelfShipment`), never from this adapter.
+- **"Printed" is a separate notice.** The line statuses have no word for "printed, ready to pack". Each finished print is published once on the store's event bus as `simplyprint.print.finished` with `{ noticeId, orderId, skuIds, queueItemId, printState }`.
+- **A failed print is not re-queued.** It stays in SimplyPrint's queue and the line stays `submitted`. Deleting the queue item in SimplyPrint frees the line to be submitted again.
+
+The reference storefront registers it when its credentials are set:
+
+| Variable | Purpose |
+|---|---|
+| `SIMPLYPRINT_API_KEY`, `SIMPLYPRINT_COMPANY_ID` | Turns on SimplyPrint. Both are needed. The key is a user's API token; the company id is shown beside it in the panel. |
+| `SIMPLYPRINT_HOLD_ORDERS=true` | Stops lines being queued. |
+| `SIMPLYPRINT_SYNC_SECRET` | Turns on `POST /api/demo/<demoSlug>/fulfillment/simplyprint/sync`, which a scheduler calls with `Authorization: Bearer <secret>` to read the print queue. |
+| `SIMPLYPRINT_WEBHOOK_SECRET` | Optional. The secret set on the webhook in SimplyPrint. Turns on the webhook route for `simplyprint`. |
+
+### To go live with SimplyPrint
+
+1. Be on the Print Farm plan. Connect the printers; for Bambu Lab machines install the SimplyPrint Bambu Lab Client and put the printers in LAN-only Mode with Developer Mode.
+2. Make a SimplyPrint user for the store with access to the print queue, and generate its API token (account settings, API tab). Note the Company ID shown there.
+3. Slice each model for the printers that will print it, colours assigned for a multicolour part, and upload the sliced file to the SimplyPrint file library. Find its id (the panel, or `GET files/GetFiles`).
+4. Save a mapping `{ fileId }` for the SKU under provider `simplyprint`, with `queueGroupId` if the account has queue groups. Route the SKU to `simplyprint`.
+5. Set `SIMPLYPRINT_API_KEY`, `SIMPLYPRINT_COMPANY_ID` and `SIMPLYPRINT_HOLD_ORDERS=true`, place a test order, then unset the hold and submit it again. Check the item in the SimplyPrint queue: the right file, the right amount, and a note naming the order and SKU. This is the first live test of the adapter; compare what SimplyPrint returned with the package README's list of unknowns.
+6. Set `SIMPLYPRINT_SYNC_SECRET` and have a scheduler call the sync route every few minutes. Let the test item print and confirm one `simplyprint.print.finished` is published.
+7. Optional: in SimplyPrint create a webhook (Regular format) to `/api/demo/<demoSlug>/fulfillment/simplyprint/webhook` for `job.done`, `job.failed`, `job.cancelled`, `queue.delete_item` and `queue.item_denied`, with a long random secret, and set the same value as `SIMPLYPRINT_WEBHOOK_SECRET`. SimplyPrint sends the secret itself in a header and does not sign the body, so use HTTPS.
+8. Subscribe something to `simplyprint.print.finished` to tell whoever packs the orders. The storefront publishes the event and does nothing else with it.
+
 ## Sources
 
 - Slant 3D: <https://www.slant3d.com/api>, API specification at <https://slant3dapi.com/v2/api/openapi.json>
@@ -145,3 +179,4 @@ A SKU goes to a provider only after it is routed there and mapped in the provide
 - Shapeways developer documents: <https://developers.shapeways.com/docs>, relaunch coverage at <https://3dprintingindustry.com/news/shapeways-relaunched-in-europe-as-manuevo-following-asset-acquisition-232193/>
 - JLC3DP API programme: <https://jlc3dp.com/help/article/JLC3DP-API>
 - Sculpteo API: <https://www.sculpteo.com/en/services/api-services/>
+- SimplyPrint: <https://simplyprint.io/features/api>, <https://simplyprint.io/features/webhooks>, <https://simplyprint.io/features/api/bambu-lab-api>, API reference at <https://apidocs.simplyprint.io/> (read 2026-11-15)
