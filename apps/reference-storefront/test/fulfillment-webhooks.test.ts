@@ -4,7 +4,8 @@ import { createSlant3dFulfillmentAdapter, slant3dOrderStatusUpdateFrom } from "@
 import { createInMemoryEventBus } from "@mercatus-liber/core";
 import { createInMemoryProviderOrderLinkRepository, createProviderOrderStatusRecorder, FULFILLMENT_ORDER_STATUS_CHANGED } from "@mercatus-liber/fulfillment";
 import { describe, expect, it } from "vitest";
-import { printfulSignatureFrom, receiveFulfillmentWebhook, slant3dSignatureFrom, type FulfillmentWebhookReceivers } from "../lib/fulfillment-webhooks";
+import { createSimplyPrintFulfillmentAdapter, type SimplyPrintWebhookAction } from "@mercatus-liber/adapter-simplyprint";
+import { printfulSignatureFrom, receiveFulfillmentWebhook, simplyPrintSecretFrom, slant3dSignatureFrom, type FulfillmentWebhookReceivers } from "../lib/fulfillment-webhooks";
 
 const SECRET = "whsec_test_secret";
 const NOW = 1_763_000_000_000;
@@ -173,5 +174,41 @@ describe("a signed Printful delivery, end to end", () => {
     const { published, send } = setup("");
     expect((await send(SHIPPED)).status).toBe(401);
     expect(published).toHaveLength(0);
+  });
+});
+
+describe("a SimplyPrint delivery", () => {
+  // Made up for this test and joined at runtime so secret scanners do not read it as a real secret.
+  const SP_SECRET = ["simplyprint", "made-up-test-secret"].join("_");
+  const DELETED = JSON.stringify({ webhook_id: 25, event: "queue.delete_item", timestamp: 1776691249, data: { queue_item: { id: 430001 } } });
+
+  function setup(webhookSecret = SP_SECRET) {
+    const actions: SimplyPrintWebhookAction[] = [];
+    const adapter = createSimplyPrintFulfillmentAdapter({
+      apiKey: "k",
+      companyId: "1",
+      resolveCatalogTarget: async () => ({ fileId: "f" }),
+      ...(webhookSecret ? { webhookSecret } : {}),
+      onWebhookEvent: (action) => {
+        actions.push(action);
+      },
+    });
+    const receivers: FulfillmentWebhookReceivers = { simplyprint: { signatureFrom: simplyPrintSecretFrom, handle: (body, secret) => adapter.handleWebhookEvent(body, secret) } };
+    return { actions, send: (body: string, headers: Headers) => receiveFulfillmentWebhook(receivers, "simplyprint", headers, body) };
+  }
+
+  it("is accepted with the secret in X-SP-Secret and handed on", async () => {
+    const { actions, send } = setup();
+    expect(await send(DELETED, new Headers({ "X-SP-Secret": SP_SECRET }))).toEqual({ status: 200, body: { received: true } });
+    expect(actions).toEqual([{ kind: "queue_item_closed", queueItemId: "430001", printState: "cancelled" }]);
+  });
+
+  it("answers 401 for a wrong or missing secret, 401 when none is configured, and 400 for a body that isn't a payload", async () => {
+    const { actions, send } = setup();
+    expect((await send(DELETED, new Headers({ "X-SP-Secret": "wrong" }))).status).toBe(401);
+    expect((await send(DELETED, new Headers())).status).toBe(401);
+    expect((await send("not json", new Headers({ "X-SP-Secret": SP_SECRET }))).status).toBe(400);
+    expect((await setup("").send(DELETED, new Headers({ "X-SP-Secret": SP_SECRET }))).status).toBe(401);
+    expect(actions).toHaveLength(0);
   });
 });

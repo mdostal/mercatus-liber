@@ -1,5 +1,6 @@
 /**
- * Status webhooks from print-on-demand providers (Printful, Slant 3D, 3DAPI), received at
+ * Status webhooks from print-on-demand providers (Printful, Slant 3D, 3DAPI) and from
+ * SimplyPrint (the store's own printers), received at
  * POST /api/demo/<demoSlug>/fulfillment/<provider>/webhook.
  *
  * Each provider's adapter verifies the signature and parses the body
@@ -27,6 +28,12 @@ import {
   Slant3dWebhookSignatureNotConfiguredError,
   slant3dWebhookSignatureFrom,
 } from "@mercatus-liber/adapter-slant3d";
+import {
+  SIMPLYPRINT_WEBHOOK_SECRET_HEADER,
+  SimplyPrintWebhookPayloadParseError,
+  SimplyPrintWebhookSecretInvalidError,
+  SimplyPrintWebhookSecretNotConfiguredError,
+} from "@mercatus-liber/adapter-simplyprint";
 
 export const FULFILLMENT_PROVIDER_EVENT = "fulfillment.provider_event";
 
@@ -45,6 +52,8 @@ export type FulfillmentWebhookReceivers = Record<string, FulfillmentWebhookRecei
 export const slant3dSignatureFrom = (headers: Headers): string => slant3dWebhookSignatureFrom(headers);
 export const dapiSignatureFrom = (headers: Headers): string => dapiWebhookSignatureFromHeaders(headers);
 export const printfulSignatureFrom = (headers: Headers): string => printfulWebhookSignatureFrom(headers);
+/** SimplyPrint does not sign: it sends the webhook's secret itself in X-SP-Secret, and the adapter compares it. */
+export const simplyPrintSecretFrom = (headers: Headers): string => headers.get(SIMPLYPRINT_WEBHOOK_SECRET_HEADER) ?? "";
 
 const UNAUTHORIZED = [
   PrintfulWebhookSignatureInvalidError,
@@ -54,8 +63,10 @@ const UNAUTHORIZED = [
   DapiWebhookSignatureInvalidError,
   DapiWebhookSignatureNotConfiguredError,
   DapiWebhookTimestampError,
+  SimplyPrintWebhookSecretInvalidError,
+  SimplyPrintWebhookSecretNotConfiguredError,
 ];
-const BAD_BODY = [PrintfulWebhookPayloadParseError, Slant3dWebhookPayloadParseError, DapiWebhookPayloadParseError];
+const BAD_BODY = [PrintfulWebhookPayloadParseError, Slant3dWebhookPayloadParseError, DapiWebhookPayloadParseError, SimplyPrintWebhookPayloadParseError];
 
 /**
  * True when `err` is one of `classes`. Checked by `instanceof` and by name: in

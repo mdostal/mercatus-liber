@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runX3dSync } from "../lib/fulfillment-sync";
+import { runFulfillmentSync, runX3dSync } from "../lib/fulfillment-sync";
 
 // Made up for this test and joined at runtime so secret scanners do not read it as a real secret.
 const SECRET = ["sync", "made-up-test-secret"].join("_");
@@ -24,5 +24,20 @@ describe("runX3dSync", () => {
     expect((await runX3dSync(null, SECRET, `Bearer ${SECRET}`)).status).toBe(404);
     expect((await runX3dSync(poll, undefined, "Bearer ")).status).toBe(404);
     expect((await runX3dSync(poll, "", "Bearer ")).status).toBe(404);
+  });
+});
+
+describe("runFulfillmentSync for SimplyPrint", () => {
+  const notice = { noticeId: "n", orderId: "order-1", skuIds: ["sku-dragon"], queueItemId: "430001", printState: "printed" };
+  const pollQueue = async () => ({ checked: 4, published: 1, finished: [notice], attention: [], failed: [] });
+
+  it("also counts the prints found finished, and names no order in the response", async () => {
+    expect(await runFulfillmentSync(pollQueue, SECRET, `Bearer ${SECRET}`)).toEqual({ status: 200, body: { checked: 4, published: 1, failed: 0, finished: 1 } });
+  });
+
+  it("is closed without the secret and absent when SimplyPrint is not configured", async () => {
+    expect((await runFulfillmentSync(pollQueue, SECRET, "Bearer nope")).status).toBe(401);
+    expect((await runFulfillmentSync(null, SECRET, `Bearer ${SECRET}`)).status).toBe(404);
+    expect((await runFulfillmentSync(pollQueue, undefined, "Bearer ")).status).toBe(404);
   });
 });

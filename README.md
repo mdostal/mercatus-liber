@@ -93,7 +93,7 @@ never run against a real account.
 | Payments | Stripe (in `payments`) | Live in sandbox mode |
 | Payments | `adapter-paypal` | Unverified |
 | Print on demand | `adapter-printful`, `adapter-printify` | Unverified; activates when credentials are set |
-| 3D print on demand | `adapter-slant3d`, `adapter-3dapi`, `adapter-x3d` (multicolour) | Unverified; activates when credentials are set. See `docs/integrations/3d-print-on-demand.md` |
+| 3D print on demand | `adapter-slant3d`, `adapter-3dapi`, `adapter-x3d` (multicolour), `adapter-simplyprint` (the store's own printers, queued through SimplyPrint) | Unverified; activates when credentials are set. See `docs/integrations/3d-print-on-demand.md` |
 | Shipping | `adapter-shippo` | Unverified |
 | Shipping | `adapter-shipstation` | Unverified |
 | Images | `adapter-cloudinary` | Unverified |
