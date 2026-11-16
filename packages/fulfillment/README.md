@@ -29,6 +29,8 @@ const lines = await fulfillment.listForOrder("order-1");
 - `createFulfillmentService(deps)`: `listForOrder`, `submitOrder`, `markLineShipped`.
 - `createManualFulfillmentAdapter()`, `MANUAL_FULFILLMENT_PROVIDER`.
 - `createInMemoryFulfillmentRoutingRepository()`, `FulfillmentRoutingRepository`.
+- `createProviderOrderStatusRecorder({ links, events })`, `withProviderOrderLinks`, `createInMemoryProviderOrderLinkRepository()`: provider order links and the `fulfillment.order.status_changed` event.
+- `recordSelfShipment({ links, recorder, orderId, skuIds, trackingNumber, carrier, labelId })`, `recordSelfShipmentVoided({ recorder, labelId })`, `selfShipmentLinkId`: the same event for lines the store ships itself (provider `"manual"`). The link id is the label id when given, otherwise the tracking number.
 - `OrderNotFoundForFulfillmentError`, `NoAdapterForProviderError`, `ManualStatusUpdateNotSupportedError`, `FulfillmentLineNotFoundError`.
 
 ## Implementing an adapter

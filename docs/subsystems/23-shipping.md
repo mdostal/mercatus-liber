@@ -168,6 +168,14 @@ fulfillment views and shipped emails pick it up.
   recording fails before any line was written, `buy` voids the label (when the adapter can) and
   throws `LabelRecordedPartiallyError` carrying the label and the void result. If some lines
   were written, it keeps the label and the error lists those lines.
+- **Announcing the shipment**: `ShipmentRecorder` has two optional hooks. `labelRecorded({ orderId,
+  skuIds, label })` runs once per bought label after every line is marked, and `labelVoided(labelId)`
+  runs after the provider accepted a void. A store points them at fulfillment's `recordSelfShipment`
+  and `recordSelfShipmentVoided`, which publish `fulfillment.order.status_changed` (provider
+  `"manual"`) for those lines; this package still does not import fulfillment. A hook that throws
+  does not undo anything: `buy` still returns `purchased: true` with `labelRecordedError`, and `void`
+  returns `voided: true` with `labelVoidedError`. A void Shippo reports as `pending` is announced
+  straight away, before the refund settles.
 - **Voiding**: `ShippingAdapter.voidLabel` is optional and `ShippingLabel.labelId` carries the
   provider's own id. Shippo implements it with `POST /refunds` (a refund request that Shippo may
   settle later, so the result reports `pending`). The manual adapter has no `voidLabel`.
@@ -218,9 +226,15 @@ What *is* genuinely verified without a live credential:
   visibility, but no `/admin/orders` (or dedicated) page yet calls `getRates`/`buyLabel`
   directly the way `fulfillment`'s admin actions call `submitOrder`/`markShipped` — a reasonable
   later addition building on this real contract, not required for this epic's scope.
-- **Live Shippo webhook receipt** — Shippo supports webhook-driven tracking updates, but no
-  route in `apps/reference-storefront` receives one and no real Shippo account exists in this
-  environment to send a real webhook from.
+- **Receiving Shippo webhooks** — `@mercatus-liber/adapter-shippo` exports a mapper,
+  `shippoTrackingUpdateFrom(body)`, from Shippo's `track_updated` body to a status update for the
+  self-shipped parcel's link (`DELIVERED` → `delivered`; `TRANSIT`, `RETURNED`, `FAILURE` →
+  `shipped`; `PRE_TRANSIT`, `UNKNOWN` → nothing). No route in `apps/reference-storefront` receives
+  one, on purpose: Shippo does not sign webhooks unless the account asks Shippo to set up HMAC
+  signing, so an open route would let anyone mark an order delivered. A store adds its own route
+  and protects it (a secret token in the webhook URL, Shippo's published IP list, or Shippo's HMAC
+  signing); the adapter's README says how. The body shape is from Shippo's docs and has not been
+  checked against a real delivery.
 - **Persisting purchased labels/rates anywhere** — `buyLabel`'s result is returned to its
   caller; this subsystem owns no `LabelRecord` persistence layer of its own (unlike
   `fulfillment`'s `FulfillmentLineRecord`) — a real deployment wanting a durable purchase

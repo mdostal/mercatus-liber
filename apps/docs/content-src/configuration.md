@@ -162,6 +162,7 @@ harness against fake/injected provider responses.
 | Variable | Effect |
 |---|---|
 | `PRINTFUL_HOLD_ORDERS` | `true` leaves new Printful orders as drafts instead of confirming them. |
+| `PRINTFUL_WEBHOOK_SECRET_KEY` | The hex `secret_key` Printful returned when the v2 webhook was set up. Turns on the Printful webhook receiver at `/api/demo/<demoSlug>/fulfillment/printful/webhook`. |
 | `PRINTIFY_HOLD_ORDERS` | `true` leaves new Printify orders on hold instead of sending them to production. |
 
 Without these, orders go straight to production and are charged. SKUs also need a provider catalog mapping before they can route to either provider; see [fulfillment](../../docs/subsystems/22-fulfillment.md).

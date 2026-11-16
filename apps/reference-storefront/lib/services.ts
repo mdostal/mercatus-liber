@@ -34,12 +34,12 @@ import {
   createPostgresWebhookDeliveryLogStore,
 } from "@mercatus-liber/adapter-postgres";
 import { createPaypalPaymentAdapter } from "@mercatus-liber/adapter-paypal";
-import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom } from "@mercatus-liber/adapter-printful";
+import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom, printfulOrderStatusUpdateFrom } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, printifyCatalogTargetsFrom, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSlant3dFulfillmentAdapter, slant3dCatalogTargetsFrom, slant3dOrderStatusUpdateFrom, SLANT3D_PROVIDER } from "@mercatus-liber/adapter-slant3d";
 import { createX3dFulfillmentAdapter, createX3dStatusPoller, x3dCatalogTargetsFrom, x3dOrderStoreFrom, X3D_PROVIDER, type X3dPollResult } from "@mercatus-liber/adapter-x3d";
 import { createDapiFulfillmentAdapter, dapiCatalogTargetsFrom, dapiOrderStatusUpdateFrom, dapiSkuIdsFrom, DAPI_PROVIDER } from "@mercatus-liber/adapter-3dapi";
-import { dapiSignatureFrom, FULFILLMENT_PROVIDER_EVENT, slant3dSignatureFrom, type FulfillmentProviderEvent, type FulfillmentWebhookReceivers } from "./fulfillment-webhooks";
+import { dapiSignatureFrom, FULFILLMENT_PROVIDER_EVENT, printfulSignatureFrom, slant3dSignatureFrom, type FulfillmentProviderEvent, type FulfillmentWebhookReceivers } from "./fulfillment-webhooks";
 import { createQuickBooksAccountingSyncAdapter, QUICKBOOKS_PROVIDER } from "@mercatus-liber/adapter-quickbooks";
 import { createSanityAdapter } from "@mercatus-liber/adapter-sanity";
 import { createCloudinaryFetchAdapter } from "@mercatus-liber/adapter-cloudinary";
@@ -119,7 +119,10 @@ import {
   createInMemoryProviderOrderLinkRepository,
   createProviderOrderStatusRecorder,
   externalOrderIdsFrom,
+  recordSelfShipment,
   withProviderOrderLinks,
+  type ProviderOrderStatusOutcome,
+  type SelfShipment,
 } from "@mercatus-liber/fulfillment";
 import {
   createDefaultBiAdapter,
@@ -253,6 +256,8 @@ export interface Services {
   fulfillmentWebhooks: FulfillmentWebhookReceivers;
   /** Set when X3D Studios is configured. X3D sends no webhooks, so this reads its open orders and publishes what changed. */
   pollX3dOrders: (() => Promise<X3dPollResult>) | null;
+  /** Publishes `fulfillment.order.status_changed` (provider "manual", status "shipped") for lines the store shipped itself. */
+  recordSelfShipment(shipment: SelfShipment): Promise<ProviderOrderStatusOutcome>;
   /**
    * Exposed alongside `fulfillment` (not just wrapped inside it) so the
    * admin fulfillment surface can show a line's routed provider (defaulting
@@ -1085,7 +1090,35 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   const pollX3dOrders = x3dAdapter
     ? createX3dStatusPoller({ getOrder: x3dAdapter.getX3dOrder, links: providerOrderLinks, record: (update) => providerOrderStatus.record(X3D_PROVIDER, update) }).poll
     : null;
+  // Printful: built here for the same reason. Its webhooks are verified with
+  // the hex secret key Printful returned when the webhook was set up
+  // (PRINTFUL_WEBHOOK_SECRET_KEY); without it the adapter refuses every
+  // delivery and no receiver is listed.
+  const printfulAdapter = process.env.PRINTFUL_API_TOKEN
+    ? createPrintfulFulfillmentAdapter({
+        apiToken: process.env.PRINTFUL_API_TOKEN,
+        ...(process.env.PRINTFUL_STORE_ID ? { storeId: process.env.PRINTFUL_STORE_ID } : {}),
+        async resolveRecipient(orderId) {
+          const order = await checkout.getOrder(orderId);
+          if (!order) {
+            throw new Error(`resolveRecipient: no such order "${orderId}"`);
+          }
+          return {
+            name: order.shippingInfo.name,
+            email: order.shippingInfo.email,
+            address1: order.shippingInfo.address,
+          };
+        },
+        resolveCatalogTarget: printfulCatalogTargetsFrom(providerCatalogMappings),
+        holdOrders: process.env.PRINTFUL_HOLD_ORDERS === "true",
+        ...(process.env.PRINTFUL_WEBHOOK_SECRET_KEY ? { webhookSecretKeyHex: process.env.PRINTFUL_WEBHOOK_SECRET_KEY } : {}),
+        onWebhookEvent: publishProviderEvent(PRINTFUL_PROVIDER, printfulOrderStatusUpdateFrom),
+      })
+    : null;
   const fulfillmentWebhooks: FulfillmentWebhookReceivers = {
+    ...(printfulAdapter?.handleWebhookEvent && process.env.PRINTFUL_WEBHOOK_SECRET_KEY
+      ? { [PRINTFUL_PROVIDER]: { signatureFrom: printfulSignatureFrom, handle: printfulAdapter.handleWebhookEvent.bind(printfulAdapter) } }
+      : {}),
     ...(slant3dAdapter && process.env.SLANT3D_WEBHOOK_SECRET
       ? { [SLANT3D_PROVIDER]: { signatureFrom: slant3dSignatureFrom, handle: (body, sig) => slant3dAdapter.handleWebhookEvent(body, sig) } }
       : {}),
@@ -1098,27 +1131,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     routing: fulfillmentRouting,
     adapters: {
       [MANUAL_FULFILLMENT_PROVIDER]: createManualFulfillmentAdapter(),
-      ...(process.env.PRINTFUL_API_TOKEN
-        ? {
-            [PRINTFUL_PROVIDER]: createPrintfulFulfillmentAdapter({
-              apiToken: process.env.PRINTFUL_API_TOKEN,
-              ...(process.env.PRINTFUL_STORE_ID ? { storeId: process.env.PRINTFUL_STORE_ID } : {}),
-              async resolveRecipient(orderId) {
-                const order = await checkout.getOrder(orderId);
-                if (!order) {
-                  throw new Error(`resolveRecipient: no such order "${orderId}"`);
-                }
-                return {
-                  name: order.shippingInfo.name,
-                  email: order.shippingInfo.email,
-                  address1: order.shippingInfo.address,
-                };
-              },
-              resolveCatalogTarget: printfulCatalogTargetsFrom(providerCatalogMappings),
-              holdOrders: process.env.PRINTFUL_HOLD_ORDERS === "true",
-            }),
-          }
-        : {}),
+      ...(printfulAdapter ? { [PRINTFUL_PROVIDER]: linked(printfulAdapter, PRINTFUL_PROVIDER) } : {}),
       // `PRINTIFY_API_TOKEN` and `PRINTIFY_SHOP_ID` both required and truthy
       // (unlike Printful's single-token gate) -- real Printify accounts can
       // have multiple shops with no auto-discovery endpoint (adapter-printify's
@@ -1311,6 +1324,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     fulfillment,
     fulfillmentWebhooks,
     pollX3dOrders,
+    recordSelfShipment: (shipment) => recordSelfShipment({ links: providerOrderLinks, recorder: providerOrderStatus, ...shipment }),
     fulfillmentRouting,
     shipping,
     media,

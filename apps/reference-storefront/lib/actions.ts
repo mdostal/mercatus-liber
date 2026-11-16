@@ -1032,11 +1032,13 @@ export async function markFulfillmentLineShippedAction(formData: FormData): Prom
   const trackingNumber = String(formData.get("trackingNumber") ?? "").trim();
   const trackingUrl = String(formData.get("trackingUrl") ?? "").trim();
 
-  const { fulfillment } = await getServicesForDemo(demoSlug);
+  const { fulfillment, recordSelfShipment } = await getServicesForDemo(demoSlug);
   await fulfillment.markLineShipped(orderId, skuId, {
     trackingNumber: trackingNumber.length > 0 ? trackingNumber : undefined,
     trackingUrl: trackingUrl.length > 0 ? trackingUrl : undefined,
   });
+  // The same event a provider's "shipped" webhook produces, so one subscriber covers both. The form has no carrier field.
+  await recordSelfShipment({ orderId, skuIds: [skuId], trackingNumber: trackingNumber || null });
   revalidatePath(`/demo/${demoSlug}/admin/orders`);
 }
 

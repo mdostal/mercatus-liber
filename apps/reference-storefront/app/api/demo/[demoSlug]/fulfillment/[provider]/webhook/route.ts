@@ -5,10 +5,11 @@ import { receiveFulfillmentWebhook } from "../../../../../../../lib/fulfillment-
 import { getServicesForDemo } from "../../../../../../../lib/services";
 
 /**
- * Status webhooks from a print-on-demand provider (`slant3d` or `3dapi`) for
- * one demo store. Point the provider's webhook at
+ * Status webhooks from a print-on-demand provider (`printful`, `slant3d` or
+ * `3dapi`) for one demo store. Point the provider's webhook at
  * `https://<host>/api/demo/<demoSlug>/fulfillment/<provider>/webhook` and set
- * its secret (SLANT3D_WEBHOOK_SECRET or DAPI_WEBHOOK_SECRET); without the
+ * its secret (PRINTFUL_WEBHOOK_SECRET_KEY, SLANT3D_WEBHOOK_SECRET or
+ * DAPI_WEBHOOK_SECRET); without the
  * secret the provider is not listed and this answers 404. The raw body is read
  * as text because the signature covers the exact bytes sent.
  */

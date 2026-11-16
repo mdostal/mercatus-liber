@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { ProviderOrderStatusUpdate } from "@mercatus-liber/fulfillment";
 import { PRINTFUL_WEBHOOK_EVENT_TYPES, type PrintfulWebhookEventType } from "./printful-types.js";
 
 /**
@@ -133,4 +134,89 @@ export function parsePrintfulWebhookPayload(rawBody: string | Buffer): PrintfulW
     return { type: payload.type, data: payload.data };
   }
   return { type: "other", rawType: payload.type, data: payload.data };
+}
+
+/**
+ * The signature string `handleWebhookEvent` expects, read from a request's
+ * headers: the value of `x-pf-webhook-signature` (see verifyPrintfulSignature).
+ * Header names are matched without regard to case. A missing header gives an
+ * empty string, which fails verification.
+ */
+export function printfulWebhookSignatureFrom(headers: Headers | Record<string, string | string[] | undefined>): string {
+  if (typeof (headers as Headers).get === "function") return (headers as Headers).get("x-pf-webhook-signature") ?? "";
+  const entry = Object.entries(headers as Record<string, string | string[] | undefined>).find(([key]) => key.toLowerCase() === "x-pf-webhook-signature");
+  const value = entry?.[1];
+  return (Array.isArray(value) ? value[0] : value) ?? "";
+}
+
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+const textOrNull = (value: unknown): string | null => (typeof value === "string" && value.trim() ? value.trim() : typeof value === "number" ? String(value) : null);
+
+/**
+ * What a webhook says about an order's fulfillment, for
+ * @mercatus-liber/fulfillment's createProviderOrderStatusRecorder, or null when
+ * it says nothing in line-status terms or names no Printful order.
+ *
+ * Both of Printful's webhook generations are read, because for this purpose
+ * they differ only in the event name and in what the shipment carries:
+ *
+ * - `shipment_sent` (v2) and `package_shipped` (v1) give "shipped", with
+ *   `data.shipment.tracking_number`. The v1 shipment also has a `carrier`; the
+ *   v2 webhook shipment documents none, so the carrier is null there.
+ * - `shipment_delivered` (v2) gives "delivered".
+ * - `order_failed` and `order_canceled` (same name in both) give "unfulfilled".
+ * - `shipment_returned` (v2) and `package_returned` (v1) give "shipped". There
+ *   is no "returned" line status, and the parcel did ship. For an order already
+ *   recorded as shipped with the same tracking number the recorder sees no
+ *   change and publishes nothing, so a return does not send a second "shipped"
+ *   notice. A store that wants to act on returns reads the raw event instead.
+ * - `order_created`, `order_updated` and everything else give null. An order's
+ *   own status says less than the shipment events do ("partial" covers an order
+ *   with one of two parcels sent), and mapping it could move a shipped order
+ *   back.
+ *
+ * `externalOrderId` is Printful's order id (`data.order.id`). `orderId` is the
+ * order's `external_id`, which is the store's order id when the order was
+ * placed by this adapter; an order made in Printful's dashboard has none.
+ *
+ * An order sent in two parcels produces two "shipped" updates with different
+ * tracking numbers, and each is published.
+ *
+ * `handleWebhookEvent`'s default verifier checks the v2 signature header. The
+ * v1 docs describe no signature, so a v1 delivery only gets this far through a
+ * custom `verifyWebhookSignature`.
+ *
+ * The field names are from Printful's published docs (see
+ * test/webhook-fixtures.ts). No payload has been captured from a live Printful
+ * account by this repo.
+ */
+export function printfulOrderStatusUpdateFrom(event: PrintfulWebhookEvent): ProviderOrderStatusUpdate | null {
+  const data = isObject(event.data) ? event.data : {};
+  const order = isObject(data.order) ? data.order : null;
+  const externalOrderId = textOrNull(order?.id);
+  if (!externalOrderId) return null;
+  const shipment = isObject(data.shipment) ? data.shipment : {};
+
+  const update = (status: ProviderOrderStatusUpdate["status"], withTracking: boolean): ProviderOrderStatusUpdate => ({
+    externalOrderId,
+    orderId: textOrNull(order?.external_id),
+    status,
+    trackingNumber: withTracking ? textOrNull(shipment.tracking_number) : null,
+    carrier: withTracking ? textOrNull(shipment.carrier) : null,
+  });
+
+  switch (event.type === "other" ? event.rawType : event.type) {
+    case "shipment_sent":
+    case "package_shipped":
+    case "shipment_returned":
+    case "package_returned":
+      return update("shipped", true);
+    case "shipment_delivered":
+      return update("delivered", true);
+    case "order_failed":
+    case "order_canceled":
+      return update("unfulfilled", false);
+    default:
+      return null;
+  }
 }

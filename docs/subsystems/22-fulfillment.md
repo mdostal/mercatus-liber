@@ -305,11 +305,69 @@ store order, and turns provider status updates into one store event.
   for a provider order with no link publishes nothing. A "shipped" that arrives after "delivered"
   does not move the order back.
 - Each webhook-capable adapter exports a mapper from its own event to that update:
-  `slant3dOrderStatusUpdateFrom` and `dapiOrderStatusUpdateFrom`. Printful and Printify have none yet.
+  `slant3dOrderStatusUpdateFrom`, `dapiOrderStatusUpdateFrom` and `printfulOrderStatusUpdateFrom`.
+  Printify has none yet.
+
+### Printful
+
+`printfulOrderStatusUpdateFrom(event)` (`packages/adapter-printful/src/webhook.ts`) reads both of
+Printful's webhook generations:
+
+| Event | Status | Notes |
+| --- | --- | --- |
+| `shipment_sent` (v2), `package_shipped` (v1) | `shipped` | Tracking number from `data.shipment.tracking_number`. Carrier only from v1; the v2 webhook shipment documents none. |
+| `shipment_delivered` (v2) | `delivered` | |
+| `order_failed`, `order_canceled` | `unfulfilled` | |
+| `shipment_returned` (v2), `package_returned` (v1) | `shipped` | There is no "returned" line status. For an order already recorded as shipped this publishes nothing. Read the raw `fulfillment.provider_event` to act on returns. |
+| `order_created`, `order_updated`, anything else | none | |
+
+`externalOrderId` is Printful's order id; `orderId` is the order's `external_id`, which this adapter
+sets to the store's order id at submit. An order sent in two parcels publishes two "shipped" changes
+with different tracking numbers.
+
+The storefront wraps the Printful adapter with `withProviderOrderLinks` and lists a `printful`
+webhook receiver when `PRINTFUL_WEBHOOK_SECRET_KEY` (the hex `secret_key` from `POST /v2/webhooks`)
+is set. The signature is read from `x-pf-webhook-signature`; a bad or missing one answers 401, and
+without the secret the adapter refuses every delivery. That signature scheme is v2's. Printful's v1
+docs describe no signature, so v1 events only reach the mapper through a custom
+`verifyWebhookSignature`.
+
+### Lines the store ships itself
+
+`packages/fulfillment/src/self-shipments.ts` makes self-shipped lines publish the same event, so one
+subscriber can send every "your order shipped" email.
+
+- `recordSelfShipment({ links, recorder, orderId, skuIds, trackingNumber, carrier, labelId })`
+  publishes `fulfillment.order.status_changed` with provider `"manual"`, status `shipped`, the
+  tracking number, the carrier and the lines' `skuIds`.
+- The manual provider has no order id of its own, so the parcel is linked under a made-up one
+  (`selfShipmentLinkId`): the label id when given, otherwise the tracking number, otherwise
+  `order:<orderId>:<skuIds>`. That is the event's `externalOrderId`.
+- Recording the same parcel twice publishes once. Lines marked one at a time under one tracking
+  number (no label id) share a link: the first call publishes, later calls add their lines to it.
+- `recordSelfShipmentVoided({ recorder, labelId })` publishes a change back to `submitted` for the
+  lines that label covered. It needs the shipment to have been recorded with that label id. The
+  event still carries the voided label's tracking number, so read `status`. The manual adapter's own
+  line record stays "shipped"; it has no way back. A voided link stays in `listOpen("manual")`.
+- `@mercatus-liber/shipping` and this package still do not depend on each other. A store calls
+  these from the `labelRecorded` and `labelVoided` hooks of shipping's `createOrderLabelService`
+  (see `docs/subsystems/23-shipping.md`).
+- The reference storefront calls `recordSelfShipment` from its "mark shipped" admin action (one line,
+  no carrier field on that form). It has no label-buying page, so the label hooks are exercised only
+  in `apps/reference-storefront/test/self-shipment-events.test.ts`.
+- A later "delivered" comes from the shipping provider's tracking webhook: see
+  `shippoTrackingUpdateFrom` in `docs/subsystems/23-shipping.md`.
 
 `fulfillment.order.status_changed` is in `@mercatus-liber/webhooks`' `KNOWN_EVENT_TYPES`, so a Store
 API webhook subscription can ask for it. Nothing in the reference storefront sends the customer an
 email on it; that is a subscriber a store adds.
 
-The reference storefront wires all of this for Slant 3D, 3DAPI and Printify. None of it has run
-against a real provider delivery.
+The reference storefront wires all of this for Printful, Slant 3D, 3DAPI and Printify.
+
+**What is verified live: nothing in this section.** No webhook delivery from a real Printful, Slant
+3D, 3DAPI or Shippo account has been received by this repo. The Printful and Shippo payload shapes
+are field names taken from the providers' published docs on 2026-11-15 (the fixture files in
+`packages/adapter-printful/test/webhook-fixtures.ts` and `packages/adapter-shippo/test/webhook-fixtures.ts`
+say exactly which pages); every value in them is made up. Two things in particular are unconfirmed:
+which bytes Printful signs (the adapter signs the raw body), and whether Shippo's `track_updated`
+body carries the `transaction` id for labels bought through the API.

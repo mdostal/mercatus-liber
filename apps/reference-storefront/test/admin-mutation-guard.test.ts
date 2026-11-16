@@ -140,8 +140,15 @@ const mockAdminAuth: AdminAuthAdapter = {
   async setAdminUserRole() {},
 };
 
+/** What markFulfillmentLineShippedAction passed to services.recordSelfShipment. */
+const selfShipments: unknown[] = [];
+
 vi.mock("../lib/services.js", () => ({
   getServicesForDemo: vi.fn(async () => ({
+    recordSelfShipment: async (shipment: unknown) => {
+      selfShipments.push(shipment);
+      return "published";
+    },
     adminAuth: mockAdminAuth,
     promotions,
     bundles,
@@ -491,6 +498,7 @@ describe("admin mutation guard (admin-auth-03)", () => {
       expect(record?.status).toBe("shipped");
       expect(record?.trackingNumber).toBe("1Z999AA10123456784");
       expect(record?.trackingUrl).toBe("https://example.com/track/1Z999AA10123456784");
+      expect(selfShipments).toContainEqual({ orderId: "guard-test-order", skuIds: ["guard-test-sku"], trackingNumber: "1Z999AA10123456784" });
     });
 
     it("succeeds for an owner-role session", async () => {

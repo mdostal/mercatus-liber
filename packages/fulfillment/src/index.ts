@@ -4,6 +4,7 @@ export * from "./catalog-mapping.js";
 export * from "./manual-adapter.js";
 export * from "./service.js";
 export * from "./provider-orders.js";
+export * from "./self-shipments.js";
 
 // order-lookup-compat.ts is deliberately NOT re-exported here: it exists purely as
 // a compile-time proof (checked by `tsc -p tsconfig.json --noEmit`, i.e. every build
