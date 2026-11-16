@@ -77,6 +77,29 @@ function formatMessages(messages: ShippoApiMessage[] | undefined): string {
 export function createShippoShippingAdapter(config: ShippoShippingAdapterConfig): ShippingAdapter {
   const client = config.httpClient ?? createShippoHttpClient({ apiToken: config.apiToken, ...(config.baseUrl !== undefined ? { baseUrl: config.baseUrl } : {}), ...(config.fetchImpl !== undefined ? { fetchImpl: config.fetchImpl } : {}) });
   const labelFileType = config.labelFileType ?? "PDF";
+  // The carrier of each rate this instance quoted, so a bought label can name its carrier without another request.
+  const quotedCarriers = new Map<string, string>();
+
+  /**
+   * The carrier of a bought label. Shippo's real transaction response gives
+   * only the rate's id, so this looks in three places: the response itself
+   * (the documented object form), what getRates quoted, then `GET /rates/{id}`.
+   * It never throws: by this point the label is bought and paid for, and
+   * losing it over a missing carrier name would be worse than reporting
+   * "unknown".
+   */
+  async function carrierOf(rate: string | { provider?: string } | undefined, rateId: string, trackingNumber: string): Promise<string> {
+    if (typeof rate === "object" && rate?.provider) return rate.provider;
+    const quoted = quotedCarriers.get(rateId);
+    if (quoted) return quoted;
+    try {
+      const fetched = await client.getRate?.(rateId);
+      if (fetched?.provider) return fetched.provider;
+    } catch {
+      // Fall through: the label is bought either way.
+    }
+    return detectCarrierFromTrackingNumber(trackingNumber)?.carrier ?? "unknown";
+  }
 
   return {
     async getRates(input: GetRatesInput): Promise<RateQuoteResult> {
@@ -95,6 +118,7 @@ export function createShippoShippingAdapter(config: ShippoShippingAdapterConfig)
         };
       }
 
+      for (const rate of shipment.rates) quotedCarriers.set(rate.object_id, rate.provider);
       return { available: true, rates: shipment.rates.map(mapRate) };
     },
 
@@ -114,17 +138,13 @@ export function createShippoShippingAdapter(config: ShippoShippingAdapterConfig)
         // both), kept as a guard against trusting an inconsistent real API response rather than fabricating values.
         throw new Error(`buyLabel: Shippo transaction ${transaction.object_id} reported status SUCCESS but omitted label_url/tracking_number -- refusing to fabricate them.`);
       }
-      if (!transaction.rate?.provider) {
-        throw new Error(`buyLabel: Shippo transaction ${transaction.object_id} reported status SUCCESS but omitted rate.provider -- refusing to fabricate the label's carrier.`);
-      }
-
       return {
         purchased: true,
         label: {
           labelUrl: transaction.label_url,
           trackingNumber: transaction.tracking_number,
           trackingUrl: transaction.tracking_url_provider ?? null,
-          carrier: transaction.rate.provider,
+          carrier: await carrierOf(transaction.rate, rateId, transaction.tracking_number),
           labelId: transaction.object_id,
         },
       };
@@ -156,7 +176,16 @@ export function createShippoShippingAdapter(config: ShippoShippingAdapterConfig)
         return { status: "unknown", lastUpdate: null, events: [], detectedCarrier: detected?.carrier ?? null, carrierTrackingUrl: detected?.url ?? null };
       }
 
-      const response = await client.getTrackingStatus(carrierToken, trackingNumber);
+      let response;
+      try {
+        response = await client.getTrackingStatus(carrierToken, trackingNumber);
+      } catch (err) {
+        // Shippo refused the lookup. With a test token it does so for every real carrier
+        // ('usps is not a valid test tracking carrier. Please use 'shippo'', HTTP 400, seen 2026-11-16).
+        // A refusal is "nothing to report", not a failure of the caller's request; a 5xx or a network error still throws.
+        if (!(err instanceof ShippoApiError && err.status >= 400 && err.status < 500)) throw err;
+        response = null;
+      }
       if (!response) {
         return { status: "unknown", lastUpdate: null, events: [], detectedCarrier: detected.carrier, carrierTrackingUrl: detected.url };
       }

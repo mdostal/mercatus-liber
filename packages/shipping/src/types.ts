@@ -21,6 +21,13 @@ export interface ShippingAddress {
   /** ISO 3166-1 alpha-2 country code, e.g. "US". */
   country: string;
   phone?: string | null;
+  /**
+   * A contact email for this address. Some carriers will not sell a label
+   * without one on the sender: USPS through Shippo answers
+   * 'Attribute "address_from.email" must not be empty' (seen on a real
+   * test-mode purchase, 2026-11-16). Set it on the store's ship-from address.
+   */
+  email?: string | null;
 }
 
 /** The physical package being shipped. Weight is the one field every carrier rate/label API requires; dimensions are optional (some carriers rate on weight alone for small parcels). */

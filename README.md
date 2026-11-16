@@ -94,7 +94,7 @@ never run against a real account.
 | Payments | `adapter-paypal` | Unverified |
 | Print on demand | `adapter-printful`, `adapter-printify` | Unverified; activates when credentials are set |
 | 3D print on demand | `adapter-slant3d`, `adapter-3dapi`, `adapter-x3d` (multicolour), `adapter-simplyprint` (the store's own printers, queued through SimplyPrint) | Unverified; activates when credentials are set. See `docs/integrations/3d-print-on-demand.md` |
-| Shipping | `adapter-shippo` | Unverified |
+| Shipping | `adapter-shippo` | Rates, label and void verified against Shippo's API in test mode; not with a live token |
 | Shipping | `adapter-shipstation` | Unverified |
 | Images | `adapter-cloudinary` | Unverified |
 | Accounting | `adapter-quickbooks` | Unverified |

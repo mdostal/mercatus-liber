@@ -2,7 +2,7 @@
 
 A `ShippingAdapter` for `@mercatus-liber/shipping` that gets rates, buys labels, and tracks shipments through Shippo.
 
-**Status:** built and tested, credential-gated, and never called against a live Shippo account, so it is unverified against the live provider. Enabled by `SHIPPO_API_TOKEN`. Not yet published to npm; use it from this monorepo via `workspace:*`.
+**Status:** rates, buying a label and voiding it were run against Shippo's real API with a test token on 2026-11-16 (USPS Ground Advantage, San Francisco to San Francisco). No label has been bought with a live token, and the tracking webhook mapper has not received a real delivery. See "What the test-mode run showed" below. Enabled by `SHIPPO_API_TOKEN`. Not yet published to npm; use it from this monorepo via `workspace:*`.
 
 ## Usage
 
@@ -57,3 +57,13 @@ Not verified live: the body shape is from Shippo's published docs (`test/webhook
 - Address and rate mapping helpers such as `toShippoAddress`.
 
 See [docs/subsystems/23-shipping.md](../../docs/subsystems/23-shipping.md) and [integrations.md](../../apps/docs/content-src/integrations.md).
+
+## What the test-mode run showed
+
+Three things in Shippo's real behaviour differed from its reference pages. All three are handled now.
+
+- **The sender needs an email for USPS.** Without one the purchase fails: `Attribute "address_from.email" must not be empty`. Set `email` on the ship-from `ShippingAddress`.
+- **A bought label's `rate` is an id, not an object.** `POST /transactions/` answers with the rate's id as a string, so the carrier is not in the response. The adapter takes it from the rates it quoted, then from `GET /rates/{id}`, and returns the label even if neither names one (`carrier: "unknown"`). It used to throw at this point, after the label was already bought.
+- **A test token cannot track real carriers.** `GET /tracks/usps/...` answers HTTP 400 (`usps is not a valid test tracking carrier. Please use 'shippo'`). `getTrackingStatus` reports `unknown` for a refusal like that instead of throwing.
+
+Also seen: a carrier that is not activated in the Shippo account still returns rates, and fails only at purchase (`The UPS account is not yet registered`). `buyLabel` reports that as `purchased: false` with Shippo's message. A tracking record does carry a `transaction` field, which is what `shippoTrackingUpdateFrom` keys on; whether a real carrier's `track_updated` webhook fills it for an API-bought label is still unconfirmed.

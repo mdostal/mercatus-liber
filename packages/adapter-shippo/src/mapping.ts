@@ -14,6 +14,7 @@ export function toShippoAddress(address: ShippingAddress): ShippoAddress {
     zip: address.postalCode,
     country: address.country,
     ...(address.phone ? { phone: address.phone } : {}),
+    ...(address.email ? { email: address.email } : {}),
   };
 }
 
