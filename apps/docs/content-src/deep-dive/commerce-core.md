@@ -24,6 +24,7 @@ export interface CatalogService {
   createProduct(input: NewProductInput): Promise<Product>;
   /** draft -> active. See docs/subsystems/01-catalog.md open question 1 -- no separate "active but hidden" state yet. */
   publishProduct(id: string): Promise<Product>;
+  unpublishProduct(id: string): Promise<Product>;
   archiveProduct(id: string): Promise<void>;
 
   createSku(input: NewSkuInput): Promise<Sku>;

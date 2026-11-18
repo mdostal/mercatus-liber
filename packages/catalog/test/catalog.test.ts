@@ -150,9 +150,24 @@ describe("catalog service", () => {
     expect((await catalog.getProduct(product.id))?.status).toBe("active");
   });
 
+  it("unpublishes an active product back to draft and announces the change", async () => {
+    const product = await catalog.createProduct({
+      slug: "p4",
+      title: "P4",
+      description: "d",
+      identifyingAttributeKeys: [],
+    });
+    await catalog.publishProduct(product.id);
+    const unpublished = await catalog.unpublishProduct(product.id);
+    expect(unpublished.status).toBe("draft");
+    expect((await catalog.getProduct(product.id))?.status).toBe("draft");
+    expect(emitted.filter((e) => e.event === "catalog.product.updated" && e.payload.id === product.id)).toHaveLength(2);
+  });
+
   it("throws ProductNotFoundError for an unknown product id", async () => {
     await expect(catalog.updateProduct("missing", { title: "x" })).rejects.toThrow(ProductNotFoundError);
     await expect(catalog.archiveProduct("missing")).rejects.toThrow(ProductNotFoundError);
+    await expect(catalog.unpublishProduct("missing")).rejects.toThrow(ProductNotFoundError);
   });
 
   describe("generateSkus + resolveVariant (options-on-a-page)", () => {
