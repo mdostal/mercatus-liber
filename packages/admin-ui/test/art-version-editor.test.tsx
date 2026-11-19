@@ -110,6 +110,7 @@ describe("ArtVersionEditor", () => {
     expect($("[data-version='1'] [data-help]")).toBeNull();
     expect($("[data-version='2'] [data-help]").textContent).toBe("set the pin to 2");
     expect($<HTMLImageElement>("[data-version='1'] img").getAttribute("src")).toBe("/files/card-v1.png");
+    expect($<HTMLImageElement>("[data-version='1'] img").style.background).toBe("");
     await click($<HTMLButtonElement>("[data-version='2'] button"));
     expect($("[data-preview]").textContent).toBe("Your CTO, part-time. | Let's talk.");
     await click(button("Reset to pinned"));
@@ -119,8 +120,11 @@ describe("ArtVersionEditor", () => {
   it("orders a sample of a version on the chosen target, and hides ordering without a handler", async () => {
     const onOrderSample = vi.fn(async () => {});
     const targets = [{ value: "tee|L", label: "Tee, L" }, { value: "hoodie|M", label: "Hoodie, M" }];
-    await render(editor({ onOrderSample, sampleTargets: targets, sampleLabel: "Order sample · $1" }));
+    await render(editor({ onOrderSample, sampleTargets: targets, sampleLabel: "Order sample · $1", previewBackground: "#141414" }));
+    expect($<HTMLImageElement>("[data-version='1'] img").style.background).toBe("rgb(20, 20, 20)");
     const select = $<HTMLSelectElement>("#card-v2-target");
+    // It shrinks inside the card instead of overflowing it.
+    expect(select.style.minWidth).toBe("0");
     await act(async () => {
       select.value = "hoodie|M";
       select.dispatchEvent(new Event("change", { bubbles: true }));

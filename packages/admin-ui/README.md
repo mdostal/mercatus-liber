@@ -38,7 +38,7 @@ import { ArtVersionEditor } from "@mercatus-liber/admin-ui";
 />
 ```
 
-`onSave` and `onOrderSample` may return `{ ok: false, error }` or throw; the message is shown. Fields not listed in `fields` (a template name, a QR target) are kept from the copy as they are. Pass `copy` and `onCopyChange` to control the copy from outside, for example from a `RatingsTable`.
+Print files are usually transparent; pass `previewBackground` (the garment colour) so light art doesn't look faded on the version cards. `onSave` and `onOrderSample` may return `{ ok: false, error }` or throw; the message is shown. Fields not listed in `fields` (a template name, a QR target) are kept from the copy as they are. Pass `copy` and `onCopyChange` to control the copy from outside, for example from a `RatingsTable`.
 
 ## RatingsTable
 

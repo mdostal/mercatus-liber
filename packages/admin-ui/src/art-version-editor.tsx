@@ -45,6 +45,12 @@ export interface ArtVersionEditorProps<T extends Record<string, unknown>> {
   sampleTargets?: SampleTarget[];
   /** Button text for ordering a sample. Default "Order sample". */
   sampleLabel?: string;
+  /**
+   * Painted behind each version's print-file image. Print files are usually
+   * transparent, so light art on a light card looks faded without one; pass
+   * the garment colour, such as "#141414" for black shirts.
+   */
+  previewBackground?: string;
   /** What to tell the owner about putting an unpinned version on sale (it is a code change). */
   pinHelp?: (version: number) => ReactNode;
   /** Controlled copy, for filling the fields from outside (a RatingsTable's "Use this"). Pair with `onCopyChange`. */
@@ -205,6 +211,7 @@ function VersionCard<T extends Record<string, unknown>>({
   sampleTargets = [],
   sampleLabel = "Order sample",
   pinHelp,
+  previewBackground,
 }: ArtVersionEditorProps<T> & { version: EditorArtVersion<T>; pinned: boolean; onEdit: () => void }) {
   const [target, setTarget] = useState(sampleTargets[0]?.value ?? "");
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
@@ -219,7 +226,7 @@ function VersionCard<T extends Record<string, unknown>>({
       data-version={v.version}
       style={{ display: "grid", gridTemplateColumns: v.previewUrl ? "96px 1fr" : "1fr", gap: 12, padding: 12, border: "1px solid var(--color-border, #ccc)", borderRadius: 8, background: "var(--color-surface, #fff)", alignItems: "start" }}
     >
-      {v.previewUrl && <img src={v.previewUrl} alt={`Version ${v.version} print file`} loading="lazy" style={{ width: 96, borderRadius: 6 }} />}
+      {v.previewUrl && <img src={v.previewUrl} alt={`Version ${v.version} print file`} loading="lazy" style={{ width: 96, maxWidth: "100%", borderRadius: 6, ...(previewBackground ? { background: previewBackground } : {}) }} />}
       <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
         <strong>
           v{v.version}
@@ -230,14 +237,14 @@ function VersionCard<T extends Record<string, unknown>>({
           Edit from this
         </button>
         {onOrderSample && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", minWidth: 0 }}>
             {sampleTargets.length > 1 && (
               <select
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
                 aria-label={`What to sample version ${v.version} on`}
                 id={`${artId}-v${v.version}-target`}
-                style={{ ...inputStyle, width: "auto", maxWidth: "100%", flex: "1 1 150px", fontSize: 12, padding: "4px 6px" }}
+                style={{ ...inputStyle, width: "auto", minWidth: 0, maxWidth: "100%", flex: "1 1 150px", fontSize: 12, padding: "4px 6px" }}
               >
                 {sampleTargets.map((t) => (
                   <option key={t.value} value={t.value}>
