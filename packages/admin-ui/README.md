@@ -2,7 +2,7 @@
 
 React components for a store's admin screens. Styled with the theming package's CSS variables (`--color-surface`, `--color-text`, `--color-primary`, `--color-danger`, `--color-text-muted`); data and actions come in as props.
 
-**Status:** started 2026-11-19 from shop.mdostal.com's back-print studio. `PrintCoverage` ships now; `ArtVersionEditor`, `OptionMatrixConfigurator` and `RatingsTable` follow. Not yet published to npm; use it from this monorepo via `workspace:*`.
+**Status:** started 2026-11-19 from shop.mdostal.com's back-print studio. `PrintCoverage`, `ArtVersionEditor` and `RatingsTable` ship now; `OptionMatrixConfigurator` follows. Not yet published to npm; use it from this monorepo via `workspace:*`.
 
 ## PrintCoverage
 
@@ -16,3 +16,34 @@ import { PrintCoverage } from "@mercatus-liber/admin-ui";
 ```
 
 Props: `garment` (flat width and length in inches), `print` (inches), `size` (label), `topInches` (gap below the collar, default 3), `maxWidth` (drawing width in pixels, default 260). The maths is `printCoverage` from `@mercatus-liber/print-art`.
+
+## ArtVersionEditor
+
+Edits print art as text fields with a live preview, saves it as a new immutable version, and lists every version: its note, which one is on the store, "Edit from this", and ordering a sample. Each field shows a character count against its limit; Save is disabled, and the too-long fields are named, while any field is over. Saving never changes what the store sells; that stays a pin in code (see `@mercatus-liber/print-art`).
+
+```tsx
+import { ArtVersionEditor } from "@mercatus-liber/admin-ui";
+
+<ArtVersionEditor<BackCopy>
+  artId="team-mathew"
+  fields={[{ key: "headline1", label: "Headline", max: 30 }, { key: "close", label: "Call to action", max: 60 }]}
+  base={pinnedVersion.copy}
+  pin={1}
+  versions={versions.map((v) => ({ ...v, previewUrl: fileUrl(v.version) }))}
+  preview={(copy) => <BackPreview copy={copy} />}
+  onSave={(copy, note) => saveVersionAction(copy, note)}
+  onOrderSample={(version, target) => orderSampleAction(`team-mathew@v${version}`, target)}
+  sampleTargets={[{ value: "tee|L|large", label: "Tee, L, large back" }]}
+  pinHelp={(v) => <>Set the pin to {v} in code.</>}
+/>
+```
+
+`onSave` and `onOrderSample` may return `{ ok: false, error }` or throw; the message is shown. Fields not listed in `fields` (a template name, a QR target) are kept from the copy as they are. Pass `copy` and `onCopyChange` to control the copy from outside, for example from a `RatingsTable`.
+
+## RatingsTable
+
+Candidates ranked by average score, each with its spread (standard deviation), range and number of ratings; open a row to read every rater's score and reason, highest first. `onUse` adds a "Use this" button per row. `summarizeScores(scores)` gives mean, sd, min and max for building rows.
+
+```tsx
+<RatingsTable rows={rows} caption="30 personas rated each text 1 to 10." onUse={(row) => setCopy({ ...copy, ...linesToFields(row) })} />
+```
