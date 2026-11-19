@@ -1,0 +1,29 @@
+{
+  "name": "@mercatus-liber/print-art",
+  "version": "0.1.0",
+  "description": "Versioned custom print art: immutable numbered versions (code first, then editor-saved), pins that decide what a store sells, print-file names that can only show a saved version, a framework-free print-file handler, a layout catalog and print coverage maths. No rendering code: the store supplies the renderer.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  }
+}

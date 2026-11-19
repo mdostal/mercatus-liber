@@ -34,6 +34,7 @@
     "@mercatus-liber/fulfillment": "workspace:*",
     "@mercatus-liber/internal-bi": "workspace:*",
     "@mercatus-liber/marketing-catalog": "workspace:*",
+    "@mercatus-liber/print-art": "workspace:*",
     "@mercatus-liber/promotions": "workspace:*",
     "@mercatus-liber/recommendations": "workspace:*",
     "@mercatus-liber/reviews": "workspace:*",

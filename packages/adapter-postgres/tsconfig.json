@@ -18,6 +18,7 @@
     { "path": "../fulfillment" },
     { "path": "../internal-bi" },
     { "path": "../marketing-catalog" },
+    { "path": "../print-art" },
     { "path": "../promotions" },
     { "path": "../recommendations" },
     { "path": "../reviews" },
