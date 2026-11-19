@@ -2,7 +2,7 @@
 
 React components for a store's admin screens. Styled with the theming package's CSS variables (`--color-surface`, `--color-text`, `--color-primary`, `--color-danger`, `--color-text-muted`); data and actions come in as props.
 
-**Status:** started 2026-11-19 from shop.mdostal.com's back-print studio. `PrintCoverage`, `ArtVersionEditor` and `RatingsTable` ship now; `OptionMatrixConfigurator` follows. Not yet published to npm; use it from this monorepo via `workspace:*`.
+**Status:** started 2026-11-19 from shop.mdostal.com's back-print studio. `PrintCoverage`, `ArtVersionEditor`, `RatingsTable` and `OptionMatrixConfigurator` ship now. Not yet published to npm; use it from this monorepo via `workspace:*`.
 
 ## PrintCoverage
 
@@ -47,3 +47,24 @@ Candidates ranked by average score, each with its spread (standard deviation), r
 ```tsx
 <RatingsTable rows={rows} caption="30 personas rated each text 1 to 10." onUse={(row) => setCopy({ ...copy, ...linesToFields(row) })} />
 ```
+
+## OptionMatrixConfigurator
+
+Pick a value for each option as chips, see images of exactly that combination, and add it to the cart, for example a sample of a garment in a design, colour, size and back print. An option's `values` can be a function of the choices made in earlier options; when a choice removes a later value, that option moves to its first available one, and an option with no values is hidden. `resolveMatrixSelection(options, wanted)` is the same rule without React.
+
+```tsx
+<OptionMatrixConfigurator
+  options={[
+    { key: "design", label: "Design", values: designs.map((d) => ({ id: d.id, label: d.name, badge: d.drop ? "drop" : undefined, description: d.blurb })) },
+    { key: "color", label: "Color", values: (s) => colorsFor(s.design).map((c) => ({ id: c.name, label: c.name, swatch: c.hex })) },
+    { key: "size", label: "Size", values: sizes.map((id) => ({ id, label: id })) },
+    { key: "back", label: "Back", values: (s) => backsFor(s.color) },
+  ]}
+  images={(s) => [{ url: frontUrl(s), alt: "Front", caption: "Front: mockup" }, { url: backUrl(s), alt: "Back" }]}
+  aside={(s) => <PrintCoverage garment={measurements[s.size]} print={[15, 18]} size={s.size} />}
+  onAdd={(selection, quantity) => addSampleToCart(selection, quantity)}
+  addLabel="Add sample to cart · $1.00"
+/>
+```
+
+Values can carry `badge`, `swatch`, `description` and `disabled`. `hideWhenSingle` hides an option's chips when it has only one value (it is still chosen). `onAdd` may return `{ ok: false, error }` or throw; the message is shown.

@@ -1,7 +1,7 @@
 {
   "name": "@mercatus-liber/admin-ui",
   "version": "0.1.0",
-  "description": "React components for a Mercatus Liber store's admin: print coverage drawings first, with an art version editor, an option matrix configurator and a ratings table to follow. Styled with the theming package's CSS variables; data and actions come in as props.",
+  "description": "React components for a Mercatus Liber store's admin: print coverage drawings, an art version editor, a ratings table and an option matrix configurator. Styled with the theming package's CSS variables; data and actions come in as props.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
