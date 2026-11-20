@@ -109,7 +109,7 @@ describe("applyPrintfulProduct", () => {
     expect(result.created).toHaveLength(2);
     for (const id of result.created) expect(await routing.getProviderForSku(id)).toBe("printful");
     const target = (await mappings.get(result.created[0]!, "printful"))!.target;
-    expect(target).toEqual({ catalogVariantId: 474, placements: [{ placement: "front", technique: "dtg", layers: [{ type: "file", url: "https://example.com/front.png" }] }] });
+    expect(target).toEqual({ catalogVariantId: 474, catalogProductId: 12, placements: [{ placement: "front", technique: "dtg", layers: [{ type: "file", url: "https://example.com/front.png" }] }] });
   });
 
   it("🔍 running again creates nothing and keeps an admin's price, unless told to update prices", async () => {

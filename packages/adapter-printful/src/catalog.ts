@@ -1,4 +1,5 @@
 import { PrintfulApiError } from "./http-client.js";
+import { printfulFetch } from "./printful-fetch.js";
 
 /**
  * Printful's v2 catalog, shipping-rate, webhook, and mockup endpoints -- the
@@ -80,6 +81,98 @@ export interface PrintfulEstimateItem {
   files: PrintfulPlacementFile[];
 }
 
+/** One product in Printful's catalog list (`GET /v2/catalog-products`), as Printful sends it. */
+export interface PrintfulCatalogListing {
+  id: number;
+  type: string;
+  main_category_id: number;
+  name: string;
+  brand: string | null;
+  model: string | null;
+  image: string;
+  variant_count: number;
+  is_discontinued: boolean;
+  description: string;
+  sizes: string[];
+  colors: { name: string; value: string }[];
+  techniques: { key: string; display_name: string; is_default: boolean }[];
+  placements: { placement: string; technique: string }[];
+}
+
+export interface PrintfulCatalogCategory {
+  id: number;
+  parent_id: number | null;
+  image_url: string;
+  title: string;
+}
+
+/** Filters for Printful's catalog list. Lists are sent comma separated, as Printful takes them. */
+export interface PrintfulCatalogQuery {
+  categoryIds?: number[];
+  colors?: string[];
+  placements?: string[];
+  techniques?: string[];
+  /** Only products new to Printful's catalog. */
+  newOnly?: boolean;
+  /** e.g. "usa", "europe": only products sold there. */
+  sellingRegion?: string;
+  /** ISO country code: only products that ship there. */
+  destinationCountry?: string;
+  sortType?: "new" | "rating" | "price" | "bestseller";
+  sortDirection?: "ascending" | "descending";
+}
+
+export interface PrintfulCatalogPage {
+  products: PrintfulCatalogListing[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+/**
+ * Where art goes on a product and how big it can be, from
+ * `/v2/catalog-products/{id}/mockup-styles`. Printful gives the size in
+ * inches with a dpi; the pixel size is what a print file should be.
+ */
+export interface PrintfulPrintArea {
+  placement: string;
+  displayName: string;
+  technique: string;
+  widthInches: number;
+  heightInches: number;
+  dpi: number;
+  widthPx: number;
+  heightPx: number;
+  /** "simple" for most; other values (e.g. "color_group") mark special areas such as inside labels. */
+  areaType: string | null;
+  mockupStyles: { id: number; category: string; view: string; restrictedToVariants: number[] | null }[];
+}
+
+/**
+ * A picture of the product with the print area marked on it, from
+ * `/v2/catalog-products/{id}/mockup-templates`. Coordinates are pixels on the
+ * template image. With `positioning: "overlay"` the template image goes on top
+ * of the art (it has a transparent window); with "background" it goes under.
+ */
+export interface PrintfulMockupTemplate {
+  placement: string;
+  technique: string;
+  catalogVariantIds: number[];
+  imageUrl: string;
+  backgroundUrl: string | null;
+  backgroundColor: string | null;
+  templateWidth: number;
+  templateHeight: number;
+  printArea: { top: number; left: number; width: number; height: number };
+  positioning: "overlay" | "background" | string;
+  orientation: string;
+}
+
+export interface PrintfulVariantAvailability {
+  catalogVariantId: number;
+  techniques: { technique: string; regions: { name: string; availability: string }[] }[];
+}
+
 export interface PrintfulCatalogClient {
   /**
    * What Printful would actually charge for these items shipped here, from an
@@ -89,6 +182,22 @@ export interface PrintfulCatalogClient {
    */
   estimateCosts(input: { recipient: { street1: string; city: string; stateCode?: string; countryCode: string; postalCode: string }; items: PrintfulEstimateItem[] }): Promise<PrintfulOrderCosts>;
   getProduct(productId: number): Promise<PrintfulCatalogProduct | null>;
+  /** One page of Printful's catalog (at most 100 products). */
+  listCatalogProducts(query?: PrintfulCatalogQuery & { offset?: number; limit?: number }): Promise<PrintfulCatalogPage>;
+  /** Every product matching the filters, following pagination (about 6 requests for the whole catalog). */
+  listAllCatalogProducts(query?: PrintfulCatalogQuery): Promise<PrintfulCatalogListing[]>;
+  /** One product with its colours, sizes, techniques and placements. */
+  getCatalogListing(productId: number): Promise<PrintfulCatalogListing | null>;
+  /** Every catalog category (they nest through parent_id). */
+  listCategories(): Promise<PrintfulCatalogCategory[]>;
+  /** Every print area on a product, optionally only some placements. */
+  getPrintAreas(productId: number, options?: { placements?: string[] }): Promise<PrintfulPrintArea[]>;
+  /** Template images with the print area marked, optionally only some placements. Each covers the variants in catalogVariantIds. */
+  getMockupTemplates(productId: number, options?: { placements?: string[] }): Promise<PrintfulMockupTemplate[]>;
+  /** Stock by technique and selling region for every variant. */
+  getAvailability(productId: number): Promise<PrintfulVariantAvailability[]>;
+  /** One variant, or null. Its catalog_product_id says which product it belongs to. */
+  getVariant(variantId: number): Promise<PrintfulCatalogVariant | null>;
   /** Every variant (every color and size), following pagination. */
   listVariants(productId: number): Promise<PrintfulCatalogVariant[]>;
   /** Prices for every variant, following pagination. */
@@ -105,7 +214,7 @@ export function createPrintfulCatalogClient(config: PrintfulCatalogClientConfig)
   const fetchImpl = config.fetchImpl ?? fetch;
 
   async function request<T>(method: string, path: string, body?: unknown): Promise<T | null> {
-    const response = await fetchImpl(`${baseUrl}${path}`, {
+    const response = await printfulFetch(fetchImpl, `${baseUrl}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -122,6 +231,18 @@ export function createPrintfulCatalogClient(config: PrintfulCatalogClientConfig)
   const data = async <T>(method: string, path: string, body?: unknown): Promise<T | null> => (await request<{ data: T }>(method, path, body))?.data ?? null;
 
   const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /** Follows Printful's offset paging for a list endpoint, 100 at a time. */
+  async function all<T>(path: string): Promise<T[]> {
+    const items: T[] = [];
+    const join = path.includes("?") ? "&" : "?";
+    for (let offset = 0; ; offset += 100) {
+      const page = await request<{ data: T[]; paging?: { total: number } }>("GET", `${path}${join}limit=100&offset=${offset}`);
+      if (!page) return items;
+      items.push(...page.data);
+      if (page.data.length === 0 || !page.paging || items.length >= page.paging.total) return items;
+    }
+  }
 
   return {
     async estimateCosts({ recipient, items }) {
@@ -143,6 +264,38 @@ export function createPrintfulCatalogClient(config: PrintfulCatalogClientConfig)
       return task.costs;
     },
     getProduct: (productId) => data<PrintfulCatalogProduct>("GET", `/v2/catalog-products/${productId}`),
+    async listCatalogProducts(query = {}) {
+      const limit = Math.min(Math.max(query.limit ?? 100, 1), 100);
+      const params = catalogQueryParams(query);
+      params.set("limit", String(limit));
+      params.set("offset", String(query.offset ?? 0));
+      const page = await request<{ data: PrintfulCatalogListing[]; paging: { total: number; offset: number; limit: number } }>("GET", `/v2/catalog-products?${params}`);
+      return { products: page?.data ?? [], total: page?.paging.total ?? 0, offset: page?.paging.offset ?? 0, limit: page?.paging.limit ?? limit };
+    },
+    async listAllCatalogProducts(query = {}) {
+      const params = catalogQueryParams(query).toString();
+      return all<PrintfulCatalogListing>(`/v2/catalog-products${params ? `?${params}` : ""}`);
+    },
+    getCatalogListing: (productId) => data<PrintfulCatalogListing>("GET", `/v2/catalog-products/${productId}`),
+    listCategories: () => all<PrintfulCatalogCategory>("/v2/catalog-categories"),
+    async getPrintAreas(productId, options = {}) {
+      const query = options.placements?.length ? `?placements=${options.placements.map(encodeURIComponent).join(",")}` : "";
+      const rows = await all<RawMockupStyleGroup>(`/v2/catalog-products/${productId}/mockup-styles${query}`);
+      return rows.map(toPrintArea);
+    },
+    async getMockupTemplates(productId, options = {}) {
+      const query = options.placements?.length ? `?placements=${options.placements.map(encodeURIComponent).join(",")}` : "";
+      const rows = await all<RawMockupTemplate>(`/v2/catalog-products/${productId}/mockup-templates${query}`);
+      return rows.map(toMockupTemplate);
+    },
+    async getAvailability(productId) {
+      const rows = await all<RawAvailability>(`/v2/catalog-products/${productId}/availability`);
+      return rows.map((row) => ({
+        catalogVariantId: row.catalog_variant_id,
+        techniques: row.techniques.map((t) => ({ technique: t.technique, regions: t.selling_regions.map((r) => ({ name: r.name, availability: r.availability })) })),
+      }));
+    },
+    getVariant: (variantId) => data<PrintfulCatalogVariant>("GET", `/v2/catalog-variants/${variantId}`),
     async listVariants(productId) {
       const variants: PrintfulCatalogVariant[] = [];
       for (let offset = 0; ; offset += 100) {
@@ -222,4 +375,91 @@ export function printfulUnitCostCents(prices: PrintfulPrices, variantId: number,
   });
   const extra = placementCents.reduce((sum, cents) => sum + cents, 0) - (placementCents.length > 0 ? Math.max(...placementCents) : 0);
   return printfulPriceToCents(base.discounted_price || base.price) + extra;
+}
+
+function catalogQueryParams(query: PrintfulCatalogQuery): URLSearchParams {
+  const params = new URLSearchParams();
+  const list = (key: string, values?: (string | number)[]) => {
+    if (values?.length) params.set(key, values.join(","));
+  };
+  list("category_ids", query.categoryIds);
+  list("colors", query.colors);
+  list("placements", query.placements);
+  list("techniques", query.techniques);
+  if (query.newOnly) params.set("new", "true");
+  if (query.sellingRegion) params.set("selling_region_name", query.sellingRegion);
+  if (query.destinationCountry) params.set("destination_country", query.destinationCountry);
+  if (query.sortType) params.set("sort_type", query.sortType);
+  if (query.sortDirection) params.set("sort_direction", query.sortDirection);
+  return params;
+}
+
+interface RawMockupStyleGroup {
+  placement: string;
+  display_name: string;
+  technique: string;
+  print_area_width: number;
+  print_area_height: number;
+  print_area_type: string | null;
+  dpi: number;
+  mockup_styles: { id: number; category_name: string; view_name: string; restricted_to_variants: number[] | null }[];
+}
+
+interface RawMockupTemplate {
+  catalog_variant_ids: number[];
+  placement: string;
+  technique: string;
+  image_url: string;
+  background_url: string | null;
+  background_color: string | null;
+  template_width: number;
+  template_height: number;
+  print_area_width: number;
+  print_area_height: number;
+  print_area_top: number;
+  print_area_left: number;
+  template_positioning: string;
+  orientation: string;
+}
+
+interface RawAvailability {
+  catalog_variant_id: number;
+  techniques: { technique: string; selling_regions: { name: string; availability: string }[] }[];
+}
+
+/** Printful's mockup-styles row as a print area. Checked live on 2026-11-20: product 71 front is 12 x 16 in at 150 dpi (1800 x 2400 px). */
+export function toPrintArea(row: RawMockupStyleGroup): PrintfulPrintArea {
+  return {
+    placement: row.placement,
+    displayName: row.display_name,
+    technique: row.technique,
+    widthInches: row.print_area_width,
+    heightInches: row.print_area_height,
+    dpi: row.dpi,
+    widthPx: Math.round(row.print_area_width * row.dpi),
+    heightPx: Math.round(row.print_area_height * row.dpi),
+    areaType: row.print_area_type ?? null,
+    mockupStyles: row.mockup_styles.map((style) => ({ id: style.id, category: style.category_name, view: style.view_name, restrictedToVariants: style.restricted_to_variants })),
+  };
+}
+
+function toMockupTemplate(row: RawMockupTemplate): PrintfulMockupTemplate {
+  return {
+    placement: row.placement,
+    technique: row.technique,
+    catalogVariantIds: row.catalog_variant_ids,
+    imageUrl: row.image_url,
+    backgroundUrl: row.background_url,
+    backgroundColor: row.background_color,
+    templateWidth: row.template_width,
+    templateHeight: row.template_height,
+    printArea: { top: row.print_area_top, left: row.print_area_left, width: row.print_area_width, height: row.print_area_height },
+    positioning: row.template_positioning,
+    orientation: row.orientation,
+  };
+}
+
+/** The template for one variant and placement, or null. */
+export function templateFor(templates: PrintfulMockupTemplate[], variantId: number, placement: string): PrintfulMockupTemplate | null {
+  return templates.find((t) => t.placement === placement && t.catalogVariantIds.includes(variantId)) ?? null;
 }

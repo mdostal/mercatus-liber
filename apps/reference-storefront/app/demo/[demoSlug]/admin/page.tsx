@@ -28,6 +28,9 @@ export default async function AdminHomePage({ params }: { params: Promise<{ demo
           <Link href={`${adminBase}/orders`}>Orders</Link>
         </li>
         <li>
+          <Link href={`${adminBase}/printful`}>Printful catalog</Link>
+        </li>
+        <li>
           <Link href={`${adminBase}/metrics`}>Metrics</Link>
         </li>
         <li>

@@ -1,9 +1,10 @@
+import { printfulFetch } from "./printful-fetch.js";
 import type { PrintfulCreateOrderRequest, PrintfulEnvelope, PrintfulOrderResponse, PrintfulShipmentResponse } from "./printful-types.js";
 
 /**
  * Injectable HTTP client against Printful's real v2 API. Defaults to global
  * fetch; tests inject a recording fake -- same disclosed-double pattern as
- * adapter-shopify's graphql-client.ts (no live Printful account/token exists in
+ * adapter-shopify's graphql-client.ts (when written, no live Printful account/token existed in
  * this environment, see design-discussion.md's "Real credential gate"). No new
  * HTTP dependency introduced: this repo's other third-party adapters (Shopify)
  * use raw fetch, not a client library, so this one follows the same convention.
@@ -47,7 +48,7 @@ export function createPrintfulHttpClient(config: PrintfulHttpClientConfig): Prin
   const fetchImpl = config.fetchImpl ?? fetch;
 
   async function request<T>(method: string, path: string, body?: unknown): Promise<T | null> {
-    const response = await fetchImpl(`${baseUrl}${path}`, {
+    const response = await printfulFetch(fetchImpl, `${baseUrl}${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",

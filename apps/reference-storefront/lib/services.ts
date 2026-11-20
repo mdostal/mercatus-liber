@@ -35,7 +35,7 @@ import {
   createPostgresWebhookDeliveryLogStore,
 } from "@mercatus-liber/adapter-postgres";
 import { createPaypalPaymentAdapter } from "@mercatus-liber/adapter-paypal";
-import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom, printfulOrderStatusUpdateFrom } from "@mercatus-liber/adapter-printful";
+import { createPrintfulCatalogClient, createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, type PrintfulCatalogClient, printfulCatalogTargetsFrom, printfulOrderStatusUpdateFrom } from "@mercatus-liber/adapter-printful";
 import { createPrintifyFulfillmentAdapter, printifyCatalogTargetsFrom, PRINTIFY_PROVIDER } from "@mercatus-liber/adapter-printify";
 import { createSlant3dFulfillmentAdapter, slant3dCatalogTargetsFrom, slant3dOrderStatusUpdateFrom, SLANT3D_PROVIDER } from "@mercatus-liber/adapter-slant3d";
 import { createX3dFulfillmentAdapter, createX3dStatusPoller, x3dCatalogTargetsFrom, x3dOrderStoreFrom, X3D_PROVIDER, type X3dPollResult } from "@mercatus-liber/adapter-x3d";
@@ -134,6 +134,7 @@ import {
   recordSelfShipment,
   recordSelfShipmentVoided,
   withProviderOrderLinks,
+  type ProviderCatalogMappingRepository,
   type ProviderOrderStatusOutcome,
   type SelfShipment,
 } from "@mercatus-liber/fulfillment";
@@ -288,6 +289,10 @@ export interface Services {
    * service.ts.
    */
   fulfillmentRouting: FulfillmentRoutingRepository;
+  /** Which provider product each SKU is made from (Printful, Printify, X3D, ...). */
+  providerCatalogMappings: ProviderCatalogMappingRepository;
+  /** Printful's catalog, when PRINTFUL_API_TOKEN is set; null without it (the admin then browses a saved snapshot). */
+  printfulCatalog: PrintfulCatalogClient | null;
   /**
    * Non-null only when `payments` was built as a sandbox adapter (see
    * `buildServices`'s payments branch below, sandbox-checkout epic) --
@@ -1418,6 +1423,10 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     orderLabels,
     recordSelfShipment: (shipment) => recordSelfShipment({ links: providerOrderLinks, recorder: providerOrderStatus, ...shipment }),
     fulfillmentRouting,
+    providerCatalogMappings,
+    printfulCatalog: process.env.PRINTFUL_API_TOKEN
+      ? createPrintfulCatalogClient({ apiToken: process.env.PRINTFUL_API_TOKEN, ...(process.env.PRINTFUL_STORE_ID ? { storeId: process.env.PRINTFUL_STORE_ID } : {}) })
+      : null,
     shipping,
     media,
     confirmSandboxPayment: sandboxPayments ? sandboxPayments.confirmSandboxPayment.bind(sandboxPayments) : null,
