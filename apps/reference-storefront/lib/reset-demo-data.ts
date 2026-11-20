@@ -154,6 +154,7 @@ const ALL_OWNED_TABLES = [
   "bundles",
   "recommendation_rules",
   "fulfillment_routing",
+  "provider_catalog_mappings",
   "cart_items",
   "carts",
   "orders",
@@ -279,6 +280,13 @@ async function scopedDeleteForDemo(pool: Pool, demoSlug: DemoSlug): Promise<Rese
       "DELETE FROM fulfillment_routing WHERE sku_id = ANY($1::text[])",
       [skuIds],
     );
+    // Which Printful (or other provider) product each SKU is made from. The
+    // table is created on first use, so a database that never mapped a SKU
+    // has none.
+    const mappingsTable = await client.query<{ t: string | null }>("SELECT to_regclass('provider_catalog_mappings') AS t");
+    if (mappingsTable.rows[0]?.t) {
+      deletedCounts.provider_catalog_mappings = await deleteScoped(client, "DELETE FROM provider_catalog_mappings WHERE sku_id = ANY($1::text[])", [skuIds]);
+    }
 
     // -- cart_items / carts -- scoped via sku_id, then a real safety-netted
     // parent-row delete: only a cart with ZERO remaining items (every item

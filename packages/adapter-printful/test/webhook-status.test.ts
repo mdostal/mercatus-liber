@@ -74,7 +74,7 @@ describe("a signed Printful webhook through the adapter and the status recorder"
       apiToken: "unused",
       httpClient: {} as PrintfulHttpClient,
       resolveRecipient: async () => ({ name: "n", email: "e@example.com" }),
-      resolveCatalogTarget: async () => ({ catalogVariantId: 1 }),
+      resolveCatalogTarget: async () => ({ catalogVariantId: 1, placements: [{ placement: "front", technique: "dtg", layers: [{ type: "file", url: "https://example.com/a.png" }] }] }),
       webhookSecretKeyHex: SECRET_HEX,
       onWebhookEvent: async (event) => {
         const update = printfulOrderStatusUpdateFrom(event);
@@ -154,7 +154,7 @@ describe("order ids longer than Printful's 32-character external_id", () => {
       apiToken: "made-up",
       holdOrders: true,
       resolveRecipient: async () => ({ name: "Ada Example", address1: "1 Main St", city: "Austin", state_code: "TX", country_code: "US", zip: "78701" }),
-      resolveCatalogTarget: async () => ({ catalogVariantId: 4011 }),
+      resolveCatalogTarget: async () => ({ catalogVariantId: 4011, placements: [{ placement: "front", technique: "dtg", layers: [{ type: "file", url: "https://example.com/a.png" }] }] }),
       httpClient: {
         createOrder: async (body: { external_id?: string }) => {
           seen.push(`create ${body.external_id}`);

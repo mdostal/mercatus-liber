@@ -1,6 +1,7 @@
 import type { IdentifyingAttribute, Money, Product, Sku } from "@mercatus-liber/core";
 import type { FulfillmentProviderKey, ProviderCatalogMappingRepository } from "@mercatus-liber/fulfillment";
 import { printfulUnitCostCents, type PrintfulCatalogVariant, type PrintfulPrices } from "./catalog.js";
+import type { PrintfulCatalogTarget } from "./mapping.js";
 import { PRINTFUL_PROVIDER } from "./provider.js";
 
 /**
@@ -16,7 +17,12 @@ export interface PrintfulProductSpec {
   printfulProductId: number;
   /** Printful's technique key: "dtg", "dtfilm", "embroidery", and so on. */
   technique: string;
-  /** One print file per placement, e.g. `{ placement: "front", url }`. Each URL must be public. */
+  /**
+   * One print file per placement, e.g. `{ placement: "front", url }`. Each URL
+   * must be public. May be empty to bring a product over before its art
+   * exists: its SKUs are then created as drafts, which can't be bought, and
+   * art is added later with setPrintfulArt.
+   */
   files: { placement: string; url: string }[];
   /** Printful color names, exactly as Printful lists them, e.g. "Black". */
   colors: string[];
@@ -78,8 +84,8 @@ export interface PrintfulCatalogWriter {
   getProductBySlug(slug: string): Promise<Product | null>;
   createProduct(input: { slug: string; title: string; description: string; identifyingAttributeKeys: string[] }): Promise<Product>;
   listSkusByProduct(productId: string): Promise<Sku[]>;
-  createSku(input: { productId: string; identifyingAttributes: IdentifyingAttribute[]; price: Money }): Promise<Sku>;
-  updateSku(id: string, patch: { price?: Money }): Promise<Sku | null>;
+  createSku(input: { productId: string; identifyingAttributes: IdentifyingAttribute[]; price: Money; status?: "draft" | "active" }): Promise<Sku>;
+  updateSku(id: string, patch: { price?: Money; status?: "draft" | "active" }): Promise<Sku | null>;
 }
 
 export interface PrintfulRoutingWriter {
@@ -94,16 +100,35 @@ export interface ApplyPrintfulProductResult {
 
 const attr = (sku: Sku, key: string): unknown => sku.identifyingAttributes.find((a) => a.key === key)?.value;
 
+type Placement = NonNullable<PrintfulCatalogTarget["placements"]>[number];
+
+/**
+ * The SKU's placements after applying new files: a placement named in `files`
+ * gets that file, every other placement it already had keeps its file. So
+ * re-running a plan, or one with no files, never loses art added later.
+ */
+export function mergePrintfulPlacements(existing: Placement[] | undefined, files: { placement: string; url: string }[], technique: string): Placement[] {
+  const merged = new Map((existing ?? []).map((p) => [p.placement, p]));
+  for (const f of files) merged.set(f.placement, { placement: f.placement, technique, layers: [{ type: "file", url: f.url }] });
+  return [...merged.values()];
+}
+
 /**
  * Makes the catalog match a plan: creates the product and any missing SKUs,
  * stores each SKU's Printful variant and print files, and routes it to Printful.
  * Safe to run again. An existing SKU keeps its price unless `updatePrices` is
- * set, so re-running can't undo a price changed in the admin.
+ * set, so re-running can't undo a price changed in the admin. Print files are
+ * merged into what each SKU already has (see mergePrintfulPlacements).
+ *
+ * A new SKU that ends up with no print file is created as a draft, so it
+ * can't be sold before it can be made; otherwise new SKUs get `newSkuStatus`
+ * (default "active", as before). publishPrintfulProduct makes drafts active
+ * once the product is ready.
  */
 export async function applyPrintfulProduct(
   deps: { catalog: PrintfulCatalogWriter; mappings: ProviderCatalogMappingRepository; routing: PrintfulRoutingWriter },
   plan: PrintfulProductPlan,
-  options: { updatePrices?: boolean } = {},
+  options: { updatePrices?: boolean; newSkuStatus?: "draft" | "active" } = {},
 ): Promise<ApplyPrintfulProductResult> {
   const { spec } = plan;
   const product =
@@ -114,8 +139,11 @@ export async function applyPrintfulProduct(
 
   for (const planned of plan.skus) {
     let sku = existing.find((s) => attr(s, "color") === planned.color && attr(s, "size") === planned.size);
+    const previous = sku ? ((await deps.mappings.get(sku.id, PRINTFUL_PROVIDER))?.target as PrintfulCatalogTarget | undefined) : undefined;
+    const placements = mergePrintfulPlacements(previous?.placements, spec.files, spec.technique);
     if (!sku) {
-      sku = await deps.catalog.createSku({ productId: product.id, identifyingAttributes: [{ key: "color", value: planned.color }, { key: "size", value: planned.size }], price: planned.price });
+      const status = placements.length === 0 ? "draft" : (options.newSkuStatus ?? "active");
+      sku = await deps.catalog.createSku({ productId: product.id, identifyingAttributes: [{ key: "color", value: planned.color }, { key: "size", value: planned.size }], price: planned.price, status });
       result.created.push(sku.id);
     } else if (options.updatePrices && sku.price.amount !== planned.price.amount) {
       await deps.catalog.updateSku(sku.id, { price: planned.price });
@@ -127,7 +155,7 @@ export async function applyPrintfulProduct(
       target: {
         catalogVariantId: planned.catalogVariantId,
         catalogProductId: spec.printfulProductId,
-        placements: spec.files.map((f) => ({ placement: f.placement, technique: spec.technique, layers: [{ type: "file", url: f.url }] })),
+        placements,
       },
     });
     await deps.routing.setProviderForSku(sku.id, PRINTFUL_PROVIDER);

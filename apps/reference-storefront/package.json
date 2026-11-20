@@ -58,6 +58,7 @@
     "@mercatus-liber/payments": "workspace:*",
     "@mercatus-liber/pdp": "workspace:*",
     "@mercatus-liber/plugins": "workspace:*",
+    "@mercatus-liber/print-art": "workspace:*",
     "@mercatus-liber/promotions": "workspace:*",
     "@mercatus-liber/recommendations": "workspace:*",
     "@mercatus-liber/reviews": "workspace:*",

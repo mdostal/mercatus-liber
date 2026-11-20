@@ -2,7 +2,7 @@
 
 React components for a store's admin screens. Styled with the theming package's CSS variables (`--color-surface`, `--color-text`, `--color-primary`, `--color-danger`, `--color-text-muted`); data and actions come in as props.
 
-**Status:** started 2026-11-19 from shop.mdostal.com's back-print studio. `PrintCoverage`, `ArtVersionEditor`, `RatingsTable` and `OptionMatrixConfigurator` ship now. Not yet published to npm; use it from this monorepo via `workspace:*`.
+**Status:** started 2026-11-19 from shop.mdostal.com's back-print studio. `PrintCoverage`, `ArtVersionEditor`, `RatingsTable`, `OptionMatrixConfigurator`, and the provider catalog components below ship now. Not yet published to npm; use it from this monorepo via `workspace:*`.
 
 ## PrintCoverage
 
@@ -68,3 +68,13 @@ Pick a value for each option as chips, see images of exactly that combination, a
 ```
 
 Values can carry `badge`, `swatch`, `description` and `disabled`. `hideWhenSingle` hides an option's chips when it has only one value (it is still chosen). `onAdd` may return `{ ok: false, error }` or throw; the message is shown.
+
+## Provider catalog components
+
+Built for browsing a print-on-demand provider's catalog and bringing products into the store (the reference storefront's `/admin/printful` pages use all of them). Plain props, nothing provider-specific.
+
+- `CatalogGrid`: every item as a searchable grid with a select per facet, an "in store only" switch, "In store" marks linking to the store products, and paging. Filters in the browser, so pass the whole list. `filterCatalogItems` is the same filter.
+- `CatalogItemDetail`: picture and description, a colour by size table with each variant's cost and stock, and the print areas with sizes. Children render underneath.
+- `BringOverForm`: name, slug, technique, colours, sizes with upcharges, price and an art URL per placement; "Work out costs" calls `onPlan` for a cost and margin table (negative margins in the danger colour), "Bring over" calls `onSubmit`. `disabledReason` shows it without allowing a submit.
+- `PlacementPreview`: the provider's template image with the art drawn exactly over the print area (under an "overlay" template, over a "background" one), and a warning when the art's pixel size or shape doesn't match (`artFitWarning`). `PlacementArtEditor` adds a URL field with save and remove.
+- `MockupGallery`: choose variants, request mockups, wait for them (polling `onPoll`), and keep chosen ones in order (`onSave`). A refused request can say when to try again.

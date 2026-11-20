@@ -192,3 +192,23 @@ variants. I avoid "blank" in code names.
 | P1 overbuilt | Slices with stop points |
 | P2 agent tools | Optional slice 5 (question 5) |
 | P3 Printify two-level | Not generalising; Printful-specific |
+
+## What changed while building (2026-11-20)
+
+The user answered the open questions with "all of it, go all the way" and offered the store's
+Printful key for testing. Built as planned, with these changes found along the way:
+
+- **Bring-over needs the token.** The saved snapshot has no variant ids or prices, so the tokenless
+  demo can browse and look but not bring over; the form says why instead of pretending.
+- **v2 list is richer than expected.** `GET /v2/catalog-products` already includes colours, sizes,
+  techniques and placements, so the grid needs no per-product calls (575 products, 6 requests).
+- **No public Printful product URL by id** (the dashboard link 404s), so links to Printful show the
+  Printful product id instead.
+- **Mockup URLs are temporary** (confirmed: v2 spec "Temporary URL to generated mockup image"; a real
+  task returned a `/tmp/` S3 URL). There was no file storage in the repo, so a small `MediaStore`
+  (memory, Postgres) was added to `@mercatus-liber/media` / adapter-postgres, served by the
+  storefront's `/media/[id]` route. Only Printful mockup hosts can be copied.
+- **Mockups need a store id** with an account-level token (`PRINTFUL_STORE_ID`); the action says so.
+- **Demo reset** now clears `provider_catalog_mappings` for the demo's SKUs.
+- **New products with art are still created `active`** (unchanged default for existing callers such
+  as the shop); only SKUs without art are drafts. Readiness and publish gate the product.

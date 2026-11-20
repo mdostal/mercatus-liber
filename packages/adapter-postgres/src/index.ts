@@ -237,4 +237,5 @@ export { createPostgresProviderCatalogMappingRepository } from "./provider-catal
 export { createPostgresProviderOrderLinkRepository } from "./provider-order-links.js";
 export { createPostgresManualFulfillmentRecordStore } from "./manual-fulfillment-records.js";
 export { createPostgresSavedArtVersionRepository } from "./print-art-versions.js";
+export { createPostgresMediaStore } from "./media-store.js";
 export { createPostgresStoreApiKeyRepository } from "./store-api-keys.js";

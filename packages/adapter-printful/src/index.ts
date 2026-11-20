@@ -1,7 +1,7 @@
 import type { FulfillmentAdapter, FulfillmentLineRecord, FulfillmentProviderKey, SubmitFulfillmentOrderInput } from "@mercatus-liber/fulfillment";
 import { InvalidCatalogMappingError, requireCatalogTarget, type ProviderCatalogMappingRepository } from "@mercatus-liber/fulfillment";
 import { createPrintfulHttpClient, type PrintfulHttpClient } from "./http-client.js";
-import { assertShippableRecipient, normalizePrintfulRecipient, findTrackingUrlForItem, mapPrintfulOrderStatus, mapRecipientToPrintfulAddress, printfulExternalIdFor, type PrintfulCatalogTarget, type PrintfulRecipientAddress } from "./mapping.js";
+import { assertShippableRecipient, normalizePrintfulRecipient, printfulTargetHasArt, findTrackingUrlForItem, mapPrintfulOrderStatus, mapRecipientToPrintfulAddress, printfulExternalIdFor, type PrintfulCatalogTarget, type PrintfulRecipientAddress } from "./mapping.js";
 import type { PrintfulCatalogOrderItemInput, PrintfulOrderResponse, PrintfulShipmentResponse } from "./printful-types.js";
 import { parsePrintfulWebhookPayload, PrintfulWebhookSignatureInvalidError, PrintfulWebhookSignatureUnconfirmedError, verifyPrintfulSignature, type PrintfulWebhookEvent } from "./webhook.js";
 
@@ -9,6 +9,7 @@ export * from "./printful-types.js";
 export * from "./catalog.js";
 export * from "./catalog-browse.js";
 export * from "./printful-fetch.js";
+export * from "./publish.js";
 export * from "./products.js";
 export * from "./mapping.js";
 export { PrintfulApiError, type PrintfulHttpClient } from "./http-client.js";
@@ -90,6 +91,14 @@ export interface PrintfulFulfillmentAdapterConfig {
 
   /** Invoked with the parsed, signature-verified webhook event -- e.g. to notify the host application of a shipment update. Optional: a verified-but-unhandled webhook is not an error. */
   onWebhookEvent?(event: PrintfulWebhookEvent): void | Promise<void>;
+}
+
+/** Thrown before calling Printful when a SKU has no print file, so Printful is never asked to make a product with nothing on it. */
+export class PrintfulMissingArtError extends Error {
+  constructor(readonly skuIds: string[]) {
+    super(`These SKUs have no print file at Printful, so they can't be made: ${skuIds.join(", ")}. Add art to them first.`);
+    this.name = "PrintfulMissingArtError";
+  }
 }
 
 function toPrintfulOrderItems(items: SubmitFulfillmentOrderInput["items"], targets: Map<string, PrintfulCatalogTarget>): PrintfulCatalogOrderItemInput[] {
@@ -177,6 +186,8 @@ export function createPrintfulFulfillmentAdapter(config: PrintfulFulfillmentAdap
       for (const item of input.items) {
         targets.set(item.skuId, await config.resolveCatalogTarget(item.skuId));
       }
+      const noArt = [...targets].filter(([, target]) => !printfulTargetHasArt(target)).map(([skuId]) => skuId);
+      if (noArt.length > 0) throw new PrintfulMissingArtError(noArt);
 
       const draft = await client.createOrder({
         external_id: printfulExternalIdFor(input.orderId),

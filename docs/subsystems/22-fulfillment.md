@@ -114,8 +114,12 @@ this epic's `design-discussion.md`):
   address at checkout to do better.
 - `resolveCatalogTarget(skuId)`: reads the SKU's Printful variant and print files from the
   provider catalog mappings (`printfulCatalogTargetsFrom`), which `applyPrintfulProduct` writes.
-  The reference storefront's admin has a Printful catalog page (`/demo/<slug>/admin/printful`)
-  to browse Printful's products and see which are already in the store.
+  The reference storefront's admin has a Printful catalog page (`/demo/<slug>/admin/printful`):
+  browse Printful's products, see which are already in the store, bring one over (unpublished,
+  with draft SKUs until they have art), set art per placement on Printful's own templates, make
+  mockups (copied into the store's media, since Printful's URLs are temporary) and publish once
+  `printfulReadiness` passes. The same catalog is offered to agents as the optional
+  `provider_catalog_*` MCP tools.
 
 **`trackingNumber` is always `null`** from this adapter — confirmed absent from Printful's real
 v2 `Shipment` schema (`tracking_url` + a `tracking_events` timeline only, no `tracking_number`

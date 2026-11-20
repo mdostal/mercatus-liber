@@ -186,3 +186,25 @@ describe("print files", () => {
 
 // Keeps the exported type in use so a rename shows up here.
 export type _V = ArtVersion<Copy>;
+
+describe("layoutsFromPrintAreas", () => {
+  it("makes layouts at the provider's size, with file-name-safe ids and the placement kept", async () => {
+    const { layoutsFromPrintAreas, createPrintFileNaming } = await import("../src/index.js");
+    // Printful product 71's print areas, read live on 2026-11-20.
+    const layouts = layoutsFromPrintAreas([
+      { key: "front", widthInches: 12, heightInches: 16, dpi: 150, technique: "dtg" },
+      { key: "sleeve_left", widthInches: 4, heightInches: 3.5, dpi: 150, technique: "dtg" },
+      { key: "front", widthInches: 12, heightInches: 16, dpi: 150, technique: "dtfilm" },
+      { key: "label_inside", widthInches: 3, heightInches: 1.13, dpi: 300, technique: "dtg" },
+      { key: "label_inside", widthInches: 3, heightInches: 3, dpi: 150, technique: "dtg" },
+    ]);
+    expect(Object.keys(layouts)).toEqual(["front", "sleeve-left", "front-dtfilm", "label-inside", "label-inside-dtg"]);
+    expect(layouts.front).toMatchObject({ px: [1800, 2400], placement: "front", technique: "dtg" });
+    expect(layouts["sleeve-left"]).toMatchObject({ px: [600, 525], placement: "sleeve_left" });
+    expect(layouts["label-inside"]!.px).toEqual([900, 339]);
+    expect(Object.keys(layoutsFromPrintAreas([{ key: "front", widthInches: 12, heightInches: 16, dpi: 150, technique: "dtfilm" }, { key: "front", widthInches: 12, heightInches: 16, dpi: 150, technique: "dtg" }], { technique: "dtg" }))).toEqual(["front"]);
+    const naming = createPrintFileNaming({ prefix: "print-files", layouts });
+    expect(naming.path("logo", 2, "sleeve-left")).toBe("/print-files/logo-v2-sleeve-left.png");
+    expect(naming.parse("logo-v2-front-dtfilm.png")).toEqual({ artId: "logo", version: 2, layout: "front-dtfilm" });
+  });
+});
