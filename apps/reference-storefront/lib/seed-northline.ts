@@ -10,14 +10,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import {
-  upsertCatalog,
-  upsertCategory,
-  upsertPage,
-  upsertProduct,
-  upsertServiceArea,
-  upsertStorefrontView,
-} from "./idempotent-seed";
+import { createBundleOnce, createCampaignOnce, createRuleOnce, submitReviewOnce, upsertCatalog, upsertCategory, upsertPage, upsertProduct, upsertServiceArea, upsertStorefrontView } from "./idempotent-seed";
 
 /**
  * Epic 15b's public demo: "Northline Home Tech", a fictional smart-home
@@ -670,7 +663,7 @@ async function seedInstallBundle(
   const soundbarSkuId = skuIdsBySlug.get("soundbar-subwoofer-installation")?.[0];
   if (!mountProductId || !mountSkuId || !concealmentSkuId || !soundbarSkuId) return;
 
-  await bundles.createBundle({
+  await createBundleOnce(bundles, {
     productId: mountProductId,
     title: "TV Mount Install Packages",
     tiers: [
@@ -702,7 +695,7 @@ async function seedRecommendations(recommendations: RecommendationsService, prod
   const hubId = productIdBySlug.get("smart-hub-automation-setup");
 
   if (mountId && concealmentId) {
-    await recommendations.createRule({
+    await createRuleOnce(recommendations, {
       sourceProductId: mountId,
       label: "Customers also add",
       placement: "both",
@@ -711,7 +704,7 @@ async function seedRecommendations(recommendations: RecommendationsService, prod
     });
   }
   if (meshId && hubId) {
-    await recommendations.createRule({
+    await createRuleOnce(recommendations, {
       sourceProductId: meshId,
       label: "Frequently paired with",
       placement: "both",
@@ -729,7 +722,7 @@ async function seedRecommendations(recommendations: RecommendationsService, prod
  * that isn't backed by a real, redeemable code.
  */
 async function seedAdvertising(advertising: AdvertisingService): Promise<void> {
-  await advertising.createCampaign({
+  await createCampaignOnce(advertising, {
     name: "Northline Fall Install Special",
     demoSlug: "northline",
     startsAt: null,
@@ -964,7 +957,7 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
     const productId = productIdBySlug.get(demoReview.serviceSlug);
     if (!productId) continue;
 
-    const review = await reviews.submitReview({
+    const review = await submitReviewOnce(reviews, {
       productId,
       rating: demoReview.rating,
       authorName: demoReview.authorName,
@@ -973,7 +966,7 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
       verifiedPurchase: demoReview.verifiedPurchase,
     });
 
-    if (demoReview.outcome === "published") {
+    if (review && demoReview.outcome === "published") {
       await reviews.moderateReview(review.id, "published");
     }
     // "pending" outcomes are left exactly as submitReview created them --

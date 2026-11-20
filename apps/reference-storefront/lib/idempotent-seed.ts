@@ -10,6 +10,10 @@ import type {
 } from "@mercatus-liber/cms";
 import type { NewServiceAreaInput, ServiceArea, ServiceAreaService } from "@mercatus-liber/service-areas";
 import type { NewStorefrontViewInput, StorefrontView, StorefrontViewsService } from "@mercatus-liber/storefront-views";
+import type { AdvertisingService, CreateCampaignInput } from "@mercatus-liber/advertising";
+import type { BundlesService, CreateBundleInput } from "@mercatus-liber/bundles";
+import type { CreateRuleInput, RecommendationsService } from "@mercatus-liber/recommendations";
+import type { NewReviewInput, Review, ReviewsService } from "@mercatus-liber/reviews";
 
 /**
  * demo-seed-idempotency epic (48): real fix, found live and confirmed
@@ -162,4 +166,56 @@ export async function upsertMarketingPage(
   }
   const { page, meta } = await cms.createMarketingPage(input);
   return { page, meta, isNew: true };
+}
+
+/*
+ * Seeds that ran on every cold start without checking first, and so piled up
+ * copies in the shared demo database: by 2026-11-20 it held 1,971 bundles,
+ * 4,658 campaigns, 5,197 recommendation rules and 57,994 reviews where the
+ * three demos seed 3, 4, 5 and 52. Each helper below checks for its record
+ * first, the way upsertProduct does. None of these tables has a unique key to
+ * lean on, so two cold starts racing can still both insert; that is rare, and
+ * the next cold start no longer adds to it.
+ */
+
+/** Creates the bundle unless its product already has one. */
+export async function createBundleOnce(bundles: BundlesService, input: CreateBundleInput): Promise<void> {
+  if (await bundles.getBundleForProduct(input.productId)) return;
+  await bundles.createBundle(input);
+}
+
+/** Creates the rule unless the demo already has one from the same product with the same label. */
+export async function createRuleOnce(recommendations: RecommendationsService, input: CreateRuleInput): Promise<void> {
+  const rules = await recommendations.listRules(input.demoSlug ? { demoSlug: input.demoSlug } : {});
+  if (rules.some((rule) => rule.sourceProductId === input.sourceProductId && rule.label === input.label)) return;
+  await recommendations.createRule(input);
+}
+
+/** Creates the campaign unless the demo already has one with the same name. */
+export async function createCampaignOnce(advertising: AdvertisingService, input: CreateCampaignInput): Promise<void> {
+  const campaigns = await advertising.listCampaigns(input.demoSlug ? { demoSlug: input.demoSlug } : {});
+  if (campaigns.some((campaign) => campaign.name === input.name)) return;
+  await advertising.createCampaign(input);
+}
+
+const reviewKey = (r: { productId: string; authorName: string; title: string }) => JSON.stringify([r.productId, r.authorName, r.title]);
+const seededReviewKeys = new WeakMap<ReviewsService, Promise<Set<string>>>();
+
+/**
+ * Submits the review unless one with the same product, author and title
+ * exists (in any moderation state). Returns null when it was already there,
+ * so the caller doesn't moderate it again. Reads every review once per
+ * service instance.
+ */
+export async function submitReviewOnce(reviews: ReviewsService, input: NewReviewInput): Promise<Review | null> {
+  let keys = seededReviewKeys.get(reviews);
+  if (!keys) {
+    keys = reviews.listAllForModeration().then((all) => new Set(all.map(reviewKey)));
+    seededReviewKeys.set(reviews, keys);
+  }
+  const known = await keys;
+  const key = reviewKey(input);
+  if (known.has(key)) return null;
+  known.add(key);
+  return reviews.submitReview(input);
 }
