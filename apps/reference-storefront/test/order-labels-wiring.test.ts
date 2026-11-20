@@ -39,7 +39,8 @@ async function freshServices(env: Record<string, string>) {
   return getServicesForDemo("print-shop");
 }
 
-describe("order labels in the storefront's services", () => {
+// Each test re-imports the whole service graph after a module reset; cold, that can take well over vitest's 5 s default.
+describe("order labels in the storefront's services", { timeout: 60_000 }, () => {
   beforeEach(() => vi.unstubAllGlobals());
   afterEach(async () => {
     vi.unstubAllEnvs();
