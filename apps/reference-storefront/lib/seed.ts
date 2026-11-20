@@ -11,15 +11,7 @@ import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
 import type { ServiceAreaService } from "@mercatus-liber/service-areas";
-import {
-  upsertCatalog,
-  upsertCategory,
-  upsertMarketingPage,
-  upsertPage,
-  upsertProduct,
-  upsertServiceArea,
-  upsertStorefrontView,
-} from "./idempotent-seed";
+import { createBundleOnce, createCampaignOnce, createRuleOnce, submitReviewOnce, upsertCatalog, upsertCategory, upsertMarketingPage, upsertPage, upsertProduct, upsertServiceArea, upsertStorefrontView } from "./idempotent-seed";
 
 interface DemoProduct {
   slug: string;
@@ -700,7 +692,7 @@ async function seedServiceBundle(
   productIdBySlug.set(SERVICE_DEMO_SKUS.proSetup.slug, proSetup.productId);
   productIdBySlug.set(SERVICE_DEMO_SKUS.overhaul.slug, overhaul.productId);
 
-  await bundles.createBundle({
+  await createBundleOnce(bundles, {
     productId: install.productId,
     title: "Embroidery Setup Service Packages",
     tiers: [
@@ -1001,7 +993,7 @@ async function seedRecommendations(
   const capId = productIdBySlug.get("embroidered-dad-cap");
   if (!toteId || !capId) return;
 
-  await recommendations.createRule({
+  await createRuleOnce(recommendations, {
     sourceProductId: toteId,
     label: "Customers also bought",
     placement: "both",
@@ -1021,7 +1013,7 @@ async function seedRecommendations(
  * See design-discussion.md §3 and components/cms-sections.tsx's AdSlot.
  */
 async function seedAdvertising(advertising: AdvertisingService, targetedServiceAreaId?: string): Promise<void> {
-  await advertising.createCampaign({
+  await createCampaignOnce(advertising, {
     name: "Print Shop Sale",
     demoSlug: "print-shop",
     startsAt: null,
@@ -1054,7 +1046,7 @@ async function seedAdvertising(advertising: AdvertisingService, targetedServiceA
 
   if (!targetedServiceAreaId) return;
 
-  await advertising.createCampaign({
+  await createCampaignOnce(advertising, {
     name: "Portland Print Shop Pop-Up",
     demoSlug: "print-shop",
     startsAt: null,
@@ -1377,7 +1369,7 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
     if (!productId) continue;
 
     for (const demo of productReviews) {
-      const review = await reviews.submitReview({
+      const review = await submitReviewOnce(reviews, {
         productId,
         rating: demo.rating,
         authorName: demo.authorName,
@@ -1385,7 +1377,7 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
         body: demo.body,
         verifiedPurchase: demo.verifiedPurchase,
       });
-      if (demo.publish) await reviews.moderateReview(review.id, "published");
+      if (review && demo.publish) await reviews.moderateReview(review.id, "published");
     }
   }
 }

@@ -9,7 +9,7 @@ import type { PromotionsService } from "@mercatus-liber/promotions";
 import type { RecommendationsService } from "@mercatus-liber/recommendations";
 import type { ReviewsService } from "@mercatus-liber/reviews";
 import type { StorefrontViewsService } from "@mercatus-liber/storefront-views";
-import { upsertCatalog, upsertCategory, upsertPage, upsertProduct, upsertStorefrontView } from "./idempotent-seed";
+import { createBundleOnce, createCampaignOnce, createRuleOnce, submitReviewOnce, upsertCatalog, upsertCategory, upsertPage, upsertProduct, upsertStorefrontView } from "./idempotent-seed";
 
 /**
  * Epic demo-store-plant-shop's third public demo: "Broadleaf & Co.", an
@@ -661,7 +661,7 @@ async function seedStarterBundle(
   const candleSkuId = skuIdByProductAndSize.get("fig-cedar-soy-candle::travel-tin");
   if (!pothosProductId || !pothosSmallSkuId || !planterSkuId || !candleSkuId) return;
 
-  await bundles.createBundle({
+  await createBundleOnce(bundles, {
     productId: pothosProductId,
     title: "Trailing Pothos Starter Kit",
     tiers: [
@@ -691,7 +691,7 @@ async function seedRecommendations(
   const monsteraId = productIdBySlug.get("monstera-deliciosa");
   const planterId = productIdBySlug.get("speckled-ceramic-planter");
   if (monsteraId && planterId) {
-    await recommendations.createRule({
+    await createRuleOnce(recommendations, {
       sourceProductId: monsteraId,
       label: "Pairs well with",
       placement: "both",
@@ -703,7 +703,7 @@ async function seedRecommendations(
   const candleId = productIdBySlug.get("fig-cedar-soy-candle");
   const printId = productIdBySlug.get("botanical-print");
   if (candleId && printId) {
-    await recommendations.createRule({
+    await createRuleOnce(recommendations, {
       sourceProductId: candleId,
       label: "Customers also bought",
       placement: "both",
@@ -722,7 +722,7 @@ async function seedRecommendations(
  * CMS section seedBroadleafDemo adds to the home page's sections below.
  */
 async function seedMarketingCampaign(advertising: AdvertisingService): Promise<void> {
-  await advertising.createCampaign({
+  await createCampaignOnce(advertising, {
     name: "Broadleaf Bloom Sale",
     demoSlug: "broadleaf",
     startsAt: null,
@@ -957,7 +957,7 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
     const productId = productIdBySlug.get(demo.productSlug);
     if (!productId) continue;
 
-    const review = await reviews.submitReview({
+    const review = await submitReviewOnce(reviews, {
       productId,
       rating: demo.rating,
       authorName: demo.authorName,
@@ -966,7 +966,7 @@ async function seedReviews(reviews: ReviewsService, productIdBySlug: Map<string,
       verifiedPurchase: demo.verifiedPurchase,
     });
 
-    if (demo.publish) await reviews.moderateReview(review.id, "published");
+    if (review && demo.publish) await reviews.moderateReview(review.id, "published");
   }
 }
 
