@@ -17,6 +17,10 @@ overrides:
   # upstream bug (github.com/shuding/nextra issues #5034/#5008/#4989, fixed on main via #4990
   # but not yet released as of nextra-theme-docs@4.6.1 on npm). Scoped to only zod pulled in by
   # nextra/nextra-theme-docs (apps/docs) -- no other package in this repo depends on zod.
+  # Rechecked 2026-11-20: zod 4.6.7 still fails the docs build with the same error, so this
+  # stays. It leaves zod 4.3.6 (GHSA "Zod can exhaust memory while validating oversized
+  # constrained collections") only in apps/docs's static build, where zod validates the
+  # docs' own theme config, never request input.
   nextra>zod: 4.3.6
   nextra-theme-docs>zod: 4.3.6
   # Pins @xmldom/xmldom to the latest patched release (0.9.12), closing 13 advisories
@@ -29,3 +33,25 @@ overrides:
   # notation -- speech-rule-engine pulls it in solely for MathJax's (unused here)
   # text-to-speech accessibility feature.
   "@xmldom/xmldom": 0.9.12
+  # Security floors for transitive dependencies (pnpm audit, 2026-11-20). Each is the
+  # newest release at least two weeks old that clears the advisory.
+  proxy-addr: 2.0.8
+  body-parser: 2.4.0
+  brace-expansion@>=5.0.0: 5.0.12
+  minimatch@>=11.0.0: 11.0.5
+  # minimatch 10.2.6 stays under apps/docs's nextra>ts-morph (build-time globbing of our own
+  # files); its advisory needs 11.x, a major change ts-morph doesn't support.
+  source-map-js: 1.2.2
+  sharp: 0.35.5
+  vite@>=8.0.0: 8.3.6
+  "@vitest/mocker": 5.1.0
+  vitest: 5.1.0
+  next: 16.4.5
+  "zod@>=4.4.0": 4.6.7
+  hono: 4.13.16
+  "@hono/node-server": 2.1.6
+  qs: 6.17.1
+  fast-uri: 3.1.9
+  ip-address: 10.7.6
+  dompurify: 3.4.17
+  katex: 0.19.1

@@ -21,3 +21,6 @@ dist/
 .pHive/interrupts/
 .pHive/metrics/
 .pHive/session-effort.txt
+
+# Browser-tool scratch output
+.playwright-mcp/
