@@ -1,3 +1,4 @@
+import { regionForProvider } from "@mercatus-liber/core";
 import type { FulfillmentLineStatus, FulfillmentRecipient } from "@mercatus-liber/fulfillment";
 import type { PrintifyOrderLineItemResponse, PrintifyOrderShipment } from "./printify-types.js";
 
@@ -53,6 +54,12 @@ export interface PrintifyRecipientAddress {
 }
 
 /**
+ * Where the region is sent as its postal code ("NE", "ON", "NSW"), the form
+ * each country's post office uses; anywhere else it is sent as given.
+ */
+export const PRINTIFY_REGION_CODE_COUNTRIES = ["US", "CA", "AU"] as const;
+
+/**
  * Real address-mapping function, added for dp-02 (epic 82) now that
  * `SubmitFulfillmentOrderInput.recipient` (fulfillment's own contract,
  * `@mercatus-liber/fulfillment`'s `FulfillmentRecipient`) actually carries a
@@ -80,14 +87,18 @@ export interface PrintifyRecipientAddress {
 export function mapRecipientToPrintifyAddress(recipient: FulfillmentRecipient): PrintifyRecipientAddress {
   const [firstName, ...rest] = recipient.name.trim().split(/\s+/);
   const lastName = rest.join(" ");
+  const country = recipient.countryCode?.trim().toUpperCase();
+  const given = recipient.stateCode ?? recipient.stateName;
+  // Throws UnresolvedRegionError for a US, Canadian or Australian region it can't match, before Printify is called.
+  const region = country ? regionForProvider(country, given, { codesFor: PRINTIFY_REGION_CODE_COUNTRIES, provider: "Printify" }) : given;
 
   return {
     first_name: firstName || recipient.name,
     ...(lastName ? { last_name: lastName } : {}),
     email: recipient.email,
     ...(recipient.phone !== undefined ? { phone: recipient.phone } : {}),
-    ...(recipient.countryCode !== undefined ? { country: recipient.countryCode } : {}),
-    ...(recipient.stateCode !== undefined ? { region: recipient.stateCode } : {}),
+    ...(country ? { country } : {}),
+    ...(region !== undefined ? { region } : {}),
     ...(recipient.street1 !== undefined ? { address1: recipient.street1 } : {}),
     ...(recipient.street2 !== undefined ? { address2: recipient.street2 } : {}),
     ...(recipient.city !== undefined ? { city: recipient.city } : {}),

@@ -1,3 +1,4 @@
+import { regionForProvider } from "@mercatus-liber/core";
 import type { FulfillmentLineRecord, FulfillmentLineStatus, FulfillmentRecipient, ProviderOrderStatusUpdate } from "@mercatus-liber/fulfillment";
 import { X3D_PROVIDER } from "./provider.js";
 import { X3D_COUNTRIES, X3D_FILE_EXTENSIONS, X3D_MATERIALS, X3D_NOZZLE_DIAMETERS, X3D_QUALITIES, type X3dMaterial, type X3dNozzleDiameter, type X3dOrder, type X3dQuality } from "./x3d-types.js";
@@ -63,6 +64,12 @@ export class X3dDestinationNotServedError extends Error {
   }
 }
 
+/**
+ * Where the region is sent as its postal code ("NE", "ON", "NSW"), the form
+ * each country's post office uses; anywhere else it is sent as given.
+ */
+export const X3D_STATE_CODE_COUNTRIES = ["US", "CA", "AU"] as const;
+
 export interface X3dAddress {
   recipientName: string;
   street1: string;
@@ -76,17 +83,20 @@ export interface X3dAddress {
 
 /**
  * The address fields X3D requires: name, street, city, state and postal code.
- * A missing country is sent as "US", X3D's own default. Refuses a country X3D
+ * A missing country is sent as "US", X3D's own default. A US, Canadian or
+ * Australian state is sent as its code ("Nebraska" becomes "NE"); one that
+ * can't be matched throws UnresolvedRegionError. Refuses a country X3D
  * does not ship to, so nothing is charged for a parcel that cannot be sent.
  */
 export function mapRecipientToX3d(recipient: FulfillmentRecipient): X3dAddress {
-  const fields = { name: recipient.name, street1: recipient.street1, city: recipient.city, stateCode: recipient.stateCode, postalCode: recipient.postalCode };
+  const fields = { name: recipient.name, street1: recipient.street1, city: recipient.city, stateCode: recipient.stateCode ?? recipient.stateName, postalCode: recipient.postalCode };
   const missing = Object.entries(fields)
     .filter(([, value]) => !value?.trim())
     .map(([key]) => key);
   if (missing.length > 0) throw new X3dIncompleteRecipientError(missing);
   const country = (recipient.countryCode?.trim() || "US").toUpperCase();
   if (!(X3D_COUNTRIES as readonly string[]).includes(country)) throw new X3dDestinationNotServedError(country);
+  const state = regionForProvider(country, recipient.stateCode ?? recipient.stateName, { codesFor: X3D_STATE_CODE_COUNTRIES, provider: "X3D Studios" })!;
   const street2 = recipient.street2?.trim();
   const phone = recipient.phone?.trim();
   return {
@@ -94,7 +104,7 @@ export function mapRecipientToX3d(recipient: FulfillmentRecipient): X3dAddress {
     street1: recipient.street1!.trim(),
     ...(street2 ? { street2 } : {}),
     city: recipient.city!.trim(),
-    state: recipient.stateCode!.trim(),
+    state,
     zip: recipient.postalCode!.trim(),
     country,
     ...(phone ? { phone } : {}),

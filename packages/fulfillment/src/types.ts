@@ -58,7 +58,10 @@ export interface FulfillmentRecipient {
   street1?: string;
   street2?: string;
   city?: string;
+  /** The region as given: a code like "NE", or sometimes a name. Adapters convert it to what their provider wants. */
   stateCode?: string;
+  /** The region's name, such as "Nebraska", when the source gave one. */
+  stateName?: string;
   postalCode?: string;
   countryCode?: string;
   phone?: string;

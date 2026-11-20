@@ -1,7 +1,7 @@
 import type { FulfillmentAdapter, FulfillmentLineRecord, FulfillmentProviderKey, SubmitFulfillmentOrderInput } from "@mercatus-liber/fulfillment";
 import { InvalidCatalogMappingError, requireCatalogTarget, type ProviderCatalogMappingRepository } from "@mercatus-liber/fulfillment";
 import { createPrintfulHttpClient, type PrintfulHttpClient } from "./http-client.js";
-import { assertShippableRecipient, findTrackingUrlForItem, mapPrintfulOrderStatus, mapRecipientToPrintfulAddress, printfulExternalIdFor, type PrintfulCatalogTarget, type PrintfulRecipientAddress } from "./mapping.js";
+import { assertShippableRecipient, normalizePrintfulRecipient, findTrackingUrlForItem, mapPrintfulOrderStatus, mapRecipientToPrintfulAddress, printfulExternalIdFor, type PrintfulCatalogTarget, type PrintfulRecipientAddress } from "./mapping.js";
 import type { PrintfulCatalogOrderItemInput, PrintfulOrderResponse, PrintfulShipmentResponse } from "./printful-types.js";
 import { parsePrintfulWebhookPayload, PrintfulWebhookSignatureInvalidError, PrintfulWebhookSignatureUnconfirmedError, verifyPrintfulSignature, type PrintfulWebhookEvent } from "./webhook.js";
 
@@ -165,9 +165,11 @@ export function createPrintfulFulfillmentAdapter(config: PrintfulFulfillmentAdap
       // resolveRecipient bridge whenever the caller's OrderLookup actually
       // supplied one -- see mapRecipientToPrintfulAddress's doc comment
       // (mapping.ts) and this config's resolveRecipient doc comment above.
-      const recipient = input.recipient ? mapRecipientToPrintfulAddress(input.recipient) : await config.resolveRecipient(input.orderId);
+      const given = input.recipient ? mapRecipientToPrintfulAddress(input.recipient) : await config.resolveRecipient(input.orderId);
 
-      assertShippableRecipient(recipient);
+      assertShippableRecipient(given);
+      // Printful wants a state code ("NE", not "Nebraska") for the countries it keeps state lists for.
+      const recipient = normalizePrintfulRecipient(given);
 
       const targets = new Map<string, PrintfulCatalogTarget>();
       for (const item of input.items) {

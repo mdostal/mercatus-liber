@@ -1,5 +1,7 @@
 import { createInMemoryProviderCatalogMappingRepository, InvalidCatalogMappingError, MissingCatalogMappingError } from "@mercatus-liber/fulfillment";
 import type { FulfillmentLineRecord, FulfillmentRecipient } from "@mercatus-liber/fulfillment";
+import { UnresolvedRegionError } from "@mercatus-liber/core";
+import { normalizePrintfulRecipient, PRINTFUL_STATE_CODE_COUNTRIES } from "../src/mapping.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assertPrintfulAdapterSatisfiesFulfillmentAdapter } from "../src/fulfillment-adapter-compat.js";
 import { createPrintfulFulfillmentAdapter, PRINTFUL_PROVIDER, printfulCatalogTargetsFrom, type PrintfulFulfillmentAdapterConfig } from "../src/index.js";
@@ -433,5 +435,35 @@ describe("createPrintfulFulfillmentAdapter", () => {
       expect(typeof adapter.getOrderStatus).toBe("function");
       expect(typeof adapter.handleWebhookEvent).toBe("function");
     });
+  });
+});
+
+describe("Printful state codes", () => {
+  const omaha: FulfillmentRecipient = { name: "Ada Example", email: "ada@example.com", address: "1 Main St, Omaha", street1: "1 Main St", city: "Omaha", stateCode: "Nebraska", postalCode: "68102", countryCode: "us" };
+
+  it("sends a state typed as its name as Printful's two-letter code", async () => {
+    const client = fakeClient();
+    await createPrintfulFulfillmentAdapter(baseConfig(client)).submitOrder({ orderId: "order-ne", items: [{ skuId: "sku-mug", quantity: 1 }], recipient: omaha });
+    expect((client.calls.createOrder![0] as { recipient: Record<string, unknown> }).recipient).toMatchObject({ state_code: "NE", country_code: "US" });
+  });
+
+  it("uses the state's name when only that is known", async () => {
+    const client = fakeClient();
+    const { stateCode: _code, ...rest } = omaha;
+    await createPrintfulFulfillmentAdapter(baseConfig(client)).submitOrder({ orderId: "order-ne2", items: [{ skuId: "sku-mug", quantity: 1 }], recipient: { ...rest, stateName: "Nebraska" } });
+    expect((client.calls.createOrder![0] as { recipient: Record<string, unknown> }).recipient).toMatchObject({ state_code: "NE" });
+  });
+
+  it("refuses a US state it can't match, or a missing one, before calling Printful", async () => {
+    const client = fakeClient();
+    const adapter = createPrintfulFulfillmentAdapter(baseConfig(client));
+    await expect(adapter.submitOrder({ orderId: "order-x", items: [{ skuId: "sku-mug", quantity: 1 }], recipient: { ...omaha, stateCode: "Nebrasca" } })).rejects.toThrow(UnresolvedRegionError);
+    await expect(adapter.submitOrder({ orderId: "order-y", items: [{ skuId: "sku-mug", quantity: 1 }], recipient: { ...omaha, stateCode: undefined } })).rejects.toMatchObject({ name: "UnresolvedRegionError", provider: "Printful" });
+    expect(client.calls.createOrder ?? []).toHaveLength(0);
+  });
+
+  it("leaves a region alone where Printful keeps no state list", () => {
+    expect(normalizePrintfulRecipient({ address1: "1 High St", city: "London", country_code: "gb", zip: "SW1A 1AA", state_code: "LDN" })).toMatchObject({ country_code: "GB", state_code: "LDN" });
+    expect(PRINTFUL_STATE_CODE_COUNTRIES).toEqual(["US", "CA", "AU", "BR", "JP"]);
   });
 });

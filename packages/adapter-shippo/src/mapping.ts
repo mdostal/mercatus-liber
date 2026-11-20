@@ -1,18 +1,30 @@
-import type { Money } from "@mercatus-liber/core";
+import { regionForProvider, type Money } from "@mercatus-liber/core";
 import type { Parcel, ShippingAddress, TrackingEvent, TrackingStatusState } from "@mercatus-liber/shipping";
 import type { ShippoAddress, ShippoParcel, ShippoRate, ShippoTrackingStatus, ShippoTrackingStatusValue } from "./shippo-types.js";
 
-/** Real, confirmed field-for-field mapping (shippo-types.ts's ShippoAddress). No structural gap here -- every ShippingAddress field has a direct Shippo counterpart. */
+/**
+ * Where the region is sent as its postal code ("NE", "ON", "NSW"), the form
+ * each country's post office uses; anywhere else it is sent as given.
+ */
+export const SHIPPO_STATE_CODE_COUNTRIES = ["US", "CA", "AU"] as const;
+
+/**
+ * Field-for-field onto Shippo's address (shippo-types.ts's ShippoAddress). The
+ * country is upper-cased and a US, Canadian or Australian state sent as its
+ * code; one that can't be matched throws UnresolvedRegionError before Shippo
+ * is called.
+ */
 export function toShippoAddress(address: ShippingAddress): ShippoAddress {
+  const country = address.country.trim().toUpperCase();
   return {
     name: address.name,
     ...(address.company ? { company: address.company } : {}),
     street1: address.street1,
     ...(address.street2 ? { street2: address.street2 } : {}),
     city: address.city,
-    state: address.state,
+    state: regionForProvider(country, address.state, { codesFor: SHIPPO_STATE_CODE_COUNTRIES, provider: "Shippo" }) ?? "",
     zip: address.postalCode,
-    country: address.country,
+    country,
     ...(address.phone ? { phone: address.phone } : {}),
     ...(address.email ? { email: address.email } : {}),
   };

@@ -58,6 +58,20 @@ real scheme needs five distinct transmission headers. Rather than changing the s
 `PAYPAL-*` headers into that one `signature` string before calling `handleWebhookEvent` — see
 `packages/adapter-paypal/src/webhook.ts`'s doc comment for the full contract.
 
+## Letting Stripe collect the shipping address
+
+`createPaymentSession` takes `collectShippingAddress: { allowedCountries, phone? }` and
+`customerEmail`. With them, Stripe Checkout asks for the address (with its own address lookup)
+and, optionally, a phone number, and prefills the email. On `checkout.session.completed` the
+adapter puts what Stripe collected on the `payments.payment.succeeded` event (`PaymentEvent`):
+`customer: { name, email, phone }` and `shippingAddress: { name, line1, line2, city, state,
+postalCode, countryCode }`. The address is read from `collected_information.shipping_details`
+(API version 2025-03-31 and later) or `shipping_details` (an endpoint pinned to an older
+version).
+
+Shipping is quoted before the session exists, so pass the one country the quote was for as
+`allowedCountries`. Checkout-orders (09) does this when started with `collectAddress`.
+
 ## Open questions
 1. Multi-provider checkout (let the shopper pick Stripe vs. something else at checkout time) —
    v1 scope or a documented future extension? Recommend: documented future extension; v1 is

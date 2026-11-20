@@ -1,7 +1,9 @@
 import type { EventBus } from "@mercatus-liber/core";
 import Stripe from "stripe";
 import type {
+  CollectedShippingAddress,
   CreatePaymentSessionInput,
+  PaymentEvent,
   PaymentAdapter,
   PaymentConfirmation,
   PaymentSession,
@@ -33,6 +35,36 @@ function toStripeStatus(status: Stripe.Checkout.Session.PaymentStatus): PaymentC
     throw new Error(`Unrecognized Stripe Checkout Session payment_status: "${candidate}"`);
   }
   return match;
+}
+
+type StripeAddress = { line1: string | null; line2: string | null; city: string | null; state: string | null; postal_code: string | null; country: string | null };
+
+/**
+ * What Stripe collected on its checkout page. The shipping address is at
+ * `collected_information.shipping_details` from API version 2025-03-31; a
+ * webhook endpoint pinned to an older version sends it as `shipping_details`.
+ */
+function collectedFrom(session: Stripe.Checkout.Session): Pick<PaymentEvent, "customer" | "shippingAddress"> {
+  const details = session.customer_details;
+  const legacy = (session as unknown as { shipping_details?: { name?: string | null; address?: StripeAddress | null } | null }).shipping_details;
+  const shipping = session.collected_information?.shipping_details ?? legacy ?? null;
+  const address = shipping?.address as StripeAddress | null | undefined;
+  const shippingAddress: CollectedShippingAddress | undefined =
+    address?.line1 && address.city && address.postal_code && address.country
+      ? {
+          name: shipping?.name ?? null,
+          line1: address.line1,
+          line2: address.line2 || null,
+          city: address.city,
+          state: address.state || null,
+          postalCode: address.postal_code,
+          countryCode: address.country,
+        }
+      : undefined;
+  return {
+    ...(details ? { customer: { name: details.name ?? null, email: details.email ?? null, phone: details.phone ?? null } } : {}),
+    ...(shippingAddress ? { shippingAddress } : {}),
+  };
 }
 
 /**
@@ -74,6 +106,15 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter
               ],
             }
           : {}),
+        ...(input.collectShippingAddress
+          ? {
+              shipping_address_collection: {
+                allowed_countries: input.collectShippingAddress.allowedCountries.map((code) => code.trim().toUpperCase()) as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
+              },
+              ...(input.collectShippingAddress.phone ? { phone_number_collection: { enabled: true } } : {}),
+            }
+          : {}),
+        ...(input.customerEmail ? { customer_email: input.customerEmail } : {}),
         success_url: input.successUrl,
         cancel_url: input.cancelUrl,
         automatic_tax: { enabled: true },
@@ -108,11 +149,8 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session;
         const orderRef = typeof session.metadata?.orderRef === "string" ? session.metadata.orderRef : null;
-        if (session.payment_status === "paid") {
-          await events.publish("payments.payment.succeeded", { sessionId: session.id, orderRef });
-        } else {
-          await events.publish("payments.payment.failed", { sessionId: session.id, orderRef });
-        }
+        const payload: PaymentEvent = { sessionId: session.id, orderRef, ...collectedFrom(session) };
+        await events.publish(session.payment_status === "paid" ? "payments.payment.succeeded" : "payments.payment.failed", payload);
       }
     },
   };

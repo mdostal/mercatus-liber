@@ -1,4 +1,5 @@
 import type { GetRatesInput, ShippingAddress } from "@mercatus-liber/shipping";
+import { UnresolvedRegionError } from "@mercatus-liber/core";
 import { describe, expect, it } from "vitest";
 import { createShippoShippingAdapter, ShippoApiError, SHIPPO_DASHBOARD_URL } from "../src/index.js";
 import type { ShippoHttpClient } from "../src/http-client.js";
@@ -371,5 +372,16 @@ describe("buyLabel against Shippo's real transaction response", () => {
     expect(result.label.trackingNumber).toBe("92701901755477000000000011");
     expect(typeof result.label.carrier).toBe("string");
     expect(result.label.carrier.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Shippo state codes", () => {
+  it("sends a state typed as its name as its code, and refuses one it can't match before calling Shippo", async () => {
+    const client = fakeClient();
+    const adapter = createShippoShippingAdapter({ apiToken: "test-token", httpClient: client });
+    await adapter.getRates({ ...sampleInput, toAddress: { ...toAddress, state: "California", country: "us" } }).catch(() => undefined);
+    expect((client.calls.createShipment![0] as { address_to: Record<string, unknown> }).address_to).toMatchObject({ state: "CA", country: "US" });
+    await expect(adapter.getRates({ ...sampleInput, toAddress: { ...toAddress, state: "Califonia" } })).rejects.toThrow(UnresolvedRegionError);
+    expect(client.calls.createShipment).toHaveLength(1);
   });
 });

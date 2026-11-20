@@ -235,6 +235,25 @@ Printify-catalog product/variant a SKU maps to, and therefore which underlying p
 fulfills it, is Printify-dashboard setup, not something this adapter or this reference app's
 catalog has any notion of).
 
+## States and provinces
+
+A recipient's `stateCode` may hold a code ("NE") or, from a free-text form, a name ("Nebraska");
+`stateName` holds the name when the source gave one. Each adapter converts the region to what its
+provider wants, using `resolveRegion`/`regionForProvider` from `@mercatus-liber/core` (lists for
+US with DC, territories and military codes; CA; AU; BR; JP, from Printful's `/countries`):
+
+| Adapter | Sends a code for | Field |
+|---|---|---|
+| Printful | US, CA, AU, BR, JP (the countries Printful keeps state lists for) | `state_code` |
+| X3D | US, CA, AU | `state` |
+| Printify | US, CA, AU | `region` |
+| Shippo | US, CA, AU | `state` |
+
+Elsewhere the region is sent as given. A region that can't be matched in a country that needs a
+code throws `UnresolvedRegionError` (with `countryCode`, `region` and `provider`) before the
+provider is called. Printful answered "Nebraska" sent as `state_code` with `HTTP 400: Recipient:
+Shipping address state and ZIP code don't match` on a real order on 2026-11-20.
+
 ## Explicitly NOT this subsystem's job
 - **Automatically routing/submitting an order for fulfillment when it's placed or paid** — no
   event-bus subscription exists yet (unlike `inventory`/`internal-bi`'s

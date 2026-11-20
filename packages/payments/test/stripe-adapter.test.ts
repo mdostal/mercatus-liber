@@ -81,6 +81,22 @@ describe("createStripeAdapter", () => {
       expect(mockCreate.mock.calls.at(-1)![0]).not.toHaveProperty("shipping_options");
     });
 
+    it("asks Stripe to collect the shipping address and phone, and prefills the email, when told to", async () => {
+      mockCreate.mockResolvedValue({ id: "cs_test_123", url: "https://checkout.stripe.com/pay/cs_test_123" });
+      const base = { orderRef: "order-1", lineItems: [], successUrl: "https://shop.example/success", cancelUrl: "https://shop.example/cancel" };
+      await adapter().createPaymentSession({ ...base, collectShippingAddress: { allowedCountries: ["us"], phone: true }, customerEmail: "ada@example.com" });
+      expect(mockCreate.mock.calls[0]![0]).toMatchObject({
+        shipping_address_collection: { allowed_countries: ["US"] },
+        phone_number_collection: { enabled: true },
+        customer_email: "ada@example.com",
+      });
+      await adapter().createPaymentSession(base);
+      const plain = mockCreate.mock.calls[1]![0];
+      expect(plain).not.toHaveProperty("shipping_address_collection");
+      expect(plain).not.toHaveProperty("phone_number_collection");
+      expect(plain).not.toHaveProperty("customer_email");
+    });
+
     it("throws if Stripe doesn't return a redirect URL", async () => {
       mockCreate.mockResolvedValue({ id: "cs_test_123", url: null });
       await expect(
@@ -119,6 +135,41 @@ describe("createStripeAdapter", () => {
         event: "payments.payment.succeeded",
         payload: { sessionId: "cs_test_123", orderRef: "order-1" },
       });
+    });
+
+    it("includes the address, name, email and phone Stripe collected", async () => {
+      const address = { line1: "1 Main St", line2: "", city: "Omaha", state: "NE", postal_code: "68102", country: "US" };
+      mockConstructEvent.mockReturnValue({
+        type: "checkout.session.completed",
+        data: {
+          object: {
+            id: "cs_test_123",
+            payment_status: "paid",
+            metadata: { orderRef: "order-1" },
+            customer_details: { name: "Ada Example", email: "ada@example.com", phone: "+14025550100", address },
+            collected_information: { shipping_details: { name: "Ada Shipto", address } },
+          },
+        },
+      });
+      await adapter().handleWebhookEvent("raw-body", "sig");
+      expect(emitted).toContainEqual({
+        event: "payments.payment.succeeded",
+        payload: {
+          sessionId: "cs_test_123",
+          orderRef: "order-1",
+          customer: { name: "Ada Example", email: "ada@example.com", phone: "+14025550100" },
+          shippingAddress: { name: "Ada Shipto", line1: "1 Main St", line2: null, city: "Omaha", state: "NE", postalCode: "68102", countryCode: "US" },
+        },
+      });
+    });
+
+    it("reads the shipping address from shipping_details for an endpoint on an older API version", async () => {
+      mockConstructEvent.mockReturnValue({
+        type: "checkout.session.completed",
+        data: { object: { id: "cs_1", payment_status: "paid", metadata: { orderRef: "o" }, shipping_details: { name: "Ada", address: { line1: "1 Main St", line2: null, city: "Omaha", state: "NE", postal_code: "68102", country: "US" } } } },
+      });
+      await adapter().handleWebhookEvent("raw-body", "sig");
+      expect((emitted[0]!.payload as { shippingAddress: unknown }).shippingAddress).toMatchObject({ name: "Ada", city: "Omaha", state: "NE" });
     });
 
     it("publishes payments.payment.failed when the completed session wasn't actually paid", async () => {

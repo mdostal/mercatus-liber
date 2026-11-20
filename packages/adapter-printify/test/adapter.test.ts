@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import type { FulfillmentLineRecord, FulfillmentRecipient } from "@mercatus-liber/fulfillment";
+import { UnresolvedRegionError } from "@mercatus-liber/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assertPrintifyAdapterSatisfiesFulfillmentAdapter } from "../src/fulfillment-adapter-compat.js";
 import type { PrintifyHttpClient } from "../src/http-client.js";
@@ -366,5 +367,21 @@ describe("createPrintifyFulfillmentAdapter", () => {
       expect(typeof adapter.getOrderStatus).toBe("function");
       expect(typeof adapter.handleWebhookEvent).toBe("function");
     });
+  });
+});
+
+describe("Printify region codes", () => {
+  const omaha: FulfillmentRecipient = { name: "Ada Example", email: "ada@example.com", address: "1 Main St, Omaha", street1: "1 Main St", city: "Omaha", stateCode: "Nebraska", postalCode: "68102", countryCode: "us" };
+
+  it("sends a US state typed as its name as its code", async () => {
+    const client = fakeClient();
+    await createPrintifyFulfillmentAdapter(baseConfig(client)).submitOrder({ orderId: "order-ne", items: [{ skuId: "sku-mug", quantity: 1 }], recipient: omaha });
+    expect((client.calls.createOrder![0] as { address_to: Record<string, unknown> }).address_to).toMatchObject({ region: "NE", country: "US" });
+  });
+
+  it("refuses a US state it can't match before calling Printify", async () => {
+    const client = fakeClient();
+    await expect(createPrintifyFulfillmentAdapter(baseConfig(client)).submitOrder({ orderId: "order-x", items: [{ skuId: "sku-mug", quantity: 1 }], recipient: { ...omaha, stateCode: "Nebrasca" } })).rejects.toThrow(UnresolvedRegionError);
+    expect(client.calls.createOrder ?? []).toHaveLength(0);
   });
 });

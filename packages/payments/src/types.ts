@@ -13,6 +13,42 @@ export interface CreatePaymentSessionInput {
   cancelUrl: string;
   /** Charged on top of the line items and shown as shipping. */
   shipping?: { label: string; amount: Money };
+  /**
+   * Have the hosted checkout page collect the shipping address (with the
+   * provider's own address lookup and validation) instead of the store.
+   * The address arrives on the payments.payment.succeeded event.
+   */
+  collectShippingAddress?: {
+    /** ISO 3166-1 alpha-2 codes the shopper may ship to. Pass the one country the shipping was quoted for. */
+    allowedCountries: string[];
+    /** Also ask for a phone number. */
+    phone?: boolean;
+  };
+  /** Prefill the shopper's email on the checkout page. */
+  customerEmail?: string;
+}
+
+/** An address the payment provider collected on its checkout page. */
+export interface CollectedShippingAddress {
+  name: string | null;
+  line1: string;
+  line2: string | null;
+  city: string;
+  /** As the provider gave it: Stripe sends US states as codes ("NE"). */
+  state: string | null;
+  postalCode: string;
+  /** ISO 3166-1 alpha-2. */
+  countryCode: string;
+}
+
+/** The payload of payments.payment.succeeded and payments.payment.failed. */
+export interface PaymentEvent {
+  sessionId: string;
+  orderRef: string | null;
+  /** Who paid, as the checkout page collected them. Present when the provider reports it. */
+  customer?: { name: string | null; email: string | null; phone: string | null };
+  /** Present when the checkout page collected a shipping address. */
+  shippingAddress?: CollectedShippingAddress;
 }
 
 export interface PaymentSession {

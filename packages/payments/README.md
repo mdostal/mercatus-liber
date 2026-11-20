@@ -21,6 +21,12 @@ const payments = process.env.STRIPE_SECRET_KEY
   : createSandboxPaymentAdapter({ events, checkoutPagePath: "/sandbox-checkout" });
 ```
 
+## Collecting the shipping address on Stripe's page
+
+Pass `collectShippingAddress: { allowedCountries: ["US"], phone: true }` (and `customerEmail`) to
+`createPaymentSession`. What Stripe collected arrives on `payments.payment.succeeded` as
+`customer` and `shippingAddress` (see `PaymentEvent`).
+
 ## Key exports
 
 - `PaymentAdapter`: `createPaymentSession`, `confirmPayment`, `handleWebhookEvent`.
