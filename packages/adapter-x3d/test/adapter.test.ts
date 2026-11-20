@@ -1,4 +1,5 @@
-import { createInMemoryEventBus } from "@mercatus-liber/core";
+import { createInMemoryEventBus, UnresolvedRegionError } from "@mercatus-liber/core";
+import { mapRecipientToX3d } from "../src/mapping.js";
 import {
   createInMemoryProviderCatalogMappingRepository,
   createInMemoryProviderOrderLinkRepository,
@@ -591,5 +592,20 @@ describe("estimateX3dSlicedOrderCost", () => {
     expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 1, material: "tpu" }).print).toBe(20);
     expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 1, country: "ca" })).toMatchObject({ shipping: 30, total: 42 });
     expect(estimateX3dSlicedOrderCost({ grams: 100, filaments: 1, shippingSpeed: "express" }).shipping).toBe(15);
+  });
+});
+
+describe("X3D state codes", () => {
+  it("sends a US state typed as its name as its code", () => {
+    expect(mapRecipientToX3d({ ...RECIPIENT, stateCode: "Texas" }).state).toBe("TX");
+    expect(mapRecipientToX3d({ ...RECIPIENT, stateCode: undefined, stateName: "Texas" }).state).toBe("TX");
+    expect(mapRecipientToX3d({ ...RECIPIENT, countryCode: "CA", stateCode: "Ontario" }).state).toBe("ON");
+    expect(mapRecipientToX3d({ ...RECIPIENT, countryCode: "GB", stateCode: "Kent" }).state).toBe("Kent");
+  });
+
+  it("🔒 sends nothing for a US state it can't match", async () => {
+    const { adapter, fake } = setup();
+    await expect(adapter.submitOrder(order([{ skuId: "sku-bracket", quantity: 1 }], { ...RECIPIENT, stateCode: "Texass" }))).rejects.toThrow(UnresolvedRegionError);
+    expect(fake.calls).toHaveLength(0);
   });
 });

@@ -1,3 +1,4 @@
+import { regionForProvider } from "@mercatus-liber/core";
 import type { FulfillmentLineStatus, FulfillmentRecipient } from "@mercatus-liber/fulfillment";
 import type { PrintfulOrderStatus, PrintfulShipmentResponse } from "./printful-types.js";
 
@@ -72,7 +73,7 @@ export function mapRecipientToPrintfulAddress(recipient: FulfillmentRecipient): 
     ...(recipient.street1 !== undefined ? { address1: recipient.street1 } : {}),
     ...(recipient.street2 !== undefined ? { address2: recipient.street2 } : {}),
     ...(recipient.city !== undefined ? { city: recipient.city } : {}),
-    ...(recipient.stateCode !== undefined ? { state_code: recipient.stateCode } : {}),
+    ...((recipient.stateCode ?? recipient.stateName) !== undefined ? { state_code: (recipient.stateCode ?? recipient.stateName)! } : {}),
     ...(recipient.countryCode !== undefined ? { country_code: recipient.countryCode } : {}),
     ...(recipient.postalCode !== undefined ? { zip: recipient.postalCode } : {}),
     ...(recipient.phone !== undefined ? { phone: recipient.phone } : {}),
@@ -122,6 +123,28 @@ export class IncompleteRecipientError extends Error {
     super(`The shipping address is missing ${missing.join(", ")}, which Printful needs to ship.`);
     this.name = "IncompleteRecipientError";
   }
+}
+
+/**
+ * The countries Printful keeps a state list for, and so wants a `state_code`
+ * from: the countries with `states` in https://api.printful.com/countries on
+ * 2026-11-20. Printful answered a real order to Nebraska sent as "Nebraska"
+ * with `HTTP 400: Recipient: Shipping address state and ZIP code don't match`.
+ */
+export const PRINTFUL_STATE_CODE_COUNTRIES = ["US", "CA", "AU", "BR", "JP"] as const;
+
+/**
+ * The address as Printful wants it: the country upper-cased and, for
+ * PRINTFUL_STATE_CODE_COUNTRIES, the state as its code ("Nebraska" becomes
+ * "NE"). Throws UnresolvedRegionError (from @mercatus-liber/core) when such a
+ * country's state can't be matched, before anything is sent to Printful.
+ */
+export function normalizePrintfulRecipient(address: PrintfulRecipientAddress): PrintfulRecipientAddress {
+  const country = address.country_code?.trim().toUpperCase();
+  if (!country) return address;
+  const { state_code: _state, ...rest } = address;
+  const state = regionForProvider(country, address.state_code, { codesFor: PRINTFUL_STATE_CODE_COUNTRIES, provider: "Printful" });
+  return { ...rest, country_code: country, ...(state ? { state_code: state } : {}) };
 }
 
 /** Printful refuses an order without these, so check before sending rather than after. */

@@ -48,8 +48,10 @@ export interface ShippingInfo {
   /** Apartment/suite/unit line. Optional -- many real addresses don't need one. */
   street2?: string;
   city?: string;
-  /** State/province/region code, e.g. "CA". */
+  /** State/province/region code, e.g. "CA". A name typed into a form may land here too; fulfillment adapters convert it. */
   stateCode?: string;
+  /** The region's name, e.g. "California", when known. */
+  stateName?: string;
   postalCode?: string;
   /** ISO 3166-1 alpha-2 country code, e.g. "US". */
   countryCode?: string;
@@ -127,7 +129,30 @@ export interface PaymentSessionCreator {
     cancelUrl: string;
     /** Charged on top of the line items, shown to the shopper as shipping. */
     shipping?: ShippingCharge;
+    /** Have the payment page collect the shipping address. See StartCheckoutInput.collectAddress. */
+    collectShippingAddress?: { allowedCountries: string[]; phone?: boolean };
+    /** Prefill the shopper's email on the payment page. */
+    customerEmail?: string;
   }): Promise<{ sessionId: string; redirectUrl: string }>;
+}
+
+/**
+ * The payload of payments.payment.succeeded that checkout-orders reads.
+ * @mercatus-liber/payments' PaymentEvent has this shape.
+ */
+export interface PaymentSucceededPayload {
+  sessionId: string;
+  orderRef: string | null;
+  customer?: { name: string | null; email: string | null; phone: string | null };
+  shippingAddress?: { name: string | null; line1: string; line2: string | null; city: string; state: string | null; postalCode: string; countryCode: string };
+}
+
+/** Thrown when checkout is asked to have the payment page collect the address but no country to ship to is known. */
+export class NoShippingCountryError extends Error {
+  constructor() {
+    super("Pass collectAddress.allowedCountries, or shippingInfo.countryCode, so the payment page knows where it may ship.");
+    this.name = "NoShippingCountryError";
+  }
 }
 
 /** A shipping charge: what the shopper sees it called, and how much. */

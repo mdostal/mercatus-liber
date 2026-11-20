@@ -5,7 +5,7 @@ import { createInMemoryEventBus, type EventBus } from "@mercatus-liber/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createInMemoryOrderRepository } from "../src/in-memory-repository.js";
 import { createCheckoutOrdersService, type CheckoutOrdersService } from "../src/service.js";
-import { CartNotFoundForCheckoutError, EmptyCartError, QuoteRequiredError } from "../src/types.js";
+import { CartNotFoundForCheckoutError, EmptyCartError, NoShippingCountryError, QuoteRequiredError } from "../src/types.js";
 import type { OrderRepository, PaymentSessionCreator, PricingAdjuster, PricingAdjustment } from "../src/types.js";
 
 const SHIPPING = { name: "A", email: "a@example.com", address: { line1: "1 Main", city: "X", state: "Y", postalCode: "1", country: "US" } };
@@ -102,6 +102,69 @@ describe("checkout-orders service", () => {
       }),
     );
     expect(orderPlacedEvents).toEqual([{ orderId: result.order.id }]);
+  });
+
+  describe("an address collected by the payment page", () => {
+    const start = (extra: Record<string, unknown> = {}) =>
+      checkout.startCheckout({
+        cartId,
+        idempotencyKey: "idem-collect",
+        shippingInfo: { name: "", email: "typed@example.com", address: "", countryCode: "US" },
+        successUrl: "https://shop.example/success",
+        cancelUrl: "https://shop.example/cancel",
+        collectAddress: { phone: true },
+        ...extra,
+      });
+    const stripeAddress = { name: "Ada Example", line1: "1 Main St", line2: "Apt 2", city: "Omaha", state: "Nebraska", postalCode: "68102", countryCode: "US" };
+
+    it("asks the payment page to collect it for the quoted country, prefilled with the email", async () => {
+      await cartService.addItem(cartId, activeSkuId, 1);
+      await start();
+      expect(createPaymentSession).toHaveBeenCalledWith(expect.objectContaining({ collectShippingAddress: { allowedCountries: ["US"], phone: true }, customerEmail: "typed@example.com" }));
+    });
+
+    it("needs a country to allow", async () => {
+      await cartService.addItem(cartId, activeSkuId, 1);
+      await expect(start({ shippingInfo: { name: "", email: "", address: "" } })).rejects.toThrow(NoShippingCountryError);
+    });
+
+    it("replaces the caller's address on the order before checkout.order.paid is published", async () => {
+      await cartService.addItem(cartId, activeSkuId, 1);
+      const { order } = await start();
+      let seenAtPaid: unknown = null;
+      events.subscribe("checkout.order.paid", async () => {
+        seenAtPaid = (await orderRepository.get(order.id))!.shippingInfo;
+      });
+      await events.publish("payments.payment.succeeded", {
+        sessionId: "sess_1",
+        orderRef: order.id,
+        customer: { name: "Ada Payer", email: "ada@example.com", phone: "+14025550100" },
+        shippingAddress: stripeAddress,
+      });
+      const expected = {
+        name: "Ada Example",
+        email: "ada@example.com",
+        address: "1 Main St, Apt 2, Omaha, NE 68102, US",
+        street1: "1 Main St",
+        street2: "Apt 2",
+        city: "Omaha",
+        stateCode: "NE",
+        stateName: "Nebraska",
+        postalCode: "68102",
+        countryCode: "US",
+        phone: "+14025550100",
+      };
+      expect(seenAtPaid).toEqual(expected);
+      expect((await orderRepository.get(order.id))!.status).toBe("paid");
+    });
+
+    it("keeps the caller's address when the payment page collected none", async () => {
+      await cartService.addItem(cartId, activeSkuId, 1);
+      const info = { name: "B", email: "b@example.com", address: "2 Elm St", street1: "2 Elm St", city: "Lincoln", stateCode: "NE", postalCode: "68508", countryCode: "US" };
+      const { order } = await checkout.startCheckout({ cartId, idempotencyKey: "idem-own", shippingInfo: info, successUrl: "https://s/ok", cancelUrl: "https://s/no" });
+      await events.publish("payments.payment.succeeded", { sessionId: "sess_1", orderRef: order.id, customer: { name: "B", email: "other@example.com", phone: null } });
+      expect((await orderRepository.get(order.id))!.shippingInfo).toEqual(info);
+    });
   });
 
   it("throws EmptyCartError for a cart with no items", async () => {

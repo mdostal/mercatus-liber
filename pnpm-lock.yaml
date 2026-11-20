@@ -590,6 +590,9 @@ importers:
 
   packages/adapter-printify:
     dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
       '@mercatus-liber/fulfillment':
         specifier: workspace:*
         version: link:../fulfillment
@@ -752,13 +755,13 @@ importers:
 
   packages/adapter-x3d:
     dependencies:
+      '@mercatus-liber/core':
+        specifier: workspace:*
+        version: link:../core
       '@mercatus-liber/fulfillment':
         specifier: workspace:*
         version: link:../fulfillment
     devDependencies:
-      '@mercatus-liber/core':
-        specifier: workspace:*
-        version: link:../core
       '@types/node':
         specifier: ^22.7.5
         version: 22.20.1

@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
-import type { EventBus, Money } from "@mercatus-liber/core";
-import { CartNotFoundForCheckoutError, EmptyCartError, QuoteRequiredError } from "./types.js";
+import { resolveRegion, type EventBus, type Money } from "@mercatus-liber/core";
+import { CartNotFoundForCheckoutError, EmptyCartError, NoShippingCountryError, QuoteRequiredError } from "./types.js";
 import type {
   CartLookup,
   Order,
   OrderRepository,
   OrderStatus,
   PaymentSessionCreator,
+  PaymentSucceededPayload,
   PricingAdjuster,
   PricingAdjustment,
   LineItemNamer,
@@ -24,6 +25,44 @@ export interface StartCheckoutInput {
   customerId?: string | null;
   /** Omit or pass null/undefined to check out at full (pre-discount) price. An unknown/ineligible code never throws -- see PricingAdjuster. */
   couponCode?: string | null;
+  /**
+   * Have the payment page collect the shipping address, with its own address
+   * lookup, instead of the store's form. shippingInfo then needs only what
+   * shipping is quoted from (usually countryCode) and, if known, the email;
+   * pass "" for name and address. When the payment succeeds, the address,
+   * name, email and phone the payment page collected replace shippingInfo's,
+   * before checkout.order.paid is published.
+   */
+  collectAddress?: {
+    /** Countries the shopper may pick. Defaults to shippingInfo.countryCode, the country shipping was quoted for. */
+    allowedCountries?: string[];
+    /** Also ask for a phone number. */
+    phone?: boolean;
+  };
+}
+
+/** The order's shippingInfo with what the payment page collected laid over it. */
+function withCollectedAddress(current: ShippingInfo, payment: PaymentSucceededPayload): ShippingInfo {
+  const collected = payment.shippingAddress;
+  if (!collected) return current;
+  const region = resolveRegion(collected.countryCode, collected.state);
+  const name = collected.name ?? payment.customer?.name ?? current.name;
+  const email = payment.customer?.email ?? current.email;
+  const phone = payment.customer?.phone ?? current.phone;
+  const stateCode = region?.code ?? collected.state ?? undefined;
+  return {
+    name,
+    email,
+    address: [collected.line1, collected.line2, collected.city, [stateCode, collected.postalCode].filter(Boolean).join(" "), collected.countryCode].filter(Boolean).join(", "),
+    street1: collected.line1,
+    ...(collected.line2 ? { street2: collected.line2 } : {}),
+    city: collected.city,
+    ...(stateCode ? { stateCode } : {}),
+    ...(region ? { stateName: region.name } : {}),
+    postalCode: collected.postalCode,
+    countryCode: collected.countryCode.toUpperCase(),
+    ...(phone ? { phone } : {}),
+  };
 }
 
 export interface CheckoutResult {
@@ -86,15 +125,17 @@ export function createCheckoutOrdersService(deps: {
   }
 
   // React to async payment confirmation -- never a direct call from startCheckout.
-  events.subscribe<{ sessionId: string; orderRef: string | null }>(
+  events.subscribe<PaymentSucceededPayload>(
     "payments.payment.succeeded",
-    async ({ orderRef }) => {
+    async (payment) => {
+      const { orderRef } = payment;
       if (!orderRef) return;
       const order = await repository.get(orderRef);
       // Idempotent: a redelivered webhook event that already transitioned this
       // order is a no-op, not a re-publish.
       if (!order || order.status !== "pending_payment") return;
-      const paid: Order = { ...order, status: "paid" };
+      // An address the payment page collected (and validated) wins over the one the store was given.
+      const paid: Order = { ...order, status: "paid", shippingInfo: withCollectedAddress(order.shippingInfo, payment) };
       await repository.save(paid);
       await events.publish("checkout.order.paid", { orderId: paid.id });
     },
@@ -113,6 +154,9 @@ export function createCheckoutOrdersService(deps: {
       const shopperCart = await cart.getCart(input.cartId);
       if (!shopperCart) throw new CartNotFoundForCheckoutError(input.cartId);
       if (shopperCart.items.length === 0) throw new EmptyCartError(input.cartId);
+
+      const allowedCountries = input.collectAddress ? (input.collectAddress.allowedCountries ?? (input.shippingInfo.countryCode ? [input.shippingInfo.countryCode] : [])) : [];
+      if (input.collectAddress && allowedCountries.length === 0) throw new NoShippingCountryError();
 
       const needQuote = shopperCart.items.filter((item) => item.customization?.quoteRequired).map((item) => item.skuId);
       if (needQuote.length > 0) throw new QuoteRequiredError(needQuote);
@@ -176,6 +220,8 @@ export function createCheckoutOrdersService(deps: {
         successUrl: input.successUrl,
         cancelUrl: input.cancelUrl,
         ...(shippingCharge ? { shipping: shippingCharge } : {}),
+        ...(input.collectAddress ? { collectShippingAddress: { allowedCountries, ...(input.collectAddress.phone ? { phone: true } : {}) } } : {}),
+        ...(input.shippingInfo.email?.trim() ? { customerEmail: input.shippingInfo.email.trim() } : {}),
       });
 
       const withSession: Order = {

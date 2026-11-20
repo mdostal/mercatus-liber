@@ -36,6 +36,17 @@ dashboard), and potentially a plugin (send a Slack notification, trigger a fulfi
 workflow) — none of which checkout-orders needs to know exist. Adding a new reaction to "order
 placed" later is a new event subscriber, never a change to this subsystem.
 
+## An address collected by the payment page
+
+`startCheckout({ ..., collectAddress: { allowedCountries?, phone? } })` has the payment page
+collect the shipping address instead of the store's form. `shippingInfo` then needs only what
+shipping is quoted from (usually `countryCode`) and the email if known; `allowedCountries`
+defaults to `[shippingInfo.countryCode]`, and `NoShippingCountryError` is thrown when neither is
+given. When `payments.payment.succeeded` carries a `shippingAddress`, it replaces the order's
+`shippingInfo` (with `stateCode` and `stateName` both filled where the region is recognized)
+before `checkout.order.paid` is published, so fulfillment ships to the validated address. A store
+that collects the address itself works as before.
+
 ## Open questions
 1. Does checkout-orders own shipping-rate calculation, or does that also delegate to the
    payments adapter's underlying provider (Stripe's own shipping-rate support) per the "never
