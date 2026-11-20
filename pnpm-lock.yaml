@@ -146,6 +146,9 @@ importers:
       '@mercatus-liber/admin-auth':
         specifier: workspace:*
         version: link:../../packages/admin-auth
+      '@mercatus-liber/admin-ui':
+        specifier: workspace:*
+        version: link:../../packages/admin-ui
       '@mercatus-liber/advertising':
         specifier: workspace:*
         version: link:../../packages/advertising

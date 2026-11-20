@@ -2,7 +2,7 @@
 
 A `FulfillmentAdapter` for `@mercatus-liber/fulfillment` that submits orders to Printful.
 
-**Status:** built and tested, credential-gated, and never called against a live Printful account, so it is unverified against the live provider. Enabled by `PRINTFUL_API_TOKEN`, with optional `PRINTFUL_STORE_ID`. Not yet published to npm; use it from this monorepo via `workspace:*`.
+**Status:** in production use by shop.mdostal.com (orders since 2026-11); the catalog reads below were checked against the live v2 API on 2026-11-06 and 2026-11-20. Enabled by `PRINTFUL_API_TOKEN`, with optional `PRINTFUL_STORE_ID`. Not yet published to npm; use it from this monorepo via `workspace:*`.
 
 ## Usage
 
@@ -77,6 +77,32 @@ await applyPrintfulProduct({ catalog, mappings, routing }, plan);
 Planned costs come from Printful's price list: a variant's price covers one print placement, and each additional placement adds its price. The price list can be higher than what Printful actually charges (a hoodie listed at 23.95 was estimated at 22.63 on 2026-11-06), so for exact costs call `estimateCosts`, which creates no order, and pass the results to `planPrintfulProduct` as its fourth argument. Shipping and tax are extra.
 
 `submitOrder` refuses an address without a street line, city, country, or postal code before calling Printful. A draft left by `holdOrders` reports the status `"held"`.
+
+## Browsing Printful's catalog
+
+`createPrintfulCatalogClient` also reads the whole catalog, for an admin that lets someone choose
+what to sell:
+
+- `listCatalogProducts(query)` (one page, at most 100) and `listAllCatalogProducts(query)` (every
+  page; the whole catalog, 575 products on 2026-11-20, is 6 requests). Filters: categories,
+  colours, placements, techniques, selling region, destination country, sort.
+- `listCategories()`, `getCatalogListing(id)` (colours, sizes, techniques, placements),
+  `getVariant(id)`.
+- `getPrintAreas(id)`: each placement's print area in inches and dpi, and the pixel size a print
+  file should be (product 71's front: 12 x 16 in at 150 dpi, 1800 x 2400 px), with its mockup
+  styles.
+- `getMockupTemplates(id)`: template images with the print area's position on them, per group of
+  variants; `templateFor(templates, variantId, placement)` picks one.
+- `getAvailability(id)`: stock per variant, technique and selling region.
+
+`createPrintfulCatalogCache({ fetch, load, save, ttlMs })` keeps the listing (default one day) so
+browsing doesn't call Printful on every page view; it serves a saved copy without a token and a
+stale copy when Printful fails. `filterPrintfulCatalog` searches a cached listing.
+`printfulProductsInStore` says which Printful products a store already sells, from its mappings
+(`applyPrintfulProduct` now records `catalogProductId`).
+
+Both clients wait out a short `429 Retry-After` once and otherwise throw
+`PrintfulRateLimitError` (v2 allows 120 requests a minute).
 
 ## States
 

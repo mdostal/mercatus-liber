@@ -112,12 +112,10 @@ this epic's `design-discussion.md`):
   have. `services.ts`'s wiring is a best-effort bridge (the whole free-text line into `address1`),
   not a fabricated structured address — a real deployment would need to collect a structured
   address at checkout to do better.
-- `resolveCatalogTarget(skuId)`: Printful's confirmed v2 `order_items` schema addresses a line by
-  a Printful-assigned `catalog_variant_id` (integer), not an arbitrary caller-assigned SKU string.
-  This reference app's catalog (`@mercatus-liber/core`'s `Sku`) has no notion of Printful's
-  catalog surface at all, so `services.ts`'s wiring throws a clear, honest error here rather than
-  inventing a mapping — a real deployment needs an explicit SKU → `catalog_variant_id` mapping
-  (e.g. a small config table or a SKU metadata field) before routing any SKU to `"printful"`.
+- `resolveCatalogTarget(skuId)`: reads the SKU's Printful variant and print files from the
+  provider catalog mappings (`printfulCatalogTargetsFrom`), which `applyPrintfulProduct` writes.
+  The reference storefront's admin has a Printful catalog page (`/demo/<slug>/admin/printful`)
+  to browse Printful's products and see which are already in the store.
 
 **`trackingNumber` is always `null`** from this adapter — confirmed absent from Printful's real
 v2 `Shipment` schema (`tracking_url` + a `tracking_events` timeline only, no `tracking_number`

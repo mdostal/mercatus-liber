@@ -6,3 +6,7 @@ export { RatingsTable, summarizeScores } from "./ratings-table.js";
 export type { RatingReason, RatingRow, RatingsTableProps } from "./ratings-table.js";
 export { OptionMatrixConfigurator, resolveMatrixSelection } from "./option-matrix-configurator.js";
 export type { MatrixAddResult, MatrixImage, MatrixOption, MatrixOptionValue, MatrixSelection, OptionMatrixConfiguratorProps } from "./option-matrix-configurator.js";
+export { CatalogGrid, filterCatalogItems } from "./catalog-grid.js";
+export type { CatalogGridFacet, CatalogGridItem, CatalogGridProps } from "./catalog-grid.js";
+export { CatalogItemDetail, variantCellKey } from "./catalog-item-detail.js";
+export type { CatalogItemDetailProps, PrintAreaRow, VariantCell } from "./catalog-item-detail.js";

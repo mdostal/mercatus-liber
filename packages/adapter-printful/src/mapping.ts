@@ -19,6 +19,8 @@ import type { PrintfulOrderStatus, PrintfulShipmentResponse } from "./printful-t
  */
 export interface PrintfulCatalogTarget {
   catalogVariantId: number;
+  /** The Printful catalog product the variant belongs to, e.g. 71. Recorded by applyPrintfulProduct; older mappings may lack it. */
+  catalogProductId?: number;
   retailPrice?: string;
   name?: string;
   placements?: { placement: string; technique: string; layers: { type: "file"; url: string }[] }[];

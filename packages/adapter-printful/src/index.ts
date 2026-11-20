@@ -7,6 +7,8 @@ import { parsePrintfulWebhookPayload, PrintfulWebhookSignatureInvalidError, Prin
 
 export * from "./printful-types.js";
 export * from "./catalog.js";
+export * from "./catalog-browse.js";
+export * from "./printful-fetch.js";
 export * from "./products.js";
 export * from "./mapping.js";
 export { PrintfulApiError, type PrintfulHttpClient } from "./http-client.js";

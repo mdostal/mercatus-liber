@@ -1,0 +1,370 @@
+{
+ "note": "Trimmed from live Printful v2 responses read on 2026-11-20 (product 71, Bella+Canvas 3001).",
+ "list": {
+  "data": [
+   {
+    "id": 1,
+    "type": "POSTER",
+    "main_category_id": 55,
+    "name": "Enhanced Matte Paper Poster (in)",
+    "brand": null,
+    "model": "",
+    "image": "https://files.cdn.printful.com/products/1/product_1613463122.jpg",
+    "variant_count": 33,
+    "is_discontinued": false,
+    "description": "Museum-quality posters made on thick matte paper. Add a wonderful accent to your",
+    "sizes": [
+     "18\u2033\u00d724\u2033",
+     "24\u2033\u00d736\u2033",
+     "12\u2033\u00d716\u2033",
+     "44\u2033\u00d744\u2033",
+     "12\u2033\u00d718\u2033",
+     "16\u2033\u00d720\u2033",
+     "8\u2033\u00d710\u2033",
+     "12\u2033\u00d712\u2033",
+     "16\u2033\u00d716\u2033",
+     "10\u2033\u00d710\u2033",
+     "14\u2033\u00d714\u2033",
+     "18\u2033\u00d718\u2033",
+     "11\u2033\u00d714\u2033",
+     "5\u2033\u00d77\u2033",
+     "20\u2033\u00d730\u2033",
+     "A1 (23.3\u2033\u00d733.1\u2033)",
+     "A2 (16.5\u2033\u00d723.3\u2033)",
+     "30\u2033\u00d744\u2033",
+     "36\u2033\u00d748\u2033",
+     "A0 (33.1\u2033\u00d746.8\u2033)",
+     "27\u2033\u00d740\u2033",
+     "6\u2033\u00d78\u2033",
+     "8\u2033\u00d712\u2033",
+     "8\u2033\u00d720\u2033",
+     "9\u2033\u00d711\u2033",
+     "10\u2033\u00d724\u2033",
+     "11\u2033\u00d717\u2033",
+     "16\u2033\u00d724\u2033",
+     "20\u2033\u00d720\u2033",
+     "20\u2033\u00d724\u2033",
+     "20\u2033\u00d728\u2033",
+     "24\u2033\u00d724\u2033",
+     "24\u2033\u00d732\u2033",
+     "28\u2033\u00d740\u2033",
+     "28\u2033\u00d728\u2033",
+     "30\u2033\u00d740\u2033",
+     "11.69\u2033\u00d716.54\u2033",
+     "8.27\u2033\u00d711.69\u2033"
+    ],
+    "colors": [],
+    "techniques": [
+     {
+      "key": "digital",
+      "display_name": "Digital printing",
+      "is_default": true
+     }
+    ],
+    "placements": [
+     {
+      "placement": "default",
+      "technique": "digital"
+     },
+     {
+      "placement": "mockup",
+      "technique": "digital"
+     }
+    ]
+   },
+   {
+    "id": 2,
+    "type": "FRAMED-POSTER",
+    "main_category_id": 56,
+    "name": "Enhanced Matte Paper Framed Poster (in)",
+    "brand": null,
+    "model": "",
+    "image": "https://files.cdn.printful.com/products/2/product_1613463227.jpg",
+    "variant_count": 39,
+    "is_discontinued": false,
+    "description": "Make a statement in any room with this framed poster, printed on thick matte pap",
+    "sizes": [
+     "18\u2033\u00d724\u2033",
+     "24\u2033\u00d736\u2033",
+     "12\u2033\u00d716\u2033",
+     "12\u2033\u00d718\u2033",
+     "16\u2033\u00d720\u2033",
+     "8\u2033\u00d710\u2033",
+     "10\u2033\u00d710\u2033",
+     "12\u2033\u00d712\u2033",
+     "14\u2033\u00d714\u2033",
+     "16\u2033\u00d716\u2033",
+     "18\u2033\u00d718\u2033",
+     "11\u2033\u00d714\u2033",
+     "20\u2033\u00d730\u2033",
+     "5\u2033\u00d77\u2033",
+     "9\u2033\u00d711\u2033",
+     "16\u2033\u00d724\u2033",
+     "11.7\u2033\u00d716.5\u2033",
+     "16.5\u2033\u00d723.4\u2033"
+    ],
+    "colors": [
+     {
+      "name": "Black",
+      "value": "#000000"
+     },
+     {
+      "name": "Red Oak",
+      "value": "#D4A489"
+     },
+     {
+      "name": "White",
+      "value": "#ffffff"
+     }
+    ],
+    "techniques": [
+     {
+      "key": "digital",
+      "display_name": "Digital printing",
+      "is_default": true
+     }
+    ],
+    "placements": [
+     {
+      "placement": "default",
+      "technique": "digital"
+     },
+     {
+      "placement": "mockup",
+      "technique": "digital"
+     }
+    ]
+   }
+  ],
+  "paging": {
+   "total": 575,
+   "limit": 3,
+   "offset": 0
+  }
+ },
+ "mockupStyles": {
+  "data": [
+   {
+    "placement": "front",
+    "display_name": "Front print",
+    "technique": "dtg",
+    "print_area_width": 12.0,
+    "print_area_height": 16.0,
+    "print_area_type": "simple",
+    "dpi": 150,
+    "mockup_styles": [
+     {
+      "id": 742,
+      "category_name": "Couple's",
+      "view_name": "Front",
+      "restricted_to_variants": null
+     },
+     {
+      "id": 744,
+      "category_name": "Men's Lifestyle",
+      "view_name": "Front",
+      "restricted_to_variants": null
+     }
+    ]
+   },
+   {
+    "placement": "back",
+    "display_name": "Back print",
+    "technique": "dtg",
+    "print_area_width": 12.0,
+    "print_area_height": 16.0,
+    "print_area_type": "simple",
+    "dpi": 150,
+    "mockup_styles": [
+     {
+      "id": 742,
+      "category_name": "Couple's",
+      "view_name": "Front",
+      "restricted_to_variants": null
+     },
+     {
+      "id": 744,
+      "category_name": "Men's Lifestyle",
+      "view_name": "Front",
+      "restricted_to_variants": null
+     }
+    ]
+   },
+   {
+    "placement": "sleeve_left",
+    "display_name": "Left sleeve",
+    "technique": "dtg",
+    "print_area_width": 4.0,
+    "print_area_height": 3.5,
+    "print_area_type": "simple",
+    "dpi": 150,
+    "mockup_styles": [
+     {
+      "id": 742,
+      "category_name": "Couple's",
+      "view_name": "Front",
+      "restricted_to_variants": null
+     },
+     {
+      "id": 744,
+      "category_name": "Men's Lifestyle",
+      "view_name": "Front",
+      "restricted_to_variants": null
+     }
+    ]
+   },
+   {
+    "placement": "sleeve_right",
+    "display_name": "Right sleeve",
+    "technique": "dtg",
+    "print_area_width": 4.0,
+    "print_area_height": 3.5,
+    "print_area_type": "simple",
+    "dpi": 150,
+    "mockup_styles": [
+     {
+      "id": 742,
+      "category_name": "Couple's",
+      "view_name": "Front",
+      "restricted_to_variants": null
+     },
+     {
+      "id": 744,
+      "category_name": "Men's Lifestyle",
+      "view_name": "Front",
+      "restricted_to_variants": null
+     }
+    ]
+   }
+  ],
+  "paging": {
+   "total": 4,
+   "limit": 100,
+   "offset": 0
+  }
+ },
+ "mockupTemplates": {
+  "data": [
+   {
+    "catalog_variant_ids": [
+     4021,
+     4022,
+     4023,
+     4024,
+     4025,
+     5296,
+     5311,
+     9528
+    ],
+    "placement": "front",
+    "technique": "dtg",
+    "image_url": "https://files.cdn.printful.com/m/57-bc3001/medium/ghost/front/05_bc3001_ghost_front_base_whitebg.png?v=1790066897",
+    "background_url": null,
+    "background_color": "#008db5",
+    "printfile_id": 1,
+    "template_width": 3000.0,
+    "template_height": 3000.0,
+    "print_area_width": 1010.0,
+    "print_area_height": 1346.0,
+    "print_area_top": 530.0,
+    "print_area_left": 1006.0,
+    "template_positioning": "overlay",
+    "orientation": "any",
+    "template_type": null,
+    "role": "primary"
+   },
+   {
+    "catalog_variant_ids": [
+     4021,
+     4022,
+     4023,
+     4024,
+     4025,
+     5296,
+     5311,
+     9528
+    ],
+    "placement": "back",
+    "technique": "dtg",
+    "image_url": "https://files.cdn.printful.com/m/57-bc3001/medium/ghost/back/05_bc3001_ghost_back_base_whitebg.png?v=1790066897",
+    "background_url": null,
+    "background_color": "#008db5",
+    "printfile_id": 1,
+    "template_width": 3000.0,
+    "template_height": 3000.0,
+    "print_area_width": 1031.0,
+    "print_area_height": 1375.0,
+    "print_area_top": 224.0,
+    "print_area_left": 987.0,
+    "template_positioning": "overlay",
+    "orientation": "any",
+    "template_type": null,
+    "role": "primary"
+   }
+  ],
+  "paging": {
+   "total": 2,
+   "limit": 100,
+   "offset": 0
+  }
+ },
+ "availability": {
+  "data": [
+   {
+    "catalog_variant_id": 4025,
+    "techniques": [
+     {
+      "technique": "dtg",
+      "selling_regions": [
+       {
+        "name": "usa",
+        "availability": "in stock",
+        "placement_option_availability": []
+       }
+      ]
+     },
+     {
+      "technique": "embroidery",
+      "selling_regions": [
+       {
+        "name": "usa",
+        "availability": "in stock",
+        "placement_option_availability": [
+         {
+          "option_name": "unlimited_color",
+          "available": true
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "technique": "dtfilm",
+      "selling_regions": [
+       {
+        "name": "usa",
+        "availability": "in stock",
+        "placement_option_availability": []
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "paging": {
+   "total": 1,
+   "limit": 100,
+   "offset": 0
+  },
+  "filter_settings": [
+   {
+    "name": "id",
+    "value": "71"
+   },
+   {
+    "name": "limit",
+    "value": "2"
+   }
+  ]
+ }
+}

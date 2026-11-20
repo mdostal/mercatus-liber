@@ -38,6 +38,7 @@
     "@mercatus-liber/adapter-simplyprint": "workspace:*",
     "@mercatus-liber/adapter-x3d": "workspace:*",
     "@mercatus-liber/admin-auth": "workspace:*",
+    "@mercatus-liber/admin-ui": "workspace:*",
     "@mercatus-liber/advertising": "workspace:*",
     "@mercatus-liber/ai-interface": "workspace:*",
     "@mercatus-liber/analytics": "workspace:*",

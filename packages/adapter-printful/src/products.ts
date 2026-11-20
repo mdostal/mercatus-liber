@@ -126,6 +126,7 @@ export async function applyPrintfulProduct(
       provider: PRINTFUL_PROVIDER,
       target: {
         catalogVariantId: planned.catalogVariantId,
+        catalogProductId: spec.printfulProductId,
         placements: spec.files.map((f) => ({ placement: f.placement, technique: spec.technique, layers: [{ type: "file", url: f.url }] })),
       },
     });
