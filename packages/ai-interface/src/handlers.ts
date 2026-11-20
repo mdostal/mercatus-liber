@@ -10,9 +10,27 @@ export type ToolHandler = (input: Record<string, unknown>) => Promise<ToolResult
  * docs/subsystems/14-ai-mcp-interface.md.
  */
 export function createCommerceToolHandlers(deps: CommerceToolDeps): Record<string, ToolHandler> {
-  const { catalog, search, cart, checkout, catalogAdmin, cms, inventory } = deps;
+  const { catalog, search, cart, checkout, catalogAdmin, cms, inventory, providerCatalog } = deps;
+
+  const providerTools: Record<string, ToolHandler> = providerCatalog
+    ? {
+        async provider_catalog_search(input) {
+          const limit = Math.min(Math.max(Number(input.limit ?? 20) || 20, 1), 100);
+          return providerCatalog.search({ ...(typeof input.text === "string" ? { text: input.text } : {}), ...(typeof input.technique === "string" ? { technique: input.technique } : {}), ...(typeof input.placement === "string" ? { placement: input.placement } : {}), limit });
+        },
+        async provider_catalog_get_product(input) {
+          return providerCatalog.getProduct(String(input.productId));
+        },
+        async provider_catalog_bring_over(input) {
+          if (needsConfirmation(input)) return pendingConfirmation({ action: "provider_catalog_bring_over", ...input });
+          const { confirm: _confirm, ...rest } = input;
+          return providerCatalog.bringOver(rest as unknown as Parameters<NonNullable<CommerceToolDeps["providerCatalog"]>["bringOver"]>[0]);
+        },
+      }
+    : {};
 
   return {
+    ...providerTools,
     async search_products(input) {
       const text = input.text as string | undefined;
       return search.query(text === undefined ? {} : { text });

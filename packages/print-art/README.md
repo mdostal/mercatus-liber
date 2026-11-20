@@ -49,6 +49,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ file: s
 }
 ```
 
+## Layouts from a provider's print areas
+
+`layoutsFromPrintAreas(areas, { technique? })` builds layouts from a provider's print areas (adapter-printful's `getPrintAreas`), so print files are drawn at exactly the size the provider wants: Printful product 71's front, 12 x 16 in at 150 dpi, becomes layout `front` at 1800 x 2400 px. Placement keys become file-name-safe ids (`sleeve_left` becomes `sleeve-left`) and each layout keeps its `placement`.
+
 ## Key exports
 
 - `createArtVersionStore({ codeVersions, saved?, validate? })`: `list`, `get`, `save`, `isKnownArt`. Code versions come first; saved ones are numbered after. Saving retries once when another save took the number. Only art ids with code versions can be saved to.

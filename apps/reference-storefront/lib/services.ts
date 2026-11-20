@@ -28,6 +28,7 @@ import {
   createPostgresPricingRulesRepository,
   createPostgresProductCustomizationRepository,
   createPostgresProviderCatalogMappingRepository,
+  createPostgresMediaStore,
   createPostgresProviderOrderLinkRepository,
   createPostgresManualFulfillmentRecordStore,
   createPostgresStoreApiKeyRepository,
@@ -188,7 +189,7 @@ import {
 } from "@mercatus-liber/service-areas";
 import { createManualShippingAdapter, createOrderLabelService, type OrderLabelService, type ShippingAdapter } from "@mercatus-liber/shipping";
 import { shipFromAddressFromEnv, voidableLabelIds } from "./shipping-labels";
-import { createPassthroughImageAdapter, type ImageAdapter } from "@mercatus-liber/media";
+import { createInMemoryMediaStore, createPassthroughImageAdapter, type ImageAdapter, type MediaStore } from "@mercatus-liber/media";
 import { createThemingService, type ThemingService } from "@mercatus-liber/theming";
 import { Pool } from "pg";
 import { createInMemoryStoreApiKeyRepository, type StoreApiKeyRepository } from "@mercatus-liber/store-api";
@@ -293,6 +294,8 @@ export interface Services {
   providerCatalogMappings: ProviderCatalogMappingRepository;
   /** Printful's catalog, when PRINTFUL_API_TOKEN is set; null without it (the admin then browses a saved snapshot). */
   printfulCatalog: PrintfulCatalogClient | null;
+  /** Files the store keeps itself, such as Printful mockups (whose own URLs are temporary). Served by app/media/[id]. */
+  mediaStore: MediaStore;
   /**
    * Non-null only when `payments` was built as a sandbox adapter (see
    * `buildServices`'s payments branch below, sandbox-checkout epic) --
@@ -1424,6 +1427,7 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     recordSelfShipment: (shipment) => recordSelfShipment({ links: providerOrderLinks, recorder: providerOrderStatus, ...shipment }),
     fulfillmentRouting,
     providerCatalogMappings,
+    mediaStore: pgPool ? createPostgresMediaStore(pgPool, { baseUrl: "/media" }) : createInMemoryMediaStore({ baseUrl: "/media" }),
     printfulCatalog: process.env.PRINTFUL_API_TOKEN
       ? createPrintfulCatalogClient({ apiToken: process.env.PRINTFUL_API_TOKEN, ...(process.env.PRINTFUL_STORE_ID ? { storeId: process.env.PRINTFUL_STORE_ID } : {}) })
       : null,

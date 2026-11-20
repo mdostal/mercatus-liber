@@ -206,6 +206,9 @@ importers:
       '@mercatus-liber/plugins':
         specifier: workspace:*
         version: link:../../packages/plugins
+      '@mercatus-liber/print-art':
+        specifier: workspace:*
+        version: link:../../packages/print-art
       '@mercatus-liber/promotions':
         specifier: workspace:*
         version: link:../../packages/promotions
@@ -506,6 +509,9 @@ importers:
       '@mercatus-liber/marketing-catalog':
         specifier: workspace:*
         version: link:../marketing-catalog
+      '@mercatus-liber/media':
+        specifier: workspace:*
+        version: link:../media
       '@mercatus-liber/print-art':
         specifier: workspace:*
         version: link:../print-art

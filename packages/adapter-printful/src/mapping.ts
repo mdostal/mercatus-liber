@@ -26,6 +26,11 @@ export interface PrintfulCatalogTarget {
   placements?: { placement: string; technique: string; layers: { type: "file"; url: string }[] }[];
 }
 
+/** True when the target has at least one placement and every placement has a file URL. */
+export function printfulTargetHasArt(target: Pick<PrintfulCatalogTarget, "placements">): boolean {
+  return !!target.placements?.length && target.placements.every((p) => p.layers.length > 0 && p.layers.every((l) => typeof l.url === "string" && l.url.trim() !== ""));
+}
+
 /**
  * `SubmitFulfillmentOrderInput` also carries no shipping address at all (see the
  * same file) -- `FulfillmentRoutingRepository`/`OrderLookup` (fulfillment's own

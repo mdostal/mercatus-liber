@@ -61,6 +61,31 @@ export interface InventoryAdminOps {
   setStock(skuId: string, onHand: number): Promise<void>;
 }
 
+/**
+ * A print-on-demand provider's catalog (Printful, ...), for agents to find
+ * products and bring them into the store. Optional: without it the
+ * provider_catalog_* tools aren't offered.
+ */
+export interface ProviderCatalogOps {
+  /** The provider's name, e.g. "Printful", used in tool descriptions. */
+  providerName: string;
+  search(input: { text?: string; technique?: string; placement?: string; limit?: number }): Promise<unknown[]>;
+  getProduct(id: string): Promise<unknown | null>;
+  /** Creates a draft store product; never publishes. */
+  bringOver(input: {
+    productId: string;
+    title: string;
+    slug: string;
+    description?: string;
+    technique: string;
+    colors: string[];
+    sizes: string[];
+    retailCents: number;
+    sizeUpchargeCents?: Record<string, number>;
+    files?: { placement: string; url: string }[];
+  }): Promise<unknown>;
+}
+
 export interface CommerceToolDeps {
   catalog: CatalogLookup;
   search: SearchLookup;
@@ -69,6 +94,7 @@ export interface CommerceToolDeps {
   catalogAdmin: CatalogAdminOps;
   cms: CmsAdminOps;
   inventory: InventoryAdminOps;
+  providerCatalog?: ProviderCatalogOps;
 }
 
 export type ToolResult = unknown;

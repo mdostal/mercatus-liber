@@ -8,7 +8,10 @@
  * costs, print areas and stock need the token.
  */
 import {
+  applyPrintfulProduct,
   createPrintfulCatalogCache,
+  filterPrintfulCatalog,
+  planPrintfulProduct,
   printfulPriceToCents,
   printfulProductsInStore,
   printfulUnitCostCents,
@@ -17,10 +20,12 @@ import {
   type PrintfulCatalogListing,
   type PrintfulCatalogSnapshot,
   type PrintfulPrintArea,
+  type PrintfulProductSpec,
 } from "@mercatus-liber/adapter-printful";
-import type { CatalogGridFacet, CatalogGridItem, PrintAreaRow, VariantCell } from "@mercatus-liber/admin-ui";
+import type { ProviderCatalogOps } from "@mercatus-liber/ai-interface";
+import type { BringOverSelection, CatalogGridFacet, CatalogGridItem, PrintAreaRow, VariantCell } from "@mercatus-liber/admin-ui";
 import snapshotJson from "./data/printful-catalog-snapshot.json";
-import { listProductsForDemo, type DemoSlug } from "./demos";
+import { DEMO_CATALOG_SLUG, listProductsForDemo, type DemoSlug } from "./demos";
 import type { Services } from "./services";
 
 const SNAPSHOT = snapshotJson as PrintfulCatalogSnapshot;
@@ -183,4 +188,101 @@ export async function printfulProductDetail(services: Pick<Services, "printfulCa
 export function snapshotCaption(snapshot: PrintfulCatalogSnapshot, live: boolean): string {
   const date = new Date(snapshot.fetchedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   return live ? `Printful's catalog, read ${date}. Refreshed daily.` : `A saved copy of Printful's catalog from ${date}. Set PRINTFUL_API_TOKEN for live costs, stock and print areas.`;
+}
+
+const NO_TOKEN = "Bringing a product over needs PRINTFUL_API_TOKEN: the saved catalog has no variant ids or prices.";
+
+function specFrom(printfulProductId: number, selection: BringOverSelection): PrintfulProductSpec {
+  return {
+    slug: selection.slug,
+    title: selection.title,
+    description: selection.description,
+    printfulProductId,
+    technique: selection.technique,
+    files: selection.files,
+    colors: selection.colors,
+    sizes: selection.sizes,
+    pricing: { retailCents: selection.retailCents, sizeUpchargeCents: selection.sizeUpchargeCents },
+  };
+}
+
+/** Every SKU the selection would make, with Printful's cost and the margin. Needs the token. */
+export async function planPrintfulBringOver(services: Pick<Services, "printfulCatalog">, printfulProductId: number, selection: BringOverSelection) {
+  const client = services.printfulCatalog;
+  if (!client) throw new Error(NO_TOKEN);
+  const [variants, prices] = await Promise.all([client.listVariants(printfulProductId), client.getPrices(printfulProductId)]);
+  if (!prices || variants.length === 0) throw new Error(`Printful has no product ${printfulProductId}.`);
+  return planPrintfulProduct(specFrom(printfulProductId, selection), variants, prices);
+}
+
+/**
+ * Creates (or updates) a store product from a Printful product in this demo:
+ * plans it, applies it (SKUs without art are drafts), and puts it in the
+ * demo's catalog. Refuses a slug another demo's product uses. Never publishes.
+ * Callers check the admin session first.
+ */
+export async function bringOverPrintful(services: Services, demoSlug: DemoSlug, printfulProductId: number, selection: BringOverSelection): Promise<{ productId: string; skuCount: number; drafts: boolean }> {
+  const demoCatalog = await services.catalog.getCatalogBySlug(DEMO_CATALOG_SLUG[demoSlug]);
+  if (!demoCatalog) throw new Error(`This demo has no catalog "${DEMO_CATALOG_SLUG[demoSlug]}".`);
+  // The demos share one database, so a slug taken by another demo's product would otherwise be reused.
+  const taken = await services.catalog.getProductBySlug(selection.slug);
+  if (taken && !(await services.catalog.listCatalogIdsForProduct(taken.id)).includes(demoCatalog.id)) {
+    throw new Error(`The slug "${selection.slug}" is already used by another store's product. Choose another.`);
+  }
+  const plan = await planPrintfulBringOver(services, printfulProductId, selection);
+  if (plan.skus.length === 0) throw new Error("Printful makes none of the chosen colour and size pairs.");
+  const result = await applyPrintfulProduct({ catalog: services.catalog, mappings: services.providerCatalogMappings, routing: services.fulfillmentRouting }, plan);
+  await services.catalog.assignProductToCatalog(result.productId, demoCatalog.id);
+  return { productId: result.productId, skuCount: plan.skus.length, drafts: selection.files.length === 0 };
+}
+
+/** The Printful catalog as agent tools (@mercatus-liber/ai-interface's ProviderCatalogOps) for one demo. */
+export function printfulProviderCatalogOps(services: Services, demoSlug: DemoSlug): ProviderCatalogOps {
+  return {
+    providerName: "Printful",
+    async search({ text, technique, placement, limit = 20 }) {
+      const [snapshot, inStore] = await Promise.all([printfulCatalogCache(services).get(), printfulInStore(services, demoSlug)]);
+      return filterPrintfulCatalog(snapshot, { ...(text ? { search: text } : {}), ...(technique ? { technique } : {}), ...(placement ? { placement } : {}) })
+        .slice(0, limit)
+        .map((p) => ({
+          productId: String(p.id),
+          name: p.name,
+          brandModel: [p.brand, p.model].filter(Boolean).join(" ") || p.type,
+          techniques: p.techniques.map((t) => t.key),
+          colours: p.colors.length,
+          sizes: p.sizes,
+          inStore: (inStore.get(p.id) ?? []).map((sp) => ({ id: sp.id, title: sp.title, status: sp.status })),
+        }));
+    },
+    async getProduct(id) {
+      if (!/^\d+$/.test(id)) return null;
+      const detail = await printfulProductDetail(services, Number(id));
+      if (!detail) return null;
+      const { listing } = detail;
+      return {
+        productId: String(listing.id),
+        name: listing.name,
+        description: listing.description,
+        colours: listing.colors.map((c) => c.name),
+        sizes: listing.sizes,
+        techniques: listing.techniques.map((t) => ({ key: t.key, name: t.display_name, default: t.is_default })),
+        printAreas: detail.printAreas,
+        costs: detail.live ? Object.fromEntries(Object.entries(detail.cells).filter(([, c]) => c.cost).map(([k, c]) => [k, c.cost])) : "Costs need PRINTFUL_API_TOKEN.",
+      };
+    },
+    async bringOver(input) {
+      const result = await bringOverPrintful(services, demoSlug, Number(input.productId), {
+        title: input.title,
+        slug: input.slug,
+        description: input.description ?? "",
+        technique: input.technique,
+        colors: input.colors,
+        sizes: input.sizes,
+        retailCents: input.retailCents,
+        sizeUpchargeCents: input.sizeUpchargeCents ?? {},
+        files: input.files ?? [],
+      });
+      return { ...result, published: false, next: result.drafts ? "Add art to each placement, add images, then publish from the admin." : "Add images, then publish from the admin." };
+    },
+  };
 }

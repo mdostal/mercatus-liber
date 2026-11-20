@@ -101,7 +101,8 @@ describe("Printful catalog mappings and holdOrders", () => {
 
   it("sends stored mappings, and refuses an unmapped or malformed SKU before creating anything", async () => {
     const repo = createInMemoryProviderCatalogMappingRepository();
-    await repo.save({ skuId: "sku-mug", provider: PRINTFUL_PROVIDER, target: { catalogVariantId: 4011 } });
+    await repo.save({ skuId: "sku-mug", provider: PRINTFUL_PROVIDER, target: { catalogVariantId: 4011, placements: [{ placement: "front", technique: "dtg", layers: [{ type: "file", url: "https://example.com/logo.png" }] }] } });
+    await repo.save({ skuId: "blank", provider: PRINTFUL_PROVIDER, target: { catalogVariantId: 4011, catalogProductId: 71 } });
     await repo.save({ skuId: "bad", provider: PRINTFUL_PROVIDER, target: { catalogVariantId: "4011" } });
     const client = fakeClient();
     const adapter = createPrintfulFulfillmentAdapter({ ...baseConfig(client), resolveCatalogTarget: printfulCatalogTargetsFrom(repo) });
@@ -109,6 +110,8 @@ describe("Printful catalog mappings and holdOrders", () => {
     expect((client.calls.createOrder![0] as { order_items: { catalog_variant_id: number }[] }).order_items[0]!.catalog_variant_id).toBe(4011);
     await expect(adapter.submitOrder({ orderId: "o2", items: [{ skuId: "none", quantity: 1 }] })).rejects.toThrow(MissingCatalogMappingError);
     await expect(adapter.submitOrder({ orderId: "o3", items: [{ skuId: "bad", quantity: 1 }] })).rejects.toThrow(InvalidCatalogMappingError);
+    // A SKU brought over without art yet is refused before Printful is called.
+    await expect(adapter.submitOrder({ orderId: "o4", items: [{ skuId: "sku-mug", quantity: 1 }, { skuId: "blank", quantity: 1 }] })).rejects.toMatchObject({ name: "PrintfulMissingArtError", skuIds: ["blank"] });
     expect(client.calls.createOrder).toHaveLength(1);
   });
 });

@@ -57,6 +57,8 @@ export interface NewSkuInput {
   /** sku-availability-status epic: optional/additive, see Sku.availabilityStatus's own doc comment (@mercatus-liber/core). */
   availabilityStatus?: AvailabilityStatus;
   availabilityNote?: string;
+  /** Default "active". A "draft" SKU can't be added to a cart until it is made active. */
+  status?: ProductStatus;
 }
 
 /** Patchable fields on an existing Sku -- deliberately excludes productId/identifyingAttributes, which never change after creation (same "id is immutable" discipline as updateProduct). */
@@ -232,7 +234,7 @@ export function createCatalogService(deps: {
         productId: input.productId,
         identifyingAttributes: input.identifyingAttributes,
         price: input.price,
-        status: "active",
+        status: input.status ?? "active",
         ...(input.images ? { images: input.images } : {}),
         ...(input.availabilityStatus ? { availabilityStatus: input.availabilityStatus } : {}),
         ...(input.availabilityNote ? { availabilityNote: input.availabilityNote } : {}),

@@ -25,6 +25,9 @@ The passthrough adapter returns `src` unchanged and ignores the transform option
 
 - `ImageAdapter`: `resolveUrl({ src, width?, height?, fit?, quality? })`.
 - `createPassthroughImageAdapter()`.
+- `MediaStore` (`put`, `get`, `urlFor`), `createInMemoryMediaStore({ baseUrl })`; `createPostgresMediaStore` is in `@mercatus-liber/adapter-postgres` (a `media_files` table).
+- `copyImageToMediaStore(store, url, name)`: downloads an https PNG/JPEG/WebP/GIF (at most 10 MB) and keeps a copy, for images whose own URL won't last, such as Printful mockups.
+- `serveMediaFile(store, id)`: the Response for a store's media route, cached for a year.
 
 ## Implementing an adapter
 

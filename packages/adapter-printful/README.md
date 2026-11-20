@@ -101,6 +101,14 @@ stale copy when Printful fails. `filterPrintfulCatalog` searches a cached listin
 `printfulProductsInStore` says which Printful products a store already sells, from its mappings
 (`applyPrintfulProduct` now records `catalogProductId`).
 
+### Bringing products over, art, and publishing
+
+- `applyPrintfulProduct` accepts a spec with no `files`: its SKUs are created as drafts, which can't be added to a cart. Print files are merged into what each SKU has (`mergePrintfulPlacements`), so running a plan again never loses art added later. `newSkuStatus` sets the status of new SKUs that do have art (default `"active"`, as before).
+- `setPrintfulArt(deps, productId, files, { remove })` sets or replaces placements on every SKU; a SKU that loses its last file goes back to draft.
+- `printfulReadiness(deps, productId)` lists what stops a product going on sale: SKUs not made by Printful, SKUs without art, SKUs priced at or below Printful's cost with their current placements (re-checked with `getPrices`), and a product with no image. `publishPrintfulProduct` publishes only when that list is empty, making draft SKUs active; otherwise it throws `PrintfulProductNotReadyError` and changes nothing.
+- The fulfillment adapter refuses an order item whose SKU has no print file (`PrintfulMissingArtError`) before calling Printful.
+- `printfulMockupRequest(deps, skuIds)` builds a mockup request from the SKUs' variants and art; `printfulMockupImages(tasks)` lists the finished images. Mockups need `storeId` with an account-level token. Printful's mockup URLs are temporary ("Temporary URL to generated mockup image" in its v2 spec; they sit under `/tmp/`), so copy them before keeping them (`copyImageToMediaStore` in `@mercatus-liber/media`).
+
 Both clients wait out a short `429 Retry-After` once and otherwise throw
 `PrintfulRateLimitError` (v2 allows 120 requests a minute).
 

@@ -18,6 +18,56 @@ export interface ToolDefinition {
   };
 }
 
+/** Offered only when the store wires a ProviderCatalogOps. */
+export const PROVIDER_CATALOG_TOOL_DEFINITIONS: readonly ToolDefinition[] = [
+  {
+    name: "provider_catalog_search",
+    description: "Search the print-on-demand provider's catalog (every product it can make) by text, technique or placement. Read-only. Each result says whether the store already sells it.",
+    category: "admin",
+    requiresConfirmation: false,
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Words matched against name, brand, model and type" },
+        technique: { type: "string", description: 'e.g. "dtg", "embroidery"' },
+        placement: { type: "string", description: 'e.g. "front", "sleeve_left"' },
+        limit: { type: "number", description: "At most this many results (default 20, max 100)" },
+      },
+    },
+  },
+  {
+    name: "provider_catalog_get_product",
+    description: "One provider product: colours, sizes, techniques, print areas and, with a provider token, costs. Read-only.",
+    category: "admin",
+    requiresConfirmation: false,
+    inputSchema: { type: "object", properties: { productId: { type: "string" } }, required: ["productId"] },
+  },
+  {
+    name: "provider_catalog_bring_over",
+    description:
+      "Create a store product from a provider product, with the chosen colours, sizes and price. It is created unpublished, and its SKUs stay drafts (unbuyable) until they have art; a person publishes it from the admin. Requires confirm:true, otherwise returns a preview.",
+    category: "admin",
+    requiresConfirmation: true,
+    inputSchema: {
+      type: "object",
+      properties: {
+        productId: { type: "string" },
+        title: { type: "string" },
+        slug: { type: "string" },
+        description: { type: "string" },
+        technique: { type: "string" },
+        colors: { type: "array", items: { type: "string" } },
+        sizes: { type: "array", items: { type: "string" } },
+        retailCents: { type: "number", description: "Price in cents, e.g. 2400 for $24.00" },
+        sizeUpchargeCents: { type: "object", additionalProperties: { type: "number" } },
+        files: { type: "array", items: { type: "object", properties: { placement: { type: "string" }, url: { type: "string" } }, required: ["placement", "url"] } },
+        confirm: { type: "boolean" },
+      },
+      required: ["productId", "title", "slug", "technique", "colors", "sizes", "retailCents"],
+    },
+  },
+];
+
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   {
     name: "search_products",
