@@ -9,3 +9,4 @@ export { PdpLongScroll } from "./templates/pdp-long-scroll.js";
 export { PdpSpecSheet } from "./templates/pdp-spec-sheet.js";
 export { VariantPicker } from "./templates/variant-picker.js";
 export { DatasheetFontLinks, DS_FONT_DISPLAY, DS_FONT_MONO, DS_ATOMS_CSS } from "./templates/datasheet-styles.js";
+export { Countdown, SaleWindow, formatRemaining, formatWhen, type CountdownProps, type SaleWindowProps } from "./countdown.js";
