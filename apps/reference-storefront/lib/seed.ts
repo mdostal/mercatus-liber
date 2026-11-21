@@ -885,6 +885,17 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
     ],
   });
   if (homeIsNew) await cms.publishPage(home.id);
+  // scheduled-lines epic: a home-page tile into the holiday line, carrying an
+  // icid. Added once to a home page seeded before the tile existed.
+  if (!home.sections.some((section) => section.componentType === "marketing-tile")) {
+    const tile = {
+      componentType: "marketing-tile",
+      config: { title: "Holiday Week One", subtitle: "Seven days of gifts, then it's gone", targetKind: "line", target: "holiday-week-one", placement: "hp" },
+    };
+    const sections = [...home.sections];
+    sections.splice(Math.min(1, sections.length), 0, tile);
+    await cms.updatePage(home.id, { sections });
+  }
 
   const toteId = productIdBySlug.get("embroidered-canvas-tote");
   const { page: campaign, isNew: campaignIsNew } = await upsertMarketingPage(cms, {

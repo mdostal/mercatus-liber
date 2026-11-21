@@ -44,6 +44,20 @@ export const DEFAULT_COMPONENTS: ComponentDefinition[] = [
     ],
   },
   {
+    type: "marketing-tile",
+    label: "Marketing Tile",
+    description: "A tile linking to a line, category, product or page, with an internal campaign id (icid) so clicks can be traced to sales.",
+    fields: [
+      { key: "title", label: "Title", kind: "text", required: true },
+      { key: "subtitle", label: "Subtitle", kind: "text", required: false },
+      { key: "image", label: "Image", kind: "image", required: false },
+      { key: "targetKind", label: "Links to", kind: "text", required: true, helpText: '"line", "category", "product" or "url".' },
+      { key: "target", label: "Target", kind: "text", required: true, helpText: "The line, category or product slug, or a URL." },
+      { key: "placement", label: "Placement", kind: "text", required: false, helpText: 'Where the tile is, for the icid, e.g. "hp" for the home page. Default "hp".' },
+      { key: "icid", label: "icid", kind: "text", required: false, helpText: "Leave empty to build one: placement-target-tileclick-date." },
+    ],
+  },
+  {
     type: "product-grid",
     label: "Product Grid",
     description: "A grid of products -- reused across category/marketing/search pages.",

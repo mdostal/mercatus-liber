@@ -34,3 +34,12 @@ registerAnalyticsSync({ events, analytics });
 Implement `AnalyticsAdapter` for writing or `AnalyticsInsightsAdapter` for reading. They are separate, so a provider can support just one.
 
 See [docs/subsystems/13-analytics-tracking.md](../../docs/subsystems/13-analytics-tracking.md).
+
+## Marketing spots (icid)
+
+`buildIcid({ placement, name, action?, date })` makes internal campaign ids like
+`hp-fleece_fav-tileclick-20261118`; `withIcid(href, icid)` adds one to a link and `parseIcid` reads
+one back. `MARKETING_EVENTS` names the events: `spot_viewed`, `spot_clicked` (with `icid`,
+`placement`, `target`) and `catalog_viewed`. In the reference storefront, home-page tiles send
+`spot_viewed` / `spot_clicked`, and line, category and product pages add the arriving `icid` to
+their view events, so a sale can be traced to the tile that started it.

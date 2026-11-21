@@ -6,3 +6,4 @@ export * from "./noop-insights-adapter.js";
 export * from "./posthog-adapter.js";
 export * from "./posthog-insights-adapter.js";
 export * from "./subscriber.js";
+export * from "./icid.js";

@@ -14,9 +14,9 @@ describe("cms service", () => {
     });
   });
 
-  it("ships exactly the 5 default components: hero-banner, ad-slot, category-spot, product-grid, service-area-info", () => {
+  it("ships exactly the 6 default components: hero-banner, ad-slot, category-spot, marketing-tile, product-grid, service-area-info", () => {
     const types = cms.components.list().map((c) => c.type).sort();
-    expect(types).toEqual(["ad-slot", "category-spot", "hero-banner", "product-grid", "service-area-info"]);
+    expect(types).toEqual(["ad-slot", "category-spot", "hero-banner", "marketing-tile", "product-grid", "service-area-info"]);
   });
 
   it("accepts a 'location' page -- the service-areas subsystem's page type", async () => {

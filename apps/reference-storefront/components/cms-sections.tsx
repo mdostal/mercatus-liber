@@ -1,3 +1,5 @@
+import { buildIcid, withIcid } from "@mercatus-liber/analytics";
+import { TrackedLink } from "./tracked-link";
 import type { ComponentInstance } from "@mercatus-liber/cms";
 import type { DemoSlug } from "../lib/demos";
 import { resolveProductImageAlt, resolveProductImageUrl } from "../lib/product-image";
@@ -51,6 +53,7 @@ async function HeroBanner({ config }: { config: Record<string, unknown> }) {
 async function CategorySpot({ demoSlug, config }: { demoSlug: DemoSlug; config: Record<string, unknown> }) {
   const { marketingCatalog } = await getServicesForDemo(demoSlug);
   const slugs = Array.isArray(config.categorySlugs) ? (config.categorySlugs as string[]) : [];
+  const today = new Date();
   const categories = (await Promise.all(slugs.map((slug) => marketingCatalog.getCategoryBySlug(slug)))).filter(
     (c): c is NonNullable<typeof c> => c !== null,
   );
@@ -61,15 +64,49 @@ async function CategorySpot({ demoSlug, config }: { demoSlug: DemoSlug; config: 
       <ul style={TILE_GRID_STYLE}>
         {categories.map((category) => (
           <li key={category.id} style={TILE_CARD_STYLE}>
-            <a
-              href={`/demo/${demoSlug}/category/${category.slug}`}
+            <TrackedLink
+              href={withIcid(`/demo/${demoSlug}/category/${category.slug}`, buildIcid({ placement: "hp", name: category.slug, action: "catclick", date: today }))}
+              icid={buildIcid({ placement: "hp", name: category.slug, action: "catclick", date: today })}
+              placement="hp"
+              target={`category:${category.slug}`}
               style={{ textDecoration: "none", color: "inherit", fontSize: "var(--font-size-body, 1rem)" }}
             >
               {category.title}
-            </a>
+            </TrackedLink>
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+/** Where a marketing tile links: its line, category or product page, or a URL as given. Null for an unknown kind. */
+export function marketingTileHref(demoSlug: DemoSlug, targetKind: string, target: string): string | null {
+  const slug = encodeURIComponent(target);
+  if (targetKind === "line") return `/demo/${demoSlug}/lines/${slug}`;
+  if (targetKind === "category") return `/demo/${demoSlug}/category/${slug}`;
+  if (targetKind === "product") return `/demo/${demoSlug}/products/${slug}`;
+  if (targetKind === "url" && (/^https:\/\//.test(target) || target.startsWith("/"))) return target;
+  return null;
+}
+
+/** A tile into a line, category, product or page, carrying an icid (built from placement, target and today when not set). */
+async function MarketingTile({ demoSlug, config }: { demoSlug: DemoSlug; config: Record<string, unknown> }) {
+  const title = typeof config.title === "string" ? config.title : "";
+  const targetKind = typeof config.targetKind === "string" ? config.targetKind : "";
+  const target = typeof config.target === "string" ? config.target : "";
+  const href = title && target ? marketingTileHref(demoSlug, targetKind, target) : null;
+  if (!href) return null;
+  const placement = typeof config.placement === "string" && config.placement ? config.placement : "hp";
+  const icid = typeof config.icid === "string" && config.icid ? config.icid : buildIcid({ placement, name: target, date: new Date() });
+  const image = typeof config.image === "string" && config.image ? config.image : null;
+  return (
+    <section style={{ marginBottom: "var(--space-sm, 16px)" }} data-marketing-tile={target}>
+      <TrackedLink href={withIcid(href, icid)} icid={icid} placement={placement} target={`${targetKind}:${target}`} style={{ ...TILE_CARD_STYLE, display: "grid", gap: 6, textDecoration: "none", color: "inherit" }}>
+        {image ? <img src={image} alt="" style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", borderRadius: "var(--radius)" }} /> : null}
+        <b style={{ fontSize: "var(--font-size-heading-md, 1.5rem)" }}>{title}</b>
+        {typeof config.subtitle === "string" && config.subtitle ? <span>{config.subtitle}</span> : null}
+      </TrackedLink>
     </section>
   );
 }
@@ -213,6 +250,8 @@ export async function CmsSection({
       return <HeroBanner config={section.config} />;
     case "category-spot":
       return <CategorySpot demoSlug={demoSlug} config={section.config} />;
+    case "marketing-tile":
+      return <MarketingTile demoSlug={demoSlug} config={section.config} />;
     case "product-grid":
       return <ProductGrid demoSlug={demoSlug} config={section.config} />;
     case "ad-slot":

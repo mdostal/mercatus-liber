@@ -68,3 +68,25 @@ describe("a promotion on a whole line", { timeout: 60_000 }, () => {
     expect(result.items.find((i) => i.skuId === hoodieSku.id)!.unitAmount.amount).toBe(hoodieSku.price.amount);
   });
 });
+
+describe("marketing tiles", { timeout: 60_000 }, () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("links tiles to lines, categories, products and safe URLs only", async () => {
+    const { marketingTileHref } = await import("../components/cms-sections");
+    expect(marketingTileHref("print-shop", "line", "holiday-week-one")).toBe("/demo/print-shop/lines/holiday-week-one");
+    expect(marketingTileHref("print-shop", "category", "embroidery")).toBe("/demo/print-shop/category/embroidery");
+    expect(marketingTileHref("print-shop", "url", "javascript:alert(1)")).toBeNull();
+    expect(marketingTileHref("print-shop", "url", "http://insecure.example")).toBeNull();
+    expect(marketingTileHref("print-shop", "url", "/demo/print-shop/search?q=mug")).toBe("/demo/print-shop/search?q=mug");
+    expect(marketingTileHref("print-shop", "banner", "x")).toBeNull();
+  });
+
+  it("seeds the print-shop home page with one tile into the holiday line, once", async () => {
+    const s = await servicesFor("print-shop");
+    const home = (await s.cms.getPageBySlug("home-print-shop"))!;
+    const tiles = home.sections.filter((x) => x.componentType === "marketing-tile");
+    expect(tiles).toEqual([{ componentType: "marketing-tile", config: expect.objectContaining({ targetKind: "line", target: "holiday-week-one", placement: "hp" }) }]);
+    expect(home.sections[1]!.componentType).toBe("marketing-tile");
+  });
+});
