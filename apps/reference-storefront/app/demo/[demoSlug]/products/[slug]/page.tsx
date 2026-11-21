@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { lifecycle } from "@mercatus-liber/core";
+import { SaleWindow } from "@mercatus-liber/storefront-ui";
+import { STORE_TIME_ZONE } from "../../../../../lib/store-time";
 import type { TierPricing } from "@mercatus-liber/bundles";
 import { PdpLongScroll, PdpSpecSheet, PdpTabbedDetail, type PdpActions } from "@mercatus-liber/storefront-ui";
 import { BundleTierSelector } from "../../../../../components/bundle-tier-selector";
@@ -140,7 +143,7 @@ export default async function ProductPage({
 }) {
   const { demoSlug, slug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const { template, ...selectionParams } = await searchParams;
+  const { template, notice, ...selectionParams } = await searchParams;
   const { pdp, theming, inventory, bundles, recommendations, catalog, marketingCatalog, media, reviews, customization, pricing } =
     await getServicesForDemo(demoSlug);
 
@@ -336,6 +339,9 @@ export default async function ProductPage({
     });
   }
   breadcrumbItems.push({ name: viewModel.product.title, url: productUrl });
+  // Sale window: the product's, narrowed by the chosen SKU's.
+  const renderedAt = new Date().toISOString();
+  const saleWindow = lifecycle([{ activeFrom: viewModel.product.activeFrom ?? null, activeTo: viewModel.product.activeTo ?? null }, ...(activeSku ? [{ activeFrom: activeSku.activeFrom ?? null, activeTo: activeSku.activeTo ?? null }] : [])], new Date(renderedAt));
 
   return (
     <>
@@ -360,6 +366,16 @@ export default async function ProductPage({
           // omitting the field entirely) rather than crashing the PDP.
           activeSkuId={activeSku?.id ?? ""}
         />
+      ) : null}
+      {saleWindow.state !== "active" || saleWindow.endsAt ? (
+        <div style={{ margin: "0 0 1rem" }}>
+          {notice === "not-yet-on-sale" || notice === "sale-ended" ? (
+            <p role="alert" style={{ margin: "0 0 0.5rem" }}>
+              {notice === "not-yet-on-sale" ? "This isn't on sale yet." : "This sale has ended."}
+            </p>
+          ) : null}
+          <SaleWindow lifecycle={saleWindow} now={renderedAt} timeZone={STORE_TIME_ZONE} />
+        </div>
       ) : null}
       <Component
         store={{ basePath: `/demo/${demoSlug}`, formFields: { demoSlug } }}

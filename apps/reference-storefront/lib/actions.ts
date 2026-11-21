@@ -17,6 +17,7 @@ import {
 import { resolveTierCartSkuIds, type BundleTier, type CreateBundleInput } from "@mercatus-liber/bundles";
 import type { AttributeValue, Money } from "@mercatus-liber/core";
 import { InvalidIdentifyingAttributesError } from "@mercatus-liber/catalog";
+import { SkuNotOnSaleError } from "@mercatus-liber/cart";
 import type { CreateCampaignInput, Creative } from "@mercatus-liber/advertising";
 import type { ComponentDefinition, ComponentFieldSchema, ComponentInstance, PageType } from "@mercatus-liber/cms";
 import type { CreatePromotionInput } from "@mercatus-liber/promotions";
@@ -117,8 +118,18 @@ export async function addToCartAction(formData: FormData): Promise<void> {
       ? customizationNoteRaw.trim()
       : undefined;
   const cartId = await getOrCreateCartId(demoSlug);
-  const { cart } = await getServicesForDemo(demoSlug);
-  await cart.addItem(cartId, skuId, quantity, customizationNote);
+  const { cart, catalog } = await getServicesForDemo(demoSlug);
+  try {
+    await cart.addItem(cartId, skuId, quantity, customizationNote);
+  } catch (err) {
+    // Outside its sale window: back to the product, which shows when it opens or that it ended.
+    if (err instanceof SkuNotOnSaleError) {
+      const sku = await catalog.getSku(skuId);
+      const product = sku ? await catalog.getProduct(sku.productId) : null;
+      if (product) redirect(`/demo/${demoSlug}/products/${product.slug}?notice=${err.state === "upcoming" ? "not-yet-on-sale" : "sale-ended"}`);
+    }
+    throw err;
+  }
   revalidatePath(`/demo/${demoSlug}/cart`);
 }
 

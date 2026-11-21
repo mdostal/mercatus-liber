@@ -43,3 +43,11 @@ import { CartStandard } from "@mercatus-liber/storefront-ui";
 - `formatMoney`.
 
 See [docs/subsystems/27-customization.md](../../docs/subsystems/27-customization.md).
+
+## Countdowns and sale windows
+
+- `Countdown({ to, now, label?, doneLabel?, onReach? })`: time left until `to` ("2d 4h", "4h 05m", "5m 09s"), ticking every second. Pass the server's render time as `now`: the first render uses it on both sides, so server HTML and hydration match, then the browser ticks on its own clock. `onReach` fires once at zero (e.g. to refresh the page).
+- `SaleWindow({ lifecycle, now, timeZone? })`: a badge from `lifecycle()` (`@mercatus-liber/core`): "Opens in ..." with the date before a window opens, "Ends in ..." while it's open (nothing when there's no end), "Ended" with the date after. Nothing for inactive items.
+- `formatRemaining(ms)`, `formatWhen(iso, { timeZone })` ("Mon, Nov 30, 12:00 PM CST").
+
+The reference storefront shows `SaleWindow` on product pages in `STORE_TIME_ZONE` (default America/Chicago), and sends a shopper who tries to add an item outside its window back to the product with a notice.
