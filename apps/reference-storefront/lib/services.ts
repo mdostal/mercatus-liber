@@ -723,6 +723,16 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   const promotions = createPromotionsService({
     repository: pgPool ? createPostgresPromotionRepository(pgPool) : createInMemoryPromotionRepository(),
     events,
+    // Lines (sales catalogs) and categories a SKU's product is in, for promotions with targetCollectionIds.
+    // marketingCatalog is created further down; this only runs at checkout, after both exist.
+    collections: {
+      async collectionIdsForSku(skuId) {
+        const sku = await catalog.getSku(skuId);
+        if (!sku) return [];
+        const [catalogIds, categories] = await Promise.all([catalog.listCatalogIdsForProduct(sku.productId), marketingCatalog.listCategoriesForProduct(sku.productId)]);
+        return [...catalogIds, ...categories.map((c) => c.id)];
+      },
+    },
   });
 
   // bare-basics epic: product reviews/star ratings -- a real moderation

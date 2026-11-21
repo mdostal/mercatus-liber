@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { EventBus, Money } from "@mercatus-liber/core";
 import type {
+  CollectionLookup,
   CreatePromotionInput,
   EvaluateInput,
   EvaluatedLineItem,
@@ -114,8 +115,25 @@ function isEligible(promotion: Promotion, now: Date, subtotal: number): boolean 
   return true;
 }
 
-export function createPromotionsService(deps: { repository: PromotionRepository; events: EventBus }): PromotionsService {
-  const { repository, events } = deps;
+export function createPromotionsService(deps: {
+  repository: PromotionRepository;
+  events: EventBus;
+  /** Needed for promotions with targetCollectionIds; without it those discount only their targetSkuIds. */
+  collections?: CollectionLookup;
+}): PromotionsService {
+  const { repository, events, collections } = deps;
+
+  /** Promotions with targetCollectionIds get the cart's SKUs in those collections added to targetSkuIds. */
+  async function withCollectionTargets(promotions: Promotion[], items: EvaluateInput["items"]): Promise<Promotion[]> {
+    if (!collections || !promotions.some((p) => p.scope === "product" && p.targetCollectionIds?.length)) return promotions;
+    const bySku = new Map<string, string[]>();
+    for (const item of items) if (!bySku.has(item.skuId)) bySku.set(item.skuId, await collections.collectionIdsForSku(item.skuId));
+    return promotions.map((p) => {
+      if (p.scope !== "product" || !p.targetCollectionIds?.length) return p;
+      const extra = [...bySku].filter(([, ids]) => ids.some((id) => p.targetCollectionIds!.includes(id))).map(([skuId]) => skuId);
+      return { ...p, targetSkuIds: [...new Set([...p.targetSkuIds, ...extra])] };
+    });
+  }
 
   // orderId -> the promotion/discount recorded (via recordAppliedPromotion)
   // as applied to that order. Consumed (deleted) on first redemption -- its
@@ -191,7 +209,7 @@ export function createPromotionsService(deps: { repository: PromotionRepository;
         // Before this fix (commerce-gap-audit-3), this was an unscoped
         // repository.list(), so any demo sharing the same Postgres backend
         // could redeem any OTHER demo's coupon code.
-        const promotions = await repository.list(listFilter);
+        const promotions = await withCollectionTargets(await repository.list(listFilter), items);
         const promotion = promotions.find((p) => p.code === couponCode) ?? null;
 
         if (!promotion) {
@@ -235,7 +253,7 @@ export function createPromotionsService(deps: { repository: PromotionRepository;
       // No code supplied: apply the single highest-discountTotal-value
       // eligible auto-applied (code === null) promotion, if any, scoped to
       // this demo when one is supplied (see above).
-      const promotions = await repository.list(listFilter);
+      const promotions = await withCollectionTargets(await repository.list(listFilter), items);
       const candidates = promotions.filter((p) => p.code === null && isEligible(p, now, subtotal));
       let best: { promotion: Promotion; discountTotal: number } | null = null;
       for (const candidate of candidates) {

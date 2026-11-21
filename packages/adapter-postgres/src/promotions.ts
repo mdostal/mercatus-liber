@@ -42,6 +42,8 @@ const PROMOTIONS_DDL = `
   -- production "promotions" table.
   ALTER TABLE promotions ADD COLUMN IF NOT EXISTS demo_slug TEXT;
   CREATE INDEX IF NOT EXISTS idx_promotions_demo_slug ON promotions(demo_slug);
+  -- scheduled-lines epic: lines or categories a product-scope promotion covers.
+  ALTER TABLE promotions ADD COLUMN IF NOT EXISTS target_collection_ids JSONB;
 `;
 
 interface PromotionRow {
@@ -64,6 +66,7 @@ interface PromotionRow {
   redemption_count: number;
   status: string;
   demo_slug: string | null;
+  target_collection_ids?: string[] | null;
 }
 
 function toIsoOrNull(value: Date | null): string | null {
@@ -86,6 +89,7 @@ function rowToPromotion(row: PromotionRow): Promotion {
     redemptionCount: row.redemption_count,
     status: row.status as Promotion["status"],
     ...(row.demo_slug ? { demoSlug: row.demo_slug } : {}),
+    ...(row.target_collection_ids?.length ? { targetCollectionIds: row.target_collection_ids } : {}),
   };
 }
 
@@ -123,9 +127,9 @@ export function createPostgresPromotionRepository(pool: Pool): PromotionReposito
       await pool.query(
         `INSERT INTO promotions (
            id, code, kind, scope, value, currency, target_sku_ids, min_cart_amount,
-           starts_at, ends_at, usage_limit, redemption_count, status, demo_slug
+           starts_at, ends_at, usage_limit, redemption_count, status, demo_slug, target_collection_ids
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          ON CONFLICT (id) DO UPDATE SET
            code = EXCLUDED.code,
            kind = EXCLUDED.kind,
@@ -139,7 +143,8 @@ export function createPostgresPromotionRepository(pool: Pool): PromotionReposito
            usage_limit = EXCLUDED.usage_limit,
            redemption_count = EXCLUDED.redemption_count,
            status = EXCLUDED.status,
-           demo_slug = EXCLUDED.demo_slug`,
+           demo_slug = EXCLUDED.demo_slug,
+           target_collection_ids = EXCLUDED.target_collection_ids`,
         [
           promotion.id,
           promotion.code,
@@ -155,6 +160,7 @@ export function createPostgresPromotionRepository(pool: Pool): PromotionReposito
           promotion.redemptionCount,
           promotion.status,
           promotion.demoSlug ?? null,
+          promotion.targetCollectionIds?.length ? JSON.stringify(promotion.targetCollectionIds) : null,
         ],
       );
     },
