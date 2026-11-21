@@ -15,8 +15,9 @@ export const dynamic = "force-dynamic";
  * countdown), and its products by section. Shown before any product exists,
  * so a line can be announced ahead of time.
  */
-export default async function LinePage({ params }: { params: Promise<{ demoSlug: string; lineSlug: string }> }) {
+export default async function LinePage({ params, searchParams }: { params: Promise<{ demoSlug: string; lineSlug: string }>; searchParams: Promise<{ icid?: string }> }) {
   const { demoSlug, lineSlug } = await params;
+  const { icid } = await searchParams;
   if (!isDemoSlug(demoSlug)) notFound();
   const { catalog, media } = await getServicesForDemo(demoSlug);
   const renderedAt = new Date();
@@ -26,7 +27,7 @@ export default async function LinePage({ params }: { params: Promise<{ demoSlug:
   const productCount = sections.reduce((n, s) => n + s.products.length, 0) + otherProducts.length;
   return (
     <main>
-      <InteractionTracker eventName="catalog_viewed" properties={{ catalogId: line.id, slug: line.slug, kind: "sales" }} />
+      <InteractionTracker eventName="catalog_viewed" properties={{ catalogId: line.id, slug: line.slug, kind: "sales", ...(icid ? { icid } : {}) }} />
       <p>
         <Link href={`/demo/${demoSlug}/lines`}>← All lines</Link>
       </p>

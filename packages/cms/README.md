@@ -32,3 +32,9 @@ const page = await cms.getPageBySlug("home");
 Implement `CmsPersistenceAdapter`, `{ pages, marketingMeta }`, and pass it as `persistence`. See `@mercatus-liber/adapter-sanity` for a complete one. The component registry is also an extension point.
 
 See [docs/subsystems/05-cms-pages.md](../../docs/subsystems/05-cms-pages.md).
+
+## Marketing tiles
+
+The `marketing-tile` component links to a line, category, product or page (`targetKind`: `line`,
+`category`, `product` or `url`; `target`: a slug or URL) with a title, optional subtitle and image,
+and an `icid` (built from `placement`, the target and the date when left empty).

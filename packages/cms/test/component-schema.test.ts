@@ -20,6 +20,8 @@ describe("component field schema", () => {
     "category-spot": ["categorySlugs"],
     "product-grid": ["productIds"],
     "service-area-info": ["hours", "blurb", "servicesOffered"],
+    // scheduled-lines epic: the print-shop home page's tile into its holiday line.
+    "marketing-tile": ["title", "subtitle", "image", "targetKind", "target", "placement", "icid"],
   };
 
   it("every default component has a fields[] array (possibly empty, never missing)", () => {

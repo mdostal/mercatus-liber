@@ -143,7 +143,7 @@ export default async function ProductPage({
 }) {
   const { demoSlug, slug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const { template, notice, ...selectionParams } = await searchParams;
+  const { template, notice, icid, ...selectionParams } = await searchParams;
   const { pdp, theming, inventory, bundles, recommendations, catalog, marketingCatalog, media, reviews, customization, pricing } =
     await getServicesForDemo(demoSlug);
 
@@ -347,7 +347,7 @@ export default async function ProductPage({
     <>
       <JsonLd data={productJsonLd} />
       <JsonLd data={breadcrumbList(breadcrumbItems)} />
-      <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug }} />
+      <InteractionTracker eventName="product_viewed" properties={{ productId: viewModel.product.id, slug: viewModel.product.slug, ...(icid ? { icid } : {}) }} />
       {bundle ? (
         <BundleTierSelector
           demoSlug={demoSlug}

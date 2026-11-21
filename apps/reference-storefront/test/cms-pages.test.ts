@@ -15,8 +15,8 @@ describe("seeded CMS pages", () => {
     const home = await cms.getPageBySlug("home-print-shop");
     expect(home).not.toBeNull();
     expect(home?.status).toBe("published");
-    // ad-slot added by epic 23 (advertising) -- see lib/seed.ts's seedCmsPages.
-    expect(home?.sections.map((s) => s.componentType)).toEqual(["hero-banner", "category-spot", "ad-slot"]);
+    // ad-slot added by epic 23 (advertising); marketing-tile by scheduled-lines -- see lib/seed.ts's seedCmsPages.
+    expect(home?.sections.map((s) => s.componentType)).toEqual(["hero-banner", "marketing-tile", "category-spot", "ad-slot"]);
 
     const categorySpot = home!.sections.find((s) => s.componentType === "category-spot");
     expect(categorySpot?.config).toEqual({ categorySlugs: ["embroidery", "custom-coasters"] });

@@ -50,8 +50,9 @@ const CATEGORY_TEMPLATES = {
   "category.maximalist-grid": CategoryMaximalistGrid,
 } as const;
 
-export default async function CategoryPage({ params }: { params: Promise<{ demoSlug: string; slug: string }> }) {
+export default async function CategoryPage({ params, searchParams }: { params: Promise<{ demoSlug: string; slug: string }>; searchParams?: Promise<{ icid?: string }> }) {
   const { demoSlug, slug } = await params;
+  const icid = (await searchParams)?.icid;
   if (!isDemoSlug(demoSlug)) notFound();
   const { marketingCatalog, catalog, theming, media } = await getServicesForDemo(demoSlug);
   const category = await marketingCatalog.getCategoryBySlug(slug);
@@ -136,7 +137,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ demoS
   return (
     <main style={{ padding: "var(--space-sm, 16px)" }}>
       <JsonLd data={breadcrumbList(breadcrumbItems)} />
-      <InteractionTracker eventName="category_viewed" properties={{ categoryId: category.id, slug: category.slug }} />
+      <InteractionTracker eventName="category_viewed" properties={{ categoryId: category.id, slug: category.slug, ...(icid ? { icid } : {}) }} />
       <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{category.title}</h1>
       <p style={{ color: "var(--color-muted, #666)", fontSize: "var(--font-size-body, 1rem)" }}>{category.description}</p>
       {childCategories.length > 0 && (
