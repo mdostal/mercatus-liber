@@ -42,6 +42,13 @@ export default async function LinePage({ params }: { params: Promise<{ demoSlug:
           </p>
         ) : null}
       </header>
+      {productCount > 0 ? (
+        <form method="get" action={`/demo/${demoSlug}/search`} role="search" style={{ marginBottom: "var(--space-md, 32px)" }}>
+          <input type="hidden" name="line" value={line.slug} />
+          <input type="search" name="q" aria-label={`Search ${line.hero?.title ?? line.name}`} placeholder={`Search ${line.hero?.title ?? line.name}...`} />
+          <button type="submit">Search</button>
+        </form>
+      ) : null}
       {productCount === 0 ? <p>The pieces in this line are coming soon.</p> : null}
       {sections.map((section) =>
         section.products.length > 0 ? (
