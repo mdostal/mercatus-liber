@@ -32,6 +32,28 @@ export interface MercatusProduct {
   categories: { id: string; slug: string; title: string }[];
   variants: MercatusVariant[];
   priceRange: { min: Money; max: Money } | null;
+  /** Absent from stores older than the scheduled-lines release. */
+  saleWindow?: MercatusSaleWindow;
+}
+
+/** Where something is in its sale window. `nextChangeAt` is when it next opens or closes, for a countdown. */
+export interface MercatusSaleWindow {
+  activeFrom: string | null;
+  activeTo: string | null;
+  state: "upcoming" | "active" | "ended" | "inactive";
+  nextChangeAt: string | null;
+}
+
+/** A line (sales catalog): a named, scheduled set of products with its own landing page. */
+export interface MercatusLine {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  url: string;
+  hero: { title: string; subtitle?: string; imageUrl?: string; imageAlt?: string; cta?: { label: string; href: string } } | null;
+  saleWindow: MercatusSaleWindow;
+  sections: { slug: string; title: string; productIds: string[] }[];
 }
 
 export interface MercatusCategory {
@@ -152,6 +174,10 @@ export function createMercatusStoreClient(config: MercatusStoreClientConfig) {
     },
     getProduct: async (id: string) => (await request<{ data: MercatusProduct }>("GET", `/products/${encodeURIComponent(id)}`)).data,
     listCategories: async () => (await request<{ data: MercatusCategory[] }>("GET", "/categories")).data,
+    /** The store's lines, soonest first, optionally only upcoming, active or ended ones. */
+    listLines: async (options: { state?: "upcoming" | "active" | "ended" } = {}) => (await request<{ data: MercatusLine[] }>("GET", `/lines${options.state ? `?state=${options.state}` : ""}`)).data,
+    /** One line by slug or id, with its products. */
+    getLine: async (slugOrId: string) => (await request<{ data: MercatusLine & { products: MercatusProduct[] } }>("GET", `/lines/${encodeURIComponent(slugOrId)}`)).data,
     listPromotions: async () => (await request<{ data: MercatusPromotion[] }>("GET", "/promotions")).data,
     createPromotion: async (input: NewMercatusPromotion) => (await request<{ data: MercatusPromotion }>("POST", "/promotions", input)).data,
     updatePromotion: async (id: string, patch: Partial<NewMercatusPromotion>) => (await request<{ data: MercatusPromotion }>("PATCH", `/promotions/${encodeURIComponent(id)}`, patch)).data,

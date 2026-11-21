@@ -103,3 +103,23 @@ describe("sales by line in the demo's BI", { timeout: 60_000 }, () => {
     expect(await n.bi.getSalesByCollection()).toEqual([]);
   });
 });
+
+describe("lines in the demo's Store API", { timeout: 60_000 }, () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("lists print-shop's lines and returns one with its products", async () => {
+    const { createStoreApiKey } = await import("@mercatus-liber/store-api");
+    const s = await servicesFor("print-shop");
+    const { secret } = await createStoreApiKey(s.storeApiKeys, { name: "test", scopes: ["products:read"] });
+    const get = async (path: string) => {
+      const res = await s.storeApi(new Request(`https://commerce.example/api/store/v1/print-shop${path}`, { headers: { authorization: `Bearer ${secret}` } }));
+      return { status: res.status, body: (await res.json()) as { data: any } };
+    };
+    const lines = await get("/lines");
+    expect(lines.body.data.map((l: { slug: string }) => l.slug).sort()).toEqual(["fleece-favorites", "holiday-week-one"]);
+    const line = await get("/lines/holiday-week-one");
+    expect(line.status).toBe(200);
+    expect(line.body.data.products).toHaveLength(6);
+    expect(line.body.data.url).toMatch(/\/demo\/print-shop\/lines\/holiday-week-one$/);
+  });
+});

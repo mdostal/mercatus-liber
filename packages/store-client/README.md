@@ -16,3 +16,8 @@ const ok = await verifyMercatusWebhook(rawBody, request.headers.get(MERCATUS_SIG
 ```
 
 See [docs/integrations/flayr.md](../../docs/integrations/flayr.md).
+
+## Lines
+
+`listLines({ state? })` and `getLine(slugOrId)` (with its products). Products carry `saleWindow`
+when the store is new enough (`nextChangeAt` is the countdown target).

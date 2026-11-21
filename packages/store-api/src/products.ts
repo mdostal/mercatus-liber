@@ -1,5 +1,25 @@
-import type { Product, Sku } from "@mercatus-liber/core";
-import type { ApiProduct, ApiVariant, StoreApiDeps, StoreApiPromotion } from "./types.js";
+import { lifecycle, type Product, type Sku } from "@mercatus-liber/core";
+import type { ApiLine, ApiProduct, ApiSaleWindow, ApiVariant, StoreApiDeps, StoreApiLine, StoreApiPromotion } from "./types.js";
+
+/** An entity's sale window as the API reports it. */
+export function saleWindowOf(entity: { status?: string; activeFrom?: string | null; activeTo?: string | null }, now: Date): ApiSaleWindow {
+  const l = lifecycle({ ...(entity.status !== undefined ? { status: entity.status } : {}), activeFrom: entity.activeFrom ?? null, activeTo: entity.activeTo ?? null }, now);
+  return { activeFrom: l.startsAt, activeTo: l.endsAt, state: l.state, nextChangeAt: l.nextChangeAt };
+}
+
+/** A line for the API: its schedule state, hero, sections, and its landing page URL (`${store.url}/lines/${slug}`). */
+export function toApiLine(deps: StoreApiDeps, line: StoreApiLine, now: Date): ApiLine {
+  return {
+    id: line.id,
+    slug: line.slug,
+    name: line.name,
+    description: line.description,
+    url: `${deps.store.url}/lines/${line.slug}`,
+    hero: line.hero ?? null,
+    saleWindow: saleWindowOf({ status: line.status ?? "active", activeFrom: line.activeFrom ?? null, activeTo: line.activeTo ?? null }, now),
+    sections: line.sections ?? [],
+  };
+}
 
 /** Whether a promotion applies right now, by status and schedule. */
 export function isPromotionLive(promotion: StoreApiPromotion, now: Date): boolean {
@@ -57,5 +77,6 @@ export async function toApiProduct(deps: StoreApiDeps, product: Product, promoti
     categories: categories.map((c) => ({ id: c.id, slug: c.slug, title: c.title })),
     variants,
     priceRange: amounts.length > 0 ? { min: { amount: Math.min(...amounts), currency }, max: { amount: Math.max(...amounts), currency } } : null,
+    saleWindow: saleWindowOf(product, now),
   };
 }

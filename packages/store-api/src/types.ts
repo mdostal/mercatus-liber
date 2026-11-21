@@ -77,8 +77,47 @@ export interface StoreApiDeps {
     list(): Promise<StoreApiWebhookSubscription[]>;
     delete(id: string): Promise<void>;
   };
+  /** Lines (sales catalogs): named, scheduled sets of products with their own landing page. */
+  lines?: {
+    listLines(): Promise<StoreApiLine[]>;
+    /** By id or slug; null when it isn't this store's. */
+    getLine(idOrSlug: string): Promise<StoreApiLine | null>;
+  };
   /** Clock for promotion schedules. Defaults to now. */
   now?: () => Date;
+}
+
+/** A line as the store gives it to the API (@mercatus-liber/catalog's sales Catalog fits). */
+export interface StoreApiLine {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  status?: Product["status"];
+  activeFrom?: string | null;
+  activeTo?: string | null;
+  hero?: { title: string; subtitle?: string; imageUrl?: string; imageAlt?: string; cta?: { label: string; href: string } };
+  sections?: { slug: string; title: string; productIds: string[] }[];
+}
+
+/** Where something is in its sale window (see lifecycle in @mercatus-liber/core). */
+export interface ApiSaleWindow {
+  activeFrom: string | null;
+  activeTo: string | null;
+  state: "upcoming" | "active" | "ended" | "inactive";
+  /** When it next opens or closes, for a countdown; null when it won't. */
+  nextChangeAt: string | null;
+}
+
+export interface ApiLine {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  url: string;
+  hero: StoreApiLine["hero"] | null;
+  saleWindow: ApiSaleWindow;
+  sections: { slug: string; title: string; productIds: string[] }[];
 }
 
 /** A variant as the API returns it. */
@@ -105,4 +144,6 @@ export interface ApiProduct {
   categories: { id: string; slug: string; title: string }[];
   variants: ApiVariant[];
   priceRange: { min: Money; max: Money } | null;
+  /** The product's sale window and where it is now. */
+  saleWindow: ApiSaleWindow;
 }

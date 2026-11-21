@@ -1,5 +1,5 @@
 import { authenticateStoreApiKey, type StoreApiKeyRepository, type StoreApiScope } from "./keys.js";
-import { isPromotionLive, toApiProduct } from "./products.js";
+import { isPromotionLive, toApiLine, toApiProduct } from "./products.js";
 import type { StoreApiDeps, StoreApiPromotion, StoreApiPromotionInput } from "./types.js";
 
 export interface StoreApiHandlerConfig {
@@ -152,6 +152,30 @@ export function createStoreApiHandler(config: StoreApiHandlerConfig): (request: 
           requireScope("products:read");
           if (!deps.categories) throw new HttpError(404, "not_supported", "This store doesn't expose categories.");
           return json(200, { data: await deps.categories.listCategories() });
+        }
+
+        case "GET /lines": {
+          requireScope("products:read");
+          if (!deps.lines) throw new HttpError(404, "not_supported", "This store doesn't expose lines.");
+          const state = url.searchParams.get("state");
+          if (state && !["upcoming", "active", "ended"].includes(state)) throw new HttpError(400, "invalid_query", "state must be upcoming, active or ended.");
+          const lines = (await deps.lines.listLines()).map((line) => toApiLine(deps, line, now)).filter((line) => line.saleWindow.state !== "inactive" && (!state || line.saleWindow.state === state));
+          lines.sort((a, b) => (a.saleWindow.activeFrom ?? "").localeCompare(b.saleWindow.activeFrom ?? ""));
+          return json(200, { data: lines });
+        }
+
+        case "GET /lines/:id": {
+          requireScope("products:read");
+          if (!deps.lines) throw new HttpError(404, "not_supported", "This store doesn't expose lines.");
+          const line = await deps.lines.getLine(parts[1]!);
+          if (!line) throw new HttpError(404, "not_found", "No such line.");
+          const apiLine = toApiLine(deps, line, now);
+          if (apiLine.saleWindow.state === "inactive") throw new HttpError(404, "not_found", "No such line.");
+          // The line's products, with their prices and windows, so a caller needs one request for a line page.
+          const promotions = deps.promotions ? await deps.promotions.listPromotions() : [];
+          const ids = [...new Set(apiLine.sections.flatMap((s) => s.productIds))];
+          const products = (await Promise.all(ids.map((id) => deps.catalog.getProduct(id)))).filter((p): p is NonNullable<typeof p> => p !== null && p.status === "active");
+          return json(200, { data: { ...apiLine, products: await Promise.all(products.map((p) => toApiProduct(deps, p, promotions))) } });
         }
 
         case "GET /promotions": {
