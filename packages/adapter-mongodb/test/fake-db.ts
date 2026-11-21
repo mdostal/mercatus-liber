@@ -68,11 +68,13 @@ export function createFakeDb(): DbLike {
             },
           };
         },
-        async updateOne(filter: Record<string, unknown>, update: { $set: Partial<TDoc> }, _options: { upsert: true }) {
+        async updateOne(filter: Record<string, unknown>, update: { $set: Partial<TDoc>; $unset?: Record<string, ""> }, _options: { upsert: true }) {
           const existing = Array.from(store.entries()).find(([, doc]) => matches(doc as Record<string, unknown>, filter));
           if (existing) {
             const [key, doc] = existing;
-            store.set(key, { ...(doc as Record<string, unknown>), ...update.$set });
+            const next = { ...(doc as Record<string, unknown>), ...update.$set };
+            for (const field of Object.keys(update.$unset ?? {})) delete next[field];
+            store.set(key, next);
           } else {
             // Real upsert-with-no-match behavior: the new document's _id
             // comes from the filter's own equality condition on _id.

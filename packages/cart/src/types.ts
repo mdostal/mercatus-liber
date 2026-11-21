@@ -1,4 +1,4 @@
-import type { LineCustomization, Money, Sku } from "@mercatus-liber/core";
+import type { LineCustomization, Money, Product, Sku } from "@mercatus-liber/core";
 
 export interface CartItem {
   skuId: string;
@@ -44,12 +44,31 @@ export interface CartRepository {
  */
 export interface SkuLookup {
   getSku(id: string): Promise<Sku | null>;
+  /** When present, the product's sale window (activeFrom/activeTo) applies to its SKUs too. @mercatus-liber/catalog's CatalogService has it. */
+  getProduct?(id: string): Promise<Pick<Product, "activeFrom" | "activeTo"> | null>;
 }
 
 export class SkuNotAvailableError extends Error {
-  constructor(skuId: string) {
-    super(`SKU is not available for purchase: ${skuId}`);
+  constructor(skuId: string, message?: string) {
+    super(message ?? `SKU is not available for purchase: ${skuId}`);
     this.name = "SkuNotAvailableError";
+  }
+}
+
+/**
+ * Thrown when a SKU is outside its sale window (its own, or its product's).
+ * A SkuNotAvailableError, so existing handling keeps working; `state` says
+ * whether it hasn't opened yet or has ended.
+ */
+export class SkuNotOnSaleError extends SkuNotAvailableError {
+  constructor(
+    readonly skuId: string,
+    readonly state: "upcoming" | "ended",
+    readonly startsAt: string | null,
+    readonly endsAt: string | null,
+  ) {
+    super(skuId, state === "upcoming" ? `This item goes on sale at ${startsAt}.` : `This item's sale ended at ${endsAt}.`);
+    this.name = "SkuNotOnSaleError";
   }
 }
 

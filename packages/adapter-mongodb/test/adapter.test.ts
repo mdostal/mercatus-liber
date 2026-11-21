@@ -94,6 +94,24 @@ describe("createMongoAdapter", () => {
       expect(found).toEqual([sku]);
     });
 
+    it("scheduled-lines epic: round-trips a product's and a SKU's window, and clearing it clears it", async () => {
+      const open = "2026-11-30T18:00:00.000Z";
+      const close = "2026-12-07T18:00:00.000Z";
+      const product = { ...dragon, activeFrom: open, activeTo: close };
+      await adapter.products.save(product);
+      expect(await adapter.products.get(dragon.id)).toEqual(product);
+      const scheduled = { ...sku, id: "s-sched", activeFrom: open, activeTo: close };
+      await adapter.skus.save(scheduled);
+      expect(await adapter.skus.get("s-sched")).toEqual(scheduled);
+      await adapter.skus.save({ ...sku, id: "s-sched", activeFrom: open });
+      const reopened = await adapter.skus.get("s-sched");
+      expect(reopened?.activeFrom).toBe(open);
+      expect("activeTo" in (reopened as object)).toBe(false);
+      await adapter.products.save(dragon);
+      const cleared = await adapter.products.get(dragon.id);
+      expect("activeFrom" in (cleared as object) || "activeTo" in (cleared as object)).toBe(false);
+    });
+
     it("returns null for a missing SKU", async () => {
       expect(await adapter.skus.get("missing")).toBeNull();
     });

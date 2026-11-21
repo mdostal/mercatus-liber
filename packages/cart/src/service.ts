@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { EventBus, LineCustomization, Money } from "@mercatus-liber/core";
-import { CartNotFoundError, InvalidUnitPriceError, SkuNotAvailableError } from "./types.js";
+import { lifecycle, type EventBus, type LineCustomization, type Money } from "@mercatus-liber/core";
+import { CartNotFoundError, InvalidUnitPriceError, SkuNotAvailableError, SkuNotOnSaleError } from "./types.js";
 import type { Cart, CartItem, CartRepository, SkuLookup } from "./types.js";
 
 /** A made-to-order line. Call this from the server only, with a price it computed itself: the cart stores `unitPrice` as given. */
@@ -39,8 +39,11 @@ export function createCartService(deps: {
   repository: CartRepository;
   skus: SkuLookup;
   events: EventBus;
+  /** The clock sale windows are checked against. Default: the real time. */
+  now?: () => Date;
 }): CartService {
   const { repository, skus, events } = deps;
+  const now = deps.now ?? (() => new Date());
 
   async function requireCart(id: string): Promise<Cart> {
     const cart = await repository.get(id);
@@ -68,6 +71,9 @@ export function createCartService(deps: {
       if (!sku || sku.status !== "active") {
         throw new SkuNotAvailableError(skuId);
       }
+      const product = skus.getProduct ? await skus.getProduct(sku.productId) : null;
+      const window = lifecycle([sku, ...(product ? [{ activeFrom: product.activeFrom ?? null, activeTo: product.activeTo ?? null }] : [])], now());
+      if (window.state === "upcoming" || window.state === "ended") throw new SkuNotOnSaleError(skuId, window.state, window.startsAt, window.endsAt);
 
       // Blank/whitespace-only note normalizes to "no note", same as omitting
       // it -- avoids a stray customizationNote key on an otherwise-plain line.

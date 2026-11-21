@@ -53,13 +53,15 @@ export function createFakePgPool(): FakePool {
         };
       }
       if (sql.startsWith("INSERT INTO products")) {
-        const [id, slug, title, description, identifyingAttributeKeys, status, images, videos, viewerUrl, license] = values as [
+        const [id, slug, title, description, identifyingAttributeKeys, status, images, videos, viewerUrl, license, activeFrom, activeTo] = values as [
           string,
           string,
           string,
           string,
           string,
           string,
+          string | null,
+          string | null,
           string | null,
           string | null,
           string | null,
@@ -81,6 +83,8 @@ export function createFakePgPool(): FakePool {
           videos: videos ? JSON.parse(videos) : null,
           viewer_url: viewerUrl,
           license,
+          active_from: activeFrom,
+          active_to: activeTo,
         });
         return { rows: [] };
       }
@@ -94,13 +98,15 @@ export function createFakePgPool(): FakePool {
         return { rows: [...skus.values()].filter((s) => s.product_id === values[0]) as T[] };
       }
       if (sql.startsWith("INSERT INTO skus")) {
-        const [id, productId, identifyingAttributes, priceAmount, priceCurrency, status, images, availabilityStatus, availabilityNote] = values as [
+        const [id, productId, identifyingAttributes, priceAmount, priceCurrency, status, images, availabilityStatus, availabilityNote, activeFrom, activeTo] = values as [
           string,
           string,
           string,
           number,
           string,
           string,
+          string | null,
+          string | null,
           string | null,
           string | null,
           string | null,
@@ -115,6 +121,8 @@ export function createFakePgPool(): FakePool {
           images: images ? JSON.parse(images) : null,
           availability_status: availabilityStatus,
           availability_note: availabilityNote,
+          active_from: activeFrom,
+          active_to: activeTo,
         });
         return { rows: [] };
       }

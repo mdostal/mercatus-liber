@@ -339,7 +339,8 @@ afterEach(() => {
   mongoClientConfigs.length = 0;
 });
 
-describe("Persistence wiring (lib/services.ts)", () => {
+// Each test re-imports the whole service graph; cold, under a full monorepo run, that can pass 5 s.
+describe("Persistence wiring (lib/services.ts)", { timeout: 60_000 }, () => {
   it("defaults to in-memory SQLite, byte-for-byte unchanged, when neither DATABASE_URL nor SQLITE_FILE_PATH is set", async () => {
     vi.stubEnv("DATABASE_URL", "");
     vi.stubEnv("SQLITE_FILE_PATH", "");

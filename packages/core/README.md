@@ -10,3 +10,15 @@ picked (a straightforward find/replace across `package.json` names and imports).
 
 See [`docs/subsystems/00-core-schema.md`](../../docs/subsystems/00-core-schema.md) for the full
 design rationale.
+
+## Sale windows
+
+`Product` and `Sku` take an optional `activeFrom` / `activeTo` (ISO 8601 instants; absent for no
+limit). `lifecycle(entity | entities, now)` says where something is: `upcoming`, `active`, `ended`,
+or `inactive` (status isn't `active`), with `startsAt`, `endsAt` and `nextChangeAt` (the next
+moment it opens or closes, for countdowns and cache lifetimes). Pass several, such as a product and
+its SKU, to combine them: active only while all are. `normalizeSchedule` checks and normalises a
+window (throws `InvalidScheduleError`).
+
+`resolveRegion`, `regionForProvider` and `normalizePostalAddress` (regions.ts) are the other
+helpers in this package.

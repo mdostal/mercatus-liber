@@ -33,6 +33,14 @@ await catalog.publishProduct(product.id);
 
 `persistence` is any `CatalogPersistenceAdapter`, such as `createSqliteAdapter` from `@mercatus-liber/adapter-sqlite` or `createPostgresAdapter` from `@mercatus-liber/adapter-postgres`.
 
+## Sale windows
+
+`createProduct`, `updateProduct`, `createSku` and `updateSku` take `activeFrom` / `activeTo`
+(ISO 8601; `null` clears one). They're stored as UTC (`2026-11-30T12:00:00-06:00` becomes
+`2026-11-30T18:00:00.000Z`), and an end that isn't after the start throws `InvalidScheduleError`.
+Postgres, SQLite and MongoDB keep them; the Convex functions don't yet (their schema needs a
+deploy). Read a product's state with `lifecycle` from `@mercatus-liber/core`.
+
 ## Key exports
 
 - `createCatalogService(deps)`: product, SKU, attribute, and catalog operations, including `generateSkus`, `resolveVariant`, and `listProductsInCatalog`.

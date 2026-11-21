@@ -20,6 +20,13 @@ const { id } = await cart.createCart();
 await cart.addItem(id, "sku-1", 2, "Engrave: ADA");
 ```
 
+## Sale windows
+
+`addItem` refuses a SKU outside its sale window, or its product's when the `skus` lookup has
+`getProduct` (the catalog service does), with `SkuNotOnSaleError` (`state` is `upcoming` or
+`ended`, plus `startsAt` / `endsAt`). It extends `SkuNotAvailableError`. Pass `now` to control
+the clock.
+
 ## Key exports
 
 - `createCartService(deps)`: `createCart`, `getCart`, `addItem(cartId, skuId, quantity, customizationNote?)`, `removeItem`, `updateQuantity`, `clear`.

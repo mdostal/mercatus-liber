@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { resolveRegion, type EventBus, type Money } from "@mercatus-liber/core";
-import { CartNotFoundForCheckoutError, EmptyCartError, NoShippingCountryError, QuoteRequiredError } from "./types.js";
+import { lifecycle, resolveRegion, type EventBus, type Money } from "@mercatus-liber/core";
+import { CartNotFoundForCheckoutError, EmptyCartError, ItemsNotOnSaleError, NoShippingCountryError, QuoteRequiredError } from "./types.js";
 import type {
   CartLookup,
   Order,
@@ -11,6 +11,7 @@ import type {
   PricingAdjuster,
   PricingAdjustment,
   LineItemNamer,
+  SaleWindowLookup,
   ShippingInfo,
   ShippingQuoter,
 } from "./types.js";
@@ -113,8 +114,25 @@ export function createCheckoutOrdersService(deps: {
   shipping?: ShippingQuoter;
   /** Names line items on the payment page. Without it, lines read "SKU <id>". */
   nameLineItem?: LineItemNamer;
+  /** Checks each line is on sale now (active, inside its and its product's window). Without it, no check. */
+  saleWindows?: SaleWindowLookup;
+  /** The clock sale windows are checked against. Default: the real time. */
+  now?: () => Date;
 }): CheckoutOrdersService {
-  const { repository, cart, payments, events, pricing, shipping, nameLineItem } = deps;
+  const { repository, cart, payments, events, pricing, shipping, nameLineItem, saleWindows } = deps;
+  const now = deps.now ?? (() => new Date());
+
+  async function notOnSale(skuIds: string[]): Promise<string[]> {
+    if (!saleWindows) return [];
+    const refused: string[] = [];
+    for (const skuId of new Set(skuIds)) {
+      const sku = await saleWindows.getSku(skuId);
+      const product = sku && saleWindows.getProduct ? await saleWindows.getProduct(sku.productId) : null;
+      const dates = product ? [{ activeFrom: product.activeFrom ?? null, activeTo: product.activeTo ?? null }] : [];
+      if (!sku || lifecycle([sku, ...dates], now()).state !== "active") refused.push(skuId);
+    }
+    return refused;
+  }
 
   async function computeAdjustment(
     items: { skuId: string; quantity: number; priceSnapshot: Money }[],
@@ -157,6 +175,9 @@ export function createCheckoutOrdersService(deps: {
 
       const allowedCountries = input.collectAddress ? (input.collectAddress.allowedCountries ?? (input.shippingInfo.countryCode ? [input.shippingInfo.countryCode] : [])) : [];
       if (input.collectAddress && allowedCountries.length === 0) throw new NoShippingCountryError();
+
+      const closed = await notOnSale(shopperCart.items.map((item) => item.skuId));
+      if (closed.length > 0) throw new ItemsNotOnSaleError(closed);
 
       const needQuote = shopperCart.items.filter((item) => item.customization?.quoteRequired).map((item) => item.skuId);
       if (needQuote.length > 0) throw new QuoteRequiredError(needQuote);

@@ -26,6 +26,12 @@ const result = await checkout.startCheckout({
 });
 ```
 
+## Sale windows
+
+A cart can outlive a sale. Pass `saleWindows` (the catalog service fits) and `startCheckout`
+re-checks every line against its SKU's and product's window, throwing `ItemsNotOnSaleError` with
+the closed SKU ids.
+
 ## Key exports
 
 - `createCheckoutOrdersService(deps)`: `startCheckout`, `previewCheckout`, `getOrder`, `listOrders`, `listOrdersByCustomer`. `pricing` is an optional dep for discounts. `shipping` (a `ShippingQuoter`) charges shipping: the quote is recorded as `order.shippingTotal` and passed to the payment session. `nameLineItem` names lines on the payment page instead of "SKU <id>".

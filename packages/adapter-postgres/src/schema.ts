@@ -25,6 +25,9 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS videos JSONB;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS viewer_url TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS license TEXT;
+-- scheduled-lines epic: when a product is on sale (ISO 8601 instants, NULL for no limit).
+ALTER TABLE products ADD COLUMN IF NOT EXISTS active_from TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS active_to TEXT;
 
 CREATE TABLE IF NOT EXISTS skus (
   id TEXT PRIMARY KEY,
@@ -42,6 +45,8 @@ ALTER TABLE skus ADD COLUMN IF NOT EXISTS images JSONB;
 -- pattern, same reason, for Sku's two new fields -- see
 -- Sku.availabilityStatus's own doc comment.
 ALTER TABLE skus ADD COLUMN IF NOT EXISTS availability_status TEXT;
+ALTER TABLE skus ADD COLUMN IF NOT EXISTS active_from TEXT;
+ALTER TABLE skus ADD COLUMN IF NOT EXISTS active_to TEXT;
 ALTER TABLE skus ADD COLUMN IF NOT EXISTS availability_note TEXT;
 
 CREATE TABLE IF NOT EXISTS product_attributes (

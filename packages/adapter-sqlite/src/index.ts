@@ -41,6 +41,8 @@ interface ProductRow {
   videos: string | null;
   viewer_url: string | null;
   license: string | null;
+  active_from?: string | null;
+  active_to?: string | null;
 }
 
 interface SkuRow {
@@ -52,6 +54,8 @@ interface SkuRow {
   status: string;
   images: string | null;
   availability_status: string | null;
+  active_from?: string | null;
+  active_to?: string | null;
   availability_note: string | null;
 }
 
@@ -74,6 +78,8 @@ function rowToProduct(row: ProductRow): Product {
     ...(row.videos ? { videos: JSON.parse(row.videos) as ProductVideo[] } : {}),
     ...(row.viewer_url ? { viewerUrl: row.viewer_url } : {}),
     ...(row.license ? { license: row.license } : {}),
+    ...(row.active_from ? { activeFrom: row.active_from } : {}),
+    ...(row.active_to ? { activeTo: row.active_to } : {}),
   };
 }
 
@@ -86,6 +92,8 @@ function rowToSku(row: SkuRow): Sku {
     status: row.status as ProductStatus,
     ...(row.images ? { images: JSON.parse(row.images) as ProductImage[] } : {}),
     ...(row.availability_status ? { availabilityStatus: row.availability_status as AvailabilityStatus } : {}),
+    ...(row.active_from ? { activeFrom: row.active_from } : {}),
+    ...(row.active_to ? { activeTo: row.active_to } : {}),
     ...(row.availability_note ? { availabilityNote: row.availability_note } : {}),
   };
 }
@@ -164,6 +172,14 @@ export function openSqliteDb(path: string): Database.Database {
   } catch {
     // already has the column.
   }
+  // scheduled-lines epic: when a product or SKU is on sale.
+  for (const statement of ["ALTER TABLE products ADD COLUMN active_from TEXT", "ALTER TABLE products ADD COLUMN active_to TEXT", "ALTER TABLE skus ADD COLUMN active_from TEXT", "ALTER TABLE skus ADD COLUMN active_to TEXT"]) {
+    try {
+      db.exec(statement);
+    } catch {
+      // already has the column.
+    }
+  }
   // demo-scoping epic (row 61): same defensive best-effort ALTER, for the
   // same reason, for categories.demo_slug -- see
   // @mercatus-liber/marketing-catalog's Category.demoSlug doc comment.
@@ -214,8 +230,8 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
     },
     async save(product: Product): Promise<void> {
       db.prepare(
-        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images, videos, viewer_url, license)
-         VALUES (@id, @slug, @title, @description, @identifyingAttributeKeys, @status, @images, @videos, @viewerUrl, @license)
+        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images, videos, viewer_url, license, active_from, active_to)
+         VALUES (@id, @slug, @title, @description, @identifyingAttributeKeys, @status, @images, @videos, @viewerUrl, @license, @activeFrom, @activeTo)
          ON CONFLICT(id) DO UPDATE SET
            slug = excluded.slug,
            title = excluded.title,
@@ -225,7 +241,9 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
            images = excluded.images,
            videos = excluded.videos,
            viewer_url = excluded.viewer_url,
-           license = excluded.license`,
+           license = excluded.license,
+           active_from = excluded.active_from,
+           active_to = excluded.active_to`,
       ).run({
         id: product.id,
         slug: product.slug,
@@ -237,6 +255,8 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
         videos: product.videos ? JSON.stringify(product.videos) : null,
         viewerUrl: product.viewerUrl ?? null,
         license: product.license ?? null,
+        activeFrom: product.activeFrom ?? null,
+        activeTo: product.activeTo ?? null,
       });
     },
   };
@@ -254,8 +274,8 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
     },
     async save(sku: Sku): Promise<void> {
       db.prepare(
-        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status, images, availability_status, availability_note)
-         VALUES (@id, @productId, @identifyingAttributes, @priceAmount, @priceCurrency, @status, @images, @availabilityStatus, @availabilityNote)
+        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status, images, availability_status, availability_note, active_from, active_to)
+         VALUES (@id, @productId, @identifyingAttributes, @priceAmount, @priceCurrency, @status, @images, @availabilityStatus, @availabilityNote, @activeFrom, @activeTo)
          ON CONFLICT(id) DO UPDATE SET
            product_id = excluded.product_id,
            identifying_attributes = excluded.identifying_attributes,
@@ -264,7 +284,9 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
            status = excluded.status,
            images = excluded.images,
            availability_status = excluded.availability_status,
-           availability_note = excluded.availability_note`,
+           availability_note = excluded.availability_note,
+           active_from = excluded.active_from,
+           active_to = excluded.active_to`,
       ).run({
         id: sku.id,
         productId: sku.productId,
@@ -275,6 +297,8 @@ export function createSqliteAdapterFromDb(db: Database.Database): CatalogPersist
         images: sku.images ? JSON.stringify(sku.images) : null,
         availabilityStatus: sku.availabilityStatus ?? null,
         availabilityNote: sku.availabilityNote ?? null,
+        activeFrom: sku.activeFrom ?? null,
+        activeTo: sku.activeTo ?? null,
       });
     },
   };

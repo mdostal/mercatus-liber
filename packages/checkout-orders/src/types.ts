@@ -229,6 +229,24 @@ export class OrderNotFoundError extends Error {
   }
 }
 
+/**
+ * Reads a SKU and its product's sale window. Optional: with it, checkout
+ * refuses lines outside their window (a cart can outlive a sale).
+ * @mercatus-liber/catalog's CatalogService has this shape.
+ */
+export interface SaleWindowLookup {
+  getSku(id: string): Promise<{ productId: string; status: string; activeFrom?: string | null; activeTo?: string | null } | null>;
+  getProduct?(id: string): Promise<{ activeFrom?: string | null; activeTo?: string | null } | null>;
+}
+
+/** Thrown when a cart holds lines that aren't on sale now: not active, not yet open, or ended. */
+export class ItemsNotOnSaleError extends Error {
+  constructor(readonly skuIds: string[]) {
+    super(`These items aren't on sale right now: ${skuIds.join(", ")}`);
+    this.name = "ItemsNotOnSaleError";
+  }
+}
+
 /** Thrown when a cart holds a line that needs a quote, which can't be paid for at its listed price. */
 export class QuoteRequiredError extends Error {
   constructor(readonly skuIds: string[]) {

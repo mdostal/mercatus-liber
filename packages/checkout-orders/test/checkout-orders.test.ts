@@ -581,3 +581,22 @@ describe("checkout-orders service with a wired PricingAdjuster (promo-02)", () =
     expect(await checkout.listOrders()).toEqual([]);
   });
 });
+
+describe("sale windows at checkout", () => {
+  it("refuses a cart whose line's sale ended after it was added, and allows it while on sale", async () => {
+    const events = createInMemoryEventBus();
+    const items = [{ skuId: "tee-m", quantity: 1, priceSnapshot: { amount: 3000, currency: "USD" } }];
+    const make = (iso: string) =>
+      createCheckoutOrdersService({
+        repository: createInMemoryOrderRepository(),
+        cart: { getCart: async () => ({ items }) },
+        payments: { createPaymentSession: async () => ({ sessionId: "s", redirectUrl: "https://pay.example/s" }) },
+        events,
+        saleWindows: { getSku: async () => ({ productId: "tee", status: "active" }), getProduct: async () => ({ activeFrom: "2026-11-30T18:00:00Z", activeTo: "2026-12-07T18:00:00Z" }) },
+        now: () => new Date(iso),
+      });
+    const input = { cartId: "c", idempotencyKey: "k", shippingInfo: { name: "A", email: "a@example.com", address: "1 Main" }, successUrl: "https://s/ok", cancelUrl: "https://s/no" };
+    await expect(make("2026-12-07T18:00:00Z").startCheckout(input)).rejects.toMatchObject({ name: "ItemsNotOnSaleError", skuIds: ["tee-m"] });
+    await expect(make("2026-12-01T00:00:00Z").startCheckout(input)).resolves.toMatchObject({ redirectUrl: "https://pay.example/s" });
+  });
+});

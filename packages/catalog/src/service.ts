@@ -11,8 +11,10 @@ import type {
   ProductImage,
   ProductStatus,
   ProductVideo,
+  Schedule,
   Sku,
 } from "@mercatus-liber/core";
+import { normalizeSchedule } from "@mercatus-liber/core";
 import { randomUUID } from "node:crypto";
 import { CatalogNotFoundError, DuplicateCatalogSlugError } from "./catalog-entity.js";
 import type { Catalog, CatalogRepository, ProductCatalogRepository } from "./catalog-entity.js";
@@ -35,6 +37,9 @@ export interface NewProductInput {
   videos?: ProductVideo[];
   viewerUrl?: string;
   license?: string;
+  /** When it's on sale (ISO 8601 instants; absent or null for no limit). See Schedule and lifecycle in @mercatus-liber/core. */
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 export interface UpdateProductInput {
@@ -46,6 +51,9 @@ export interface UpdateProductInput {
   videos?: ProductVideo[];
   viewerUrl?: string;
   license?: string;
+  /** When it's on sale (ISO 8601 instants; absent or null for no limit). See Schedule and lifecycle in @mercatus-liber/core. */
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 export interface NewSkuInput {
@@ -59,6 +67,9 @@ export interface NewSkuInput {
   availabilityNote?: string;
   /** Default "active". A "draft" SKU can't be added to a cart until it is made active. */
   status?: ProductStatus;
+  /** When it's on sale (ISO 8601 instants; absent or null for no limit). See Schedule and lifecycle in @mercatus-liber/core. */
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 /** Patchable fields on an existing Sku -- deliberately excludes productId/identifyingAttributes, which never change after creation (same "id is immutable" discipline as updateProduct). */
@@ -68,6 +79,9 @@ export interface UpdateSkuInput {
   images?: ProductImage[];
   availabilityStatus?: AvailabilityStatus;
   availabilityNote?: string;
+  /** When it's on sale (ISO 8601 instants; absent or null for no limit). See Schedule and lifecycle in @mercatus-liber/core. */
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 export class ProductNotFoundError extends Error {
@@ -159,6 +173,18 @@ export function createCatalogService(deps: {
     return catalog;
   }
 
+  /** The schedule fields to store: checked and normalised, and left out entirely when there's no window. */
+  function scheduleOf(input: Schedule): Schedule {
+    const { activeFrom, activeTo } = normalizeSchedule(input);
+    return { ...(activeFrom ? { activeFrom } : {}), ...(activeTo ? { activeTo } : {}) };
+  }
+
+  /** `entity` with its schedule replaced by `schedule`'s (an open end drops the field). */
+  function withSchedule<T extends Schedule>(entity: T, schedule: Schedule): T {
+    const { activeFrom: _f, activeTo: _t, ...rest } = entity;
+    return { ...rest, ...scheduleOf(schedule) } as T;
+  }
+
   async function requireProduct(id: string): Promise<Product> {
     const product = await persistence.products.get(id);
     if (!product) throw new ProductNotFoundError(id);
@@ -178,6 +204,7 @@ export function createCatalogService(deps: {
         ...(input.videos ? { videos: input.videos } : {}),
         ...(input.viewerUrl ? { viewerUrl: input.viewerUrl } : {}),
         ...(input.license ? { license: input.license } : {}),
+        ...scheduleOf(input),
       };
       await persistence.products.save(product);
       await events.publish("catalog.product.created", { id: product.id });
@@ -186,7 +213,7 @@ export function createCatalogService(deps: {
 
     async updateProduct(id, patch) {
       const existing = await requireProduct(id);
-      const updated: Product = { ...existing, ...patch };
+      const updated: Product = withSchedule({ ...existing, ...patch }, { ...existing, ...patch });
       await persistence.products.save(updated);
       await events.publish("catalog.product.updated", { id: updated.id });
       return updated;
@@ -238,6 +265,7 @@ export function createCatalogService(deps: {
         ...(input.images ? { images: input.images } : {}),
         ...(input.availabilityStatus ? { availabilityStatus: input.availabilityStatus } : {}),
         ...(input.availabilityNote ? { availabilityNote: input.availabilityNote } : {}),
+        ...scheduleOf(input),
       };
       await persistence.skus.save(sku);
       await events.publish("catalog.sku.created", { id: sku.id, productId: sku.productId });
@@ -247,7 +275,7 @@ export function createCatalogService(deps: {
     async updateSku(id, patch) {
       const existing = await persistence.skus.get(id);
       if (!existing) return null;
-      const updated: Sku = { ...existing, ...patch, id: existing.id, productId: existing.productId, identifyingAttributes: existing.identifyingAttributes };
+      const updated: Sku = withSchedule({ ...existing, ...patch, id: existing.id, productId: existing.productId, identifyingAttributes: existing.identifyingAttributes }, { ...existing, ...patch });
       await persistence.skus.save(updated);
       return updated;
     },
