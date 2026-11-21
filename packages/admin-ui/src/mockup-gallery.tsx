@@ -30,7 +30,7 @@ export interface MockupGalleryProps {
   onSave: (images: MockupImage[]) => Promise<MockupSaveResult>;
 }
 
-const button = { font: "inherit", fontWeight: 600, padding: "6px 12px", borderRadius: 6, border: "2px solid var(--color-text, #111)", background: "var(--color-surface, #fff)", color: "var(--color-text, #111)", cursor: "pointer" } as const;
+const button = { fontFamily: "inherit", fontWeight: 600, padding: "6px 12px", borderRadius: 6, borderWidth: "2px", borderStyle: "solid", borderColor: "var(--color-text, #111)", background: "var(--color-surface, #fff)", color: "var(--color-text, #111)", cursor: "pointer" } as const;
 
 /**
  * Ask a provider for mockups of chosen variants, wait for them, and keep the
@@ -46,12 +46,13 @@ export function MockupGallery({ variants, current = [], maxPerRequest = 6, pollS
   const [waiting, setWaiting] = useState(false);
   const [pending, startTransition] = useTransition();
   const cancelled = useRef(false);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // Reset on every mount: StrictMode mounts, unmounts and mounts again in development.
+    cancelled.current = false;
+    return () => {
       cancelled.current = true;
-    },
-    [],
-  );
+    };
+  }, []);
 
   const request = () =>
     startTransition(async () => {
@@ -95,7 +96,7 @@ export function MockupGallery({ variants, current = [], maxPerRequest = 6, pollS
           <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600 }}>Product images now</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {current.map((img) => (
-              <img key={img.url} src={img.url} alt={img.alt} style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 6, border: "1px solid var(--color-border, #ccc)" }} />
+              <img key={img.url} src={img.url} alt={img.alt} style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 6, borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)" }} />
             ))}
           </div>
         </div>
@@ -108,9 +109,9 @@ export function MockupGallery({ variants, current = [], maxPerRequest = 6, pollS
           {variants.map((v) => {
             const on = chosenVariants.includes(v.id);
             return (
-              <label key={v.id} data-variant={v.id} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "3px 7px", border: "1px solid var(--color-border, #ccc)", borderRadius: 6 }}>
+              <label key={v.id} data-variant={v.id} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "3px 7px", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", borderRadius: 6 }}>
                 <input type="checkbox" checked={on} disabled={!on && chosenVariants.length >= maxPerRequest} onChange={() => setChosenVariants(on ? chosenVariants.filter((x) => x !== v.id) : [...chosenVariants, v.id])} />
-                {v.swatch && <span aria-hidden style={{ width: 11, height: 11, borderRadius: "50%", background: v.swatch, border: "1px solid var(--color-border, #ccc)" }} />}
+                {v.swatch && <span aria-hidden style={{ width: 11, height: 11, borderRadius: "50%", background: v.swatch, borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)" }} />}
                 {v.label}
               </label>
             );
@@ -137,7 +138,7 @@ export function MockupGallery({ variants, current = [], maxPerRequest = 6, pollS
             return (
               <li key={img.key} data-mockup={img.key}>
                 <label style={{ display: "grid", gap: 4, fontSize: 12, cursor: "pointer" }}>
-                  <img src={img.url} alt={img.label} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 6, outline: order >= 0 ? "3px solid var(--color-primary, #333)" : "1px solid var(--color-border, #ccc)" }} />
+                  <img src={img.url} alt={img.label} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 6, outlineStyle: "solid", outlineWidth: order >= 0 ? "3px" : "1px", outlineColor: order >= 0 ? "var(--color-primary, #333)" : "var(--color-border, #ccc)" }} />
                   <span>
                     <input type="checkbox" checked={order >= 0} onChange={() => setKeep(order >= 0 ? keep.filter((k) => k !== img.key) : [...keep, img.key])} /> {img.label}
                     {order >= 0 ? ` (#${order + 1})` : ""}

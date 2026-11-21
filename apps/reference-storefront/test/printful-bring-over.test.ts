@@ -102,6 +102,26 @@ describe("Printful bring-over in the demo admin", { timeout: 60_000 }, () => {
     expect([...file!.bytes]).toEqual([255, 216, 255]);
   });
 
+  it("uploads art into the store's media and sets it on every SKU, refusing anything but PNG or JPEG", async () => {
+    const { services, actions } = await setup("print-shop");
+    vi.stubEnv("APP_ORIGIN", "https://commerce.example");
+    await actions.bringOverPrintfulAction("print-shop", 12, { ...SELECTION, slug: "dt-tee-upload" });
+    const product = (await services.catalog.getProductBySlug("dt-tee-upload"))!;
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+    const form = new FormData();
+    form.set("file", new Blob([png], { type: "image/png" }), "art.png");
+    const result = await actions.uploadPrintfulArtAction("print-shop", product.id, "front", "dtg", form);
+    expect(result).toMatchObject({ ok: true, url: expect.stringMatching(/^https:\/\/commerce\.example\/media\/[0-9a-f-]{36}$/) });
+    const sku = (await services.catalog.listSkusByProduct(product.id))[0]!;
+    const target = (await services.providerCatalogMappings.get(sku.id, "printful"))!.target as { placements: { layers: { url: string }[] }[] };
+    expect(target.placements[0]!.layers[0]!.url).toBe(result.ok ? result.url : "");
+    const stored = await services.mediaStore.get(result.ok ? result.url.split("/").pop()! : "");
+    expect(stored).toMatchObject({ contentType: "image/png", name: "dt-tee-upload-front.png" });
+    const html = new FormData();
+    html.set("file", new Blob(["<svg onload=alert(1)>"], { type: "image/png" }), "x.png");
+    expect(await actions.uploadPrintfulArtAction("print-shop", product.id, "front", "dtg", html)).toEqual({ ok: false, error: "Upload a PNG or JPEG." });
+  });
+
   it("gives agents search, lookup and draft-only bring-over", async () => {
     const { services, admin } = await setup("print-shop");
     const ops = admin.printfulProviderCatalogOps(services, "print-shop");

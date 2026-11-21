@@ -59,10 +59,10 @@ export interface ArtVersionEditorProps<T extends Record<string, unknown>> {
 }
 
 const inputStyle = {
-  font: "inherit",
+  fontFamily: "inherit",
   fontSize: 14,
   padding: "7px 9px",
-  border: "1.5px solid var(--color-border, #ccc)",
+  borderWidth: "1.5px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)",
   borderRadius: 6,
   width: "100%",
   boxSizing: "border-box",
@@ -72,12 +72,12 @@ const inputStyle = {
 
 function buttonStyle(primary: boolean, small = false) {
   return {
-    font: "inherit",
+    fontFamily: "inherit",
     fontWeight: 700,
     fontSize: small ? 12 : 14,
     padding: small ? "4px 8px" : "8px 14px",
     borderRadius: 6,
-    border: "2px solid var(--color-text, #111)",
+    borderWidth: "2px", borderStyle: "solid", borderColor: "var(--color-text, #111)",
     background: primary ? "var(--color-primary, #333)" : "var(--color-surface, #fff)",
     color: primary ? "var(--color-on-primary, #fff)" : "var(--color-text, #111)",
     cursor: "pointer",
@@ -224,7 +224,7 @@ function VersionCard<T extends Record<string, unknown>>({
   return (
     <div
       data-version={v.version}
-      style={{ display: "grid", gridTemplateColumns: v.previewUrl ? "96px 1fr" : "1fr", gap: 12, padding: 12, border: "1px solid var(--color-border, #ccc)", borderRadius: 8, background: "var(--color-surface, #fff)", alignItems: "start" }}
+      style={{ display: "grid", gridTemplateColumns: v.previewUrl ? "96px 1fr" : "1fr", gap: 12, padding: 12, borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", borderRadius: 8, background: "var(--color-surface, #fff)", alignItems: "start" }}
     >
       {v.previewUrl && <img src={v.previewUrl} alt={`Version ${v.version} print file`} loading="lazy" style={{ width: 96, maxWidth: "100%", borderRadius: 6, ...(previewBackground ? { background: previewBackground } : {}) }} />}
       <div style={{ display: "grid", gap: 6, minWidth: 0 }}>

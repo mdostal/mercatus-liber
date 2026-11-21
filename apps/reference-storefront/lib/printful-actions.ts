@@ -6,6 +6,7 @@
  * art. Every action checks the admin session first, like lib/actions.ts.
  */
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { hasPermission } from "@mercatus-liber/admin-auth";
 import {
   PrintfulApiError,
@@ -175,6 +176,52 @@ export async function savePrintfulMockupsAction(demoSlug: string, productId: str
     await services.catalog.updateProduct(productId, { images: [...saved, ...(product.images ?? [])] });
     revalidatePath(`/demo/${slug}/admin/printful`, "layout");
     return { ok: true, message: `Saved ${saved.length} image${saved.length === 1 ? "" : "s"} to the product.` };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** The site's public origin for links Printful must download: APP_ORIGIN, else the request's own host. */
+async function publicOrigin(): Promise<string> {
+  if (process.env.APP_ORIGIN) return process.env.APP_ORIGIN.replace(/\/+$/, "");
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+const UPLOAD_MAX_BYTES = 4 * 1024 * 1024;
+
+/** PNG or JPEG by its first bytes, whatever the browser called it. */
+function imageTypeOf(bytes: Uint8Array): "image/png" | "image/jpeg" | null {
+  if (bytes.length > 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  return null;
+}
+
+/**
+ * Bound per placement by the placement page: stores an uploaded PNG or JPEG
+ * in the store's media and sets it as that placement's art on every SKU.
+ * Printful downloads the file from the store's public URL when it makes the
+ * product, so it must be reachable from the internet.
+ */
+export async function uploadPrintfulArtAction(demoSlug: string, productId: string, placement: string, technique: string, data: FormData): Promise<{ ok: true; url: string; note?: string } | { ok: false; error: string }> {
+  try {
+    const { slug, services } = await adminServices(demoSlug);
+    const file = data.get("file");
+    if (!(file instanceof Blob)) throw new Error("Choose a file to upload.");
+    if (file.size > UPLOAD_MAX_BYTES) throw new Error(`The file is over ${UPLOAD_MAX_BYTES / 1048576} MB.`);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const contentType = imageTypeOf(bytes);
+    if (!contentType) throw new Error("Upload a PNG or JPEG.");
+    const product = await services.catalog.getProduct(productId);
+    if (!product) throw new Error("No such product.");
+    const stored = await services.mediaStore.put({ bytes, contentType, name: `${product.slug}-${placement}.${contentType === "image/png" ? "png" : "jpg"}` });
+    const origin = await publicOrigin();
+    const url = `${origin}${stored.url}`;
+    await setPrintfulArt({ catalog: services.catalog, mappings: services.providerCatalogMappings }, productId, [{ placement, technique, url }]);
+    revalidatePath(`/demo/${slug}/admin/printful`, "layout");
+    return { ok: true, url, ...(/^http:\/\/(localhost|127\.)/.test(origin) ? { note: "This store is running on localhost, which Printful can't reach; mockups and orders need a public URL." } : {}) };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }

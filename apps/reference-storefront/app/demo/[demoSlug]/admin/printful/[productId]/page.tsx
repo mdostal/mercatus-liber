@@ -4,7 +4,7 @@ import { printfulReadiness } from "@mercatus-liber/adapter-printful";
 import { BringOverForm, CatalogItemDetail } from "@mercatus-liber/admin-ui";
 import { isDemoSlug } from "../../../../../../lib/demos";
 import { bringOverPrintfulAction, planPrintfulBringOverAction, publishPrintfulProductAction } from "../../../../../../lib/printful-actions";
-import { placementLabel, printfulInStore, printfulProductDetail } from "../../../../../../lib/printful-admin";
+import { cachedPrintful, placementLabel, printfulInStore, printfulProductDetail } from "../../../../../../lib/printful-admin";
 import { getServicesForDemo } from "../../../../../../lib/services";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export default async function PrintfulProductPage({ params }: { params: Promise<
   const readiness = await Promise.all(
     storeProducts.map(async (p) => ({
       product: p,
-      readiness: await printfulReadiness({ catalog: services.catalog, mappings: services.providerCatalogMappings, ...(client ? { prices: (id: number) => client.getPrices(id) } : {}) }, p.id),
+      readiness: await printfulReadiness({ catalog: services.catalog, mappings: services.providerCatalogMappings, ...(client ? { prices: (id: number) => cachedPrintful(`prices:${id}`, () => client.getPrices(id)) } : {}) }, p.id),
     })),
   );
   const placements = (detail.areas.length ? detail.areas : listing.placements.map((p) => ({ placement: p.placement, technique: p.technique, displayName: "", widthPx: 0, heightPx: 0 }))).map((a) => ({

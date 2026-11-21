@@ -39,7 +39,7 @@ export interface CatalogItemDetailProps {
 }
 
 const heading = { fontFamily: "var(--font-mono, ui-monospace, monospace)", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-text-muted, #555)", margin: "0 0 6px" } as const;
-const cellBase = { padding: "4px 6px", borderTop: "1px solid var(--color-border, #ccc)", fontVariantNumeric: "tabular-nums", fontSize: 12, textAlign: "center" } as const;
+const cellBase = { padding: "4px 6px", borderTopWidth: "1px", borderTopStyle: "solid", borderTopColor: "var(--color-border, #ccc)", fontVariantNumeric: "tabular-nums", fontSize: 12, textAlign: "center" } as const;
 
 /** The key CatalogItemDetail reads cells by. */
 export const variantCellKey = (color: string, size: string) => `${color}|${size}`;
@@ -53,7 +53,7 @@ export function CatalogItemDetail({ name, subtitle, imageUrl, description, color
   return (
     <div style={{ display: "grid", gap: 20 }}>
       <div style={{ display: "grid", gap: 18, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", alignItems: "start" }}>
-        {imageUrl && <img src={imageUrl} alt={name} style={{ width: "100%", maxWidth: 420, aspectRatio: "1", objectFit: "contain", borderRadius: 8, border: "1px solid var(--color-border, #ccc)", background: "var(--color-surface, #fff)" }} />}
+        {imageUrl && <img src={imageUrl} alt={name} style={{ width: "100%", maxWidth: 420, aspectRatio: "1", objectFit: "contain", borderRadius: 8, borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", background: "var(--color-surface, #fff)" }} />}
         <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
           <h2 style={{ margin: 0, fontSize: 22, textWrap: "balance" }}>{name}</h2>
           {subtitle && <p style={{ margin: 0, color: "var(--color-text-muted, #555)" }}>{subtitle}</p>}
@@ -66,7 +66,7 @@ export function CatalogItemDetail({ name, subtitle, imageUrl, description, color
               ))}
             </p>
           )}
-          {notice && <div role="note" style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, border: "1px dashed var(--color-border, #ccc)" }}>{notice}</div>}
+          {notice && <div role="note" style={{ fontSize: 13, padding: "8px 10px", borderRadius: 6, borderWidth: "1px", borderStyle: "dashed", borderColor: "var(--color-border, #ccc)" }}>{notice}</div>}
           {description && <p style={{ margin: 0, fontSize: 14, whiteSpace: "pre-line", maxWidth: "65ch" }}>{description}</p>}
         </div>
       </div>
@@ -78,7 +78,7 @@ export function CatalogItemDetail({ name, subtitle, imageUrl, description, color
             <table style={{ borderCollapse: "collapse", fontSize: 13, minWidth: 360 }}>
               <tbody>
                 {printAreas.map((a, i) => (
-                  <tr key={`${a.label}-${a.technique ?? ""}-${i}`} data-print-area={a.label} style={{ borderTop: "1px solid var(--color-border, #ccc)" }}>
+                  <tr key={`${a.label}-${a.technique ?? ""}-${i}`} data-print-area={a.label} style={{ borderTopWidth: "1px", borderTopStyle: "solid", borderTopColor: "var(--color-border, #ccc)" }}>
                     <td style={{ padding: "4px 8px", fontWeight: 600 }}>{a.label}</td>
                     <td style={{ padding: "4px 8px", color: "var(--color-text-muted, #555)" }}>{a.technique}</td>
                     <td style={{ padding: "4px 8px", fontVariantNumeric: "tabular-nums" }}>{a.size}</td>
@@ -112,7 +112,7 @@ export function CatalogItemDetail({ name, subtitle, imageUrl, description, color
                 {colors.map((c) => (
                   <tr key={c.name} data-color={c.name}>
                     <th scope="row" style={{ ...cellBase, textAlign: "left", fontWeight: 500, whiteSpace: "nowrap" }}>
-                      {c.hex && <span aria-hidden style={{ display: "inline-block", width: 11, height: 11, borderRadius: "50%", background: c.hex, border: "1px solid var(--color-border, #ccc)", marginRight: 6, verticalAlign: -1 }} />}
+                      {c.hex && <span aria-hidden style={{ display: "inline-block", width: 11, height: 11, borderRadius: "50%", background: c.hex, borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", marginRight: 6, verticalAlign: -1 }} />}
                       {c.name}
                     </th>
                     {sizes.map((s) => {

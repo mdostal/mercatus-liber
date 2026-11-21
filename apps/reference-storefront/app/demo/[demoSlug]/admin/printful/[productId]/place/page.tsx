@@ -4,8 +4,8 @@ import { templateFor, type PrintfulCatalogTarget } from "@mercatus-liber/adapter
 import { MockupGallery, PlacementArtEditor } from "@mercatus-liber/admin-ui";
 import { layoutsFromPrintAreas } from "@mercatus-liber/print-art";
 import { isDemoSlug, listProductsForDemo } from "../../../../../../../lib/demos";
-import { printfulMockupStatusAction, removePrintfulArtAction, requestPrintfulMockupsAction, savePrintfulArtAction, savePrintfulMockupsAction } from "../../../../../../../lib/printful-actions";
-import { placementLabel } from "../../../../../../../lib/printful-admin";
+import { printfulMockupStatusAction, removePrintfulArtAction, requestPrintfulMockupsAction, savePrintfulArtAction, savePrintfulMockupsAction, uploadPrintfulArtAction } from "../../../../../../../lib/printful-actions";
+import { cachedPrintful, placementLabel } from "../../../../../../../lib/printful-admin";
 import { getServicesForDemo } from "../../../../../../../lib/services";
 
 export const dynamic = "force-dynamic";
@@ -42,9 +42,16 @@ export default async function PrintfulPlacementPage({ params, searchParams }: { 
 
   const skus = await services.catalog.listSkusByProduct(product.id);
   const targets = (await Promise.all(skus.map(async (s) => ({ sku: s, target: (await services.providerCatalogMappings.get(s.id, "printful"))?.target as PrintfulCatalogTarget | undefined })))).filter((t) => t.target);
-  const [listing, areas, templates, variants] = await Promise.all([client.getCatalogListing(printfulId), client.getPrintAreas(printfulId), client.getMockupTemplates(printfulId), client.listVariants(printfulId)]);
+  const [listing, areas, variants] = await Promise.all([
+    cachedPrintful(`listing:${printfulId}`, () => client.getCatalogListing(printfulId)),
+    cachedPrintful(`areas:${printfulId}`, () => client.getPrintAreas(printfulId)),
+    cachedPrintful(`variants:${printfulId}`, () => client.listVariants(printfulId)),
+  ]);
   const current = targets[0]?.target?.placements ?? [];
   const technique = current[0]?.technique ?? listing?.techniques.find((t) => t.is_default)?.key ?? areas[0]?.technique ?? "";
+  // Only this technique's placements: a tee has 2,158 templates in all.
+  const placementKeys = [...new Set(areas.filter((a) => a.technique === technique).map((a) => a.placement))].sort();
+  const templates = await cachedPrintful(`templates:${printfulId}:${placementKeys.join(",")}`, () => client.getMockupTemplates(printfulId, { placements: placementKeys }));
   const productVariantIds = new Set(targets.map((t) => t.target!.catalogVariantId));
   const colours = [...new Map(variants.filter((v) => productVariantIds.has(v.id)).map((v) => [v.color, v])).values()];
   const chosen = colours.find((v) => String(v.id) === variant) ?? colours[0];
@@ -86,6 +93,7 @@ export default async function PrintfulPlacementPage({ params, searchParams }: { 
                   {...(url ? { artUrl: url } : {})}
                   onSave={savePrintfulArtAction.bind(null, demoSlug, product.id, layout.placement, technique)}
                   onRemove={removePrintfulArtAction.bind(null, demoSlug, product.id, layout.placement)}
+                  onUpload={uploadPrintfulArtAction.bind(null, demoSlug, product.id, layout.placement, technique)}
                 />
               ) : (
                 <p style={{ fontSize: 13 }}>

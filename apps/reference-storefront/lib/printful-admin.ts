@@ -49,6 +49,24 @@ export function printfulCatalogCache(services: Pick<Services, "printfulCatalog">
   return globalCache.__printfulCatalogCache;
 }
 
+const productCache = (globalThis as unknown as { __printfulProductCache?: Map<string, { at: number; value: Promise<unknown> }> }).__printfulProductCache ??= new Map();
+
+/**
+ * One Printful product's data, kept per server instance. A placement page
+ * needs about 35 Printful requests uncached (2,158 templates for a tee are 22
+ * pages) against a limit of 120 a minute, so a few page views would hit it.
+ * Templates, print areas, variants and prices change rarely: a day. Stock: an
+ * hour. A failed read is not kept.
+ */
+export function cachedPrintful<T>(key: string, load: () => Promise<T>, ttlMs = 24 * 60 * 60 * 1000): Promise<T> {
+  const hit = productCache.get(key);
+  if (hit && Date.now() - hit.at < ttlMs) return hit.value as Promise<T>;
+  const value = load();
+  productCache.set(key, { at: Date.now(), value });
+  value.catch(() => productCache.delete(key));
+  return value;
+}
+
 export const isLivePrintful = (services: Pick<Services, "printfulCatalog">) => services.printfulCatalog !== null;
 
 /** `{ printfulProductId -> store products }` for this demo only. */
@@ -143,9 +161,14 @@ export async function printfulProductDetail(services: Pick<Services, "printfulCa
     const cells = Object.fromEntries(fromList.colors.flatMap((c) => fromList.sizes.map((s) => [`${c.name}|${s}`, {}])));
     return { listing: fromList, cells, printAreas: fromList.placements.map((p) => ({ label: placementLabel(p.placement), technique: p.technique })), areas: [], variants: [], live: false };
   }
-  const listing = (await client.getCatalogListing(productId)) ?? fromList;
+  const listing = (await cachedPrintful(`listing:${productId}`, () => client.getCatalogListing(productId))) ?? fromList;
   if (!listing) return null;
-  const [variants, prices, areas, availability] = await Promise.all([client.listVariants(productId), client.getPrices(productId), client.getPrintAreas(productId), client.getAvailability(productId)]);
+  const [variants, prices, areas, availability] = await Promise.all([
+    cachedPrintful(`variants:${productId}`, () => client.listVariants(productId)),
+    cachedPrintful(`prices:${productId}`, () => client.getPrices(productId)),
+    cachedPrintful(`areas:${productId}`, () => client.getPrintAreas(productId)),
+    cachedPrintful(`availability:${productId}`, () => client.getAvailability(productId), 60 * 60 * 1000),
+  ]);
   const technique = listing.techniques.find((t) => t.is_default)?.key ?? listing.techniques[0]?.key ?? "";
   const stock = new Map(availability.map((a) => [a.catalogVariantId, a.techniques.find((t) => t.technique === technique)?.regions ?? []]));
   const cells: Record<string, VariantCell> = {};
@@ -210,7 +233,10 @@ function specFrom(printfulProductId: number, selection: BringOverSelection): Pri
 export async function planPrintfulBringOver(services: Pick<Services, "printfulCatalog">, printfulProductId: number, selection: BringOverSelection) {
   const client = services.printfulCatalog;
   if (!client) throw new Error(NO_TOKEN);
-  const [variants, prices] = await Promise.all([client.listVariants(printfulProductId), client.getPrices(printfulProductId)]);
+  const [variants, prices] = await Promise.all([
+    cachedPrintful(`variants:${printfulProductId}`, () => client.listVariants(printfulProductId)),
+    cachedPrintful(`prices:${printfulProductId}`, () => client.getPrices(printfulProductId)),
+  ]);
   if (!prices || variants.length === 0) throw new Error(`Printful has no product ${printfulProductId}.`);
   return planPrintfulProduct(specFrom(printfulProductId, selection), variants, prices);
 }

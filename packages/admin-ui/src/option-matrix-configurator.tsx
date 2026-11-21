@@ -88,12 +88,12 @@ const groupLabel = {
 
 function chipStyle(on: boolean, disabled: boolean) {
   return {
-    font: "inherit",
+    fontFamily: "inherit",
     fontSize: 13,
     fontWeight: 600,
     padding: "6px 10px",
     borderRadius: 6,
-    border: `1.5px solid ${on ? "var(--color-text, #111)" : "var(--color-border, #ccc)"}`,
+    borderWidth: "1.5px", borderStyle: "solid", borderColor: on ? "var(--color-text, #111)" : "var(--color-border, #ccc)",
     background: on ? "var(--color-text, #111)" : "var(--color-surface, #fff)",
     color: on ? "var(--color-background, #fff)" : "var(--color-text, #111)",
     cursor: disabled ? "not-allowed" : "pointer",
@@ -102,7 +102,7 @@ function chipStyle(on: boolean, disabled: boolean) {
 }
 
 const imageStyle = (background?: string) =>
-  ({ width: "100%", aspectRatio: "1", objectFit: "contain", borderRadius: 8, background: background ?? "var(--color-surface, #fff)", border: "1px solid var(--color-border, #ccc)" }) as const;
+  ({ width: "100%", aspectRatio: "1", objectFit: "contain", borderRadius: 8, background: background ?? "var(--color-surface, #fff)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)" }) as const;
 
 /**
  * Pick a value for each option as chips, see images of exactly that
@@ -181,7 +181,7 @@ export function OptionMatrixConfigurator({ options, initial = {}, images, aside,
                   return (
                     <button key={v.id} type="button" aria-pressed={on} disabled={v.disabled} data-value={v.id} onClick={() => choose(option.key, v.id)} style={chipStyle(on, !!v.disabled)}>
                       {v.swatch && (
-                        <span aria-hidden style={{ display: "inline-block", width: 11, height: 11, borderRadius: "50%", background: v.swatch, border: "1px solid var(--color-border, #ccc)", marginRight: 6, verticalAlign: -1 }} />
+                        <span aria-hidden style={{ display: "inline-block", width: 11, height: 11, borderRadius: "50%", background: v.swatch, borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", marginRight: 6, verticalAlign: -1 }} />
                       )}
                       {v.label}
                       {v.badge && <span style={{ fontWeight: 500, opacity: 0.7 }}> · {v.badge}</span>}
@@ -204,12 +204,12 @@ export function OptionMatrixConfigurator({ options, initial = {}, images, aside,
             max={maxQuantity}
             value={quantity}
             onChange={(e) => setQuantity(Math.min(maxQuantity, Math.max(1, Math.floor(Number(e.target.value)) || 1)))}
-            style={{ width: 60, font: "inherit", padding: "6px 8px", border: "1.5px solid var(--color-border, #ccc)", borderRadius: 6 }}
+            style={{ width: 60, fontFamily: "inherit", padding: "6px 8px", borderWidth: "1.5px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", borderRadius: 6 }}
           />
           <button
             type="submit"
             disabled={pending}
-            style={{ font: "inherit", fontWeight: 700, padding: "10px 18px", borderRadius: 6, border: "2px solid var(--color-text, #111)", background: "var(--color-primary, #333)", color: "var(--color-on-primary, #fff)", cursor: "pointer" }}
+            style={{ fontFamily: "inherit", fontWeight: 700, padding: "10px 18px", borderRadius: 6, borderWidth: "2px", borderStyle: "solid", borderColor: "var(--color-text, #111)", background: "var(--color-primary, #333)", color: "var(--color-on-primary, #fff)", cursor: "pointer" }}
           >
             {pending ? "Adding…" : addLabel}
           </button>
