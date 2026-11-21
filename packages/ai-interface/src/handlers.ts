@@ -10,7 +10,24 @@ export type ToolHandler = (input: Record<string, unknown>) => Promise<ToolResult
  * docs/subsystems/14-ai-mcp-interface.md.
  */
 export function createCommerceToolHandlers(deps: CommerceToolDeps): Record<string, ToolHandler> {
-  const { catalog, search, cart, checkout, catalogAdmin, cms, inventory, providerCatalog } = deps;
+  const { catalog, search, cart, checkout, catalogAdmin, cms, inventory, providerCatalog, lines } = deps;
+
+  const lineTools: Record<string, ToolHandler> = lines
+    ? {
+        async list_lines(input) {
+          const state = input.state;
+          return lines.listLines(state === "upcoming" || state === "active" || state === "ended" ? { state } : {});
+        },
+        async get_line(input) {
+          return lines.getLine(String(input.slug));
+        },
+        async manage_line(input) {
+          if (needsConfirmation(input)) return pendingConfirmation({ action: "manage_line", ...input });
+          const { confirm: _confirm, ...rest } = input;
+          return lines.saveLine(rest as unknown as Parameters<NonNullable<CommerceToolDeps["lines"]>["saveLine"]>[0]);
+        },
+      }
+    : {};
 
   const providerTools: Record<string, ToolHandler> = providerCatalog
     ? {
@@ -31,6 +48,7 @@ export function createCommerceToolHandlers(deps: CommerceToolDeps): Record<strin
 
   return {
     ...providerTools,
+    ...lineTools,
     async search_products(input) {
       const text = input.text as string | undefined;
       return search.query(text === undefined ? {} : { text });

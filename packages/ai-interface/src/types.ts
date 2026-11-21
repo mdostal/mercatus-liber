@@ -86,6 +86,24 @@ export interface ProviderCatalogOps {
   }): Promise<unknown>;
 }
 
+/** Lines (sales catalogs) for agents. Optional: without it the line tools aren't offered. */
+export interface LineOps {
+  listLines(input: { state?: "upcoming" | "active" | "ended" }): Promise<unknown[]>;
+  getLine(slug: string): Promise<unknown | null>;
+  /** Creates a line, or updates the one with this slug. Times are ISO 8601; products are given by slug. */
+  saveLine(input: {
+    slug: string;
+    name: string;
+    description?: string;
+    status?: "draft" | "active";
+    activeFrom?: string | null;
+    activeTo?: string | null;
+    hero?: { title: string; subtitle?: string; imageUrl?: string };
+    sections?: { slug: string; title: string; productSlugs: string[] }[];
+    applyWindowToProducts?: boolean;
+  }): Promise<unknown>;
+}
+
 export interface CommerceToolDeps {
   catalog: CatalogLookup;
   search: SearchLookup;
@@ -95,6 +113,7 @@ export interface CommerceToolDeps {
   cms: CmsAdminOps;
   inventory: InventoryAdminOps;
   providerCatalog?: ProviderCatalogOps;
+  lines?: LineOps;
 }
 
 export type ToolResult = unknown;

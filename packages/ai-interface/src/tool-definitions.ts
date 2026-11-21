@@ -68,6 +68,47 @@ export const PROVIDER_CATALOG_TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   },
 ];
 
+/** Offered only when the store wires LineOps. */
+export const LINE_TOOL_DEFINITIONS: readonly ToolDefinition[] = [
+  {
+    name: "list_lines",
+    description: "List the store's lines (named, scheduled collections with their own page), soonest first, with each one's window and whether it's upcoming, active or ended. Read-only.",
+    category: "shopper",
+    requiresConfirmation: false,
+    inputSchema: { type: "object", properties: { state: { type: "string", enum: ["upcoming", "active", "ended"] } } },
+  },
+  {
+    name: "get_line",
+    description: "One line by slug: its hero, window, sections and products. Read-only.",
+    category: "shopper",
+    requiresConfirmation: false,
+    inputSchema: { type: "object", properties: { slug: { type: "string" } }, required: ["slug"] },
+  },
+  {
+    name: "manage_line",
+    description:
+      "Create a line, or update the one with this slug: name, schedule (ISO 8601 instants), hero, and sections of product slugs. applyWindowToProducts gives its products a sale window covering every line they're in. Changes what shoppers can buy -- requires confirm:true, otherwise returns a preview.",
+    category: "admin",
+    requiresConfirmation: true,
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: { type: "string" },
+        name: { type: "string" },
+        description: { type: "string" },
+        status: { type: "string", enum: ["draft", "active"] },
+        activeFrom: { type: ["string", "null"] },
+        activeTo: { type: ["string", "null"] },
+        hero: { type: "object", properties: { title: { type: "string" }, subtitle: { type: "string" }, imageUrl: { type: "string" } }, required: ["title"] },
+        sections: { type: "array", items: { type: "object", properties: { slug: { type: "string" }, title: { type: "string" }, productSlugs: { type: "array", items: { type: "string" } } }, required: ["slug", "title", "productSlugs"] } },
+        applyWindowToProducts: { type: "boolean" },
+        confirm: { type: "boolean" },
+      },
+      required: ["slug", "name"],
+    },
+  },
+];
+
 export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
   {
     name: "search_products",
