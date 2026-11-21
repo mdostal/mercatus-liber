@@ -14,16 +14,38 @@ import type {
   Schedule,
   Sku,
 } from "@mercatus-liber/core";
-import { normalizeSchedule } from "@mercatus-liber/core";
+import { lifecycle, normalizeSchedule, type Lifecycle } from "@mercatus-liber/core";
 import { randomUUID } from "node:crypto";
 import { CatalogNotFoundError, DuplicateCatalogSlugError } from "./catalog-entity.js";
-import type { Catalog, CatalogRepository, ProductCatalogRepository } from "./catalog-entity.js";
+import type { Catalog, CatalogHero, CatalogRepository, CatalogSection, ProductCatalogRepository } from "./catalog-entity.js";
 import { attributesKey, cartesianProduct } from "./variant-utils.js";
 
 export interface NewCatalogInput {
   slug: string;
   name: string;
   description: string;
+  /** "sales" for a line or collection; default "master". */
+  kind?: "master" | "sales";
+  /** A sales catalog's store (master catalog). */
+  masterCatalogId?: string;
+  status?: ProductStatus;
+  activeFrom?: string | null;
+  activeTo?: string | null;
+  hero?: CatalogHero;
+  /** Ordered sections. Their products are added to the catalog. */
+  sections?: CatalogSection[];
+}
+
+export type UpdateCatalogInput = Partial<Omit<NewCatalogInput, "slug">>;
+
+/** A line's landing page: the catalog, where it is in its schedule, and its products by section. */
+export interface CatalogLanding {
+  catalog: Catalog;
+  lifecycle: Lifecycle;
+  /** In the catalog's own order; only active products. Empty sections are kept, so a line can show its sections before products exist. */
+  sections: (CatalogSection & { products: Product[] })[];
+  /** Active products in the catalog that no section names, in no particular order. */
+  otherProducts: Product[];
 }
 
 export interface NewProductInput {
@@ -135,7 +157,19 @@ export interface CatalogService {
   createCatalog(input: NewCatalogInput): Promise<Catalog>;
   getCatalog(id: string): Promise<Catalog | null>;
   getCatalogBySlug(slug: string): Promise<Catalog | null>;
-  listCatalogs(): Promise<Catalog[]>;
+  /** Optionally only one kind, and/or only one store's sales catalogs. */
+  listCatalogs(filter?: { kind?: "master" | "sales"; masterCatalogId?: string }): Promise<Catalog[]>;
+  updateCatalog(id: string, patch: UpdateCatalogInput): Promise<Catalog>;
+  /** A catalog's landing page data by id or slug, or null. Works with no products. */
+  getCatalogLanding(idOrSlug: string, now?: Date): Promise<CatalogLanding | null>;
+  /**
+   * Gives every product in a sales catalog a window covering all the
+   * scheduled sales catalogs it belongs to (earliest start to latest end; an
+   * open end anywhere leaves that end open), so a product shared by
+   * overlapping lines stays on sale through each. A product can then be
+   * brought back on its own by clearing its activeTo.
+   */
+  applyCatalogWindowToProducts(catalogId: string): Promise<{ updated: string[] }>;
 
   assignProductToCatalog(productId: string, catalogId: string): Promise<void>;
   unassignProductFromCatalog(productId: string, catalogId: string): Promise<void>;
@@ -166,6 +200,40 @@ export function createCatalogService(deps: {
   productCatalogs: ProductCatalogRepository;
 }): CatalogService {
   const { persistence, events, catalogs, productCatalogs } = deps;
+
+  /** A catalog with the optional fields from `input` applied: schedule checked and normalised, absent fields left out. */
+  function withCatalogFields(base: Catalog, input: Omit<UpdateCatalogInput, "name" | "description">): Catalog {
+    const { kind: _k, masterCatalogId: _m, status: _s, hero: _h, sections: _sec, activeFrom: _f, activeTo: _t, ...core } = base;
+    for (const section of input.sections ?? []) {
+      if (!/^[a-z0-9][a-z0-9-]*$/.test(section.slug)) throw new Error(`Section slug "${section.slug}" may use only lowercase letters, digits and "-".`);
+    }
+    if (input.sections && new Set(input.sections.map((x) => x.slug)).size !== input.sections.length) throw new Error("Section slugs must be unique within a catalog.");
+    return {
+      ...core,
+      ...(input.kind ? { kind: input.kind } : {}),
+      ...(input.masterCatalogId ? { masterCatalogId: input.masterCatalogId } : {}),
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.hero ? { hero: input.hero } : {}),
+      ...(input.sections ? { sections: input.sections.map((x) => ({ slug: x.slug, title: x.title, productIds: [...new Set(x.productIds)] })) } : {}),
+      ...scheduleOf(input),
+    };
+  }
+
+  /** Refuses sections naming a product that doesn't exist, before anything is saved. */
+  async function checkSectionProducts(catalog: Catalog): Promise<void> {
+    for (const section of catalog.sections ?? []) {
+      for (const productId of section.productIds) {
+        if (!(await persistence.products.get(productId))) throw new ProductNotFoundError(productId);
+      }
+    }
+  }
+
+  /** Every product a catalog's sections name is in the catalog. */
+  async function assignSectionProducts(catalog: Catalog): Promise<void> {
+    for (const section of catalog.sections ?? []) {
+      for (const productId of section.productIds) await productCatalogs.assign(productId, catalog.id);
+    }
+  }
 
   async function requireCatalog(id: string): Promise<Catalog> {
     const catalog = await catalogs.get(id);
@@ -342,14 +410,13 @@ export function createCatalogService(deps: {
     async createCatalog(input) {
       const existing = await catalogs.getBySlug(input.slug);
       if (existing) throw new DuplicateCatalogSlugError(input.slug);
-      const catalog: Catalog = {
-        id: randomUUID(),
-        slug: input.slug,
-        name: input.name,
-        description: input.description,
-        createdAt: new Date().toISOString(),
-      };
+      const catalog: Catalog = withCatalogFields(
+        { id: randomUUID(), slug: input.slug, name: input.name, description: input.description, createdAt: new Date().toISOString() },
+        input,
+      );
+      await checkSectionProducts(catalog);
       await catalogs.save(catalog);
+      await assignSectionProducts(catalog);
       return catalog;
     },
 
@@ -361,8 +428,64 @@ export function createCatalogService(deps: {
       return catalogs.getBySlug(slug);
     },
 
-    async listCatalogs() {
-      return catalogs.list();
+    async listCatalogs(filter) {
+      return (await catalogs.list()).filter(
+        (c) => (!filter?.kind || (c.kind ?? "master") === filter.kind) && (!filter?.masterCatalogId || c.masterCatalogId === filter.masterCatalogId),
+      );
+    },
+
+    async updateCatalog(id, patch) {
+      const existing = await requireCatalog(id);
+      const updated = withCatalogFields({ ...existing, ...(patch.name !== undefined ? { name: patch.name } : {}), ...(patch.description !== undefined ? { description: patch.description } : {}) }, { ...existing, ...patch });
+      await checkSectionProducts(updated);
+      await catalogs.save(updated);
+      await assignSectionProducts(updated);
+      return updated;
+    },
+
+    async getCatalogLanding(idOrSlug, now = new Date()) {
+      const catalog = (await catalogs.get(idOrSlug)) ?? (await catalogs.getBySlug(idOrSlug));
+      if (!catalog) return null;
+      const ids = await productCatalogs.listProductIdsInCatalog(catalog.id);
+      const products = new Map<string, Product>();
+      for (const id of ids) {
+        const p = await persistence.products.get(id);
+        if (p && p.status === "active") products.set(id, p);
+      }
+      const named = new Set<string>();
+      const sections = (catalog.sections ?? []).map((section) => {
+        section.productIds.forEach((id) => named.add(id));
+        return { ...section, products: section.productIds.map((id) => products.get(id)).filter((p): p is Product => Boolean(p)) };
+      });
+      return {
+        catalog,
+        lifecycle: lifecycle({ status: catalog.status ?? "active", activeFrom: catalog.activeFrom ?? null, activeTo: catalog.activeTo ?? null }, now),
+        sections,
+        otherProducts: [...products.values()].filter((p) => !named.has(p.id)),
+      };
+    },
+
+    async applyCatalogWindowToProducts(catalogId) {
+      await requireCatalog(catalogId);
+      const scheduled = (await catalogs.list()).filter((c) => c.kind === "sales");
+      const updated: string[] = [];
+      for (const productId of await productCatalogs.listProductIdsInCatalog(catalogId)) {
+        const product = await persistence.products.get(productId);
+        if (!product) continue;
+        const memberOf = new Set(await productCatalogs.listCatalogIdsForProduct(productId));
+        const lines = scheduled.filter((c) => memberOf.has(c.id));
+        if (lines.length === 0) continue;
+        const froms = lines.map((c) => c.activeFrom ?? null);
+        const tos = lines.map((c) => c.activeTo ?? null);
+        const activeFrom = froms.includes(null) ? null : froms.reduce((a, b) => (Date.parse(a!) <= Date.parse(b!) ? a : b));
+        const activeTo = tos.includes(null) ? null : tos.reduce((a, b) => (Date.parse(a!) >= Date.parse(b!) ? a : b));
+        if ((product.activeFrom ?? null) === activeFrom && (product.activeTo ?? null) === activeTo) continue;
+        const next = withSchedule(product, { activeFrom, activeTo });
+        await persistence.products.save(next);
+        await events.publish("catalog.product.updated", { id: productId });
+        updated.push(productId);
+      }
+      return { updated };
     },
 
     async assignProductToCatalog(productId, catalogId) {

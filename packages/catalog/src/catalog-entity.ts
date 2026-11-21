@@ -1,3 +1,4 @@
+import type { ProductStatus, Schedule } from "@mercatus-liber/core";
 /**
  * Real, named, addressable Catalog entity -- distinct from the 3 demo
  * stores being "3 catalogs" only in the sense of 3 separate databases.
@@ -7,12 +8,43 @@
  * pair -- see that package's types.ts and in-memory-repository.ts, which
  * this file mirrors.
  */
-export interface Catalog {
+/** A line's landing-page header. */
+export interface CatalogHero {
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  cta?: { label: string; href: string };
+}
+
+/** One group of products on a line's page, in display order, e.g. "Desk", "Shirts", "Hats". */
+export interface CatalogSection {
+  slug: string;
+  title: string;
+  productIds: string[];
+}
+
+/**
+ * A named set of products. A store's main catalog is a "master" catalog (the
+ * default when `kind` is absent). A "sales" catalog (a line or collection)
+ * reuses master products in its own order and sections, with its own
+ * schedule and landing-page hero, like HCL Commerce's sales catalogs. Every
+ * field after `createdAt` is optional, so catalogs saved before they existed
+ * read the same.
+ */
+export interface Catalog extends Schedule {
   id: string;
   slug: string;
   name: string;
   description: string;
   createdAt: string;
+  kind?: "master" | "sales";
+  /** For a sales catalog: the master catalog (store) it belongs to. */
+  masterCatalogId?: string;
+  /** Default "active". A draft line isn't shown. */
+  status?: ProductStatus;
+  hero?: CatalogHero;
+  sections?: CatalogSection[];
 }
 
 export interface CatalogRepository {

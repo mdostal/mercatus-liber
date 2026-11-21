@@ -27,6 +27,14 @@ const CATALOG_SCHEMA_SQL = `
     PRIMARY KEY (product_id, catalog_id)
   );
   CREATE INDEX IF NOT EXISTS idx_pcata_catalog_id ON product_catalog_assignments(catalog_id);
+  -- scheduled-lines epic: sales catalogs (lines) with a schedule, hero and sections.
+  ALTER TABLE catalogs ADD COLUMN IF NOT EXISTS kind TEXT;
+  ALTER TABLE catalogs ADD COLUMN IF NOT EXISTS master_catalog_id TEXT;
+  ALTER TABLE catalogs ADD COLUMN IF NOT EXISTS status TEXT;
+  ALTER TABLE catalogs ADD COLUMN IF NOT EXISTS active_from TEXT;
+  ALTER TABLE catalogs ADD COLUMN IF NOT EXISTS active_to TEXT;
+  ALTER TABLE catalogs ADD COLUMN IF NOT EXISTS hero JSONB;
+  ALTER TABLE catalogs ADD COLUMN IF NOT EXISTS sections JSONB;
 `;
 
 interface CatalogRow {
@@ -35,6 +43,13 @@ interface CatalogRow {
   name: string;
   description: string;
   created_at: string;
+  kind?: Catalog["kind"] | null;
+  master_catalog_id?: string | null;
+  status?: Catalog["status"] | null;
+  active_from?: string | null;
+  active_to?: string | null;
+  hero?: Catalog["hero"] | null;
+  sections?: Catalog["sections"] | null;
 }
 
 interface AssignmentRow {
@@ -49,6 +64,13 @@ function rowToCatalog(row: CatalogRow): Catalog {
     name: row.name,
     description: row.description,
     createdAt: row.created_at,
+    ...(row.kind ? { kind: row.kind } : {}),
+    ...(row.master_catalog_id ? { masterCatalogId: row.master_catalog_id } : {}),
+    ...(row.status ? { status: row.status } : {}),
+    ...(row.active_from ? { activeFrom: row.active_from } : {}),
+    ...(row.active_to ? { activeTo: row.active_to } : {}),
+    ...(row.hero ? { hero: row.hero } : {}),
+    ...(row.sections ? { sections: row.sections } : {}),
   };
 }
 
@@ -80,14 +102,34 @@ export function createPostgresCatalogRepository(pool: Pool): CatalogRepository {
     async save(catalog: Catalog): Promise<void> {
       await ready;
       await pool.query(
-        `INSERT INTO catalogs (id, slug, name, description, created_at)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO catalogs (id, slug, name, description, created_at, kind, master_catalog_id, status, active_from, active_to, hero, sections)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (id) DO UPDATE SET
            slug = EXCLUDED.slug,
            name = EXCLUDED.name,
            description = EXCLUDED.description,
-           created_at = EXCLUDED.created_at`,
-        [catalog.id, catalog.slug, catalog.name, catalog.description, catalog.createdAt],
+           created_at = EXCLUDED.created_at,
+           kind = EXCLUDED.kind,
+           master_catalog_id = EXCLUDED.master_catalog_id,
+           status = EXCLUDED.status,
+           active_from = EXCLUDED.active_from,
+           active_to = EXCLUDED.active_to,
+           hero = EXCLUDED.hero,
+           sections = EXCLUDED.sections`,
+        [
+          catalog.id,
+          catalog.slug,
+          catalog.name,
+          catalog.description,
+          catalog.createdAt,
+          catalog.kind ?? null,
+          catalog.masterCatalogId ?? null,
+          catalog.status ?? null,
+          catalog.activeFrom ?? null,
+          catalog.activeTo ?? null,
+          catalog.hero ? JSON.stringify(catalog.hero) : null,
+          catalog.sections ? JSON.stringify(catalog.sections) : null,
+        ],
       );
     },
   };
