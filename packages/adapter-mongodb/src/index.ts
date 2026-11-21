@@ -19,6 +19,8 @@ interface ProductDoc {
   identifyingAttributeKeys: string[];
   status: ProductStatus;
   images?: ProductImage[];
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 interface SkuDoc {
@@ -27,6 +29,8 @@ interface SkuDoc {
   identifyingAttributes: Sku["identifyingAttributes"];
   price: { amount: number; currency: string };
   status: ProductStatus;
+  activeFrom?: string | null;
+  activeTo?: string | null;
 }
 
 /** MongoDB natively supports a compound object as `_id` -- used here for a real (productId, key) composite key, the idiomatic document-model equivalent of adapter-sqlite/adapter-postgres's own composite PRIMARY KEY (product_id, key). */
@@ -47,7 +51,7 @@ interface AttributeDoc {
 export interface CollectionLike<TDoc extends { _id: unknown }> {
   findOne(filter: Record<string, unknown>): Promise<TDoc | null>;
   find(filter: Record<string, unknown>): { toArray(): Promise<TDoc[]> };
-  updateOne(filter: Record<string, unknown>, update: { $set: Partial<TDoc> }, options: { upsert: true }): Promise<unknown>;
+  updateOne(filter: Record<string, unknown>, update: { $set: Partial<TDoc>; $unset?: Record<string, ""> }, options: { upsert: true }): Promise<unknown>;
   deleteOne(filter: Record<string, unknown>): Promise<unknown>;
   createIndex(spec: Record<string, 1 | -1>, options?: Record<string, unknown>): Promise<unknown>;
 }
@@ -65,7 +69,17 @@ function docToProduct(doc: ProductDoc): Product {
     identifyingAttributeKeys: doc.identifyingAttributeKeys,
     status: doc.status,
     ...(doc.images ? { images: doc.images } : {}),
+    ...(doc.activeFrom ? { activeFrom: doc.activeFrom } : {}),
+    ...(doc.activeTo ? { activeTo: doc.activeTo } : {}),
   };
+}
+
+/** `$unset` for the schedule fields a save leaves out, so clearing a window clears it in the stored document too. */
+function unsetMissingSchedule(entity: { activeFrom?: string | null; activeTo?: string | null }): { $unset?: Record<string, ""> } {
+  const unset: Record<string, ""> = {};
+  if (!entity.activeFrom) unset.activeFrom = "";
+  if (!entity.activeTo) unset.activeTo = "";
+  return Object.keys(unset).length ? { $unset: unset } : {};
 }
 
 function docToSku(doc: SkuDoc): Sku {
@@ -75,6 +89,8 @@ function docToSku(doc: SkuDoc): Sku {
     identifyingAttributes: doc.identifyingAttributes,
     price: doc.price,
     status: doc.status,
+    ...(doc.activeFrom ? { activeFrom: doc.activeFrom } : {}),
+    ...(doc.activeTo ? { activeTo: doc.activeTo } : {}),
   };
 }
 
@@ -123,7 +139,8 @@ export async function createMongoAdapter(db: DbLike): Promise<CatalogPersistence
       // document using the filter's own _id equality value -- real,
       // documented driver behavior, not an assumption -- so `rest` (which
       // excludes id/_id) is sufficient here; the filter supplies it.
-      await productsCol.updateOne({ _id: id }, { $set: rest as Partial<ProductDoc> }, { upsert: true });
+      const { activeFrom, activeTo, ...fields } = rest;
+      await productsCol.updateOne({ _id: id }, { $set: { ...fields, ...(activeFrom ? { activeFrom } : {}), ...(activeTo ? { activeTo } : {}) } as Partial<ProductDoc>, ...unsetMissingSchedule(product) }, { upsert: true });
     },
   };
 
@@ -138,7 +155,8 @@ export async function createMongoAdapter(db: DbLike): Promise<CatalogPersistence
     },
     async save(sku: Sku): Promise<void> {
       const { id, ...rest } = sku;
-      await skusCol.updateOne({ _id: id }, { $set: rest as Partial<SkuDoc> }, { upsert: true });
+      const { activeFrom, activeTo, ...fields } = rest;
+      await skusCol.updateOne({ _id: id }, { $set: { ...fields, ...(activeFrom ? { activeFrom } : {}), ...(activeTo ? { activeTo } : {}) } as Partial<SkuDoc>, ...unsetMissingSchedule(sku) }, { upsert: true });
     },
   };
 

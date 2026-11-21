@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS products (
   images TEXT, -- JSON ProductImage[] | null, image-cdn epic
   videos TEXT, -- JSON ProductVideo[] | null, product-media-attribution epic
   viewer_url TEXT, -- product-media-attribution epic
-  license TEXT -- product-media-attribution epic
+  license TEXT, -- product-media-attribution epic
+  active_from TEXT, -- scheduled-lines epic
+  active_to TEXT
 );
 
 CREATE TABLE IF NOT EXISTS skus (
@@ -22,6 +24,8 @@ CREATE TABLE IF NOT EXISTS skus (
   status TEXT NOT NULL,
   images TEXT, -- JSON ProductImage[] | null, sku-images epic
   availability_status TEXT, -- sku-availability-status epic
+  active_from TEXT, -- scheduled-lines epic
+  active_to TEXT,
   availability_note TEXT -- sku-availability-status epic
 );
 CREATE INDEX IF NOT EXISTS idx_skus_product_id ON skus(product_id);

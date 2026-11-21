@@ -48,6 +48,8 @@ interface ProductRow {
   videos: Product["videos"] | null; // JSONB, product-media-attribution epic
   viewer_url: string | null; // product-media-attribution epic
   license: string | null; // product-media-attribution epic
+  active_from?: string | null; // scheduled-lines epic
+  active_to?: string | null;
 }
 
 interface SkuRow {
@@ -59,6 +61,8 @@ interface SkuRow {
   status: string;
   images: Sku["images"] | null; // JSONB, sku-images epic
   availability_status: Sku["availabilityStatus"] | null; // sku-availability-status epic
+  active_from?: string | null; // scheduled-lines epic
+  active_to?: string | null;
   availability_note: string | null; // sku-availability-status epic
 }
 
@@ -81,6 +85,8 @@ function rowToProduct(row: ProductRow): Product {
     ...(row.videos ? { videos: row.videos } : {}),
     ...(row.viewer_url ? { viewerUrl: row.viewer_url } : {}),
     ...(row.license ? { license: row.license } : {}),
+    ...(row.active_from ? { activeFrom: row.active_from } : {}),
+    ...(row.active_to ? { activeTo: row.active_to } : {}),
   };
 }
 
@@ -93,6 +99,8 @@ function rowToSku(row: SkuRow): Sku {
     status: row.status as ProductStatus,
     ...(row.images ? { images: row.images } : {}),
     ...(row.availability_status ? { availabilityStatus: row.availability_status } : {}),
+    ...(row.active_from ? { activeFrom: row.active_from } : {}),
+    ...(row.active_to ? { activeTo: row.active_to } : {}),
     ...(row.availability_note ? { availabilityNote: row.availability_note } : {}),
   };
 }
@@ -142,8 +150,8 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
     },
     async save(product: Product): Promise<void> {
       await pool.query(
-        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images, videos, viewer_url, license)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `INSERT INTO products (id, slug, title, description, identifying_attribute_keys, status, images, videos, viewer_url, license, active_from, active_to)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (id) DO UPDATE SET
            slug = EXCLUDED.slug,
            title = EXCLUDED.title,
@@ -153,7 +161,9 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
            images = EXCLUDED.images,
            videos = EXCLUDED.videos,
            viewer_url = EXCLUDED.viewer_url,
-           license = EXCLUDED.license`,
+           license = EXCLUDED.license,
+           active_from = EXCLUDED.active_from,
+           active_to = EXCLUDED.active_to`,
         [
           product.id,
           product.slug,
@@ -165,6 +175,8 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
           product.videos ? JSON.stringify(product.videos) : null,
           product.viewerUrl ?? null,
           product.license ?? null,
+          product.activeFrom ?? null,
+          product.activeTo ?? null,
         ],
       );
     },
@@ -181,8 +193,8 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
     },
     async save(sku: Sku): Promise<void> {
       await pool.query(
-        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status, images, availability_status, availability_note)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO skus (id, product_id, identifying_attributes, price_amount, price_currency, status, images, availability_status, availability_note, active_from, active_to)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          ON CONFLICT (id) DO UPDATE SET
            product_id = EXCLUDED.product_id,
            identifying_attributes = EXCLUDED.identifying_attributes,
@@ -191,7 +203,9 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
            status = EXCLUDED.status,
            images = EXCLUDED.images,
            availability_status = EXCLUDED.availability_status,
-           availability_note = EXCLUDED.availability_note`,
+           availability_note = EXCLUDED.availability_note,
+           active_from = EXCLUDED.active_from,
+           active_to = EXCLUDED.active_to`,
         [
           sku.id,
           sku.productId,
@@ -202,6 +216,8 @@ export async function createPostgresAdapter(pool: Pool): Promise<CatalogPersiste
           sku.images ? JSON.stringify(sku.images) : null,
           sku.availabilityStatus ?? null,
           sku.availabilityNote ?? null,
+          sku.activeFrom ?? null,
+          sku.activeTo ?? null,
         ],
       );
     },

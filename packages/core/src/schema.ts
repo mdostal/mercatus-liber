@@ -73,7 +73,17 @@ export interface ProductVideo {
   title: string;
 }
 
-export interface Product {
+/**
+ * When something is on sale: from `activeFrom` (inclusive) to `activeTo`
+ * (exclusive), as ISO 8601 instants. Either end may be absent for no limit
+ * on that side. Read with `lifecycle` (lifecycle.ts).
+ */
+export interface Schedule {
+  activeFrom?: string | null;
+  activeTo?: string | null;
+}
+
+export interface Product extends Schedule {
   id: string;
   slug: string;
   title: string;
@@ -120,7 +130,7 @@ export interface Product {
   license?: string;
 }
 
-export interface Sku {
+export interface Sku extends Schedule {
   id: string;
   productId: string;
   /** Must contain exactly one entry per key in the parent product's identifyingAttributeKeys. */

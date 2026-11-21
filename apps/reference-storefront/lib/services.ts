@@ -760,6 +760,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
     cart,
     payments,
     events,
+    // A cart can outlive a sale: each line is checked against its SKU's and product's window again here.
+    saleWindows: catalog,
     pricing: {
       async computeAdjustment(input) {
         // commerce-gap-audit-3: this demo's own demoSlug (closed over from
