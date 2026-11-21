@@ -936,6 +936,15 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
       listPromotions: () => promotions.listPromotions(),
     },
     eventLog: biEventLog,
+    // This demo's lines (sales catalogs), for sales by line.
+    collections: {
+      async listCollections() {
+        const master = await catalog.getCatalogBySlug(DEMO_CATALOG_SLUG[demoSlug]);
+        if (!master) return [];
+        return (await catalog.listCatalogs({ kind: "sales", masterCatalogId: master.id })).map((line) => ({ id: line.id, name: line.name, kind: "line", activeFrom: line.activeFrom ?? null, activeTo: line.activeTo ?? null }));
+      },
+      productIdsInCollection: (id) => catalog.listProductIdsInCatalog(id),
+    },
   });
   registerBiEventLogSync({ events, eventLog: biEventLog });
 

@@ -33,3 +33,14 @@ const bi = createDefaultBiAdapter({ orders, skus, promotions, eventLog });
 Implement `BiMetricsAdapter` to read from a warehouse instead of the application data.
 
 See [docs/subsystems/20-internal-bi.md](../../docs/subsystems/20-internal-bi.md).
+
+## Sales by line
+
+`getSalesByCollection({ range?, kind?, withinWindow = true, topProductsLimit = 5 })` reports, per
+line (sales catalog), catalog or category: orders, units, revenue (before order discounts), how many
+of its products sold, and its best sellers, best first. By default each line's orders are counted
+inside its own `activeFrom` / `activeTo`, which answers "what sold during that line's week". Pass
+`collections: { listCollections, productIdsInCollection }` to `createDefaultBiAdapter`. Page views
+and tile clicks are client-side analytics events (`catalog_viewed`, `spot_clicked`, joined by
+`icid`) and aren't counted here.
+
