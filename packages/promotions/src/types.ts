@@ -22,6 +22,13 @@ export interface Promotion {
   currency: string;
   /** Only meaningful when scope === "product"; empty = cart scope. */
   targetSkuIds: string[];
+  /**
+   * Product scope only: lines (sales catalogs), catalogs or categories whose
+   * SKUs are discounted too, e.g. "20% off the Frost line this week".
+   * Resolved at evaluation through the service's `collections` lookup, so a
+   * line's membership can change without editing the promotion. Optional.
+   */
+  targetCollectionIds?: string[];
   /** Eligibility floor, cart scope only. */
   minCartAmount: Money | null;
   /** ISO 8601; null = active immediately. */
@@ -48,6 +55,14 @@ export interface Promotion {
    * promotion) -- only a `demoSlug`-scoped call is restricted.
    */
   demoSlug?: string;
+}
+
+/**
+ * Which collections (line/catalog ids and category ids) a SKU belongs to.
+ * The store provides it; @mercatus-liber/promotions never imports catalog.
+ */
+export interface CollectionLookup {
+  collectionIdsForSku(skuId: string): Promise<string[]>;
 }
 
 /** Adapter pattern, as everywhere else in this codebase. */

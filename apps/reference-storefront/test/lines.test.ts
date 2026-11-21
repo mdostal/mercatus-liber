@@ -50,3 +50,21 @@ describe("search scoped to a line or category", { timeout: 60_000 }, () => {
     expect(await searchScope(s, "print-shop", {})).toBeNull();
   });
 });
+
+describe("a promotion on a whole line", { timeout: 60_000 }, () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("discounts the line's items and leaves the rest of the cart alone", async () => {
+    const s = await servicesFor("print-shop");
+    const line = (await s.catalog.getCatalogBySlug("holiday-week-one"))!;
+    const mug = (await s.catalog.getProductBySlug("custom-printed-ceramic-mug"))!;
+    const hoodie = (await s.catalog.getProductBySlug("embroidered-fleece-hoodie"))!;
+    const mugSku = (await s.catalog.listSkusByProduct(mug.id))[0]!;
+    const hoodieSku = (await s.catalog.listSkusByProduct(hoodie.id))[0]!;
+    await s.promotions.createPromotion({ code: `WEEK1-${Date.now()}`, kind: "percentage", scope: "product", value: 25, currency: "USD", targetSkuIds: [], targetCollectionIds: [line.id], minCartAmount: null, startsAt: null, endsAt: null, usageLimit: null, demoSlug: "print-shop" });
+    const code = (await s.promotions.listPromotions({ demoSlug: "print-shop" })).find((p) => p.targetCollectionIds?.includes(line.id))!.code!;
+    const result = await s.promotions.evaluate({ items: [{ skuId: mugSku.id, quantity: 1, priceSnapshot: mugSku.price }, { skuId: hoodieSku.id, quantity: 1, priceSnapshot: hoodieSku.price }], couponCode: code, demoSlug: "print-shop" });
+    expect(result.items.find((i) => i.skuId === mugSku.id)!.unitAmount.amount).toBe(Math.max(0, mugSku.price.amount - Math.round(mugSku.price.amount * 0.25)));
+    expect(result.items.find((i) => i.skuId === hoodieSku.id)!.unitAmount.amount).toBe(hoodieSku.price.amount);
+  });
+});

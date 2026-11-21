@@ -18,6 +18,15 @@ const promotions = createPromotionsService({
 const result = await promotions.evaluate({ items, couponCode: "WELCOME10" });
 ```
 
+## Promotions on a line or category
+
+A product-scope promotion can name `targetCollectionIds`: line (sales catalog), catalog or category
+ids. At evaluation every cart SKU in one of them is discounted too, so "20% off the Frost line this
+week" is one promotion whose reach follows the line's membership. The store passes
+`collections: { collectionIdsForSku }` to `createPromotionsService` (the reference storefront
+returns the SKU's product's catalog and category ids). Combine with `startsAt` / `endsAt` for a
+line-week deal. Postgres stores it in an additive `target_collection_ids` column.
+
 ## Key exports
 
 - `createPromotionsService(deps)`: `createPromotion`, `getPromotion`, `listPromotions`, `updatePromotion`, `deactivatePromotion`, `evaluate`, `recordAppliedPromotion`.
