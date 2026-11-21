@@ -41,6 +41,25 @@ await catalog.publishProduct(product.id);
 Postgres, SQLite and MongoDB keep them; the Convex functions don't yet (their schema needs a
 deploy). Read a product's state with `lifecycle` from `@mercatus-liber/core`.
 
+## Lines (sales catalogs)
+
+A store's main catalog is a master catalog. A **sales catalog** (a line or collection) reuses
+master products in its own order, with its own schedule and landing page, like HCL Commerce's
+sales catalogs. `createCatalog` / `updateCatalog` take:
+
+- `kind: "sales"` and `masterCatalogId` (the store it belongs to);
+- `activeFrom` / `activeTo` (UTC) and `status`;
+- `hero` (`{ title, subtitle?, imageUrl?, imageAlt?, cta? }`);
+- `sections` (ordered `{ slug, title, productIds }`). Their products are added to the catalog; an unknown product id is refused before anything is saved.
+
+Lines can overlap and share products (membership is many-to-many).
+
+- `listCatalogs({ kind, masterCatalogId })` filters.
+- `getCatalogLanding(idOrSlug, now)` returns `{ catalog, lifecycle, sections (with active products), otherProducts }`. Empty sections are kept, so a line can be announced before it has products.
+- `applyCatalogWindowToProducts(catalogId)` gives each product in a line a window covering every line it's in (earliest start, latest end). After a line's week its products go off sale unless another line or `updateProduct(id, { activeTo: null })` brings them back.
+
+Postgres stores the new fields (additive columns); the in-memory repository needs nothing.
+
 ## Key exports
 
 - `createCatalogService(deps)`: product, SKU, attribute, and catalog operations, including `generateSkus`, `resolveVariant`, and `listProductsInCatalog`.

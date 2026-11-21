@@ -1402,6 +1402,49 @@ async function seedRealCatalog(catalog: CatalogService, productIdBySlug: Map<str
   for (const productId of productIdBySlug.values()) {
     await catalog.assignProductToCatalog(productId, printShopCatalog.id);
   }
+  await seedLines(catalog, printShopCatalog.id, productIdBySlug);
+}
+
+/**
+ * scheduled-lines epic: two lines (sales catalogs) with their own landing
+ * pages at /demo/print-shop/lines: one always open, one with a one-week
+ * window matching shop.mdostal.com's first holiday line. Created once by
+ * slug and left alone afterwards, so edits survive a cold start.
+ */
+async function seedLines(catalog: CatalogService, masterCatalogId: string, productIdBySlug: Map<string, string>): Promise<void> {
+  const ids = (...slugs: string[]) => slugs.map((slug) => productIdBySlug.get(slug)).filter((id): id is string => Boolean(id));
+  if (!(await catalog.getCatalogBySlug("fleece-favorites"))) {
+    await catalog.createCatalog({
+      slug: "fleece-favorites",
+      name: "Fleece Favorites",
+      description: "Warm layers with your name, logo or monogram stitched on.",
+      kind: "sales",
+      masterCatalogId,
+      hero: { title: "Fleece Favorites", subtitle: "Embroidered warmth for the cold months" },
+      sections: [
+        { slug: "hoodies", title: "Hoodies", productIds: ids("embroidered-fleece-hoodie") },
+        { slug: "tops", title: "Tees and caps", productIds: ids("embroidered-cotton-tee", "embroidered-dad-cap") },
+      ],
+    });
+  }
+  if (!(await catalog.getCatalogBySlug("holiday-week-one"))) {
+    await catalog.createCatalog({
+      slug: "holiday-week-one",
+      name: "Holiday Week One",
+      description: "One week only: gifts printed and stitched to order.",
+      kind: "sales",
+      masterCatalogId,
+      // Mon Nov 30 2026, noon Central, for one week.
+      activeFrom: "2026-11-30T18:00:00.000Z",
+      activeTo: "2026-12-07T18:00:00.000Z",
+      hero: { title: "Holiday Week One", subtitle: "Seven days of gifts, then it's gone" },
+      sections: [
+        { slug: "drinkware", title: "Drinkware", productIds: ids("custom-printed-ceramic-mug", "custom-printed-travel-tumbler") },
+        { slug: "coasters", title: "Coasters", productIds: ids("monogram-stoneware-coaster-set", "cork-back-print-coaster-set") },
+        { slug: "accessories", title: "Accessories", productIds: ids("embroidered-luggage-tag", "embroidered-zip-pouch") },
+      ],
+    });
+  }
 }
 
 /** Seeds a handful of demo products/SKUs (published/active) with real stock, category assignments, and CMS pages. `serviceAreas` is optional -- most test files don't need location-page coverage. `bundles` is optional too -- most test files don't need the bundle-04 acceptance demo (3 service SKUs + one 3-tier Bundle); see seedServiceBundle. `recommendations` is optional too -- most test files don't need the rec-04 acceptance demo (one curated RecommendationRule); see seedRecommendations. `advertising` is optional too -- most test files don't need the ad-04 acceptance demo (1-2 Campaigns); see seedAdvertising. `reviews` is optional too -- most test files don't need the reviews-depth demo (real seeded review content across 6 products); see seedReviews. `storefrontViews` is optional too -- most test files don't need the storefront-views demo (one real, permanent "Corporate & Bulk Orders" second storefront curated from this same catalog); see seedStorefrontViews. */
