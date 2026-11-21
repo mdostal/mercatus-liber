@@ -2,6 +2,8 @@ import type { Money } from "@mercatus-liber/core";
 import type {
   BiEventLogRepository,
   BiMetricsAdapter,
+  CollectionMetricsSource,
+  CollectionSales,
   OrderMetricsSource,
   PromotionMetricsSource,
   SkuMetricsSource,
@@ -71,10 +73,72 @@ export function createDefaultBiAdapter(deps: {
   skus: SkuMetricsSource;
   promotions: PromotionMetricsSource;
   eventLog: BiEventLogRepository;
+  /** Lines/catalogs/categories for getSalesByCollection. Optional. */
+  collections?: CollectionMetricsSource;
 }): BiMetricsAdapter {
-  const { orders, skus, promotions, eventLog } = deps;
+  const { orders, skus, promotions, eventLog, collections } = deps;
 
   return {
+    async getSalesByCollection(options = {}) {
+      if (!collections) return [];
+      const { range, kind, withinWindow = true, topProductsLimit = 5 } = options;
+      const allOrders = (await orders.listOrders()).filter((o) => o.status !== "cancelled" && o.status !== "pending_payment");
+      const productBySku = new Map<string, string | null>();
+      const productOf = async (skuId: string) => {
+        if (!productBySku.has(skuId)) productBySku.set(skuId, (await skus.getSku(skuId))?.productId ?? null);
+        return productBySku.get(skuId)!;
+      };
+      const titles = new Map<string, string>();
+      const titleOf = async (productId: string) => {
+        if (!titles.has(productId)) titles.set(productId, (await skus.getProduct(productId))?.title ?? "Unknown product");
+        return titles.get(productId)!;
+      };
+      const results: CollectionSales[] = [];
+      for (const collection of await collections.listCollections()) {
+        if (kind && collection.kind !== kind) continue;
+        const members = new Set(await collections.productIdsInCollection(collection.id));
+        const from = withinWindow ? (collection.activeFrom ?? null) : (range?.from ?? null);
+        const to = withinWindow ? (collection.activeTo ?? null) : (range?.to ?? null);
+        const inPeriod = (iso: string) => (!from || Date.parse(iso) >= Date.parse(from)) && (!to || Date.parse(iso) < Date.parse(to));
+        let orderCount = 0;
+        let units = 0;
+        let revenue = 0;
+        let currency = "USD";
+        const byProduct = new Map<string, { units: number; revenue: number }>();
+        for (const order of allOrders) {
+          if (!inPeriod(order.createdAt)) continue;
+          let counted = false;
+          for (const item of order.items) {
+            const productId = await productOf(item.skuId);
+            if (!productId || !members.has(productId)) continue;
+            counted = true;
+            units += item.quantity;
+            revenue += item.priceAtPurchase.amount * item.quantity;
+            currency = item.priceAtPurchase.currency;
+            const agg = byProduct.get(productId) ?? { units: 0, revenue: 0 };
+            agg.units += item.quantity;
+            agg.revenue += item.priceAtPurchase.amount * item.quantity;
+            byProduct.set(productId, agg);
+          }
+          if (counted) orderCount++;
+        }
+        const top = [...byProduct].sort(([, a], [, b]) => b.revenue - a.revenue).slice(0, topProductsLimit);
+        results.push({
+          collectionId: collection.id,
+          name: collection.name,
+          kind: collection.kind,
+          period: { from, to },
+          orders: orderCount,
+          unitsSold: units,
+          revenue: { amount: revenue, currency },
+          productsSold: byProduct.size,
+          productCount: members.size,
+          topProducts: await Promise.all(top.map(async ([productId, agg]) => ({ productId, title: await titleOf(productId), unitsSold: agg.units, revenue: { amount: agg.revenue, currency } }))),
+        });
+      }
+      return results.sort((a, b) => b.revenue.amount - a.revenue.amount);
+    },
+
     async getRevenueOverTime(range, bucket) {
       const allOrders = await orders.listOrders();
       const eligible = allOrders.filter((order) => order.status !== "cancelled" && withinRange(order.createdAt, range));

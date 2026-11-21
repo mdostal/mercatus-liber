@@ -41,6 +41,35 @@ export interface PromotionMetricsSource {
 }
 
 /**
+ * Lines (sales catalogs), catalogs or categories to report sales by -- a
+ * structural interface. The store builds it from its catalog (the reference
+ * storefront lists its demo's lines).
+ */
+export interface CollectionMetricsSource {
+  listCollections(): Promise<{ id: string; name: string; kind: string; activeFrom?: string | null; activeTo?: string | null }[]>;
+  productIdsInCollection(collectionId: string): Promise<string[]>;
+}
+
+/** One line's (or catalog's, or category's) sales. */
+export interface CollectionSales {
+  collectionId: string;
+  name: string;
+  kind: string;
+  /** The period counted: the line's own window when asked to, else the range given (null = all time). */
+  period: { from: string | null; to: string | null };
+  /** Orders with at least one of its products. */
+  orders: number;
+  unitsSold: number;
+  /** Before order-level discounts. */
+  revenue: Money;
+  /** Products in it that sold at least one unit, and how many it has. */
+  productsSold: number;
+  productCount: number;
+  /** Best sellers in it, by revenue. */
+  topProducts: { productId: string; title: string; unitsSold: number; revenue: Money }[];
+}
+
+/**
  * The swappable contract (subsystem 20) -- mirrors CatalogPersistenceAdapter/
  * CmsPersistenceAdapter: a single named interface a deployment can later
  * implement against a real external BI tool (warehouse export, Metabase/
@@ -70,6 +99,15 @@ export interface BiMetricsAdapter {
    * real. See design-discussion.md section 4 and docs/subsystems/20-internal-bi.md.
    */
   getInventoryTurns(range?: { from: string; to: string }): Promise<null>;
+  /**
+   * Sales by line, catalog or category, best first, to see what sold during
+   * each line's week. `withinWindow` (default true) counts each collection's
+   * orders inside its own activeFrom/activeTo; otherwise `range` applies to
+   * all. Empty without a CollectionMetricsSource. Views, and so view-to-order
+   * conversion, are client-side analytics events (catalog_viewed, icid) and
+   * aren't counted here.
+   */
+  getSalesByCollection(options?: { range?: { from: string; to: string }; kind?: string; withinWindow?: boolean; topProductsLimit?: number }): Promise<CollectionSales[]>;
 }
 
 /**

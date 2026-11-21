@@ -90,3 +90,16 @@ describe("marketing tiles", { timeout: 60_000 }, () => {
     expect(home.sections[1]!.componentType).toBe("marketing-tile");
   });
 });
+
+describe("sales by line in the demo's BI", { timeout: 60_000 }, () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("reports each print-shop line, and none for a demo without lines", async () => {
+    const s = await servicesFor("print-shop");
+    const report = await s.bi.getSalesByCollection();
+    expect(report.map((r) => r.name).sort()).toEqual(["Fleece Favorites", "Holiday Week One"]);
+    expect(report.find((r) => r.name === "Holiday Week One")).toMatchObject({ kind: "line", productCount: 6, period: { from: "2026-11-30T18:00:00.000Z", to: "2026-12-07T18:00:00.000Z" } });
+    const n = await servicesFor("northline");
+    expect(await n.bi.getSalesByCollection()).toEqual([]);
+  });
+});

@@ -55,7 +55,7 @@ export default async function AdminMetricsPage({ params }: { params: Promise<{ d
     to: now.toISOString(),
   };
 
-  const [revenueOverTime, orderVolume, topProducts, conversionFunnel, promotionRedemptionRates, inventoryTurns, configuredInsights] =
+  const [revenueOverTime, orderVolume, topProducts, conversionFunnel, promotionRedemptionRates, inventoryTurns, configuredInsights, salesByLine] =
     await Promise.all([
       bi.getRevenueOverTime(range, "day"),
       bi.getOrderVolume(range),
@@ -64,6 +64,7 @@ export default async function AdminMetricsPage({ params }: { params: Promise<{ d
       bi.getPromotionRedemptionRates(),
       bi.getInventoryTurns(range),
       loadConfiguredInsights(insightsSources, range),
+      bi.getSalesByCollection(),
     ]);
 
   return (
@@ -141,6 +142,43 @@ export default async function AdminMetricsPage({ params }: { params: Promise<{ d
                   <td>{product.title}</td>
                   <td>{product.unitsSold}</td>
                   <td>{formatMoney(product.revenue)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section>
+        <h2>Sales by line</h2>
+        <p style={{ maxWidth: "65ch" }}>Each line's paid orders inside its own window. Views and tile clicks are in the analytics tool (catalog_viewed, spot_clicked, by icid).</p>
+        {salesByLine.length === 0 ? (
+          <p>No lines yet.</p>
+        ) : (
+          <table data-sales-by-line>
+            <thead>
+              <tr>
+                <th>Line</th>
+                <th>Window</th>
+                <th>Orders</th>
+                <th>Units</th>
+                <th>Revenue</th>
+                <th>Products sold</th>
+                <th>Best seller</th>
+              </tr>
+            </thead>
+            <tbody>
+              {salesByLine.map((line) => (
+                <tr key={line.collectionId}>
+                  <td>{line.name}</td>
+                  <td>{line.period.from || line.period.to ? `${line.period.from?.slice(0, 10) ?? "…"} to ${line.period.to?.slice(0, 10) ?? "…"}` : "Always"}</td>
+                  <td>{line.orders}</td>
+                  <td>{line.unitsSold}</td>
+                  <td>${(line.revenue.amount / 100).toFixed(2)}</td>
+                  <td>
+                    {line.productsSold} of {line.productCount}
+                  </td>
+                  <td>{line.topProducts[0]?.title ?? "–"}</td>
                 </tr>
               ))}
             </tbody>
