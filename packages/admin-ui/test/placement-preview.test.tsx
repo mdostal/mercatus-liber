@@ -64,4 +64,22 @@ describe("PlacementPreview and PlacementArtEditor", () => {
     expect(onRemove).toHaveBeenCalled();
     expect(input.value).toBe("");
   });
+
+  it("uploads a file, refusing one over the limit, and shows the saved URL as the art", async () => {
+    const onUpload = vi.fn(async (data: FormData) => ({ ok: true as const, url: `https://store.example/media/${(data.get("file") as File).name}` }));
+    await act(async () => root.render(<PlacementArtEditor template={TEMPLATE} label="Front" onSave={vi.fn()} onUpload={onUpload} maxUploadBytes={10} />));
+    const input = container.querySelector<HTMLInputElement>("input[type=file]")!;
+    const choose = async (file: File) =>
+      act(async () => {
+        Object.defineProperty(input, "files", { value: [file], configurable: true });
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    await choose(new File([new Uint8Array(20)], "big.png", { type: "image/png" }));
+    expect(container.querySelector("[role=alert]")!.textContent).toMatch(/limit/);
+    expect(onUpload).not.toHaveBeenCalled();
+    await choose(new File([new Uint8Array(5)], "art.png", { type: "image/png" }));
+    expect(onUpload).toHaveBeenCalledTimes(1);
+    expect(container.querySelector<HTMLImageElement>("[data-art]")!.getAttribute("src")).toBe("https://store.example/media/art.png");
+    expect(container.querySelector("[role=status]")!.textContent).toContain("Uploaded and saved");
+  });
 });

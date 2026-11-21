@@ -44,10 +44,10 @@ export interface BringOverFormProps {
 }
 
 const field = { display: "grid", gap: 4, fontSize: 12 } as const;
-const input = { font: "inherit", fontSize: 13, padding: "6px 8px", border: "1.5px solid var(--color-border, #ccc)", borderRadius: 6, background: "var(--color-surface, #fff)", color: "var(--color-text, #111)" } as const;
+const input = { fontFamily: "inherit", fontSize: 13, padding: "6px 8px", borderWidth: "1.5px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", borderRadius: 6, background: "var(--color-surface, #fff)", color: "var(--color-text, #111)" } as const;
 const groupTitle = { fontFamily: "var(--font-mono, ui-monospace, monospace)", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--color-text-muted, #555)", margin: 0 } as const;
 const button = (primary: boolean) =>
-  ({ font: "inherit", fontWeight: 700, padding: "8px 14px", borderRadius: 6, border: "2px solid var(--color-text, #111)", background: primary ? "var(--color-primary, #333)" : "var(--color-surface, #fff)", color: primary ? "var(--color-on-primary, #fff)" : "var(--color-text, #111)", cursor: "pointer" }) as const;
+  ({ fontFamily: "inherit", fontWeight: 700, padding: "8px 14px", borderRadius: 6, borderWidth: "2px", borderStyle: "solid", borderColor: "var(--color-text, #111)", background: primary ? "var(--color-primary, #333)" : "var(--color-surface, #fff)", color: primary ? "var(--color-on-primary, #fff)" : "var(--color-text, #111)", cursor: "pointer" }) as const;
 
 /** "Unisex Staple T-Shirt" -> "unisex-staple-t-shirt". */
 export function slugify(text: string): string {
@@ -144,7 +144,7 @@ export function BringOverForm({ colors, sizes, techniques, placements, defaults 
         e.preventDefault();
         if (!pending && !disabledReason) run("submit");
       }}
-      style={{ display: "grid", gap: 16, padding: 14, border: "1px solid var(--color-border, #ccc)", borderRadius: 8, background: "var(--color-surface, #fff)" }}
+      style={{ display: "grid", gap: 16, padding: 14, borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", borderRadius: 8, background: "var(--color-surface, #fff)" }}
     >
       <h3 style={{ margin: 0, fontSize: 17 }}>Bring into the store</h3>
       {disabledReason && <p role="note" style={{ margin: 0, fontSize: 13 }}>{disabledReason}</p>}
@@ -217,7 +217,7 @@ export function BringOverForm({ colors, sizes, techniques, placements, defaults 
         </legend>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {colors.map((c) => (
-            <label key={c.name} data-color={c.name} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "3px 7px", border: "1px solid var(--color-border, #ccc)", borderRadius: 6 }}>
+            <label key={c.name} data-color={c.name} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "3px 7px", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", borderRadius: 6 }}>
               <input
                 type="checkbox"
                 checked={chosenColors.includes(c.name)}
@@ -226,7 +226,7 @@ export function BringOverForm({ colors, sizes, techniques, placements, defaults 
                   changed();
                 }}
               />
-              {c.hex && <span aria-hidden style={{ width: 11, height: 11, borderRadius: "50%", background: c.hex, border: "1px solid var(--color-border, #ccc)" }} />}
+              {c.hex && <span aria-hidden style={{ width: 11, height: 11, borderRadius: "50%", background: c.hex, borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)" }} />}
               {c.name}
             </label>
           ))}
@@ -314,7 +314,7 @@ export function BringOverForm({ colors, sizes, techniques, placements, defaults 
             </thead>
             <tbody>
               {plan.rows.map((r) => (
-                <tr key={`${r.color}|${r.size}`} style={{ borderTop: "1px solid var(--color-border, #ccc)" }}>
+                <tr key={`${r.color}|${r.size}`} style={{ borderTopWidth: "1px", borderTopStyle: "solid", borderTopColor: "var(--color-border, #ccc)" }}>
                   <td style={{ padding: "3px 8px" }}>{r.color}</td>
                   <td style={{ padding: "3px 8px" }}>{r.size}</td>
                   <td style={{ padding: "3px 8px" }}>{money(r.priceCents)}</td>

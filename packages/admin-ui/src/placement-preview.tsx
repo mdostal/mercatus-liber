@@ -61,7 +61,7 @@ export function PlacementPreview({ template, artUrl, printAreaPx, maxWidth = 360
       <div
         role="img"
         aria-label={`${label}${artUrl ? " with the art in place" : ", no art yet"}`}
-        style={{ position: "relative", width: "100%", aspectRatio: `${template.templateWidth} / ${template.templateHeight}`, background: template.backgroundColor ?? "var(--color-surface, #fff)", borderRadius: 8, overflow: "hidden", border: "1px solid var(--color-border, #ccc)" }}
+        style={{ position: "relative", width: "100%", aspectRatio: `${template.templateWidth} / ${template.templateHeight}`, background: template.backgroundColor ?? "var(--color-surface, #fff)", borderRadius: 8, overflow: "hidden", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)" }}
       >
         {template.backgroundUrl && <img src={template.backgroundUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 0 }} />}
         {art}
@@ -69,7 +69,7 @@ export function PlacementPreview({ template, artUrl, printAreaPx, maxWidth = 360
         <span
           data-print-area
           aria-hidden
-          style={{ position: "absolute", left: pct(area.left, template.templateWidth), top: pct(area.top, template.templateHeight), width: pct(area.width, template.templateWidth), height: pct(area.height, template.templateHeight), outline: "1.5px dashed var(--color-primary, #333)", zIndex: 3, pointerEvents: "none" }}
+          style={{ position: "absolute", left: pct(area.left, template.templateWidth), top: pct(area.top, template.templateHeight), width: pct(area.width, template.templateWidth), height: pct(area.height, template.templateHeight), outlineWidth: "1.5px", outlineStyle: "dashed", outlineColor: "var(--color-primary, #333)", zIndex: 3, pointerEvents: "none" }}
         />
       </div>
       <figcaption style={{ fontSize: 12, color: "var(--color-text-muted, #555)" }}>
@@ -93,10 +93,18 @@ export interface PlacementArtEditorProps extends Omit<PlacementPreviewProps, "ar
   artUrl?: string;
   onSave: (url: string) => Promise<PlacementArtResult>;
   onRemove?: () => Promise<PlacementArtResult>;
+  /**
+   * Uploads an art file (sent as FormData with the file under "file") and
+   * returns the public URL it was saved at, which is then also set as the art.
+   * Without it, art can only be given as a URL.
+   */
+  onUpload?: (data: FormData) => Promise<{ ok: true; url: string; note?: string } | { ok: false; error: string }>;
+  /** Largest upload accepted, in bytes. Default 4 MB. */
+  maxUploadBytes?: number;
 }
 
 /** A placement's preview with a field to set or remove its print file URL. */
-export function PlacementArtEditor({ artUrl, onSave, onRemove, ...preview }: PlacementArtEditorProps) {
+export function PlacementArtEditor({ artUrl, onSave, onRemove, onUpload, maxUploadBytes = 4 * 1024 * 1024, ...preview }: PlacementArtEditorProps) {
   const id = useId();
   const [draft, setDraft] = useState(artUrl ?? "");
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
@@ -125,9 +133,38 @@ export function PlacementArtEditor({ artUrl, onSave, onRemove, ...preview }: Pla
             setDraft(e.target.value);
             setMessage(null);
           }}
-          style={{ font: "inherit", fontSize: 13, padding: "6px 8px", border: "1.5px solid var(--color-border, #ccc)", borderRadius: 6 }}
+          style={{ fontFamily: "inherit", fontSize: 13, padding: "6px 8px", borderWidth: "1.5px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", borderRadius: 6 }}
         />
       </label>
+      {onUpload && (
+        <label htmlFor={`${id}-file`} style={{ display: "grid", gap: 4, fontSize: 12 }}>
+          Or upload a PNG or JPEG
+          <input
+            id={`${id}-file`}
+            type="file"
+            accept="image/png,image/jpeg"
+            disabled={pending}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              if (file.size > maxUploadBytes) {
+                setMessage({ error: true, text: `That file is ${(file.size / 1048576).toFixed(1)} MB; the limit is ${(maxUploadBytes / 1048576).toFixed(0)} MB.` });
+                return;
+              }
+              const data = new FormData();
+              data.set("file", file);
+              run(async () => {
+                const result = await onUpload(data);
+                if (!result.ok) return result;
+                setDraft(result.url);
+                return { ok: true };
+              }, "Uploaded and saved. Every SKU of this product now uses this file here.");
+            }}
+            style={{ fontSize: 12 }}
+          />
+        </label>
+      )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="button" disabled={pending || !draft.trim() || draft.trim() === artUrl} onClick={() => run(() => onSave(draft.trim()), "Saved. Every SKU of this product now uses this file here.")}>
           Save art

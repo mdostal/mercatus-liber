@@ -37,7 +37,7 @@ export interface CatalogGridProps {
 }
 
 const mutedText = { fontSize: 12, color: "var(--color-text-muted, #555)" } as const;
-const control = { font: "inherit", fontSize: 13, padding: "6px 8px", border: "1.5px solid var(--color-border, #ccc)", borderRadius: 6, background: "var(--color-surface, #fff)", color: "var(--color-text, #111)" } as const;
+const control = { fontFamily: "inherit", fontSize: 13, padding: "6px 8px", borderWidth: "1.5px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", borderRadius: 6, background: "var(--color-surface, #fff)", color: "var(--color-text, #111)" } as const;
 
 /** Keeps items whose name or subtitle has every word of the search, and that match each chosen facet. */
 export function filterCatalogItems(items: CatalogGridItem[], search: string, facets: Record<string, string>, inStoreOnly = false): CatalogGridItem[] {
@@ -118,7 +118,7 @@ export function CatalogGrid({ items, facets = [], caption, pageSize = 60, initia
       </p>
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 180px), 1fr))" }}>
         {matches.slice(0, shown).map((item) => (
-          <li key={item.id} data-item={item.id} style={{ display: "grid", gap: 6, alignContent: "start", border: "1px solid var(--color-border, #ccc)", borderRadius: 8, padding: 10, background: "var(--color-surface, #fff)" }}>
+          <li key={item.id} data-item={item.id} style={{ display: "grid", gap: 6, alignContent: "start", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)", borderRadius: 8, padding: 10, background: "var(--color-surface, #fff)" }}>
             <a href={item.href} style={{ color: "inherit", textDecoration: "none", display: "grid", gap: 6 }}>
               {item.imageUrl ? (
                 <img src={item.imageUrl} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "1", objectFit: "contain", borderRadius: 6, background: "var(--color-background, #f6f6f6)" }} />
@@ -132,7 +132,7 @@ export function CatalogGrid({ items, facets = [], caption, pageSize = 60, initia
               <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                 {item.inStore?.length ? <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "var(--color-primary, #333)", color: "var(--color-on-primary, #fff)" }}>In store</span> : null}
                 {item.badges?.map((b) => (
-                  <span key={b} style={{ fontSize: 11, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--color-border, #ccc)" }}>
+                  <span key={b} style={{ fontSize: 11, padding: "2px 6px", borderRadius: 4, borderWidth: "1px", borderStyle: "solid", borderColor: "var(--color-border, #ccc)" }}>
                     {b}
                   </span>
                 ))}
