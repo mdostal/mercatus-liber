@@ -19,3 +19,10 @@ New promotions created through the API start inactive unless the caller sets `st
 
 **One gap to know about:** checkout applies only the single best automatic promotion to a cart, while `salePrice` shows the best one for each variant. With two automatic product promotions on different products, a cart holding both gets only one, so one of the shown sale prices won't apply at checkout. Run one automatic sale at a time until checkout stacks them.
 
+## Lines and sale windows
+
+Every product has `saleWindow: { activeFrom, activeTo, state, nextChangeAt }` (`state`:
+`upcoming`, `active`, `ended` or `inactive`). With `deps.lines`, `GET /lines` lists the store's lines
+(sales catalogs) soonest first, drafts hidden, optionally `?state=upcoming|active|ended`; `GET
+/lines/:slugOrId` returns one with its hero, sections and its active products (with prices and
+sale windows), so one request builds a line page. Both need `products:read`.

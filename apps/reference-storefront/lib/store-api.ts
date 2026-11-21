@@ -122,6 +122,18 @@ export function buildStoreApi(input: {
           hostOf(url) === hostOf(storeUrl) ? url : canonicalUrl(`/api/store/v1/${demoSlug}/images/${productId}/${skuId ?? PRODUCT_IMAGES}/${index}`),
       },
       catalog,
+      // This store's lines (sales catalogs), whose landing pages are at /lines/<slug>.
+      lines: {
+        async listLines() {
+          const master = await input.catalog.getCatalogBySlug(input.catalogSlug);
+          return master ? input.catalog.listCatalogs({ kind: "sales", masterCatalogId: master.id }) : [];
+        },
+        async getLine(idOrSlug) {
+          const master = await input.catalog.getCatalogBySlug(input.catalogSlug);
+          const line = (await input.catalog.getCatalog(idOrSlug)) ?? (await input.catalog.getCatalogBySlug(idOrSlug));
+          return master && line && line.kind === "sales" && line.masterCatalogId === master.id ? line : null;
+        },
+      },
       categories: {
         listCategories: () => marketingCatalog.listCategories({ demoSlug }),
         listCategoriesForProduct: (productId) => marketingCatalog.listCategoriesForProduct(productId),
