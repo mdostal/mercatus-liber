@@ -61,3 +61,18 @@ describe("createInMemoryIndex", () => {
     expect((await index.query({})).map((d) => d.id)).toEqual(["p1"]);
   });
 });
+
+describe("search scoped to a set of ids", () => {
+  it("returns only documents in the set, and nothing for an empty set", async () => {
+    const { createInMemoryIndex } = await import("../src/index.js");
+    const index = createInMemoryIndex();
+    await index.reindexAll([
+      { id: "mug", title: "Holiday mug", description: "", facets: {} },
+      { id: "tee", title: "Holiday tee", description: "", facets: {} },
+      { id: "cap", title: "Cap", description: "", facets: {} },
+    ]);
+    expect((await index.query({ text: "holiday", ids: ["mug", "cap"] })).map((d) => d.id)).toEqual(["mug"]);
+    expect(await index.query({ ids: [] })).toEqual([]);
+    expect((await index.query({ text: "holiday" })).map((d) => d.id)).toEqual(["mug", "tee"]);
+  });
+});

@@ -11,6 +11,13 @@ export interface SearchQueryParams {
   text?: string;
   /** Every specified facet key must match (array-valued facets match if the array includes the queried value). */
   facets?: Record<string, AttributeValue>;
+  /**
+   * Only documents with these ids (product ids), e.g. the products of one
+   * line, catalog or category, so a line's page searches just its own items.
+   * An empty array matches nothing. Resolve the set at query time from the
+   * catalog, so membership changes need no reindex.
+   */
+  ids?: readonly string[];
 }
 
 /**

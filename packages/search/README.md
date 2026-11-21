@@ -18,6 +18,14 @@ registerCatalogSearchSync({ events, index, products });
 
 `products` is a `ProductDataLookup` that loads the data to index when a catalog event fires.
 
+## Scoped search
+
+`query({ text, facets, ids })`: `ids` limits results to those documents (product ids), such as the
+products of one line, catalog or category, so a line's page searches only its own items. Resolve
+the ids from the catalog at query time (`listProductIdsInCatalog`, `listProductIdsInCategory`), so
+membership changes need no reindex. An empty array matches nothing. The reference storefront takes
+`/search?line=<slug>` or `/search?category=<slug>`.
+
 ## Key exports
 
 - `SearchIndexAdapter`: `index`, `remove`, `query`, `reindexAll`. `reindexAll` replaces the entire index contents.

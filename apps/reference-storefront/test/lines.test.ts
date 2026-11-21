@@ -32,3 +32,21 @@ describe("lines in the demo", { timeout: 60_000 }, () => {
     expect(await getLineForDemo(s.catalog, "print-shop", "the-print-shop")).toBeNull();
   });
 });
+
+describe("search scoped to a line or category", { timeout: 60_000 }, () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("limits search to a line's products, to a category's, and ignores another demo's line", async () => {
+    const { searchScope } = await import("../lib/search-scope");
+    const s = await servicesFor("print-shop");
+    const line = (await searchScope(s, "print-shop", { line: "holiday-week-one" }))!;
+    expect(line).toMatchObject({ kind: "line", slug: "holiday-week-one", title: "Holiday Week One" });
+    expect(line.ids).toHaveLength(6);
+    const all = await s.search.query({ text: "embroidered" });
+    const inLine = await s.search.query({ text: "embroidered", ids: line.ids });
+    expect(all.length).toBeGreaterThan(inLine.length);
+    expect(inLine.map((d) => d.title).sort()).toEqual(["Embroidered Luggage Tag", "Embroidered Zip Pouch"].sort());
+    expect(await searchScope(s, "northline", { line: "holiday-week-one" })).toBeNull();
+    expect(await searchScope(s, "print-shop", {})).toBeNull();
+  });
+});

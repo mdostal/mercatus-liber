@@ -21,8 +21,10 @@ export function createInMemoryIndex(): SearchIndexAdapter {
     async query(params: SearchQueryParams) {
       const text = params.text?.toLowerCase().trim();
       const facetEntries = Object.entries(params.facets ?? {});
+      const only = params.ids ? new Set(params.ids) : null;
 
       return [...documents.values()].filter((doc) => {
+        if (only && !only.has(doc.id)) return false;
         if (text) {
           const haystack = `${doc.title} ${doc.description}`.toLowerCase();
           if (!haystack.includes(text)) return false;

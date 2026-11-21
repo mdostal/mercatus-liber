@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { InteractionTracker } from "../../../../components/interaction-tracker";
 import { isDemoSlug } from "../../../../lib/demos";
 import { resolveProductImageAlt, resolveProductImageUrl } from "../../../../lib/product-image";
+import { searchScope } from "../../../../lib/search-scope";
 import { getServicesForDemo } from "../../../../lib/services";
 import { canonicalUrl } from "../../../../lib/site-url";
 
@@ -48,13 +49,15 @@ export default async function SearchPage({
   searchParams,
 }: {
   params: Promise<{ demoSlug: string }>;
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; line?: string; category?: string }>;
 }) {
   const { demoSlug } = await params;
   if (!isDemoSlug(demoSlug)) notFound();
-  const { q } = await searchParams;
-  const { search, catalog, media } = await getServicesForDemo(demoSlug);
-  const results = q ? await search.query({ text: q }) : [];
+  const { q, line: lineSlug, category: categorySlug } = await searchParams;
+  const { search, catalog, marketingCatalog, media } = await getServicesForDemo(demoSlug);
+  // Search within one line or category: its product ids, read now, limit the results.
+  const scope = await searchScope({ catalog, marketingCatalog }, demoSlug, { ...(lineSlug ? { line: lineSlug } : {}), ...(categorySlug ? { category: categorySlug } : {}) });
+  const results = q ? await search.query({ text: q, ...(scope ? { ids: scope.ids } : {}) }) : [];
   // image-cdn epic: SearchDocument (@mercatus-liber/search) carries only
   // id/title/description/facets -- no images -- and its `id` is always the
   // matched product's own id (registerCatalogSearchSync indexes documents
@@ -74,10 +77,11 @@ export default async function SearchPage({
 
   return (
     <main style={{ padding: "var(--space-sm, 16px)" }}>
-      {q && <InteractionTracker eventName="search_performed" properties={{ query: q, resultCount: results.length }} />}
-      <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>Search</h1>
+      {q && <InteractionTracker eventName="search_performed" properties={{ query: q, resultCount: results.length, ...(scope ? { scope: scope.kind, scopeSlug: scope.slug } : {}) }} />}
+      <h1 style={{ fontSize: "var(--font-size-heading-lg, 2.5rem)" }}>{scope ? `Search ${scope.title}` : "Search"}</h1>
       <form method="get" action={`/demo/${demoSlug}/search`} style={{ marginBottom: "var(--space-md, 32px)" }}>
-        <input type="text" name="q" defaultValue={q ?? ""} placeholder="Search products..." />
+        {scope ? <input type="hidden" name={scope.kind} value={scope.slug} /> : null}
+        <input type="text" name="q" defaultValue={q ?? ""} placeholder={scope ? `Search ${scope.title}...` : "Search products..."} />
         <button type="submit">Search</button>
       </form>
       {q && (
