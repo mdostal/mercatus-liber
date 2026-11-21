@@ -123,3 +123,35 @@ describe("lines in the demo's Store API", { timeout: 60_000 }, () => {
     expect(line.body.data.url).toMatch(/\/demo\/print-shop\/lines\/holiday-week-one$/);
   });
 });
+
+describe("editing lines in the admin", () => {
+  it("reads and writes sections as text", async () => {
+    const { formatSectionsText, parseSectionsText } = await import("../lib/lines");
+    const text = "desk | Desk | frost-mat\nshirts | Shirts | frost-tee, frost-tee-long\n\nhats | Hats |";
+    const parsed = parseSectionsText(text);
+    expect(parsed).toEqual([
+      { slug: "desk", title: "Desk", productSlugs: ["frost-mat"] },
+      { slug: "shirts", title: "Shirts", productSlugs: ["frost-tee", "frost-tee-long"] },
+      { slug: "hats", title: "Hats", productSlugs: [] },
+    ]);
+    expect(parseSectionsText(formatSectionsText(parsed))).toEqual(parsed);
+    expect(() => parseSectionsText("desk")).toThrow(/line 1/);
+  });
+});
+
+describe("line tools for agents", { timeout: 60_000 }, () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("lists, reads, creates and updates print-shop lines, refusing a slug owned by another catalog", async () => {
+    const { lineOps } = await import("../lib/lines");
+    const s = await servicesFor("print-shop");
+    const ops = lineOps(s.catalog, "print-shop");
+    expect(((await ops.listLines({})) as { slug: string }[]).map((l) => l.slug).sort()).toEqual(["fleece-favorites", "holiday-week-one"]);
+    const created = await ops.saveLine({ slug: "agent-line", name: "Agent Line", activeFrom: "2026-12-14T18:00:00Z", activeTo: "2026-12-21T18:00:00Z", sections: [{ slug: "mugs", title: "Mugs", productSlugs: ["custom-printed-ceramic-mug"] }], applyWindowToProducts: true });
+    expect(created).toMatchObject({ slug: "agent-line", created: true, productsGivenWindow: 1 });
+    expect(await ops.getLine("agent-line")).toMatchObject({ state: "upcoming", sections: [{ slug: "mugs", products: [{ slug: "custom-printed-ceramic-mug" }] }] });
+    expect(await ops.saveLine({ slug: "agent-line", name: "Agent Line 2" })).toMatchObject({ created: false });
+    await expect(ops.saveLine({ slug: "the-print-shop", name: "x" })).rejects.toThrow(/another catalog/);
+    await expect(ops.saveLine({ slug: "bad", name: "x", sections: [{ slug: "a", title: "A", productSlugs: ["nope"] }] })).rejects.toThrow(/No product/);
+  });
+});

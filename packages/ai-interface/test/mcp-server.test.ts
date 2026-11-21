@@ -106,3 +106,21 @@ describe("provider catalog tools", () => {
     expect(((await callHandler!({ params: { name: "provider_catalog_search", arguments: {} } })) as { isError?: boolean }).isError).toBe(true);
   });
 });
+
+describe("line tools", () => {
+  it("are offered only with LineOps; managing a line needs confirm:true", async () => {
+    registeredHandlersInOrder.length = 0;
+    const saveLine = vi.fn(async () => ({ id: "l1" }));
+    createCommerceMcpServer({ ...buildFakeDeps(), lines: { listLines: vi.fn(async (input) => [{ slug: "frost", state: input.state ?? "any" }]), getLine: vi.fn(async () => null), saveLine } });
+    const [listHandler, callHandler] = registeredHandlersInOrder;
+    const names = ((await listHandler!({})) as { tools: { name: string }[] }).tools.map((t) => t.name);
+    expect(names).toEqual(expect.arrayContaining(["list_lines", "get_line", "manage_line"]));
+    const listed = (await callHandler!({ params: { name: "list_lines", arguments: { state: "active" } } })) as { content: { text: string }[] };
+    expect(JSON.parse(listed.content[0]!.text)).toEqual([{ slug: "frost", state: "active" }]);
+    const args = { slug: "frost", name: "Frost", activeFrom: "2026-11-30T18:00:00Z" };
+    await callHandler!({ params: { name: "manage_line", arguments: args } });
+    expect(saveLine).not.toHaveBeenCalled();
+    await callHandler!({ params: { name: "manage_line", arguments: { ...args, confirm: true } } });
+    expect(saveLine).toHaveBeenCalledWith(args);
+  });
+});

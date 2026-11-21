@@ -1,7 +1,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { createCommerceToolHandlers } from "./handlers.js";
-import { PROVIDER_CATALOG_TOOL_DEFINITIONS, TOOL_DEFINITIONS } from "./tool-definitions.js";
+import { LINE_TOOL_DEFINITIONS, PROVIDER_CATALOG_TOOL_DEFINITIONS, TOOL_DEFINITIONS } from "./tool-definitions.js";
 import type { CommerceToolDeps } from "./types.js";
 
 /**
@@ -22,7 +22,7 @@ export function createCommerceMcpServer(deps: CommerceToolDeps): Server {
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: [...TOOL_DEFINITIONS, ...(deps.providerCatalog ? PROVIDER_CATALOG_TOOL_DEFINITIONS : [])].map((tool) => ({
+    tools: [...TOOL_DEFINITIONS, ...(deps.providerCatalog ? PROVIDER_CATALOG_TOOL_DEFINITIONS : []), ...(deps.lines ? LINE_TOOL_DEFINITIONS : [])].map((tool) => ({
       name: tool.name,
       description: tool.description,
       inputSchema: tool.inputSchema,

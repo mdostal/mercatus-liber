@@ -26,6 +26,7 @@ const server = createCommerceMcpServer({
 
 - **Shopper:** `search_products`, `get_product`, `add_to_cart`, `get_cart`, `start_checkout`, `get_order_status`.
 - **Admin:** `create_product`, `update_product`, `manage_cms_page`, `adjust_inventory`.
+- **Lines (optional):** `list_lines`, `get_line` (read-only) and `manage_line` (create or update a line by slug: schedule, hero, sections of product slugs, optionally giving its products the line's window; needs `confirm: true`). Offered only when `lines` (a `LineOps`) is passed.
 - **Provider catalog (optional):** `provider_catalog_search`, `provider_catalog_get_product`, `provider_catalog_bring_over`. Offered only when `providerCatalog` (a `ProviderCatalogOps`) is passed; the reference storefront wires Printful's. Bring-over needs `confirm: true` and only ever creates an unpublished product with draft SKUs.
 
 Each entry in `TOOL_DEFINITIONS` has a `category` and a `requiresConfirmation` flag. `needsConfirmation` checks the flag and `pendingConfirmation` builds the response for a call that has not been confirmed yet.

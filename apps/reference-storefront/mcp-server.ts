@@ -11,6 +11,7 @@
  */
 import { createCommerceMcpServer } from "@mercatus-liber/ai-interface";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { lineOps } from "./lib/lines";
 import { printfulProviderCatalogOps } from "./lib/printful-admin";
 import { getServicesForDemo } from "./lib/services";
 
@@ -43,6 +44,8 @@ async function main(): Promise<void> {
     inventory: services.inventory,
     // Printful's catalog: search and look up products, and bring one over as an unpublished draft.
     providerCatalog: printfulProviderCatalogOps(services, "print-shop"),
+    // Lines: list and read them, and create or edit one (with confirm:true).
+    lines: lineOps(services.catalog, "print-shop"),
   });
 
   const transport = new StdioServerTransport();
