@@ -54,6 +54,22 @@ Add `checkout.session.expired` to the Stripe webhook endpoint's events. The adap
 `recoveredFromSessionId`. The sandbox adapter's `expireSandboxSession` publishes the same event
 for demos and tests.
 
+## Card statement descriptor
+
+When one Stripe account takes payments for several stores, set what follows the account's prefix
+on the shopper's card statement:
+
+```ts
+createStripeAdapter({ ..., statementDescriptorSuffix: "DRAGON SHOP", statementDescriptorPrefix: "DOSTAL" });
+```
+
+It's sent as `payment_intent_data.statement_descriptor_suffix`; a `createPaymentSession` call can
+override it with its own `statementDescriptorSuffix`. Off by default. Stripe's rules are checked
+up front (a `RangeError` otherwise): at least one letter, none of `< > \ ' " *`, and at most 22
+characters for prefix + `"* "` + suffix. Pass `statementDescriptorPrefix` (the account's
+*shortened* descriptor, under Settings → Public details) to have the combined length checked;
+without it only the suffix is.
+
 ## Key exports
 
 - `PaymentAdapter`: `createPaymentSession`, `confirmPayment`, `handleWebhookEvent`.

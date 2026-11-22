@@ -74,6 +74,7 @@ function createFakeOrdersPool(): FakePool {
           createdAt,
           shippingTotal,
           abandonment,
+          marketingConsent,
         ] = values as [
           string,
           string,
@@ -87,6 +88,7 @@ function createFakeOrdersPool(): FakePool {
           string,
           string | null,
           string,
+          string | null,
           string | null,
           string | null,
         ];
@@ -115,6 +117,7 @@ function createFakeOrdersPool(): FakePool {
           created_at: createdAt,
           shipping_total: shippingTotal ? JSON.parse(shippingTotal) : null,
           abandonment: abandonment ? JSON.parse(abandonment) : null,
+          marketing_consent: marketingConsent ? JSON.parse(marketingConsent) : null,
         });
         return { rows: [] };
       }
@@ -177,6 +180,11 @@ describe("createPostgresOrderRepository", () => {
     expect((await orders.listAll({ status: "abandoned" })).map((o) => o.id)).toEqual(["order-gone"]);
     await orders.save(baseOrder);
     expect(await orders.get("order-1")).not.toHaveProperty("abandonment");
+  });
+
+  it("round-trips marketingConsent", async () => {
+    await orders.save({ ...baseOrder, id: "order-mc", idempotencyKey: "idem-mc", status: "paid", marketingConsent: { promotional: true, email: "a@example.com" } });
+    expect((await orders.get("order-mc"))?.marketingConsent).toEqual({ promotional: true, email: "a@example.com" });
   });
 
   it("returns null for a missing order", async () => {

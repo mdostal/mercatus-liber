@@ -26,6 +26,11 @@ export interface CreatePaymentSessionInput {
   };
   /** Prefill the shopper's email on the checkout page. */
   customerEmail?: string;
+  /**
+   * Overrides the adapter's statement descriptor suffix for this payment:
+   * what follows the account's prefix on the shopper's card statement.
+   */
+  statementDescriptorSuffix?: string;
 }
 
 /** An address the payment provider collected on its checkout page. */
@@ -51,6 +56,12 @@ export interface PaymentEvent {
   shippingAddress?: CollectedShippingAddress;
   /** Set when this session was opened from an expired session's recovery link: the expired session's id. */
   recoveredFromSessionId?: string;
+  /**
+   * Whether the shopper ticked the checkout page's "email me offers" box.
+   * Present only when the page asked (see the Stripe adapter's
+   * checkoutRecovery.askPromotionalConsent).
+   */
+  promotionalConsent?: boolean;
 }
 
 /**

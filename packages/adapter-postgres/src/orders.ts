@@ -45,6 +45,7 @@ const ORDERS_DDL = `
   );
   ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_total JSONB;
   ALTER TABLE orders ADD COLUMN IF NOT EXISTS abandonment JSONB;
+  ALTER TABLE orders ADD COLUMN IF NOT EXISTS marketing_consent JSONB;
   CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);
   CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 `;
@@ -62,6 +63,7 @@ interface OrderRow {
   discount_total: Money; // JSONB
   shipping_total: Money | null; // JSONB, added later so nullable
   abandonment?: OrderAbandonment | null; // JSONB, added later so nullable
+  marketing_consent?: { promotional: boolean; email: string | null } | null; // JSONB, added later
   applied_promotion_code: string | null;
   created_at: string;
 }
@@ -81,6 +83,7 @@ function rowToOrder(row: OrderRow): Order {
     appliedPromotionCode: row.applied_promotion_code,
     ...(row.shipping_total ? { shippingTotal: row.shipping_total } : {}),
     ...(row.abandonment ? { abandonment: row.abandonment } : {}),
+    ...(row.marketing_consent ? { marketingConsent: row.marketing_consent } : {}),
     createdAt: row.created_at,
   };
 }
@@ -136,9 +139,9 @@ export function createPostgresOrderRepository(pool: Pool): OrderRepository {
         `INSERT INTO orders (
            id, cart_id, idempotency_key, items, status, shipping_info,
            payment_session_id, payment_redirect_url, customer_id,
-           discount_total, applied_promotion_code, created_at, shipping_total, abandonment
+           discount_total, applied_promotion_code, created_at, shipping_total, abandonment, marketing_consent
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          ON CONFLICT (id) DO UPDATE SET
            cart_id = EXCLUDED.cart_id,
            idempotency_key = EXCLUDED.idempotency_key,
@@ -152,7 +155,8 @@ export function createPostgresOrderRepository(pool: Pool): OrderRepository {
            applied_promotion_code = EXCLUDED.applied_promotion_code,
            created_at = EXCLUDED.created_at,
            shipping_total = EXCLUDED.shipping_total,
-           abandonment = EXCLUDED.abandonment`,
+           abandonment = EXCLUDED.abandonment,
+           marketing_consent = EXCLUDED.marketing_consent`,
         [
           order.id,
           order.cartId,
@@ -168,6 +172,7 @@ export function createPostgresOrderRepository(pool: Pool): OrderRepository {
           order.createdAt,
           order.shippingTotal ? JSON.stringify(order.shippingTotal) : null,
           order.abandonment ? JSON.stringify(order.abandonment) : null,
+          order.marketingConsent ? JSON.stringify(order.marketingConsent) : null,
         ],
       );
     },

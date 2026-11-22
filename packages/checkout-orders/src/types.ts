@@ -103,6 +103,11 @@ export interface Order {
    */
   abandonment?: OrderAbandonment;
   /**
+   * Whether the buyer agreed to marketing email on the payment page, and the
+   * address they gave. Set when the order is paid, only if the page asked.
+   */
+  marketingConsent?: { promotional: boolean; email: string | null };
+  /**
    * ISO 8601 timestamp of when this order was created. Added for the internal-bi
    * subsystem (20) -- see bi-01. Unlike discountTotal/appliedPromotionCode above,
    * this is a REQUIRED field, not nullable/optional with a default: a timestamp has
@@ -170,6 +175,18 @@ export interface PaymentSucceededPayload {
   shippingAddress?: { name: string | null; line1: string; line2: string | null; city: string; state: string | null; postalCode: string; countryCode: string };
   /** The expired session this one was recovered from, when paid through a recovery link. */
   recoveredFromSessionId?: string;
+  /** Whether the shopper ticked "email me offers", when the payment page asked. */
+  promotionalConsent?: boolean;
+}
+
+/**
+ * The payload of checkout.order.paid. Carries no email (it's forwarded to
+ * analytics as is): read order.marketingConsent for the address.
+ */
+export interface OrderPaidEvent {
+  orderId: string;
+  /** Present when the payment page asked for marketing consent. */
+  promotionalConsent?: boolean;
 }
 
 /**

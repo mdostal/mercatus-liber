@@ -44,6 +44,13 @@ An abandoned order can still be paid through its recovery link. Checking out the
 (same idempotency key) restarts it with a new payment session. With `@mercatus-liber/inventory`
 wired, abandonment releases the order's reserved stock.
 
+## Marketing consent
+
+When the payment page asked for marketing consent (`payments.payment.succeeded` carries
+`promotionalConsent`), the paid order records `order.marketingConsent: { promotional, email }`
+and `checkout.order.paid` carries `promotionalConsent`. The event leaves the email out, because
+analytics forwards it as is; read it from the order.
+
 ## Key exports
 
 - `createCheckoutOrdersService(deps)`: `startCheckout`, `previewCheckout`, `getOrder`, `listOrders`, `listOrdersByCustomer`. `pricing` is an optional dep for discounts. `shipping` (a `ShippingQuoter`) charges shipping: the quote is recorded as `order.shippingTotal` and passed to the payment session. `nameLineItem` names lines on the payment page instead of "SKU <id>".
