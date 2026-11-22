@@ -49,6 +49,30 @@ export interface PaymentEvent {
   customer?: { name: string | null; email: string | null; phone: string | null };
   /** Present when the checkout page collected a shipping address. */
   shippingAddress?: CollectedShippingAddress;
+  /** Set when this session was opened from an expired session's recovery link: the expired session's id. */
+  recoveredFromSessionId?: string;
+}
+
+/**
+ * The payload of payments.payment.expired: the shopper left the checkout page
+ * without paying and the session timed out.
+ */
+export interface PaymentExpiredEvent {
+  sessionId: string;
+  orderRef: string | null;
+  /** The email the checkout page collected or was prefilled with, if any. */
+  email: string | null;
+  /**
+   * True only when the shopper ticked the checkout page's "email me offers"
+   * box. Send a reminder only when this is true (and you have an email).
+   */
+  promotionalConsent: boolean;
+  /** A link that reopens this checkout as a fresh session, when recovery was turned on. */
+  recoveryUrl: string | null;
+  /** When recoveryUrl stops working (ISO 8601), if the provider says. */
+  recoveryExpiresAt: string | null;
+  /** When the session expired (ISO 8601). */
+  expiredAt: string;
 }
 
 export interface PaymentSession {
@@ -76,7 +100,7 @@ export interface PaymentAdapter {
    * Verifies and processes a provider webhook payload. Implementations MUST
    * verify the signature before trusting the payload (never trust an
    * unverified webhook body). Publishes payments.payment.succeeded /
-   * payments.payment.failed on the injected EventBus -- callers don't need to
+   * payments.payment.failed / payments.payment.expired on the injected EventBus -- callers don't need to
    * inspect the raw provider event shape.
    */
   handleWebhookEvent(rawBody: string | Buffer, signature: string): Promise<void>;

@@ -38,6 +38,7 @@ export const KNOWN_EVENT_TYPES = [
   "cart.cleared",
   "checkout.order.paid",
   "checkout.order.placed",
+  "checkout.order.abandoned",
   "reviews.review.submitted",
   "reviews.review.published",
   "fulfillment.order.status_changed",

@@ -15,4 +15,20 @@ describe("sandbox payment adapter", () => {
     expect(shipped.get("total")).toBe("6399");
     expect(shipped.get("shipping")).toBe("799");
   });
+
+  it("expires an unpaid session as payments.payment.expired, and not a paid one", async () => {
+    const events = createInMemoryEventBus();
+    const expired: unknown[] = [];
+    events.subscribe("payments.payment.expired", async (p) => void expired.push(p));
+    const adapter = createSandboxPaymentAdapter({ events, checkoutPagePath: "/checkout/sandbox" });
+    const input = { orderRef: "o1", lineItems: [], successUrl: "https://s", cancelUrl: "https://c" };
+    const unpaid = await adapter.createPaymentSession(input);
+    await adapter.expireSandboxSession(unpaid.sessionId, { email: "ada@example.com", promotionalConsent: true });
+    expect(expired).toEqual([expect.objectContaining({ sessionId: unpaid.sessionId, orderRef: "o1", email: "ada@example.com", promotionalConsent: true, recoveryUrl: null })]);
+
+    const paid = await adapter.createPaymentSession({ ...input, orderRef: "o2" });
+    await adapter.confirmSandboxPayment(paid.sessionId);
+    await adapter.expireSandboxSession(paid.sessionId);
+    expect(expired).toHaveLength(1);
+  });
 });

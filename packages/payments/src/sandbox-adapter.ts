@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { EventBus } from "@mercatus-liber/core";
-import type { CreatePaymentSessionInput, PaymentAdapter, PaymentConfirmation, PaymentSession } from "./types.js";
+import type { CreatePaymentSessionInput, PaymentAdapter, PaymentConfirmation, PaymentExpiredEvent, PaymentSession } from "./types.js";
 
 /**
  * A real, fully-working PaymentAdapter that completes checkout with no
@@ -31,6 +31,8 @@ import type { CreatePaymentSessionInput, PaymentAdapter, PaymentConfirmation, Pa
  */
 export interface SandboxPaymentAdapter extends PaymentAdapter {
   confirmSandboxPayment(sessionId: string): Promise<void>;
+  /** Publishes payments.payment.expired for an unpaid session, as Stripe does when a checkout times out. For demos and tests. */
+  expireSandboxSession(sessionId: string, options?: { email?: string | null; promotionalConsent?: boolean; recoveryUrl?: string | null }): Promise<void>;
 }
 
 interface SandboxSession {
@@ -88,6 +90,22 @@ export function createSandboxPaymentAdapter(config: { events: EventBus; checkout
       // comment) -- so this never double-transitions or double-counts.
       record.status = "paid";
       await events.publish("payments.payment.succeeded", { sessionId, orderRef: record.orderRef });
+    },
+
+    async expireSandboxSession(sessionId: string, options: { email?: string | null; promotionalConsent?: boolean; recoveryUrl?: string | null } = {}): Promise<void> {
+      const record = sessions.get(sessionId);
+      if (!record) throw new Error(`Unknown sandbox payment session: ${sessionId}`);
+      if (record.status === "paid") return;
+      const payload: PaymentExpiredEvent = {
+        sessionId,
+        orderRef: record.orderRef,
+        email: options.email ?? null,
+        promotionalConsent: options.promotionalConsent ?? false,
+        recoveryUrl: options.recoveryUrl ?? null,
+        recoveryExpiresAt: null,
+        expiredAt: new Date().toISOString(),
+      };
+      await events.publish("payments.payment.expired", payload);
     },
   };
 }
