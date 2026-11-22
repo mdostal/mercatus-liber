@@ -261,7 +261,7 @@ describe("createStripeAdapter", () => {
 
     it("asks for consent, turns on the recovery link and sets the expiry", async () => {
       mockCreate.mockResolvedValue({ id: "cs_1", url: "https://checkout.stripe.com/c/cs_1" });
-      const withRecovery = createStripeAdapter({ secretKey: "sk_test_fake", webhookSecret: "whsec_fake", events, checkoutRecovery: { expiresAfterMinutes: 60 } });
+      const withRecovery = createStripeAdapter({ secretKey: "sk_test_fake", webhookSecret: "whsec_fake", events, checkoutRecovery: { expiresAfterMinutes: 60, askPromotionalConsent: true } });
       const before = Math.floor(Date.now() / 1000);
       await withRecovery.createPaymentSession({ orderRef: "o", lineItems: [], successUrl: "s", cancelUrl: "c" });
       const params = mockCreate.mock.calls[0]![0];
@@ -271,9 +271,33 @@ describe("createStripeAdapter", () => {
       expect(params.expires_at).toBeLessThanOrEqual(before + 3601);
     });
 
+    it("doesn't ask for consent unless told to", () => {
+      expect(recoverySessionParams({})).toEqual({ after_expiration: { recovery: { enabled: true, allow_promotion_codes: false } } });
+    });
+
+    it("creates the session again without consent when Stripe refuses it", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      mockCreate
+        .mockRejectedValueOnce(Object.assign(new Error("To set `consent_collection.promotions`, please visit https://dashboard.stripe.com/settings/checkout to agree to the Terms of Service"), { param: "consent_collection[promotions]" }))
+        .mockResolvedValueOnce({ id: "cs_2", url: "https://checkout.stripe.com/c/cs_2" });
+      const withConsent = createStripeAdapter({ secretKey: "sk_test_fake", webhookSecret: "whsec_fake", events, checkoutRecovery: { askPromotionalConsent: true } });
+      const result = await withConsent.createPaymentSession({ orderRef: "o", lineItems: [], successUrl: "s", cancelUrl: "c" });
+      expect(result.sessionId).toBe("cs_2");
+      expect(mockCreate.mock.calls[1]![0]).not.toHaveProperty("consent_collection");
+      expect(mockCreate.mock.calls[1]![0].after_expiration).toEqual({ recovery: { enabled: true, allow_promotion_codes: false } });
+      warn.mockRestore();
+    });
+
+    it("doesn't retry other Stripe errors", async () => {
+      mockCreate.mockRejectedValueOnce(Object.assign(new Error("Invalid currency"), { param: "line_items[0][price_data][currency]" }));
+      const withConsent = createStripeAdapter({ secretKey: "sk_test_fake", webhookSecret: "whsec_fake", events, checkoutRecovery: { askPromotionalConsent: true } });
+      await expect(withConsent.createPaymentSession({ orderRef: "o", lineItems: [], successUrl: "s", cancelUrl: "c" })).rejects.toThrow("Invalid currency");
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+    });
+
     it("lets each part be turned off, and refuses an expiry Stripe won't take", () => {
-      expect(recoverySessionParams({ askPromotionalConsent: false, recoveryLink: false })).toEqual({});
-      expect(recoverySessionParams({ allowPromotionCodesOnRecovery: true, askPromotionalConsent: false })).toEqual({ after_expiration: { recovery: { enabled: true, allow_promotion_codes: true } } });
+      expect(recoverySessionParams({ recoveryLink: false })).toEqual({});
+      expect(recoverySessionParams({ allowPromotionCodesOnRecovery: true })).toEqual({ after_expiration: { recovery: { enabled: true, allow_promotion_codes: true } } });
       expect(() => recoverySessionParams({ expiresAfterMinutes: 10 })).toThrow(RangeError);
       expect(() => recoverySessionParams({ expiresAfterMinutes: 2000 })).toThrow(RangeError);
     });

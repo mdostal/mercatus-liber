@@ -20,7 +20,12 @@ export interface StripeCheckoutRecoveryOptions {
   /**
    * Show Stripe's "email me offers" checkbox where the law allows asking
    * (consent_collection.promotions = "auto"). Without consent, a store
-   * shouldn't send a reminder. Default true.
+   * shouldn't send a reminder. Default false.
+   *
+   * Stripe refuses this until the account owner accepts the Checkout terms
+   * at https://dashboard.stripe.com/settings/checkout. If Stripe refuses it,
+   * the session is created again without it (the checkbox just doesn't
+   * show), so a missing acceptance can't take checkout down.
    */
   askPromotionalConsent?: boolean;
   /** Give an expired session a recovery link (after_expiration.recovery). Default true. */
@@ -50,12 +55,19 @@ export function recoverySessionParams(options: StripeCheckoutRecoveryOptions | u
     throw new RangeError(`checkoutRecovery.expiresAfterMinutes must be between 30 and 1440 (Stripe's limits); got ${minutes}`);
   }
   return {
-    ...(options.askPromotionalConsent !== false ? { consent_collection: { promotions: "auto" as const } } : {}),
+    ...(options.askPromotionalConsent === true ? { consent_collection: { promotions: "auto" as const } } : {}),
     ...(options.recoveryLink !== false
       ? { after_expiration: { recovery: { enabled: true, allow_promotion_codes: options.allowPromotionCodesOnRecovery ?? false } } }
       : {}),
     ...(minutes !== undefined ? { expires_at: Math.floor(now / 1000) + Math.round(minutes * 60) } : {}),
   };
+}
+
+/** Stripe's refusal of consent_collection on an account that hasn't accepted the Checkout terms. */
+export function isConsentNotAllowedError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const { param, message } = err as { param?: unknown; message?: unknown };
+  return (typeof param === "string" && param.startsWith("consent_collection")) || (typeof message === "string" && message.includes("consent_collection"));
 }
 
 const isoFromUnix = (seconds: number | null | undefined) => (typeof seconds === "number" ? new Date(seconds * 1000).toISOString() : null);
@@ -138,7 +150,7 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter
 
   return {
     async createPaymentSession(input: CreatePaymentSessionInput): Promise<PaymentSession> {
-      const session = await stripe.checkout.sessions.create({
+      const params: Stripe.Checkout.SessionCreateParams = {
         mode: "payment",
         line_items: input.lineItems.map((item) => ({
           price_data: {
@@ -178,7 +190,17 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter
         automatic_tax: { enabled: true },
         metadata: { orderRef: input.orderRef },
         ...recoverySessionParams(config.checkoutRecovery),
-      });
+      };
+      let session: Stripe.Checkout.Session;
+      try {
+        session = await stripe.checkout.sessions.create(params);
+      } catch (err) {
+        if (!params.consent_collection || !isConsentNotAllowedError(err)) throw err;
+        // The account hasn't accepted Stripe's Checkout terms: take the payment without asking for consent.
+        console.warn("[payments] Stripe refused consent_collection (accept the terms at https://dashboard.stripe.com/settings/checkout); creating the session without it.");
+        const { consent_collection: _dropped, ...withoutConsent } = params;
+        session = await stripe.checkout.sessions.create(withoutConsent);
+      }
 
       if (!session.url) {
         throw new Error(`Stripe did not return a redirect URL for session ${session.id}`);
