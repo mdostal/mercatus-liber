@@ -38,10 +38,15 @@ createStripeAdapter({
 });
 ```
 
-Each session then shows Stripe's "email me offers" checkbox where it's allowed to ask
-(`consent_collection.promotions: "auto"`) and gets a recovery link when it expires
-(`after_expiration.recovery`, promotion codes off unless `allowPromotionCodesOnRecovery`).
-`askPromotionalConsent: false` or `recoveryLink: false` turns either part off.
+Each session then gets a recovery link when it expires (`after_expiration.recovery`, promotion
+codes off unless `allowPromotionCodesOnRecovery`; `recoveryLink: false` turns it off).
+
+To send reminders you need the shopper's consent. `askPromotionalConsent: true` shows Stripe's
+"email me offers" checkbox where it's allowed to ask (`consent_collection.promotions: "auto"`).
+**First accept Stripe's Checkout terms** at https://dashboard.stripe.com/settings/checkout (the
+account owner has to): until then Stripe refuses every session that asks. If it does, the adapter
+logs a warning and creates the session without the checkbox, so checkout keeps working, but no
+shopper can consent and `canRemind` stays false.
 
 Add `checkout.session.expired` to the Stripe webhook endpoint's events. The adapter publishes
 `payments.payment.expired` (`PaymentExpiredEvent`: `orderRef`, `email`, `promotionalConsent`,
