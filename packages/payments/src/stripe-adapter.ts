@@ -45,6 +45,43 @@ export interface StripeAdapterConfig {
   events: EventBus;
   /** Abandoned-checkout recovery. Omit for none (the behavior before this existed). */
   checkoutRecovery?: StripeCheckoutRecoveryOptions;
+  /**
+   * Shown after the account's prefix on the shopper's card statement, e.g.
+   * "DOSTAL TECH* DRAGON SHOP" (payment_intent_data.statement_descriptor_suffix).
+   * Useful when one Stripe account takes payments for several stores. Off by
+   * default. A createPaymentSession call can override it.
+   */
+  statementDescriptorSuffix?: string;
+  /**
+   * The account's shortened statement descriptor prefix (Stripe dashboard ->
+   * Settings -> Public details), used only to check that prefix + "* " +
+   * suffix fits Stripe's 22 characters. Without it, only the suffix is checked.
+   */
+  statementDescriptorPrefix?: string;
+}
+
+const DESCRIPTOR_FORBIDDEN = /[<>\\'"*]/;
+
+/**
+ * Checks a statement descriptor suffix against Stripe's rules and returns it
+ * trimmed: at least one letter, none of < > \\ ' " *, and at most 22
+ * characters including the prefix and the "* " Stripe puts between them.
+ * Throws RangeError otherwise.
+ */
+export function validateStatementDescriptorSuffix(suffix: string, prefix?: string): string {
+  const value = suffix.trim();
+  if (!/[A-Za-z]/.test(value)) throw new RangeError(`Statement descriptor suffix must contain at least one letter; got "${suffix}"`);
+  if (DESCRIPTOR_FORBIDDEN.test(value)) throw new RangeError(`Statement descriptor suffix can't contain < > \\ ' " or *; got "${suffix}"`);
+  const prefixPart = prefix?.trim() ? `${prefix.trim()}* ` : "";
+  const total = prefixPart.length + value.length;
+  if (total > 22) {
+    throw new RangeError(
+      prefixPart
+        ? `Statement descriptor "${prefixPart}${value}" is ${total} characters; Stripe allows 22, so the suffix can be at most ${Math.max(0, 22 - prefixPart.length)}`
+        : `Statement descriptor suffix is ${value.length} characters; Stripe allows at most 22`,
+    );
+  }
+  return value;
 }
 
 /** The checkout.sessions.create params checkoutRecovery adds. Exported for tests. */
@@ -146,6 +183,8 @@ function collectedFrom(session: Stripe.Checkout.Session): Pick<PaymentEvent, "cu
  */
 export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter {
   const stripe = new Stripe(config.secretKey);
+  // Checked once up front, so a bad config fails at startup rather than at the first checkout.
+  const defaultSuffix = config.statementDescriptorSuffix ? validateStatementDescriptorSuffix(config.statementDescriptorSuffix, config.statementDescriptorPrefix) : undefined;
   const { events, webhookSecret } = config;
 
   return {
@@ -191,6 +230,8 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter
         metadata: { orderRef: input.orderRef },
         ...recoverySessionParams(config.checkoutRecovery),
       };
+      const suffix = input.statementDescriptorSuffix ? validateStatementDescriptorSuffix(input.statementDescriptorSuffix, config.statementDescriptorPrefix) : defaultSuffix;
+      if (suffix) params.payment_intent_data = { statement_descriptor_suffix: suffix };
       let session: Stripe.Checkout.Session;
       try {
         session = await stripe.checkout.sessions.create(params);
@@ -235,6 +276,7 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter
           orderRef,
           ...collectedFrom(session),
           ...(session.recovered_from ? { recoveredFromSessionId: session.recovered_from } : {}),
+          ...(session.consent?.promotions ? { promotionalConsent: session.consent.promotions === "opt_in" } : {}),
         };
         await events.publish(session.payment_status === "paid" ? "payments.payment.succeeded" : "payments.payment.failed", payload);
       } else if (event.type === "checkout.session.expired") {

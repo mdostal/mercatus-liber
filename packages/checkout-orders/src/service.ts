@@ -13,6 +13,7 @@ import type {
   LineItemNamer,
   OrderAbandonedEvent,
   OrderAbandonment,
+  OrderPaidEvent,
   PaymentExpiredPayload,
   SaleWindowLookup,
   ShippingInfo,
@@ -163,9 +164,15 @@ export function createCheckoutOrdersService(deps: {
       // paid, through its recovery link.
       if (!order || (order.status !== "pending_payment" && order.status !== "abandoned")) return;
       // An address the payment page collected (and validated) wins over the one the store was given.
-      const paid: Order = { ...order, status: "paid", paymentSessionId: payment.sessionId, shippingInfo: withCollectedAddress(order.shippingInfo, payment) };
+      const shippingInfo = withCollectedAddress(order.shippingInfo, payment);
+      const marketingConsent =
+        typeof payment.promotionalConsent === "boolean"
+          ? { promotional: payment.promotionalConsent, email: payment.customer?.email?.trim() || shippingInfo.email?.trim() || null }
+          : undefined;
+      const paid: Order = { ...order, status: "paid", paymentSessionId: payment.sessionId, shippingInfo, ...(marketingConsent ? { marketingConsent } : {}) };
       await repository.save(paid);
-      await events.publish("checkout.order.paid", { orderId: paid.id });
+      const paidEvent: OrderPaidEvent = { orderId: paid.id, ...(marketingConsent ? { promotionalConsent: marketingConsent.promotional } : {}) };
+      await events.publish("checkout.order.paid", paidEvent);
     },
   );
 

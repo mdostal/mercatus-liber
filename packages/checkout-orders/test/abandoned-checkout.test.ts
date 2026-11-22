@@ -127,4 +127,18 @@ describe("abandoned checkout", () => {
     expect((await start()).redirectUrl).toBe("https://pay.example/2");
     expect(createPaymentSession).toHaveBeenCalledTimes(2);
   });
+
+  it("records the buyer's marketing consent on the paid order, without the email on the event", async () => {
+    const { order } = await start();
+    await events.publish("payments.payment.succeeded", { sessionId: "sess_1", orderRef: order.id, customer: { name: "Ada", email: "buyer@example.com", phone: null }, promotionalConsent: true });
+    expect((await repository.get(order.id))?.marketingConsent).toEqual({ promotional: true, email: "buyer@example.com" });
+    expect(paid).toEqual([{ orderId: order.id, promotionalConsent: true }]);
+  });
+
+  it("leaves consent off when the payment page didn't ask", async () => {
+    const { order } = await start();
+    await events.publish("payments.payment.succeeded", { sessionId: "sess_1", orderRef: order.id });
+    expect(await repository.get(order.id)).not.toHaveProperty("marketingConsent");
+    expect(paid).toEqual([{ orderId: order.id }]);
+  });
 });

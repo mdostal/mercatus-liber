@@ -14,7 +14,7 @@ vi.mock("stripe", () => ({
   }),
 }));
 
-const { createStripeAdapter, recoverySessionParams } = await import("../src/stripe-adapter.js");
+const { createStripeAdapter, recoverySessionParams, validateStatementDescriptorSuffix } = await import("../src/stripe-adapter.js");
 const { WebhookVerificationError } = await import("../src/types.js");
 
 describe("createStripeAdapter", () => {
@@ -225,6 +225,15 @@ describe("createStripeAdapter", () => {
       expect(emitted[0]!.payload).toMatchObject({ email: "pre@example.com", promotionalConsent: false, recoveryUrl: null, recoveryExpiresAt: null });
     });
 
+    it("carries the promotional consent on a paid session when the page asked", async () => {
+      mockConstructEvent.mockReturnValue({
+        type: "checkout.session.completed",
+        data: { object: { id: "cs_1", payment_status: "paid", metadata: { orderRef: "o" }, customer_details: { name: null, email: "b@example.com", phone: null }, consent: { promotions: "opt_out" } } },
+      });
+      await adapter().handleWebhookEvent("raw-body", "sig");
+      expect(emitted[0]!.payload).toMatchObject({ customer: { email: "b@example.com" }, promotionalConsent: false });
+    });
+
     it("carries the expired session id on a payment made through a recovery link", async () => {
       mockConstructEvent.mockReturnValue({
         type: "checkout.session.completed",
@@ -300,6 +309,37 @@ describe("createStripeAdapter", () => {
       expect(recoverySessionParams({ allowPromotionCodesOnRecovery: true })).toEqual({ after_expiration: { recovery: { enabled: true, allow_promotion_codes: true } } });
       expect(() => recoverySessionParams({ expiresAfterMinutes: 10 })).toThrow(RangeError);
       expect(() => recoverySessionParams({ expiresAfterMinutes: 2000 })).toThrow(RangeError);
+    });
+  });
+
+  describe("statementDescriptorSuffix", () => {
+    const input = { orderRef: "o", lineItems: [], successUrl: "s", cancelUrl: "c" };
+    beforeEach(() => mockCreate.mockResolvedValue({ id: "cs_1", url: "https://checkout.stripe.com/c/cs_1" }));
+
+    it("sends nothing by default", async () => {
+      await adapter().createPaymentSession(input);
+      expect(mockCreate.mock.calls[0]![0]).not.toHaveProperty("payment_intent_data");
+    });
+
+    it("sets the suffix from config, and a call can override it", async () => {
+      const shop = createStripeAdapter({ secretKey: "sk_test_fake", webhookSecret: "whsec_fake", events, statementDescriptorSuffix: " DRAGON SHOP " });
+      await shop.createPaymentSession(input);
+      await shop.createPaymentSession({ ...input, statementDescriptorSuffix: "DRAGON BF" });
+      expect(mockCreate.mock.calls[0]![0].payment_intent_data).toEqual({ statement_descriptor_suffix: "DRAGON SHOP" });
+      expect(mockCreate.mock.calls[1]![0].payment_intent_data).toEqual({ statement_descriptor_suffix: "DRAGON BF" });
+    });
+
+    it("refuses a bad config when the adapter is created", () => {
+      expect(() => createStripeAdapter({ secretKey: "k", webhookSecret: "w", events, statementDescriptorSuffix: "DRAGON*SHOP" })).toThrow(RangeError);
+    });
+
+    it("follows Stripe's rules", () => {
+      expect(validateStatementDescriptorSuffix("DRAGON SHOP")).toBe("DRAGON SHOP");
+      expect(validateStatementDescriptorSuffix("DRAGON SHOP", "DOSTAL")).toBe("DRAGON SHOP"); // "DOSTAL* DRAGON SHOP", 19
+      expect(() => validateStatementDescriptorSuffix("DRAGON SHOP", "DOSTAL TECH")).toThrow(/24 characters.*at most 9/); // "DOSTAL TECH* DRAGON SHOP"
+      expect(() => validateStatementDescriptorSuffix("A".repeat(23))).toThrow(RangeError);
+      expect(() => validateStatementDescriptorSuffix("12345")).toThrow(/letter/);
+      for (const bad of ["A<", "A>", "A\\", "A'", 'A"', "A*"]) expect(() => validateStatementDescriptorSuffix(bad)).toThrow(/can't contain/);
     });
   });
 });
