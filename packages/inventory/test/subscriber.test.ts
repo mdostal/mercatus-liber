@@ -102,4 +102,13 @@ describe("registerInventorySync", () => {
 
     expect(await inventory.getStock(skuId)).toEqual({ skuId, onHand: 10, reserved: 0 });
   });
+
+  it("releases when the order is abandoned, and holds the stock again if it's paid through the recovery link", async () => {
+    const { orderId } = await checkoutFor("cust-4");
+    await events.publish("payments.payment.expired", { sessionId: `sess_${orderId}`, orderRef: orderId, email: null, promotionalConsent: false, recoveryUrl: null });
+    expect(await inventory.getStock(skuId)).toEqual({ skuId, onHand: 10, reserved: 0 });
+
+    await events.publish("payments.payment.succeeded", { sessionId: "sess_recovered", orderRef: orderId });
+    expect(await inventory.getStock(skuId)).toEqual({ skuId, onHand: 7, reserved: 0 });
+  });
 });

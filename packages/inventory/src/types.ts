@@ -35,5 +35,6 @@ export interface InventoryAdapter {
  * shape already (getOrder returns an object with at least these fields).
  */
 export interface OrderLookup {
-  getOrder(id: string): Promise<{ id: string; items: { skuId: string; quantity: number }[] } | null>;
+  /** `abandonment` is set on an order whose payment session expired, which released its stock. */
+  getOrder(id: string): Promise<{ id: string; items: { skuId: string; quantity: number }[]; abandonment?: unknown } | null>;
 }

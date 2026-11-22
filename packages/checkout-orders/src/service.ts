@@ -11,6 +11,9 @@ import type {
   PricingAdjuster,
   PricingAdjustment,
   LineItemNamer,
+  OrderAbandonedEvent,
+  OrderAbandonment,
+  PaymentExpiredPayload,
   SaleWindowLookup,
   ShippingInfo,
   ShippingQuoter,
@@ -142,20 +145,57 @@ export function createCheckoutOrdersService(deps: {
     return pricing.computeAdjustment({ items, couponCode: couponCode ?? null });
   }
 
+  /** The order a payment is for: by orderRef, else (a recovered session without it) by the expired session's id. */
+  async function orderForPayment(payment: PaymentSucceededPayload): Promise<Order | null> {
+    if (payment.orderRef) return repository.get(payment.orderRef);
+    if (!payment.recoveredFromSessionId) return null;
+    const abandoned = await repository.listAll({ status: "abandoned" });
+    return abandoned.find((order) => order.paymentSessionId === payment.recoveredFromSessionId) ?? null;
+  }
+
   // React to async payment confirmation -- never a direct call from startCheckout.
   events.subscribe<PaymentSucceededPayload>(
     "payments.payment.succeeded",
     async (payment) => {
-      const { orderRef } = payment;
-      if (!orderRef) return;
-      const order = await repository.get(orderRef);
+      const order = await orderForPayment(payment);
       // Idempotent: a redelivered webhook event that already transitioned this
-      // order is a no-op, not a re-publish.
-      if (!order || order.status !== "pending_payment") return;
+      // order is a no-op, not a re-publish. An abandoned order can still be
+      // paid, through its recovery link.
+      if (!order || (order.status !== "pending_payment" && order.status !== "abandoned")) return;
       // An address the payment page collected (and validated) wins over the one the store was given.
-      const paid: Order = { ...order, status: "paid", shippingInfo: withCollectedAddress(order.shippingInfo, payment) };
+      const paid: Order = { ...order, status: "paid", paymentSessionId: payment.sessionId, shippingInfo: withCollectedAddress(order.shippingInfo, payment) };
       await repository.save(paid);
       await events.publish("checkout.order.paid", { orderId: paid.id });
+    },
+  );
+
+  // The shopper left the payment page and the session timed out.
+  events.subscribe<PaymentExpiredPayload>(
+    "payments.payment.expired",
+    async (expired) => {
+      if (!expired.orderRef) return;
+      const order = await repository.get(expired.orderRef);
+      // Once only, and only for the order's current session: an older session
+      // expiring after the shopper restarted checkout doesn't abandon it.
+      if (!order || order.status !== "pending_payment") return;
+      if (order.paymentSessionId && order.paymentSessionId !== expired.sessionId) return;
+      const abandonment: OrderAbandonment = {
+        at: expired.expiredAt ?? now().toISOString(),
+        email: expired.email?.trim() || order.shippingInfo.email?.trim() || null,
+        promotionalConsent: expired.promotionalConsent === true,
+        recoveryUrl: expired.recoveryUrl ?? null,
+        recoveryExpiresAt: expired.recoveryExpiresAt ?? null,
+      };
+      await repository.save({ ...order, status: "abandoned", abandonment });
+      const event: OrderAbandonedEvent = {
+        orderId: order.id,
+        email: abandonment.email,
+        promotionalConsent: abandonment.promotionalConsent,
+        recoveryUrl: abandonment.recoveryUrl,
+        recoveryExpiresAt: abandonment.recoveryExpiresAt,
+        canRemind: abandonment.promotionalConsent && abandonment.email !== null && abandonment.recoveryUrl !== null,
+      };
+      await events.publish("checkout.order.abandoned", event);
     },
   );
 
@@ -165,9 +205,13 @@ export function createCheckoutOrdersService(deps: {
       // order + redirect rather than creating a duplicate order or a second
       // Stripe session (no double-charge).
       const existing = await repository.getByIdempotencyKey(input.idempotencyKey);
-      if (existing && existing.paymentRedirectUrl) {
+      if (existing && existing.paymentRedirectUrl && existing.status !== "abandoned") {
         return { order: existing, redirectUrl: existing.paymentRedirectUrl };
       }
+      // An abandoned order's payment link is dead, and an order whose session
+      // never got created has none: start that same order again (same id, so
+      // the idempotency key stays unique) with a fresh session.
+      const restart = existing && (existing.status === "abandoned" || (existing.status === "pending_payment" && !existing.paymentRedirectUrl)) ? existing : null;
 
       const shopperCart = await cart.getCart(input.cartId);
       if (!shopperCart) throw new CartNotFoundForCheckoutError(input.cartId);
@@ -192,7 +236,7 @@ export function createCheckoutOrdersService(deps: {
       const lineItems = shopperCart.items.map((item, index) => ({ skuId: item.skuId, quantity: item.quantity, unitAmount: unitAmountOf(index, item.skuId, item.priceSnapshot) }));
       const shippingCharge = shipping ? await shipping.quote({ items: lineItems, shippingInfo: input.shippingInfo }) : null;
 
-      const orderId = randomUUID();
+      const orderId = restart?.id ?? randomUUID();
       const order: Order = {
         id: orderId,
         cartId: input.cartId,
@@ -215,7 +259,7 @@ export function createCheckoutOrdersService(deps: {
         discountTotal: adjustment.discountTotal,
         appliedPromotionCode: adjustment.appliedCode,
         ...(shippingCharge ? { shippingTotal: shippingCharge.amount } : {}),
-        createdAt: new Date().toISOString(),
+        createdAt: restart?.createdAt ?? new Date().toISOString(),
       };
       await repository.save(order);
 

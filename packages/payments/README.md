@@ -27,11 +27,33 @@ Pass `collectShippingAddress: { allowedCountries: ["US"], phone: true }` (and `c
 `createPaymentSession`. What Stripe collected arrives on `payments.payment.succeeded` as
 `customer` and `shippingAddress` (see `PaymentEvent`).
 
+## Abandoned-checkout recovery
+
+Off by default. Turn it on in the Stripe adapter:
+
+```ts
+createStripeAdapter({
+  secretKey, webhookSecret, events,
+  checkoutRecovery: { expiresAfterMinutes: 60 }, // 30 to 1440; Stripe's default is 24 hours
+});
+```
+
+Each session then shows Stripe's "email me offers" checkbox where it's allowed to ask
+(`consent_collection.promotions: "auto"`) and gets a recovery link when it expires
+(`after_expiration.recovery`, promotion codes off unless `allowPromotionCodesOnRecovery`).
+`askPromotionalConsent: false` or `recoveryLink: false` turns either part off.
+
+Add `checkout.session.expired` to the Stripe webhook endpoint's events. The adapter publishes
+`payments.payment.expired` (`PaymentExpiredEvent`: `orderRef`, `email`, `promotionalConsent`,
+`recoveryUrl`, `recoveryExpiresAt`, `expiredAt`). A payment made through a recovery link carries
+`recoveredFromSessionId`. The sandbox adapter's `expireSandboxSession` publishes the same event
+for demos and tests.
+
 ## Key exports
 
 - `PaymentAdapter`: `createPaymentSession`, `confirmPayment`, `handleWebhookEvent`.
 - `createStripeAdapter({ secretKey, webhookSecret, events })`.
-- `createSandboxPaymentAdapter({ events, checkoutPagePath })`, with `confirmSandboxPayment` to complete a sandbox payment.
+- `createSandboxPaymentAdapter({ events, checkoutPagePath })`, with `confirmSandboxPayment` to complete a sandbox payment and `expireSandboxSession` to abandon one.
 - `WebhookVerificationError`.
 
 ## Implementing an adapter

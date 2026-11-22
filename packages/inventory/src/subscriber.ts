@@ -27,7 +27,18 @@ export function registerInventorySync(deps: { events: EventBus; inventory: Inven
     const order = await orders.getOrder(orderId);
     if (!order) return;
     for (const item of order.items) {
+      // Paid through a recovery link after abandonment released the stock: hold it again first.
+      if (order.abandonment) await inventory.reserve(item.skuId, item.quantity);
       await inventory.commit(item.skuId, item.quantity);
+    }
+  });
+
+  // The payment session expired unpaid: let the stock go.
+  events.subscribe<{ orderId: string }>("checkout.order.abandoned", async ({ orderId }) => {
+    const order = await orders.getOrder(orderId);
+    if (!order) return;
+    for (const item of order.items) {
+      await inventory.release(item.skuId, item.quantity);
     }
   });
 

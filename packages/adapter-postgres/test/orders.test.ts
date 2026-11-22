@@ -73,6 +73,7 @@ function createFakeOrdersPool(): FakePool {
           appliedPromotionCode,
           createdAt,
           shippingTotal,
+          abandonment,
         ] = values as [
           string,
           string,
@@ -86,6 +87,7 @@ function createFakeOrdersPool(): FakePool {
           string,
           string | null,
           string,
+          string | null,
           string | null,
         ];
 
@@ -112,6 +114,7 @@ function createFakeOrdersPool(): FakePool {
           applied_promotion_code: appliedPromotionCode,
           created_at: createdAt,
           shipping_total: shippingTotal ? JSON.parse(shippingTotal) : null,
+          abandonment: abandonment ? JSON.parse(abandonment) : null,
         });
         return { rows: [] };
       }
@@ -165,6 +168,15 @@ describe("createPostgresOrderRepository", () => {
     expect((await orders.get("order-ship"))?.shippingTotal).toEqual({ amount: 599, currency: "USD" });
     await orders.save(baseOrder);
     expect(await orders.get("order-1")).not.toHaveProperty("shippingTotal");
+  });
+
+  it("round-trips an abandoned order's abandonment, and leaves it off other orders", async () => {
+    const abandonment = { at: "2026-11-22T00:00:00.000Z", email: "a@example.com", promotionalConsent: true, recoveryUrl: "https://pay.example/r", recoveryExpiresAt: null };
+    await orders.save({ ...baseOrder, id: "order-gone", idempotencyKey: "idem-gone", status: "abandoned", abandonment });
+    expect(await orders.get("order-gone")).toMatchObject({ status: "abandoned", abandonment });
+    expect((await orders.listAll({ status: "abandoned" })).map((o) => o.id)).toEqual(["order-gone"]);
+    await orders.save(baseOrder);
+    expect(await orders.get("order-1")).not.toHaveProperty("abandonment");
   });
 
   it("returns null for a missing order", async () => {

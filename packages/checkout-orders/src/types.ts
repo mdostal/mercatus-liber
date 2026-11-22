@@ -16,7 +16,25 @@ export interface OrderLineItem {
   customization?: LineCustomization;
 }
 
-export type OrderStatus = "pending_payment" | "paid" | "fulfilled" | "cancelled";
+/**
+ * "abandoned": the payment session expired before the shopper paid. The
+ * order can still become "paid" (through a recovery link, or by checking out
+ * the same cart again, which restarts it).
+ */
+export type OrderStatus = "pending_payment" | "abandoned" | "paid" | "fulfilled" | "cancelled";
+
+/** What's known about a checkout the shopper left without paying. */
+export interface OrderAbandonment {
+  /** When the payment session expired (ISO 8601). */
+  at: string;
+  /** The email the payment page collected or was prefilled with. */
+  email: string | null;
+  /** True only when the shopper agreed to marketing email on the payment page. */
+  promotionalConsent: boolean;
+  /** Reopens the checkout as a new payment session, when the provider made one. */
+  recoveryUrl: string | null;
+  recoveryExpiresAt: string | null;
+}
 
 export interface ShippingInfo {
   name: string;
@@ -79,6 +97,11 @@ export interface Order {
    * or by a deployment with no quoter. The amount paid is the items' total plus this.
    */
   shippingTotal?: Money | null;
+  /**
+   * Set when the payment session expired unpaid (status "abandoned"). Kept
+   * after a later payment, so recovered orders can be counted.
+   */
+  abandonment?: OrderAbandonment;
   /**
    * ISO 8601 timestamp of when this order was created. Added for the internal-bi
    * subsystem (20) -- see bi-01. Unlike discountTotal/appliedPromotionCode above,
@@ -145,6 +168,37 @@ export interface PaymentSucceededPayload {
   orderRef: string | null;
   customer?: { name: string | null; email: string | null; phone: string | null };
   shippingAddress?: { name: string | null; line1: string; line2: string | null; city: string; state: string | null; postalCode: string; countryCode: string };
+  /** The expired session this one was recovered from, when paid through a recovery link. */
+  recoveredFromSessionId?: string;
+}
+
+/**
+ * The payload of payments.payment.expired that checkout-orders reads.
+ * @mercatus-liber/payments' PaymentExpiredEvent has this shape.
+ */
+export interface PaymentExpiredPayload {
+  sessionId: string;
+  orderRef: string | null;
+  email: string | null;
+  promotionalConsent: boolean;
+  recoveryUrl: string | null;
+  recoveryExpiresAt?: string | null;
+  expiredAt?: string;
+}
+
+/**
+ * The payload of checkout.order.abandoned, published once when an order's
+ * payment session expires unpaid. Send at most one reminder, and only when
+ * `canRemind` is true: the shopper agreed to marketing email and there's an
+ * address and a link to send.
+ */
+export interface OrderAbandonedEvent {
+  orderId: string;
+  email: string | null;
+  promotionalConsent: boolean;
+  recoveryUrl: string | null;
+  recoveryExpiresAt: string | null;
+  canRemind: boolean;
 }
 
 /** Thrown when checkout is asked to have the payment page collect the address but no country to ship to is known. */

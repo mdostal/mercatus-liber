@@ -82,7 +82,7 @@ export function createDefaultBiAdapter(deps: {
     async getSalesByCollection(options = {}) {
       if (!collections) return [];
       const { range, kind, withinWindow = true, topProductsLimit = 5 } = options;
-      const allOrders = (await orders.listOrders()).filter((o) => o.status !== "cancelled" && o.status !== "pending_payment");
+      const allOrders = (await orders.listOrders()).filter((o) => o.status !== "cancelled" && o.status !== "pending_payment" && o.status !== "abandoned");
       const productBySku = new Map<string, string | null>();
       const productOf = async (skuId: string) => {
         if (!productBySku.has(skuId)) productBySku.set(skuId, (await skus.getSku(skuId))?.productId ?? null);
@@ -141,7 +141,7 @@ export function createDefaultBiAdapter(deps: {
 
     async getRevenueOverTime(range, bucket) {
       const allOrders = await orders.listOrders();
-      const eligible = allOrders.filter((order) => order.status !== "cancelled" && withinRange(order.createdAt, range));
+      const eligible = allOrders.filter((order) => order.status !== "cancelled" && order.status !== "abandoned" && withinRange(order.createdAt, range));
 
       const totals = new Map<string, number>();
       let currency = "USD";

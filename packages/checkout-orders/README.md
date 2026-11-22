@@ -32,12 +32,24 @@ A cart can outlive a sale. Pass `saleWindows` (the catalog service fits) and `st
 re-checks every line against its SKU's and product's window, throwing `ItemsNotOnSaleError` with
 the closed SKU ids.
 
+## Abandoned checkouts
+
+When the payment session expires unpaid (`payments.payment.expired`), the order becomes
+`abandoned`, `order.abandonment` records the email, consent and recovery link, and
+`checkout.order.abandoned` (`OrderAbandonedEvent`) is published once. Send at most one reminder,
+and only when its `canRemind` is true: the shopper agreed to marketing email and there's an
+address and a link. `listOrders({ status: "abandoned" })` lists them.
+
+An abandoned order can still be paid through its recovery link. Checking out the same cart again
+(same idempotency key) restarts it with a new payment session. With `@mercatus-liber/inventory`
+wired, abandonment releases the order's reserved stock.
+
 ## Key exports
 
 - `createCheckoutOrdersService(deps)`: `startCheckout`, `previewCheckout`, `getOrder`, `listOrders`, `listOrdersByCustomer`. `pricing` is an optional dep for discounts. `shipping` (a `ShippingQuoter`) charges shipping: the quote is recorded as `order.shippingTotal` and passed to the payment session. `nameLineItem` names lines on the payment page instead of "SKU <id>".
 - `createInMemoryOrderRepository()`.
 - `CartLookup`, `PaymentSessionCreator`, `PricingAdjuster`, `OrderRepository`: the interfaces it depends on.
-- `OrderStatus`: `pending_payment`, `paid`, `fulfilled`, `cancelled`.
+- `OrderStatus`: `pending_payment`, `abandoned`, `paid`, `fulfilled`, `cancelled`.
 - `CartNotFoundForCheckoutError`, `EmptyCartError`, `OrderNotFoundError`.
 
 It publishes `checkout.order.placed` and `checkout.order.paid`, which plugins and other subsystems subscribe to.

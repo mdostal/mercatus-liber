@@ -4,16 +4,74 @@ import type {
   CollectedShippingAddress,
   CreatePaymentSessionInput,
   PaymentEvent,
+  PaymentExpiredEvent,
   PaymentAdapter,
   PaymentConfirmation,
   PaymentSession,
 } from "./types.js";
 import { WebhookVerificationError } from "./types.js";
 
+/**
+ * Abandoned-checkout recovery on Stripe Checkout. Off unless passed. Turn on
+ * the `checkout.session.expired` event on the webhook endpoint too, so
+ * payments.payment.expired is published.
+ */
+export interface StripeCheckoutRecoveryOptions {
+  /**
+   * Show Stripe's "email me offers" checkbox where the law allows asking
+   * (consent_collection.promotions = "auto"). Without consent, a store
+   * shouldn't send a reminder. Default true.
+   */
+  askPromotionalConsent?: boolean;
+  /** Give an expired session a recovery link (after_expiration.recovery). Default true. */
+  recoveryLink?: boolean;
+  /** Let the shopper type a promotion code on the recovered session. Default false. */
+  allowPromotionCodesOnRecovery?: boolean;
+  /**
+   * How long a checkout session stays open, in minutes. Stripe allows 30 to
+   * 1440 (24 hours, its default). Shorter means the reminder can go out sooner.
+   */
+  expiresAfterMinutes?: number;
+}
+
 export interface StripeAdapterConfig {
   secretKey: string;
   webhookSecret: string;
   events: EventBus;
+  /** Abandoned-checkout recovery. Omit for none (the behavior before this existed). */
+  checkoutRecovery?: StripeCheckoutRecoveryOptions;
+}
+
+/** The checkout.sessions.create params checkoutRecovery adds. Exported for tests. */
+export function recoverySessionParams(options: StripeCheckoutRecoveryOptions | undefined, now = Date.now()): Partial<Stripe.Checkout.SessionCreateParams> {
+  if (!options) return {};
+  const minutes = options.expiresAfterMinutes;
+  if (minutes !== undefined && (!Number.isFinite(minutes) || minutes < 30 || minutes > 1440)) {
+    throw new RangeError(`checkoutRecovery.expiresAfterMinutes must be between 30 and 1440 (Stripe's limits); got ${minutes}`);
+  }
+  return {
+    ...(options.askPromotionalConsent !== false ? { consent_collection: { promotions: "auto" as const } } : {}),
+    ...(options.recoveryLink !== false
+      ? { after_expiration: { recovery: { enabled: true, allow_promotion_codes: options.allowPromotionCodesOnRecovery ?? false } } }
+      : {}),
+    ...(minutes !== undefined ? { expires_at: Math.floor(now / 1000) + Math.round(minutes * 60) } : {}),
+  };
+}
+
+const isoFromUnix = (seconds: number | null | undefined) => (typeof seconds === "number" ? new Date(seconds * 1000).toISOString() : null);
+
+/** What payments.payment.expired carries, read off an expired Checkout Session. */
+function expiredFrom(session: Stripe.Checkout.Session, eventCreated: number): PaymentExpiredEvent {
+  const recovery = session.after_expiration?.recovery ?? null;
+  return {
+    sessionId: session.id,
+    orderRef: typeof session.metadata?.orderRef === "string" ? session.metadata.orderRef : null,
+    email: session.customer_details?.email ?? session.customer_email ?? null,
+    promotionalConsent: session.consent?.promotions === "opt_in",
+    recoveryUrl: recovery?.enabled ? (recovery.url ?? null) : null,
+    recoveryExpiresAt: recovery?.enabled ? isoFromUnix(recovery.expires_at) : null,
+    expiredAt: isoFromUnix(eventCreated) ?? new Date().toISOString(),
+  };
 }
 
 const KNOWN_PAYMENT_STATUSES: readonly PaymentConfirmation["status"][] = [
@@ -119,6 +177,7 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter
         cancel_url: input.cancelUrl,
         automatic_tax: { enabled: true },
         metadata: { orderRef: input.orderRef },
+        ...recoverySessionParams(config.checkoutRecovery),
       });
 
       if (!session.url) {
@@ -149,8 +208,16 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentAdapter
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session;
         const orderRef = typeof session.metadata?.orderRef === "string" ? session.metadata.orderRef : null;
-        const payload: PaymentEvent = { sessionId: session.id, orderRef, ...collectedFrom(session) };
+        const payload: PaymentEvent = {
+          sessionId: session.id,
+          orderRef,
+          ...collectedFrom(session),
+          ...(session.recovered_from ? { recoveredFromSessionId: session.recovered_from } : {}),
+        };
         await events.publish(session.payment_status === "paid" ? "payments.payment.succeeded" : "payments.payment.failed", payload);
+      } else if (event.type === "checkout.session.expired") {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await events.publish("payments.payment.expired", expiredFrom(session, event.created));
       }
     },
   };
