@@ -24,6 +24,33 @@ export interface RecordAppliedPromotionInput {
   discountAmount: Money;
 }
 
+/**
+ * Which promotion each unpaid order used, kept until the order is paid so
+ * the redemption is counted then. It must be shared by every server instance:
+ * the payment webhook that marks an order paid can land on a different one
+ * from the checkout that recorded it. `take` returns the record and removes
+ * it in one step, so a redelivered event, on any instance, counts nothing.
+ */
+export interface AppliedPromotionStore {
+  save(application: RecordAppliedPromotionInput): Promise<void>;
+  take(orderId: string): Promise<RecordAppliedPromotionInput | null>;
+}
+
+/** In-process AppliedPromotionStore, for one-process stores and tests. Use a shared one (adapter-postgres) on serverless. */
+export function createInMemoryAppliedPromotionStore(): AppliedPromotionStore {
+  const byOrder = new Map<string, RecordAppliedPromotionInput>();
+  return {
+    async save(application) {
+      byOrder.set(application.orderId, structuredClone(application));
+    },
+    async take(orderId) {
+      const found = byOrder.get(orderId) ?? null;
+      byOrder.delete(orderId);
+      return found;
+    },
+  };
+}
+
 export interface PromotionsService {
   createPromotion(input: CreatePromotionInput): Promise<Promotion>;
   getPromotion(id: string): Promise<Promotion | null>;
@@ -102,9 +129,41 @@ function applyDiscount(
   }
 
   const subtotal = computeSubtotal(items);
-  const discountTotal =
+  const wanted =
     promotion.kind === "percentage" ? Math.round((subtotal * promotion.value) / 100) : Math.min(promotion.value, subtotal);
-  return { items: passThrough(items, currency), discountTotal };
+  return spreadCartDiscount(items, wanted, currency);
+}
+
+/**
+ * Spreads a cart-wide discount into the lines' unit prices, so whatever sums
+ * the lines (a payment page) charges the discounted total. Unit prices are
+ * whole cents, so each line gets its share per unit rounded down, then a
+ * cent per unit is added (lines with the fewest units first) until the
+ * discount is covered: the shopper may get a few cents more off, never less.
+ * The returned discountTotal is what the lines actually come to.
+ */
+export function spreadCartDiscount(items: EvaluateInput["items"], discount: number, currency: string): { items: EvaluatedLineItem[]; discountTotal: number } {
+  const subtotal = computeSubtotal(items);
+  if (discount <= 0 || subtotal <= 0) return { items: passThrough(items, currency), discountTotal: 0 };
+  const target = Math.min(discount, subtotal);
+  const perUnit = items.map((item) => Math.min(item.priceSnapshot.amount, Math.floor((target * item.priceSnapshot.amount) / subtotal)));
+  let given = perUnit.reduce((sum, d, i) => sum + d * items[i]!.quantity, 0);
+  const order = items.map((_, i) => i).sort((a, b) => items[a]!.quantity - items[b]!.quantity);
+  while (given < target) {
+    const before = given;
+    for (const i of order) {
+      if (given >= target) break;
+      if (perUnit[i]! < items[i]!.priceSnapshot.amount) {
+        perUnit[i]! += 1;
+        given += items[i]!.quantity;
+      }
+    }
+    if (given === before) break; // every line is already free
+  }
+  return {
+    items: items.map((item, i) => ({ skuId: item.skuId, quantity: item.quantity, unitAmount: { amount: item.priceSnapshot.amount - perUnit[i]!, currency } })),
+    discountTotal: given,
+  };
 }
 
 function isEligible(promotion: Promotion, now: Date, subtotal: number): boolean {
@@ -120,8 +179,11 @@ export function createPromotionsService(deps: {
   events: EventBus;
   /** Needed for promotions with targetCollectionIds; without it those discount only their targetSkuIds. */
   collections?: CollectionLookup;
+  /** Where applied promotions wait for payment. Default: in this process only, which loses redemptions on serverless. */
+  applications?: AppliedPromotionStore;
 }): PromotionsService {
   const { repository, events, collections } = deps;
+  const applications = deps.applications ?? createInMemoryAppliedPromotionStore();
 
   /** Promotions with targetCollectionIds get the cart's SKUs in those collections added to targetSkuIds. */
   async function withCollectionTargets(promotions: Promotion[], items: EvaluateInput["items"]): Promise<Promotion[]> {
@@ -135,23 +197,19 @@ export function createPromotionsService(deps: {
     });
   }
 
-  // orderId -> the promotion/discount recorded (via recordAppliedPromotion)
-  // as applied to that order. Consumed (deleted) on first redemption -- its
-  // absence is the idempotency guard for a redelivered checkout.order.paid
-  // event, mirroring checkout-orders' own order.status guard (service.ts
-  // lines 45-58): there, a state transition already made is a no-op; here,
-  // bookkeeping already consumed is a no-op.
-  const appliedPromotions = new Map<string, RecordAppliedPromotionInput>();
-
   // React to completed purchases only -- never checkout.order.placed (a
   // merely-started checkout must not consume a limited coupon's usage slot).
   events.subscribe<{ orderId: string }>("checkout.order.paid", async ({ orderId }) => {
-    const application = appliedPromotions.get(orderId);
+    // Taken in one step: a redelivered event, on any instance, finds nothing.
+    const application = await applications.take(orderId);
     if (!application) return; // no promotion applied to this order, or already redeemed
-    appliedPromotions.delete(orderId); // idempotent guard: a redelivery finds nothing here
-    const promotion = await repository.get(application.promotionId);
-    if (!promotion) return;
-    await repository.save({ ...promotion, redemptionCount: promotion.redemptionCount + 1 });
+    if (repository.incrementRedemptions) {
+      await repository.incrementRedemptions(application.promotionId);
+    } else {
+      const promotion = await repository.get(application.promotionId);
+      if (!promotion) return;
+      await repository.save({ ...promotion, redemptionCount: promotion.redemptionCount + 1 });
+    }
     // Fire-and-forget: no subscriber depends on this yet (future internal-BI subsystem).
     await events.publish("promotions.redeemed", {
       promotionId: application.promotionId,
@@ -286,7 +344,7 @@ export function createPromotionsService(deps: {
     },
 
     async recordAppliedPromotion(input: RecordAppliedPromotionInput): Promise<void> {
-      appliedPromotions.set(input.orderId, input);
+      await applications.save(input);
     },
   };
 }

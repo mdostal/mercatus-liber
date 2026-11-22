@@ -70,6 +70,8 @@ export interface PromotionRepository {
   get(id: string): Promise<Promotion | null>;
   list(filter?: { demoSlug?: string }): Promise<Promotion[]>;
   save(promotion: Promotion): Promise<void>;
+  /** Adds one redemption in a single step, so concurrent redemptions on different instances all count. Optional; without it the service reads and saves. */
+  incrementRedemptions?(id: string): Promise<void>;
 }
 
 export interface EvaluateLineItem {

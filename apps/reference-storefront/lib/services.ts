@@ -29,6 +29,7 @@ import {
   createPostgresProductCustomizationRepository,
   createPostgresProviderCatalogMappingRepository,
   createPostgresMediaStore,
+  createPostgresAppliedPromotionStore,
   createPostgresProviderOrderLinkRepository,
   createPostgresManualFulfillmentRecordStore,
   createPostgresStoreApiKeyRepository,
@@ -160,7 +161,7 @@ import {
 } from "@mercatus-liber/adapter-convex";
 import { MongoClient } from "mongodb";
 import { createOrderNotificationPlugin, createPluginRegistry, type OrderNotificationPlugin, type PluginRegistry } from "@mercatus-liber/plugins";
-import { createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
+import { createInMemoryAppliedPromotionStore, createInMemoryPromotionRepository, createPromotionsService, type PromotionsService } from "@mercatus-liber/promotions";
 import { createInMemoryReviewRepository, createReviewsService, type ReviewsService } from "@mercatus-liber/reviews";
 import {
   createInMemoryStorefrontViewRepository,
@@ -723,6 +724,8 @@ async function buildServices(demoSlug: DemoSlug): Promise<Services> {
   const promotions = createPromotionsService({
     repository: pgPool ? createPostgresPromotionRepository(pgPool) : createInMemoryPromotionRepository(),
     events,
+    // Shared by every instance, so a paid webhook landing anywhere counts the redemption once.
+    applications: pgPool ? createPostgresAppliedPromotionStore(pgPool) : createInMemoryAppliedPromotionStore(),
     // Lines (sales catalogs) and categories a SKU's product is in, for promotions with targetCollectionIds.
     // marketingCatalog is created further down; this only runs at checkout, after both exist.
     collections: {
