@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
 import type { Money } from "@mercatus-liber/core";
-import type { Promotion, PromotionRepository } from "@mercatus-liber/promotions";
+import type { AppliedPromotionStore, Promotion, PromotionRepository } from "@mercatus-liber/promotions";
 
 /**
  * Self-contained DDL for this file only -- deliberately NOT folded into this
@@ -44,6 +44,13 @@ const PROMOTIONS_DDL = `
   CREATE INDEX IF NOT EXISTS idx_promotions_demo_slug ON promotions(demo_slug);
   -- scheduled-lines epic: lines or categories a product-scope promotion covers.
   ALTER TABLE promotions ADD COLUMN IF NOT EXISTS target_collection_ids JSONB;
+  -- Which promotion each unpaid order used, until it's paid (counted then).
+  CREATE TABLE IF NOT EXISTS promotion_applications (
+    order_id TEXT PRIMARY KEY,
+    promotion_id TEXT NOT NULL,
+    discount_amount JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
 `;
 
 interface PromotionRow {
@@ -122,6 +129,10 @@ export function createPostgresPromotionRepository(pool: Pool): PromotionReposito
         : await pool.query<PromotionRow>("SELECT * FROM promotions");
       return result.rows.map(rowToPromotion);
     },
+    async incrementRedemptions(id: string): Promise<void> {
+      await ready;
+      await pool.query("UPDATE promotions SET redemption_count = redemption_count + 1 WHERE id = $1", [id]);
+    },
     async save(promotion: Promotion): Promise<void> {
       await ready;
       await pool.query(
@@ -163,6 +174,34 @@ export function createPostgresPromotionRepository(pool: Pool): PromotionReposito
           promotion.targetCollectionIds?.length ? JSON.stringify(promotion.targetCollectionIds) : null,
         ],
       );
+    },
+  };
+}
+
+/**
+ * Postgres AppliedPromotionStore (@mercatus-liber/promotions): applied
+ * promotions shared by every server instance. `take` is one DELETE ...
+ * RETURNING, so the paid event that finds a record is the only one that does.
+ */
+export function createPostgresAppliedPromotionStore(pool: Pool): AppliedPromotionStore {
+  const ready = pool.query(PROMOTIONS_DDL);
+  return {
+    async save(application) {
+      await ready;
+      await pool.query(
+        `INSERT INTO promotion_applications (order_id, promotion_id, discount_amount) VALUES ($1, $2, $3)
+         ON CONFLICT (order_id) DO UPDATE SET promotion_id = EXCLUDED.promotion_id, discount_amount = EXCLUDED.discount_amount`,
+        [application.orderId, application.promotionId, JSON.stringify(application.discountAmount)],
+      );
+    },
+    async take(orderId) {
+      await ready;
+      const result = await pool.query<{ order_id: string; promotion_id: string; discount_amount: { amount: number; currency: string } }>(
+        "DELETE FROM promotion_applications WHERE order_id = $1 RETURNING order_id, promotion_id, discount_amount",
+        [orderId],
+      );
+      const row = result.rows[0];
+      return row ? { orderId: row.order_id, promotionId: row.promotion_id, discountAmount: row.discount_amount } : null;
     },
   };
 }

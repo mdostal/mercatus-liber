@@ -38,3 +38,19 @@ line-week deal. Postgres stores it in an additive `target_collection_ids` column
 Implement the repository interface this package exports and pass it as `repository`.
 
 See [docs/subsystems/16-promotions.md](../../docs/subsystems/16-promotions.md).
+
+## What gets charged, and counting redemptions
+
+A cart-wide (`scope: "cart"`) discount is spread into every line's `unitAmount`
+(`spreadCartDiscount`), rounded so the shopper never gets less than the discount, and
+`discountTotal` is what the lines actually come to. Anything that sums the lines (a payment page)
+charges exactly the evaluated total. (Before 2026-11-21 cart-wide discounts left the lines
+undiscounted, so the payment page charged full price.)
+
+A promotion applied at checkout waits in an `AppliedPromotionStore` until `checkout.order.paid`,
+then counts one redemption. Pass a shared one on serverless (`createPostgresAppliedPromotionStore`
+from adapter-postgres): its `take` is a single `DELETE ... RETURNING`, so the paid event counts
+once whichever instance hears it. A repository with `incrementRedemptions` (Postgres has it)
+counts concurrent redemptions without losing any. The default in-memory store only works in one
+process.
+

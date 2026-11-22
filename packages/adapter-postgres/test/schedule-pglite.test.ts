@@ -56,3 +56,26 @@ describe("sales catalogs on real Postgres (PGlite)", () => {
     expect("activeTo" in (await repo.get("l1"))!).toBe(false);
   });
 });
+
+describe("promotion redemptions on real Postgres (PGlite)", () => {
+  it("counts a paid order's promotion once, whichever instance hears the paid event, and counts concurrent ones", async () => {
+    const { createPostgresAppliedPromotionStore, createPostgresPromotionRepository } = await import("../src/promotions.js");
+    const { createPromotionsService } = await import("@mercatus-liber/promotions");
+    const { createInMemoryEventBus } = await import("@mercatus-liber/core");
+    const db = new PGlite();
+    const pool = poolFor(db);
+    // Two "instances": separate services and buses over one database.
+    const a = { events: createInMemoryEventBus() };
+    const b = { events: createInMemoryEventBus() };
+    const serviceA = createPromotionsService({ repository: createPostgresPromotionRepository(pool), events: a.events, applications: createPostgresAppliedPromotionStore(pool) });
+    createPromotionsService({ repository: createPostgresPromotionRepository(pool), events: b.events, applications: createPostgresAppliedPromotionStore(pool) });
+    const promo = await serviceA.createPromotion({ code: "TEN", kind: "percentage", scope: "cart", value: 10, currency: "USD", targetSkuIds: [], minCartAmount: null, startsAt: null, endsAt: null, usageLimit: 5 });
+    await serviceA.recordAppliedPromotion({ orderId: "o1", promotionId: promo.id, discountAmount: { amount: 435, currency: "USD" } });
+    await serviceA.recordAppliedPromotion({ orderId: "o2", promotionId: promo.id, discountAmount: { amount: 100, currency: "USD" } });
+    // Recorded on A, paid on B; then redelivered to A.
+    await b.events.publish("checkout.order.paid", { orderId: "o1" });
+    await a.events.publish("checkout.order.paid", { orderId: "o1" });
+    await Promise.all([a.events.publish("checkout.order.paid", { orderId: "o2" }), b.events.publish("checkout.order.paid", { orderId: "o2" })]);
+    expect((await serviceA.getPromotion(promo.id))!.redemptionCount).toBe(2);
+  });
+});

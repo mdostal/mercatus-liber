@@ -84,7 +84,7 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
   const { createInMemoryCartRepository } = await import("@mercatus-liber/cart");
   const { createInMemoryOrderRepository } = await import("@mercatus-liber/checkout-orders");
   const { createInMemoryCustomerProfileRepository } = await import("@mercatus-liber/account");
-  const { createInMemoryPromotionRepository } = await import("@mercatus-liber/promotions");
+  const { createInMemoryAppliedPromotionStore, createInMemoryPromotionRepository } = await import("@mercatus-liber/promotions");
   const { createInMemoryReviewRepository } = await import("@mercatus-liber/reviews");
   const { createInMemoryStorefrontViewRepository } = await import("@mercatus-liber/storefront-views");
   const { createInMemoryBundleRepository } = await import("@mercatus-liber/bundles");
@@ -138,6 +138,7 @@ vi.mock("@mercatus-liber/adapter-postgres", async () => {
       createPostgresPromotionRepositoryMock(pool);
       return createInMemoryPromotionRepository();
     },
+    createPostgresAppliedPromotionStore: () => createInMemoryAppliedPromotionStore(),
     createPostgresReviewRepository: (pool: unknown) => {
       createPostgresReviewRepositoryMock(pool);
       return createInMemoryReviewRepository();

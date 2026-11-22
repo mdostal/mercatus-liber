@@ -18,7 +18,7 @@ export { createPostgresCatalogRepository, createPostgresProductCatalogRepository
 export { createPostgresCartRepository } from "./cart.js";
 export { createPostgresOrderRepository } from "./orders.js";
 export { createPostgresCustomerProfileRepository } from "./accounts.js";
-export { createPostgresPromotionRepository } from "./promotions.js";
+export { createPostgresAppliedPromotionStore, createPostgresPromotionRepository } from "./promotions.js";
 export { createPostgresReviewRepository } from "./reviews.js";
 export { createPostgresStorefrontViewRepository } from "./storefront-views.js";
 export { createPostgresBundleRepository } from "./bundles.js";
