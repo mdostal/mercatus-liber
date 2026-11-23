@@ -1,0 +1,25 @@
+[
+  { "group": "shared demo", "name": "framework home", "url": "https://commerce.mdostal.com/", "expect": ["Mercatus Liber"] },
+  { "group": "shared demo", "name": "architecture (per-store backends)", "url": "https://commerce.mdostal.com/architecture", "expect": ["Adapters", "Postgres", "Convex", "Sanity"] },
+  { "group": "shared demo", "name": "sitemap", "url": "https://commerce.mdostal.com/sitemap.xml", "expect": ["<urlset"] },
+
+  { "group": "print-shop", "name": "home", "url": "https://commerce.mdostal.com/demo/print-shop", "expect": ["<title>The Print Shop"] },
+  { "group": "print-shop", "name": "product", "url": "https://commerce.mdostal.com/demo/print-shop/products/embroidered-dad-cap", "expect": ["Embroidered Dad Cap"] },
+  { "group": "print-shop", "name": "search", "url": "https://commerce.mdostal.com/demo/print-shop/search", "expect": ["The Print Shop"] },
+  { "group": "print-shop", "name": "lines", "url": "https://commerce.mdostal.com/demo/print-shop/lines", "expect": ["The Print Shop"] },
+
+  { "group": "northline", "name": "home", "url": "https://commerce.mdostal.com/demo/northline", "expect": ["<title>Northline Home Tech"] },
+  { "group": "northline", "name": "product", "url": "https://commerce.mdostal.com/demo/northline/products/floodlight-camera-install", "expect": ["Floodlight Camera Installation"] },
+  { "group": "northline", "name": "category", "url": "https://commerce.mdostal.com/demo/northline/category/security-cameras", "expect": ["floodlight-camera-install"] },
+  { "group": "northline", "name": "search", "url": "https://commerce.mdostal.com/demo/northline/search", "expect": ["Northline Home Tech"] },
+
+  { "group": "broadleaf", "name": "home", "url": "https://commerce.mdostal.com/demo/broadleaf", "expect": ["<title>Broadleaf &amp; Co."] },
+  { "group": "broadleaf", "name": "product", "url": "https://commerce.mdostal.com/demo/broadleaf/products/botanical-print", "expect": ["Botanical Print"] },
+  { "group": "broadleaf", "name": "search", "url": "https://commerce.mdostal.com/demo/broadleaf/search", "expect": ["Broadleaf"] },
+
+  { "group": "standalone", "name": "print-shop", "url": "https://mercatus-liber-print-shop.vercel.app/", "expect": ["<title>The Print Shop"] },
+  { "group": "standalone", "name": "northline", "url": "https://mercatus-liber-northline.vercel.app/", "expect": ["<title>Northline Home Tech"] },
+  { "group": "standalone", "name": "broadleaf", "url": "https://mercatus-liber-broadleaf.vercel.app/", "expect": ["<title>Broadleaf &amp; Co."] },
+
+  { "group": "docs", "name": "docs home", "url": "https://mercatus-liber-docs.vercel.app/", "expect": ["Mercatus Liber Documentation"] }
+]
