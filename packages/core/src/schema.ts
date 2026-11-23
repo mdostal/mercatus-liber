@@ -189,6 +189,13 @@ export interface LineCustomizationRequest {
 }
 
 /**
+ * One buyer setting on a product built to the buyer's own measurements: a
+ * number, a choice id, a list of choice ids, a list of numbers, or a list of
+ * lines ([x1, y1, x2, y2] in mm).
+ */
+export type LineParamValue = number | string | string[] | number[] | number[][];
+
+/**
  * What a shopper chose for one made-to-order cart or order line, as data rather
  * than display text, so an order can become a print job without parsing a note.
  * A snapshot: it stays correct if the product's options or palette change later.
@@ -210,6 +217,12 @@ export interface LineCustomization {
   font?: string;
   /** Lettering sizes, passed through to the print job, which validates them. */
   lettering?: Record<string, unknown>;
+  /**
+   * The buyer's measurements and settings for a measured product, as they
+   * sent them (params they left out take the defaults at the print tools).
+   * Replaces picks, name, font and lettering on those products.
+   */
+  params?: Record<string, LineParamValue>;
   /** Choices to handle by hand. See LineCustomizationRequest. */
   requests?: LineCustomizationRequest[];
   /** This line needs a quote, so checkout refuses it at its listed price. */

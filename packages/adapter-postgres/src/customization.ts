@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS product_customizations (
 );
 ALTER TABLE product_customizations ADD COLUMN IF NOT EXISTS options JSONB;
 ALTER TABLE product_customizations ADD COLUMN IF NOT EXISTS variants JSONB;
+ALTER TABLE product_customizations ADD COLUMN IF NOT EXISTS measured JSONB;
 CREATE INDEX IF NOT EXISTS idx_product_customizations_product_id ON product_customizations(product_id);
 
 CREATE TABLE IF NOT EXISTS pricing_rules (
@@ -264,6 +265,7 @@ interface ProductCustomizationRow {
   why: string | null;
   options: ProductCustomization["options"] | null; // JSONB
   variants: ProductCustomization["variants"] | null; // JSONB
+  measured?: ProductCustomization["measured"] | null; // JSONB, added later
 }
 
 function rowToProductCustomization(row: ProductCustomizationRow): ProductCustomization {
@@ -277,6 +279,7 @@ function rowToProductCustomization(row: ProductCustomizationRow): ProductCustomi
     ...(row.why ? { why: row.why } : {}),
     ...(row.options ? { options: row.options } : {}),
     ...(row.variants ? { variants: row.variants } : {}),
+    ...(row.measured ? { measured: row.measured } : {}),
   };
 }
 
@@ -301,8 +304,8 @@ export function createPostgresProductCustomizationRepository(pool: Pool): Produc
     async save(customization: ProductCustomization): Promise<void> {
       await ensureSchema(pool);
       await pool.query(
-        `INSERT INTO product_customizations (id, product_id, finish_ids, regions, bundled_product_ids, art_style_ids, why, options, variants)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO product_customizations (id, product_id, finish_ids, regions, bundled_product_ids, art_style_ids, why, options, variants, measured)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (id) DO UPDATE SET
            product_id = EXCLUDED.product_id,
            finish_ids = EXCLUDED.finish_ids,
@@ -311,7 +314,8 @@ export function createPostgresProductCustomizationRepository(pool: Pool): Produc
            art_style_ids = EXCLUDED.art_style_ids,
            why = EXCLUDED.why,
            options = EXCLUDED.options,
-           variants = EXCLUDED.variants`,
+           variants = EXCLUDED.variants,
+           measured = EXCLUDED.measured`,
         [
           customization.id,
           customization.productId,
@@ -322,6 +326,7 @@ export function createPostgresProductCustomizationRepository(pool: Pool): Produc
           customization.why ?? null,
           customization.options ? JSON.stringify(customization.options) : null,
           customization.variants ? JSON.stringify(customization.variants) : null,
+          customization.measured ? JSON.stringify(customization.measured) : null,
         ],
       );
     },
