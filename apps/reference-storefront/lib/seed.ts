@@ -894,7 +894,14 @@ async function seedCmsPages(cms: CmsService, productIdBySlug: Map<string, string
     };
     const sections = [...home.sections];
     sections.splice(Math.min(1, sections.length), 0, tile);
-    await cms.updatePage(home.id, { sections });
+    // Best effort: seeding runs on page requests, and a CMS that this
+    // deployment can only read (e.g. a Sanity viewer token) refuses the write.
+    // The home page must still render, just without the tile.
+    try {
+      await cms.updatePage(home.id, { sections });
+    } catch (err) {
+      console.warn(`[seed] Couldn't add the marketing tile to the print-shop home page; showing it without. ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   const toteId = productIdBySlug.get("embroidered-canvas-tote");
