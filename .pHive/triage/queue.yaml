@@ -1,0 +1,149 @@
+# Triage queue: single writer is /hive:triage. Epic ml-public-release-refresh (week of 2026-11-23).
+# Owner-decision items stay `clarified` until the owner picks; agent-doable items are `prioritized`.
+schema_version: 1
+items:
+  - id: t-001
+    state: closed
+    kind: bug
+    title: Print-shop demo and sitemap return 500
+    description: Request-time seed wrote a marketing tile to Sanity with a read-only token (regression from PR #68, 2026-11-21).
+    reporter: claude (release-refresh audit)
+    reported_at: "2026-11-23T18:05:00Z"
+    priority: p0
+    severity: critical
+    closed_reason: implemented in PR #78 (7575267); verified live 200 on home, product, lines, search, sitemap
+    closed_at: "2026-11-23T19:05:00Z"
+    state_history: [{state: inbox, at: "2026-11-23T18:05:00Z"}, {state: clarified, at: "2026-11-23T18:10:00Z"}, {state: prioritized, at: "2026-11-23T18:10:00Z"}, {state: closed, at: "2026-11-23T19:05:00Z"}]
+
+  - id: t-002
+    state: closed
+    kind: feature
+    title: Scheduled page-level health checks for sample stores and docs
+    description: keepalive.yml only pinged the database; the print-shop 500s went unnoticed for two days. 18 checks every 6 h; opens/closes a sample-down issue.
+    reporter: owner ("add some occasional checks to the sample pages so they stay live")
+    reported_at: "2026-11-23T17:55:00Z"
+    priority: p0
+    severity: high
+    closed_reason: implemented in PR #79
+    closed_at: "2026-11-23T19:20:00Z"
+    state_history: [{state: inbox, at: "2026-11-23T17:55:00Z"}, {state: clarified, at: "2026-11-23T18:40:00Z"}, {state: prioritized, at: "2026-11-23T18:40:00Z"}, {state: closed, at: "2026-11-23T19:20:00Z"}]
+
+  - id: t-003
+    state: clarified
+    kind: unknown
+    title: "Owner decision: Sanity token for mercatus-liber-demo is read-only"
+    description: >-
+      Seeding (and likely print-shop's admin CMS editor and copilot CMS edits; not verified) need update
+      permission. Option A: Editor-scoped token in the demo Vercel project (admin is gated, returns 404
+      publicly, so only seeding and signed-in admins write). Option B: keep read-only, add the Holiday tile once in Studio.
+    reporter: claude (grill H1/H2)
+    reported_at: "2026-11-23T18:40:00Z"
+    owner_action: true
+    state_history: [{state: inbox, at: "2026-11-23T18:40:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}]
+
+  - id: t-004
+    state: clarified
+    kind: unknown
+    title: "Owner action: connect the 3 standalone store projects to GitHub"
+    description: >-
+      mercatus-liber-{print-shop,northline,broadleaf} have no git link and run code from about 2026-11-05.
+      Vercel > project > Settings > Git: connect mdostal/mercatus-liber, root apps/reference-storefront,
+      production branch master. Env vars (SINGLE_TENANT_DEMO_SLUG) stay. To avoid 3 extra preview
+      builds per PR (grill H3), set Ignored Build Step so previews are skipped and only master deploys.
+    reporter: owner ("i'll go through and re-enable")
+    reported_at: "2026-11-23T18:20:00Z"
+    owner_action: true
+    priority: p1
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}]
+
+  - id: t-005
+    state: clarified
+    kind: bug
+    title: "Owner action: docs site not git-linked; stray `docs` project fails every PR"
+    description: >-
+      mercatus-liber-docs (holds the public URL) has no git link, last deployed 8 days ago. Connect it:
+      root apps/docs, branch master. The `docs` project (git-linked, no root dir) serves 404 and fails
+      every PR check; delete it (irreversible, owner's dashboard).
+    reporter: claude (release-refresh audit)
+    reported_at: "2026-11-23T18:20:00Z"
+    owner_action: true
+    priority: p1
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}]
+
+  - id: t-006
+    state: prioritized
+    kind: feature
+    title: Docs content catch-up (What's new + package docs on the site)
+    description: >-
+      Docs miss features since Nov 11: scheduled lines and sale windows, Printful catalog browser and
+      art/mockups, abandoned-checkout recovery and consent, statement descriptor, measured products, page
+      health checks. Add a What's new page; sync packages/*/README.md into a Packages section with
+      repo-relative links rewritten to GitHub (grill H6).
+    reporter: claude
+    reported_at: "2026-11-23T18:20:00Z"
+    priority: p1
+    severity: moderate
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
+
+  - id: t-007
+    state: prioritized
+    kind: feature
+    title: CHANGELOG catch-up and first tagged GitHub Release (v0.58.0)
+    description: >-
+      CHANGELOG stops at 0.57.1 (2026-11-11); no git tags or GitHub Releases exist. Write entries for
+      Nov 11-23, tag v0.58.0, publish a Release with notes and package tarballs attached (grill U4),
+      so consumers get builds from a stable public place. The tag/CHANGELOG number is the version;
+      package.json stays 0.1.0 until npm (grill V1). The release can go first; it doesn't need to wait on dashboard work (U1).
+    reporter: claude
+    reported_at: "2026-11-23T18:20:00Z"
+    priority: p1
+    severity: moderate
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
+
+  - id: t-008
+    state: prioritized
+    kind: feature
+    title: README refresh
+    description: >-
+      Features since Nov 11, status box, release badge, and the sample table with one canonical URL
+      per store (grill V2); standalone vs shared explained once.
+    reporter: claude
+    reported_at: "2026-11-23T18:20:00Z"
+    priority: p2
+    severity: low
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
+
+  - id: t-009
+    state: prioritized
+    kind: feature
+    title: GitHub social preview card
+    description: No custom Open Graph image (GitHub's default card). 1280x640 card in brand tokens with the existing docs/assets/logo.png; the owner uploads it in repo Settings (no API).
+    reporter: claude
+    reported_at: "2026-11-23T18:20:00Z"
+    priority: p2
+    severity: low
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
+
+  - id: t-010
+    state: prioritized
+    kind: feature
+    title: Wiki becomes a pointer to the docs site; sample-stores status links the health badge
+    description: >-
+      Wiki last edited 2026-10-16 (4 pages). Replace with a pointer page so there's one place to keep
+      current. sample-stores.md "Live status, re-checked 2026-11-05": replace the hand date with the
+      sample-health badge/run link (grill C1: no scheduled commits).
+    reporter: claude
+    reported_at: "2026-11-23T18:20:00Z"
+    priority: p2
+    severity: low
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
+
+  - id: t-011
+    state: clarified
+    kind: unknown
+    title: "Owner decision: GitHub Discussions on or off"
+    description: Off today. Turning it on adds a surface someone answers during next month's content push (grill U3). Recommendation is to leave it off until launch content goes out.
+    reporter: claude (grill U3)
+    reported_at: "2026-11-23T18:40:00Z"
+    owner_action: true
+    state_history: [{state: inbox, at: "2026-11-23T18:40:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}]

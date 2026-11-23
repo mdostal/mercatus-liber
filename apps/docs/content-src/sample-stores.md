@@ -34,7 +34,10 @@ disclosed with the exact env vars and test evidence behind it on
 Postgres database; the third runs on a completely independent Convex deployment, in
 production, right now.
 
-**Live status, re-checked 2026-11-05:** all three standalone stores and all three shared paths return `200`.
+**Live status:** ![Sample stores](https://img.shields.io/github/actions/workflow/status/mdostal/mercatus-liber/sample-health.yml?branch=master&label=sample%20stores)
+A scheduled check ([`sample-health.yml`](https://github.com/mdostal/mercatus-liber/actions/workflows/sample-health.yml))
+loads every store's pages, shared and standalone, every 6 hours, and opens a `sample-down` issue
+when one fails. The notes below are past incidents.
 **Earlier, 2026-10-15:**
 Print Shop and Northline did go down earlier today with a real `500` — their shared Supabase
 Postgres project had gone to sleep (free-tier auto-pause from inactivity), not an application

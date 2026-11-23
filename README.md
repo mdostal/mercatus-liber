@@ -1,6 +1,7 @@
 <img src="docs/assets/logo.png" alt="Mercatus Liber -- free market, free software" width="320">
 
 [![CI](https://img.shields.io/github/actions/workflow/status/mdostal/mercatus-liber/ci.yml?branch=master&label=CI)](https://github.com/mdostal/mercatus-liber/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/mdostal/mercatus-liber?label=release)](https://github.com/mdostal/mercatus-liber/releases)
 [![Sample stores](https://img.shields.io/github/actions/workflow/status/mdostal/mercatus-liber/sample-health.yml?branch=master&label=sample%20stores)](https://github.com/mdostal/mercatus-liber/actions/workflows/sample-health.yml)
 [![License: MIT](https://img.shields.io/github/license/mdostal/mercatus-liber)](LICENSE)
 
@@ -15,19 +16,24 @@ fulfillment provider without touching the rest. Everything a person can do in th
 agent can do through the same interfaces over MCP.
 
 [Live demo](https://commerce.mdostal.com) · [Docs](https://mercatus-liber-docs.vercel.app) ·
+[What's new](https://mercatus-liber-docs.vercel.app/whats-new) ·
 [Wiki](https://github.com/mdostal/mercatus-liber/wiki) · [Vision and roadmap](VISION.md) ·
 [Contributing](CONTRIBUTING.md)
 
-> **Status: pre-1.0, not yet on npm.** The packages run in production on the demo stores below,
-> but you consume them from this monorepo for now. npm publishing is planned after a dogfooding
-> period on a real store. Expect breaking changes between versions; see
+> **Status: pre-1.0, not yet on npm.** The packages run in production on the demo stores below
+> and on a real store ([shop.mdostal.com](https://shop.mdostal.com)). You consume them from this
+> monorepo, or from the packed builds attached to each
+> [release](https://github.com/mdostal/mercatus-liber/releases) (latest: v0.58.0). npm
+> publishing comes later. Expect breaking changes between versions; see
 > [CHANGELOG.md](CHANGELOG.md).
 
 ## See it running
 
 Three sample stores, all built from the same open-source app
 ([`apps/reference-storefront`](apps/reference-storefront)). They are meant to be read and
-copied: each one is a public example of building a storefront on the framework.
+copied: each one is a public example of building a storefront on the framework. Each store has
+its own site (standalone), and all three also run side by side on the shared demo, which adds
+the framework's landing page and architecture tour.
 
 | Store | What it is | Theme | Backend | Links |
 |---|---|---|---|---|
@@ -69,9 +75,17 @@ inventory.
 **Merchandising and content:** per-page CMS (no forced whole-site theme), 10 theme bundles,
 promotions, bundles, recommendations, advertising, reviews, storefront views, service-area
 pages, community goals, and made-to-order customization with an admin-defined pricing engine.
+Scheduled lines (limited-time sales catalogs with their own landing pages, countdowns and
+promotions), sale windows on any product, and products made to the buyer's own measurements.
+
+**Checkout:** Stripe-hosted checkout with address collection, cart-wide and product discounts,
+abandoned-checkout recovery links with consent-aware reminders, and a per-store card statement
+name.
 
 **Operations:** role-based admin auth, fulfillment, shipping, webhooks, accounting sync,
-analytics, internal BI, a store scaffolder, auto-update, and a Shopify migration tool.
+analytics, internal BI, a store scaffolder, auto-update, and a Shopify migration tool. A Printful
+catalog browser (browse every product, place art, generate mockups, publish), versioned print
+art, and reusable admin components ([`packages/admin-ui`](packages/admin-ui/README.md)).
 
 **Outside apps:** a key-authenticated store API and typed client, so apps such as flayr can import the catalog and run promotions ([`packages/store-api`](packages/store-api/README.md), [flayr plan](docs/integrations/flayr.md)).
 
@@ -95,7 +109,8 @@ never run against a real account.
 | Admin auth | `adapter-clerk` | Live |
 | Payments | Stripe (in `payments`) | Live in sandbox mode |
 | Payments | `adapter-paypal` | Unverified |
-| Print on demand | `adapter-printful`, `adapter-printify` | Unverified; activates when credentials are set |
+| Print on demand | `adapter-printful` | Catalog, art placement and mockups run against Printful's API with a real token; no live order placed yet |
+| Print on demand | `adapter-printify` | Unverified; activates when credentials are set |
 | 3D print on demand | `adapter-slant3d`, `adapter-3dapi`, `adapter-x3d` (multicolour), `adapter-simplyprint` (the store's own printers, queued through SimplyPrint) | Unverified; activates when credentials are set. See `docs/integrations/3d-print-on-demand.md` |
 | Shipping | `adapter-shippo` | Rates, label and void verified against Shippo's API in test mode; not with a live token |
 | Shipping | `adapter-shipstation` | Unverified |
@@ -154,12 +169,14 @@ sync, and more are listed in [VISION.md's community frontier](VISION.md#wanted-n
 - **Customization:** a quote flow for request-only options; see its
   [known limitations](packages/customization/README.md#known-limitations).
 - **UI:** moving the rest of the app's components into `storefront-ui` as a default UI.
+- **Docs and samples:** keeping the docs site and the standalone sample stores deploying from
+  master; a [scheduled check](.github/workflows/sample-health.yml) watches the samples.
 - **Release:** npm publishing, after dogfooding on a real store.
 
 ## How it's built
 
 ```
-packages/    52 packages: core types, one package per subsystem, one per adapter
+packages/    59 packages: core types, one package per subsystem, one per adapter
 apps/
   reference-storefront/   the sample stores (Next.js)
   docs/                   the docs site (Nextra)
@@ -173,12 +190,13 @@ concrete adapters get chosen. Read more in [docs/ARCHITECTURE.md](docs/ARCHITECT
 
 ## Documentation
 
+- [What's new](apps/docs/content-src/whats-new.md) in the latest release
 - [Getting started](apps/docs/content-src/getting-started.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Subsystem reference](docs/subsystems/) (28 docs)
 - [Configuration reference](apps/docs/content-src/configuration.md)
 - [Integrations catalog](apps/docs/content-src/integrations.md)
-- Each package's own `README.md`
+- Each package's own `README.md`, also on the docs site under [Packages](https://mercatus-liber-docs.vercel.app/packages)
 
 ## Contributing
 
