@@ -1153,3 +1153,66 @@ Neither adapter has placed an order with a live account.
 ### Fixed
 
 - A product photo that fails to load shows a plain placeholder in the reference storefront, not the browser's broken-image icon. The demo stores link their photos from loremflickr.com, which has been returning errors.
+
+## [0.58.0] - 2026-11-23
+
+The first tagged release. Everything from 2026-11-11 to 2026-11-23. The git tag and this heading
+are the project's version; the packages' own `package.json` versions stay at 0.1.0 until they're
+published to npm.
+
+### Added
+
+- **Scheduled lines and sale windows** (#63–#71):
+  - Products and SKUs take `activeFrom`/`activeTo`. Cart and checkout refuse what isn't on sale.
+  - `lifecycle()` in core says whether something is upcoming, active or ended.
+  - Sales catalogs ("lines") have schedules, heroes, sections and landing pages.
+  - Search, promotions and BI work per line or category.
+  - Homepage marketing tiles carry `icid` tracking.
+  - The Store API and client get lines.
+  - `Countdown` and `SaleWindow` components; admin pages; agent tools.
+- **Printful catalog browser** (#60–#62):
+  - Browse all of Printful's catalog (575 products, with an offline snapshot).
+  - Bring a product into the store, place and upload art per print area, and generate mockups.
+  - Publish when the art is ready.
+  - Admin components `CatalogGrid`, `CatalogItemDetail`, `PlacementArtEditor` and `MockupGallery`.
+  - A Postgres media store, and agent tools.
+- **Abandoned-checkout recovery** (#74, #75, #76):
+  - Opt-in Stripe recovery links and promotional consent.
+  - `checkout.session.expired` becomes `payments.payment.expired`, and the order becomes `abandoned`.
+  - `checkout.order.abandoned` carries `canRemind`.
+  - Paying through the recovery link, or checking out the same cart again, completes or restarts
+    the order.
+  - Inventory releases an abandoned order's stock.
+  - Paid orders record `marketingConsent`.
+- **Card statement name** (#76): `statementDescriptorSuffix` on the Stripe adapter, checked against
+  Stripe's rules.
+- **Measured products** (#77): products built to the buyer's own measurements declare params
+  (numbers, choices, lists, divider lines). `resolveLine` validates them, and `toPrintOrder`
+  writes them to `print-order/1`.
+- **Stripe collects the shipping address** (#59), and each fulfillment adapter sends states the way
+  its provider wants.
+- **Print art and admin components:**
+  - `@mercatus-liber/print-art` (#52): versioned custom print art.
+  - `@mercatus-liber/admin-ui` (#53–#56): `PrintCoverage`, `ArtVersionEditor`, `RatingsTable` and
+    `OptionMatrixConfigurator`.
+- **Fulfillment and shipping:**
+  - Adapters for X3D Studios (#41, #45, #47, #50), SimplyPrint (#46) and ShipStation (#38).
+  - Shippo label buying and voiding for self-shipped orders (#36, #48, #49).
+  - Provider status webhooks become one store order event (#37, #40, #42, #44).
+- **`unpublishProduct`** (#51) moves a product back to draft.
+- **Sample health checks** (#79): a scheduled job requests every sample store's pages every 6 hours
+  and opens a `sample-down` issue when one fails.
+
+### Fixed
+
+- Cart-wide discount codes are charged, not just previewed. Redemptions are counted across server
+  instances (#73).
+- Promotional consent is off by default. If Stripe refuses it, the session is created without it,
+  so checkout can't go down (#75).
+- The print-shop demo and the sitemap returned 500 when the CMS was read-only (#78).
+- Demo seeds stop re-inserting bundles, rules, campaigns and reviews (#58).
+- Printful order ids over 32 characters, durable self-shipped records, and retry-safe submit (#43).
+
+### Security
+
+- Next.js 16.4.5, MCP SDK 1.32.2 and vitest 5.1.0, with transitive dependency floors raised (#57).
