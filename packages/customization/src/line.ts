@@ -56,6 +56,8 @@ export interface PrintOrder {
   name?: string;
   font?: string;
   lettering?: Record<string, unknown>;
+  /** A measured product's buyer settings. See LineCustomization.params. */
+  params?: Record<string, unknown>;
   colors: Record<string, unknown>;
 }
 
@@ -93,6 +95,7 @@ export function toPrintOrder(line: LineCustomization, target: { orderId: string;
     ...(line.name ? { name: line.name } : {}),
     ...(line.font ? { font: line.font } : {}),
     ...(line.lettering ? { lettering: line.lettering } : {}),
+    ...(line.params ? { params: line.params } : {}),
     colors,
   };
 }

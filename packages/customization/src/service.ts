@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { activeRegions, resolvePicks, validateOptions } from "./options.js";
+import { InvalidParamsError, resolveParams, validateMeasured } from "./params.js";
 import { canonicalColor, resolveColorCount, resolveEffectiveColor, availableColorChoices, validateRegions, validateSelectedColor } from "./resolution.js";
 import type { LineCustomization, LineCustomizationRequest } from "@mercatus-liber/core";
 import type {
@@ -205,6 +206,7 @@ export function createCustomizationService(deps: {
     async createProductCustomization(input: NewProductCustomizationInput): Promise<ProductCustomization> {
       validateRegions(input.regions);
       validateOptions(input);
+      if (input.measured) validateMeasured(input.measured);
       const customization: ProductCustomization = { ...input, id: randomUUID() };
       await productCustomizations.save(customization);
       return customization;
@@ -216,6 +218,7 @@ export function createCustomizationService(deps: {
       const updated: ProductCustomization = { ...existing, ...patch, id: existing.id, productId: existing.productId };
       validateRegions(updated.regions);
       validateOptions(updated);
+      if (updated.measured) validateMeasured(updated.measured);
       await productCustomizations.save(updated);
       return updated;
     },
@@ -295,6 +298,9 @@ export function createCustomizationService(deps: {
         if (paletteColors.find((p) => p.id === value)?.status === "request") requests.push({ kind: "color", id: value, at: regionId });
       }
 
+      if (input.params !== undefined && !customization.measured) throw new InvalidParamsError("This product doesn't take params");
+      const params = customization.measured ? resolveParams(customization.measured, input.params ?? {}, finish.id) : undefined;
+
       const name = input.name?.trim() || undefined;
       const line: LineCustomization = {
         finish: finish.id,
@@ -306,6 +312,7 @@ export function createCustomizationService(deps: {
         ...(name ? { name } : {}),
         ...(input.font ? { font: input.font } : {}),
         ...(input.lettering ? { lettering: input.lettering } : {}),
+        ...(params && Object.keys(params).length > 0 ? { params } : {}),
         ...(requests.length > 0 ? { requests } : {}),
       };
       const attributeCounts = { ...input.attributeCounts };

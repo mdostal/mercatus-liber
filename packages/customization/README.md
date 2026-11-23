@@ -78,6 +78,22 @@ await cart.addItem(cartId, skuId, 1, undefined, { customization: line, unitPrice
 
 Run this on the server, and never accept a price from the browser. The line reaches the order as `OrderLineItem.customization`, and `toPrintOrder` turns it into a `print-order/1` job. Checkout refuses a line that needs a quote.
 
+## Measured products
+
+A product built to the buyer's own measurements (a clip sized to their bed rails, say) sets
+`measured` on its customization: the settings the buyer fills in (`params`: `number`, `choice`,
+`choice_list`, `number_list` or `lines`, each with its range or choices, `default`, `help`,
+`group`, and `when`, which shows it only when another param or the finish has one of the listed
+values), plus `presets` and a `defaultPreset`. `measuredFromPrintTools(customize)` converts a
+product's `customize` block from the print tools' `color-regions.json`.
+
+`resolveLine` takes the buyer's `params` and refuses an unknown param, a value of the wrong kind or
+out of range, too many entries, or more than 4 KB. Params that don't apply under the other values
+or the finish are dropped. The rest go on the line as sent (`LineCustomization.params`), and
+`toPrintOrder` writes them to the job's `params`. Params left out take the default preset's
+values, then each param's own default, at the print tools (`measuredDefaults` gives the same
+values to show). The print tools still refuse what the model can't build.
+
 ## Storage
 
 The in-memory repositories are the default and lose everything on restart. For durable storage, use the repositories in `adapter-postgres`, `adapter-sqlite`, `adapter-mongodb`, or `adapter-convex`. All of them pass the same contract in `test/repository-contract.ts`.

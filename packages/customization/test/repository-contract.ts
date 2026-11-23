@@ -44,6 +44,14 @@ const FULL_CUSTOMIZATION: ProductCustomization = {
     { id: "style", label: "Style", when: { lock: ["hasp"] }, choices: [{ id: "plain", label: "Plain" }] },
   ],
   variants: { key: "lock", rows: [{ id: "none", label: "None", when: { lock: "none" } }, { id: "hasp", label: "Hasp", when: { lock: ["hasp"] } }] },
+  measured: {
+    params: [
+      { id: "rail_d", label: "Rail", kind: "number", unit: "mm", min: 15, max: 35, default: 20, when: { finish: ["solid"] } },
+      { id: "lines", label: "Lines", kind: "lines", maxItems: 2, default: [[0, 0, 10, 10]] },
+    ],
+    presets: [{ id: "ours", label: "Ours", values: { rail_d: 21 } }],
+    defaultPreset: "ours",
+  },
 };
 const FULL_RULES: PricingRules = {
   basePriceCents: { solid: 5900, ams: 8300 },

@@ -1,4 +1,5 @@
 import type { AvailabilityStatus, LineCustomization } from "@mercatus-liber/core";
+import type { MeasuredCustomization } from "./params.js";
 
 /**
  * One filament/paint color offered for customization -- a shared palette
@@ -193,6 +194,8 @@ export interface LineInput {
   name?: string;
   font?: string;
   lettering?: Record<string, unknown>;
+  /** A measured product's buyer settings, by param id. See ProductCustomization.measured. */
+  params?: Record<string, unknown>;
   /** Counts for cost drivers only the caller knows, such as "a name was entered". */
   attributeCounts?: Record<string, number>;
 }
@@ -249,6 +252,12 @@ export interface ProductCustomization {
   variants?: ProductVariants;
   /** Art style ids this product offers (e.g. "flush", "raised"), in presentation order. Absent means this product doesn't offer a choice of art style at all -- not every product needs one. */
   artStyleIds?: string[];
+  /**
+   * Set on a product built to the buyer's own measurements: the settings
+   * they fill in, presets, and the default preset. resolveLine validates
+   * LineInput.params against it. See measuredFromPrintTools.
+   */
+  measured?: MeasuredCustomization;
   /** Shown to the shopper for why this product's offered finishes are limited (e.g. "No one-color option: the coil diffusers must be white for the LEDs to shine through."). */
   why?: string;
 }
