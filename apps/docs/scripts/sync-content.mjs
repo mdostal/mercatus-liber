@@ -110,6 +110,54 @@ if (existsSync(epicsDir)) {
 }
 console.log(`[sync-content] synced ${planningCount} planning doc(s) -> ${planningDir}`)
 
+// Package docs: every packages/<name>/README.md becomes content/packages/<name>.md, so the docs
+// site carries each package's own reference instead of linking out to GitHub for it. Links
+// written for GitHub (relative paths like `src/foo.ts` or `../core`) are rewritten to absolute
+// GitHub URLs, since those files aren't pages on this site. An index page lists them all.
+const packagesDir = join(repoRoot, 'packages')
+const packagesOut = join(contentDir, 'packages')
+const GITHUB_BLOB = 'https://github.com/mdostal/mercatus-liber/blob/master'
+const GITHUB_TREE = 'https://github.com/mdostal/mercatus-liber/tree/master'
+
+export function rewriteRelativeLinks(markdown, repoPath) {
+  // Markdown links and images whose target is relative: not a URL, not an anchor, not mailto.
+  return markdown.replace(/(!?\[[^\]]*\]\()([^)\s]+)(\))/g, (whole, open, target, close) => {
+    if (/^(?:[a-z][a-z0-9+.-]*:|#|\/)/i.test(target)) return whole
+    const [path, hash = ''] = target.split('#')
+    const segments = `${repoPath}/${path}`.split('/')
+    const resolved = []
+    for (const segment of segments) {
+      if (segment === '..') resolved.pop()
+      else if (segment !== '.' && segment !== '') resolved.push(segment)
+    }
+    // A subsystem doc is a page on this site: link to it here.
+    if (resolved[0] === 'docs' && resolved[1] === 'subsystems' && resolved.length === 3 && resolved[2].endsWith('.md')) {
+      return `${open}/subsystems/${resolved[2].replace(/\.md$/, '')}${hash ? `#${hash}` : ''}${close}`
+    }
+    const looksLikeDir = !/\.[a-z0-9]+$/i.test(resolved.at(-1) ?? '')
+    const base = looksLikeDir ? GITHUB_TREE : GITHUB_BLOB
+    return `${open}${base}/${resolved.join('/')}${hash ? `#${hash}` : ''}${close}`
+  })
+}
+
+mkdirSync(packagesOut, { recursive: true })
+const packageRows = []
+for (const name of readdirSync(packagesDir).sort()) {
+  const readme = join(packagesDir, name, 'README.md')
+  if (!existsSync(readme)) continue
+  const body = readFileSync(readme, 'utf8')
+  const pkgJson = join(packagesDir, name, 'package.json')
+  const pkg = existsSync(pkgJson) ? JSON.parse(readFileSync(pkgJson, 'utf8')) : {}
+  const banner = `<!-- Synced from packages/${name}/README.md; edit it there. -->\n\n`
+  writeFileSync(join(packagesOut, `${name}.md`), banner + rewriteRelativeLinks(body, `packages/${name}`))
+  packageRows.push(`| [\`${pkg.name ?? name}\`](/packages/${name}) | ${(pkg.description ?? '').replace(/\|/g, '\\|')} |`)
+}
+writeFileSync(
+  join(packagesOut, 'index.md'),
+  `# Packages\n\nEvery package in the monorepo, with its own README. They're consumed from the repo for now (not yet on npm); see the [releases](https://github.com/mdostal/mercatus-liber/releases) for packed builds.\n\n| Package | What it does |\n|---|---|\n${packageRows.join('\n')}\n`,
+)
+console.log(`[sync-content] synced ${packageRows.length} package README(s) -> ${packagesOut}`)
+
 // Hand-authored, docs-site-only pages (landing page, getting-started, ...) copied in last so
 // they land in content/ alongside the synced repo docs above. This directory is real, committed
 // source (unlike content/ itself), so these pages survive every predev/prebuild wipe-and-

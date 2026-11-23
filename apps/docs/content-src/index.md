@@ -7,6 +7,7 @@ Mercatus Liber," but "how Mercatus Liber actually works, and how to run one."
 
 ## Start here
 
+- **[What's new](/whats-new)**: what shipped in the latest release, v0.58.0.
 - **[Getting started](/getting-started)** — the fastest way in: run one of the three live demo
   storefronts already seeded in this repo, or provision your own store with the `create-store`
   CLI.
@@ -25,6 +26,7 @@ Mercatus Liber," but "how Mercatus Liber actually works, and how to run one."
 - **[Sample stores](/sample-stores)** — the three real demo storefronts, their real URLs,
   and their per-store backends.
 - **[Configuration](/configuration)** — every environment variable the reference storefront reads.
+- **[Packages](/packages)**: every package's own README, synced from the repo.
 
 ## What's covered here vs. elsewhere
 
@@ -42,5 +44,6 @@ site's nav and footer, not duplicated here.
 
 ## Status
 
-Mercatus Liber is pre-alpha. See the [project README](/readme) for the current build-out
-status and what's done so far.
+Mercatus Liber is pre-1.0 and not yet on npm. The latest release is
+[v0.58.0](https://github.com/mdostal/mercatus-liber/releases/tag/v0.58.0); see the
+[project README](/readme) for the current status.
