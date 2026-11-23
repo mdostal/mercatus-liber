@@ -3,7 +3,7 @@
  * CMS-authored content -- not hardcoded data -- and that the marketing
  * page's curated product order is preserved.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { seedCatalog } from "../lib/seed.js";
 import { buildTestCatalogServices } from "./helpers.js";
 
@@ -37,5 +37,20 @@ describe("seeded CMS pages", () => {
 
     const tote = await catalog.getProductBySlug("embroidered-canvas-tote");
     expect(meta?.productIds).toEqual([tote?.id]);
+  });
+
+  it("still seeds, without the tile, when the CMS refuses writes to an existing page", async () => {
+    const { catalog, marketingCatalog, cms, inventory } = buildTestCatalogServices();
+    const readOnlyUpdates = Object.assign(Object.create(Object.getPrototypeOf(cms)), cms, {
+      updatePage: async () => {
+        throw new Error('Insufficient permissions; permission "update" required');
+      },
+    }) as typeof cms;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(seedCatalog(catalog, marketingCatalog, readOnlyUpdates, inventory)).resolves.not.toThrow();
+    const home = await cms.getPageBySlug("home-print-shop");
+    expect(home?.sections.map((s) => s.componentType)).toEqual(["hero-banner", "category-spot", "ad-slot"]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("marketing tile"));
+    warn.mockRestore();
   });
 });
