@@ -71,7 +71,7 @@ items:
     state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}]
 
   - id: t-006
-    state: prioritized
+    state: closed
     kind: feature
     title: Docs content catch-up (What's new + package docs on the site)
     description: >-
@@ -83,10 +83,13 @@ items:
     reported_at: "2026-11-23T18:20:00Z"
     priority: p1
     severity: moderate
-    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
+    closed_reason: "implemented in PR #80; docs site deployed 2026-11-23 (whats-new and /packages live)"
+    closed_at: "2026-11-23T19:15:00Z"
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}, {state: closed, at: "2026-11-23T19:15:00Z"}]
+
 
   - id: t-007
-    state: prioritized
+    state: closed
     kind: feature
     title: CHANGELOG catch-up and first tagged GitHub Release (v0.58.0)
     description: >-
@@ -98,10 +101,13 @@ items:
     reported_at: "2026-11-23T18:20:00Z"
     priority: p1
     severity: moderate
-    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
+    closed_reason: "CHANGELOG 0.58.0 in PR #80; tag v0.58.0 and GitHub Release with 59 package tarballs published 2026-11-23"
+    closed_at: "2026-11-23T19:15:00Z"
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}, {state: closed, at: "2026-11-23T19:15:00Z"}]
+
 
   - id: t-008
-    state: prioritized
+    state: closed
     kind: feature
     title: README refresh
     description: >-
@@ -111,13 +117,17 @@ items:
     reported_at: "2026-11-23T18:20:00Z"
     priority: p2
     severity: low
-    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
+    closed_reason: "implemented in PR #80"
+    closed_at: "2026-11-23T19:15:00Z"
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}, {state: closed, at: "2026-11-23T19:15:00Z"}]
+
 
   - id: t-009
     state: prioritized
     kind: feature
     title: GitHub social preview card
-    description: No custom Open Graph image (GitHub's default card). 1280x640 card in brand tokens with the existing docs/assets/logo.png; the owner uploads it in repo Settings (no API).
+    description: No custom Open Graph image (GitHub's default card). Card made (docs/assets/social-preview.png, PR #80); the owner uploads it in repo Settings (no API).
+    owner_action: true
     reporter: claude
     reported_at: "2026-11-23T18:20:00Z"
     priority: p2
@@ -125,7 +135,7 @@ items:
     state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
 
   - id: t-010
-    state: prioritized
+    state: closed
     kind: feature
     title: Wiki becomes a pointer to the docs site; sample-stores status links the health badge
     description: >-
@@ -136,7 +146,10 @@ items:
     reported_at: "2026-11-23T18:20:00Z"
     priority: p2
     severity: low
-    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}]
+    closed_reason: "changed scope: wiki kept (decision docs-wiki-examples-architecture) and refreshed instead (FAQ, Troubleshooting, Home); sample-stores status now the health badge (PR #80)"
+    closed_at: "2026-11-23T19:15:00Z"
+    state_history: [{state: inbox, at: "2026-11-23T18:20:00Z"}, {state: clarified, at: "2026-11-23T18:45:00Z"}, {state: prioritized, at: "2026-11-23T18:50:00Z"}, {state: closed, at: "2026-11-23T19:15:00Z"}]
+
 
   - id: t-011
     state: clarified
