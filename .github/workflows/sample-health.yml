@@ -1,0 +1,72 @@
+name: Sample health
+
+# Checks that the public sample stores and the docs actually render, not just
+# that their databases are awake (keepalive.yml does that). Every 6 hours and
+# on demand. The URLs and the text each page must contain are in
+# .github/sample-health/checks.json; add a row when a new public page matters.
+#
+# On failure it opens one issue labelled `sample-down` (or comments on the
+# open one); the next green run closes it. Read-only GET requests with a
+# recognizable User-Agent; a slow cold start is retried twice before it
+# counts. Free: GitHub-hosted runner, no third-party monitor.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Only checks whose name or URL contains this (blank for all)"
+        required: false
+        default: ""
+
+concurrency:
+  group: sample-health
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: request every sample page
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check pages
+        id: check
+        continue-on-error: true
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          if [ -n "$ONLY" ]; then node .github/scripts/sample-health.mjs --only "$ONLY"; else node .github/scripts/sample-health.mjs; fi
+
+      - name: Open, update or close the sample-down issue
+        if: ${{ !inputs.only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.check.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create sample-down --color B60205 --description "A public sample page is failing its health check" 2>/dev/null || true
+          open=$(gh issue list --label sample-down --state open --json number --jq '.[0].number // empty')
+          if [ "$OUTCOME" = "failure" ]; then
+            body=$(printf 'Failing as of %s ([run](%s)):\n\n%s\n\nChecks: `.github/sample-health/checks.json`. This issue closes itself on the next green run.' "$(date -u +'%Y-%m-%d %H:%M UTC')" "$RUN_URL" "$(cat sample-health-failures.md)")
+            if [ -n "$open" ]; then
+              gh issue comment "$open" --body "$body"
+            else
+              gh issue create --title "Sample pages failing health check" --label sample-down --body "$body"
+            fi
+          elif [ -n "$open" ]; then
+            gh issue close "$open" --comment "All sample pages answer again ([run]($RUN_URL))."
+          fi
+
+      - name: Fail the run when a page is down
+        if: ${{ steps.check.outcome == 'failure' }}
+        run: exit 1

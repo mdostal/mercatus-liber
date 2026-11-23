@@ -1,6 +1,7 @@
 <img src="docs/assets/logo.png" alt="Mercatus Liber -- free market, free software" width="320">
 
 [![CI](https://img.shields.io/github/actions/workflow/status/mdostal/mercatus-liber/ci.yml?branch=master&label=CI)](https://github.com/mdostal/mercatus-liber/actions/workflows/ci.yml)
+[![Sample stores](https://img.shields.io/github/actions/workflow/status/mdostal/mercatus-liber/sample-health.yml?branch=master&label=sample%20stores)](https://github.com/mdostal/mercatus-liber/actions/workflows/sample-health.yml)
 [![License: MIT](https://img.shields.io/github/license/mdostal/mercatus-liber)](LICENSE)
 
 # Mercatus Liber
@@ -34,7 +35,9 @@ copied: each one is a public example of building a storefront on the framework.
 | Northline Home Tech | Smart-home installer with service-area pages | `northline` | Postgres | [standalone](https://mercatus-liber-northline.vercel.app) · [shared](https://commerce.mdostal.com/demo/northline) |
 | Broadleaf & Co. | Artisan and handmade goods | `vibrant` | Convex | [standalone](https://mercatus-liber-broadleaf.vercel.app) · [shared](https://commerce.mdostal.com/demo/broadleaf) |
 
-The demos run in sandbox payment mode, so no real charges happen. Details:
+The demos run in sandbox payment mode, so no real charges happen. A scheduled check
+([`sample-health.yml`](.github/workflows/sample-health.yml)) requests every store's pages every
+6 hours and opens a `sample-down` issue if one stops answering. Details:
 [sample stores](apps/docs/content-src/sample-stores.md).
 
 ## Quick start
